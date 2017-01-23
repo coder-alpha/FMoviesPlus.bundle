@@ -346,7 +346,10 @@ def EpisodeDetail(title, url, thumb):
 	
 	page_data = GetPageElements(url=url)
 	
-	art = page_data.xpath(".//meta[@property='og:image'][1]//@content")[0]
+	try:
+		art = page_data.xpath(".//meta[@property='og:image'][1]//@content")[0][0]
+	except:
+		art = R(ART)
 	oc = ObjectContainer(title2 = title, art = art)
 	
 	summary = page_data.xpath(".//*[@id='info']//div[@class='info col-md-19']//div[@class='desc']//text()")[0]
@@ -981,8 +984,9 @@ def GetPageElements(url):
 		if Prefs["use_https_alt"]:
 			if Prefs["use_debug"]:
 				Log("Using SSL Alternate Option")
+				Log("Url: " + url)
 			page_data = fmovies.request(url = url)
-			page_data_elems = HTTP.ElementFromString(page_data)
+			page_data_elems = HTML.ElementFromString(page_data)
 		else:
 			page_data_elems = HTML.ElementFromURL(url)
 	except:

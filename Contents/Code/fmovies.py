@@ -441,3 +441,4 @@ def replaceHTMLCodes(txt):
 	txt = txt.replace("&quot;", "\"")
 	txt = txt.replace("&amp;", "&")
 	return txt
+	

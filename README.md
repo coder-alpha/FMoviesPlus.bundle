@@ -13,7 +13,8 @@ System Requirements
 - **Plex Media Server:**
 	- Tested Working:
 		- Windows
-		- Linux (requires SSL option under Channel Prefs.)
+		- Linux (working on a workaround due to PMS issue - requires SSL option under Channel Prefs.)
+		- MacOS (Untested)
 - **Plex Clients:**
 	- Tested Working:
 		- Plex Home Theater

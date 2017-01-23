@@ -13,6 +13,8 @@ import urllib, urllib2, urlparse, json, time, re, sys, HTMLParser, random, cooki
 CACHE = {}
 CACHE_EXPIRY_TIME = 60*60 # 1 Hour
 
+GLOBAL_CONST_myts_adjust = 36000
+
 GLOBAL_TIMEOUT_FOR_HTTP_REQUEST = 15
 HTTP_GOOD_RESP_CODES = ['200','206']
 
@@ -31,8 +33,13 @@ FILTER_PATH = "/filter"
 def GetApiUrl(url, key):
 
 	use_debug = Prefs["use_debug"]
+	token_tweak = Prefs["tweak_token"]
+	
 	res = None
-	myts = (int(time.time())/3600)*3600
+	if token_tweak:
+		myts = (int(time.time())/3600)*3600 + GLOBAL_CONST_myts_adjust
+	else:
+		myts = (int(time.time())/3600)*3600
 	
 	try:
 		CACHE_EXPIRY = 60 * int(Prefs["cache_expiry_time"])
@@ -53,7 +60,8 @@ def GetApiUrl(url, key):
 	else:
 		if use_debug:
 			Log("Retrieving Fresh Movie Link")
-		ret, isOpenLoad = get_sources(url=url, key=key, use_debug=use_debug)
+			
+		ret, isOpenLoad = get_sources(url=url, key=key, use_debug=use_debug, myts=myts)
 		
 		if ret != None:
 			if isOpenLoad:
@@ -73,7 +81,7 @@ def GetApiUrl(url, key):
 
 	return res, isOpenLoad
 
-def get_sources(url, key, use_debug=True):
+def get_sources(url, key, use_debug=True, myts=0):
 	
 	try:
 		magic_url = None
@@ -81,7 +89,8 @@ def get_sources(url, key, use_debug=True):
 		if url == None: return magic_url
 		referer = url
 		
-		myts = (int(time.time())/3600)*3600
+		if myts == 0:
+			myts = ((int(time.time())/3600)*3600)
 		
 		try:
 			CACHE_EXPIRY = 60 * int(Prefs["cache_expiry_time"])
@@ -119,42 +128,45 @@ def get_sources(url, key, use_debug=True):
 			#print r1
 			CACHE['cookie2'] = cookie2
 
-		try:
-			headers = {'X-Requested-With': 'XMLHttpRequest'}
-			hash_url = urlparse.urljoin(BASE_URL, HASH_PATH_INFO)
-			query = {'ts': myts, 'id': key}
+			try:
+				headers = {'X-Requested-With': 'XMLHttpRequest'}
+				hash_url = urlparse.urljoin(BASE_URL, HASH_PATH_INFO)
+				query = {'ts': myts, 'id': key}
 
-			query.update(get_token(query))
-			hash_url = hash_url + '?' + urllib.urlencode(query)
-
-			headers['Referer'] = urlparse.urljoin(url, key)
-			headers['Cookie'] = cookie1 + ';' + cookie2 + ';user-info=null; MarketGidStorage=%7B%220%22%3A%7B%22svspr%22%3A%22%22%2C%22svsds%22%3A3%2C%22TejndEEDj%22%3A%22MTQ4MTM2ODE0NzM0NzQ4NTMyOTAx%22%7D%2C%22C48532%22%3A%7B%22page%22%3A1%2C%22time%22%3A1481368147359%7D%2C%22C77945%22%3A%7B%22page%22%3A1%2C%22time%22%3A1481368147998%7D%2C%22C77947%22%3A%7B%22page%22%3A1%2C%22time%22%3A1481368148109%7D%7D'
-			time.sleep(0.4)
-			#print hash_url
-			result = request(hash_url, headers=headers, limit='0')
-			#print result
-			
-			result = json.loads(result)
-
-			if 'error' in result:
-				grabber = None
-			elif result['target'] != "":
-				grabber = result['target']
-				isOpenLoad = True
-			else:
-				query = {'id': key}
 				query.update(get_token(query))
-				url = url + '?' + urllib.urlencode(query)
-				query = {'id':result['params']['id']}
-				query.update(get_token(query))
-				query = {'id':result['params']['id'], 'token':result['params']['token']}
-				grabber = result['grabber'] + '?' + urllib.urlencode(query)
-			if not grabber.startswith('http'):
-				grabber = 'http:'+grabber
+				hash_url = hash_url + '?' + urllib.urlencode(query)
+
+				headers['Referer'] = urlparse.urljoin(url, key)
+				oldmarketgidstorage = 'MarketGidStorage=%7B%220%22%3A%7B%22svspr%22%3A%22%22%2C%22svsds%22%3A3%2C%22TejndEEDj%22%3A%22MTQ4MTM2ODE0NzM0NzQ4NTMyOTAx%22%7D%2C%22C48532%22%3A%7B%22page%22%3A1%2C%22time%22%3A1481368147359%7D%2C%22C77945%22%3A%7B%22page%22%3A1%2C%22time%22%3A1481368147998%7D%2C%22C77947%22%3A%7B%22page%22%3A1%2C%22time%22%3A1481368148109%7D%7D'
+				newmarketgidstorage = 'MarketGidStorage=%7B%220%22%3A%7B%22svspr%22%3A%22%22%2C%22svsds%22%3A75%2C%22TejndEEDj%22%3A%22MTQ4NDc3MzczNzkzOTc3OTQ0NjgwMQ%3D%3D%22%7D%2C%22C77944%22%3A%7B%22page%22%3A1%2C%22time%22%3A1485149595898%7D%2C%22C77946%22%3A%7B%22page%22%3A1%2C%22time%22%3A1485149600480%7D%2C%22C77948%22%3A%7B%22page%22%3A1%2C%22time%22%3A1485149600326%7D%7D'
+				headers['Cookie'] = cookie1 + ';' + cookie2 + ';user-info=null; ' + newmarketgidstorage
 				
-			magic_url = grabber	
-		except:
-			pass
+				time.sleep(0.4)
+				#print hash_url
+				result = request(hash_url, headers=headers, limit='0')
+				#print result
+				
+				result = json.loads(result)
+
+				if 'error' in result:
+					grabber = None
+				elif result['target'] != "":
+					grabber = result['target']
+					isOpenLoad = True
+				else:
+					query = {'id': key}
+					query.update(get_token(query))
+					url = url + '?' + urllib.urlencode(query)
+					query = {'id':result['params']['id']}
+					query.update(get_token(query))
+					query = {'id':result['params']['id'], 'token':result['params']['token']}
+					grabber = result['grabber'] + '?' + urllib.urlencode(query)
+				if not grabber.startswith('http'):
+					grabber = 'http:'+grabber
+					
+				magic_url = grabber	
+			except:
+				pass
 
 		return magic_url, isOpenLoad
 	except:
@@ -429,5 +441,3 @@ def replaceHTMLCodes(txt):
 	txt = txt.replace("&quot;", "\"")
 	txt = txt.replace("&amp;", "&")
 	return txt
-
-#print get_sources(url='https://fmovies.se/film/jack-reacher-never-go-back.7jkpj',key='ppqnr9')

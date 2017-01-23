@@ -13,7 +13,7 @@ System Requirements
 - **Plex Media Server:**
 	- Tested Working:
 		- Windows
-		- Linux (working on a workaround due to PMS issue - requires SSL option under Channel Prefs.)
+		- Linux (Due to PMS issue - requires SSL option enabled under Channel Prefs.)
 		- MacOS (Untested)
 - **Plex Clients:**
 	- Tested Working:

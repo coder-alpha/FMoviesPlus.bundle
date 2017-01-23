@@ -34,6 +34,7 @@ def GetApiUrl(url, key):
 
 	use_debug = Prefs["use_debug"]
 	token_tweak = Prefs["tweak_token"]
+	use_https_alt = Prefs["use_https_alt"]
 	
 	res = None
 	if token_tweak:
@@ -61,7 +62,7 @@ def GetApiUrl(url, key):
 		if use_debug:
 			Log("Retrieving Fresh Movie Link")
 			
-		ret, isOpenLoad = get_sources(url=url, key=key, use_debug=use_debug, myts=myts)
+		ret, isOpenLoad = get_sources(url=url, key=key, use_debug=use_debug, myts=myts, use_https_alt=use_https_alt)
 		
 		if ret != None:
 			if isOpenLoad:
@@ -71,7 +72,11 @@ def GetApiUrl(url, key):
 				CACHE[key]['myts'] = myts
 				CACHE[key]['isOpenLoad'] = str(isOpenLoad)
 			else:
-				data = JSON.ObjectFromURL(ret)
+				if use_https_alt:
+					dataPage = request(url=ret)
+					data = json.loads(dataPage)
+				else:
+					data = JSON.ObjectFromURL(ret)
 				if data['error'] == None:
 					res = JSON.StringFromObject(data['data'])
 					CACHE[key] = {}
@@ -81,7 +86,7 @@ def GetApiUrl(url, key):
 
 	return res, isOpenLoad
 
-def get_sources(url, key, use_debug=True, myts=0):
+def get_sources(url, key, use_debug=True, myts=0, use_https_alt=False):
 	
 	try:
 		magic_url = None
@@ -115,7 +120,7 @@ def get_sources(url, key, use_debug=True, myts=0):
 					print 'NOT Using Cookies from Cache'
 			myts = str(myts)
 			time.sleep(0.2)
-			result, headers, content, cookie1 = request(url, limit='0', output='extended')
+			result, headers, content, cookie1 = request(url, limit='0', output='extended', httpsskip=use_https_alt)
 			#print result
 			CACHE['cookie1'] = cookie1
 			CACHE['myts'] = myts
@@ -124,7 +129,7 @@ def get_sources(url, key, use_debug=True, myts=0):
 			query.update(get_token(query))
 			hash_url = hash_url + '?' + urllib.urlencode(query)
 			time.sleep(0.2)
-			r1, headers, content, cookie2 = request(hash_url, limit='0', output='extended', cookie=cookie1)
+			r1, headers, content, cookie2 = request(hash_url, limit='0', output='extended', cookie=cookie1, httpsskip=use_https_alt)
 			#print r1
 			CACHE['cookie2'] = cookie2
 
@@ -200,7 +205,7 @@ def get_token(data):
 
 	
 #########################################################################################################
-def request(url, close=True, redirect=True, error=False, proxy=None, post=None, headers=None, mobile=False, limit=None, referer=None, cookie=None, output='', timeout='30'):
+def request(url, close=True, redirect=True, error=False, proxy=None, post=None, headers=None, mobile=False, limit=None, referer=None, cookie=None, output='', timeout='30', httpsskip=False):
 	try:
 
 		handlers = []
@@ -212,10 +217,13 @@ def request(url, close=True, redirect=True, error=False, proxy=None, post=None, 
 
 		if output == 'cookie2' or output == 'cookie' or output == 'extended' or not close == True:
 			cookies = cookielib.LWPCookieJar()
-			handlers += [urllib2.HTTPHandler(), urllib2.HTTPSHandler(), urllib2.HTTPCookieProcessor(cookies)]
+			if httpsskip:
+				handlers += [urllib2.HTTPHandler(), urllib2.HTTPCookieProcessor(cookies)]
+			else:
+				handlers += [urllib2.HTTPHandler(), urllib2.HTTPSHandler(), urllib2.HTTPCookieProcessor(cookies)]
 			opener = urllib2.build_opener(*handlers)
 			opener = urllib2.install_opener(opener)
-
+			
 		try:
 			if sys.version_info < (2, 7, 9): raise Exception()
 			import ssl; ssl_context = ssl.create_default_context()

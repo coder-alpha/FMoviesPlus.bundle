@@ -127,7 +127,6 @@ def MediaObjectsForURL(url):
 	
 	if isOpenLoad.lower() == 'true':
 		ourl = data['server']
-		Log(ourl)
 		
 		mo = MediaObject(
 			container = Container.MP4,

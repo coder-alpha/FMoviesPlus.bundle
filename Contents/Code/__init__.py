@@ -512,16 +512,18 @@ def EpisodeDetail(title, url, thumb):
 				url_s = label_i['loc']
 				server_info, isOpenLoad = fmovies.GetApiUrl(url=url, key=url_s)
 				if server_info != None:
-					durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":server_info, "title":title, "summary":base64.b64encode(summary), "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "roles":roles, "directors":directors, "roles":roles, "isOpenLoad":str(isOpenLoad)}))
-
-					oc.add(VideoClipObject(
-						url = durl,
-						title = title + ' - ' + title_s,
-						thumb = thumb,
-						art = art,
-						summary = summary
+					durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":server_info, "title":title, "summary":base64.b64encode(summary), "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "roles":roles, "directors":directors, "roles":roles, "isOpenLoad":str(isOpenLoad), "useSSL":str(Prefs["use_https_alt"])}))
+					try:
+						oc.add(VideoClipObject(
+							url = durl,
+							title = title + ' - ' + title_s,
+							thumb = thumb,
+							art = art,
+							summary = summary
+							)
 						)
-					)
+					except:
+						pass
 	
 		
 	if Check(title=title,url=url):
@@ -559,15 +561,18 @@ def EpisodeDetail1(title, url, servers_list_new, server_lab, ep_idx, summary, th
 		url_s = servers_list_new[label]['loc']
 		server_info,isOpenLoad = fmovies.GetApiUrl(url=url, key=url_s)
 		if server_info != None:
-			durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":server_info, "title":title, "summary":base64.b64encode(summary), "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "directors":directors, "roles":roles, "isOpenLoad":str(isOpenLoad)}))
-			oc.add(VideoClipObject(
-				url = durl,
-				title = title + ' (' + label + ')',
-				thumb = thumb,
-				art = art,
-				summary = summary
+			durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":server_info, "title":title, "summary":base64.b64encode(summary), "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "directors":directors, "roles":roles, "isOpenLoad":str(isOpenLoad), "useSSL":str(Prefs["use_https_alt"])}))
+			try:
+				oc.add(VideoClipObject(
+					url = durl,
+					title = title + ' (' + label + ')',
+					thumb = thumb,
+					art = art,
+					summary = summary
+					)
 				)
-			)
+			except:
+				pass
 
 	return oc
 

@@ -1,4 +1,4 @@
-import time, fmovies
+import time, fmovies, base64
 
 ################################################################################
 TITLE = "FMoviesPlus"
@@ -27,8 +27,21 @@ def getSession():
 		return 'UnknownClient-'+encode(str(Request.Headers['User-Agent']) + str(Request.Headers['X-Plex-Token'][:3]))[:10]
 	else:
 		return 'UnknownPlexClientSession'
-
 		
+#######################################################################################################
+# base64 decode
+@route(PREFIX + '/decode')
+def decode(str):
+
+	return base64.b64decode(str)
+	
+# base64 encode
+@route(PREFIX + '/encode')
+def encode(str):
+
+	return base64.b64encode(str)
+
+#######################################################################################################
 @route(PREFIX + "/UseDumbKeyboard")
 def UseDumbKeyboard():
 	session = getSession()

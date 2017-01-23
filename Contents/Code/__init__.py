@@ -5,7 +5,7 @@
 #
 ######################################################################################
 
-import re, urllib, urllib2, json, base64
+import re, urllib, urllib2, json, base64, sys
 import common, updater, fmovies
 from DumbTools import DumbKeyboard
 
@@ -53,7 +53,7 @@ def Start():
 	ObjectContainer.art = R(ART)
 	DirectoryObject.thumb = R(ICON_LIST)
 	DirectoryObject.art = R(ART)
-	VideoClipObject.thumb = R(ICON_MOVIES)
+	VideoClipObject.thumb = R(ICON_UNAV)
 	VideoClipObject.art = R(ART)
 	
 	fmovies.CACHE.clear()
@@ -61,6 +61,8 @@ def Start():
 	
 	if Prefs["use_debug"]:
 		HTTP.CacheTime = 0
+		Log(common.TITLE + ' v.' + common.VERSION)
+		Log("OS: " + sys.platform)
 	else:
 		try:
 			CACHE_EXPIRY = 60 * int(Prefs["cache_expiry_time"])
@@ -70,7 +72,6 @@ def Start():
 	
 	HTTP.Headers['User-Agent'] = fmovies.USER_AGENT
 	HTTP.Headers['Referer'] = fmovies.BASE_URL
-	Log(common.TITLE + ' v.' + common.VERSION)
 
 ######################################################################################
 # Menu hierarchy
@@ -219,15 +220,17 @@ def SortMenu(title):
 				thumbstr = elem.xpath(".//@style")[0]
 				matches = re.findall(ur"url=([^\"]*)\)", thumbstr)
 				thumb = matches[0]
-				
 				quality = elem.xpath(".//div[@class='meta']//span[@class='quality']//text()")[0]
-				
 				summary = elem.xpath(".//p[@class='desc']//text()")[0]
+				try:
+					more_info_link = elem.xpath(".//@data-tip")[0]
+				except:
+					more_info_link = None
 
 				oc.add(DirectoryObject(
 					key = Callback(EpisodeDetail, title = name, url = loc, thumb = thumb),
 					title = name + " (" + quality + ")",
-					summary = summary,
+					summary = GetMovieInfo(summary=summary, urlPath=more_info_link),
 					thumb = Resource.ContentsOfURLWithFallback(url = thumb)
 					)
 				)
@@ -251,10 +254,16 @@ def SortMenu(title):
 				name = elem.xpath(".//a[@class='name']//text()")[0]
 				loc = fmovies.BASE_URL + elem.xpath(".//a[@class='name']//@href")[0]
 				thumb = elem.xpath(".//a[@class='poster']//@src")[0].split('url=')[1]
+				summary = 'Plot Summary on Item Page'
+				try:
+					more_info_link = elem.xpath(".//@data-tip")[0]
+				except:
+					more_info_link = None
 
 				oc.add(DirectoryObject(
 					key = Callback(EpisodeDetail, title = name, url = loc, thumb = thumb),
-					title = name, 
+					title = name,
+					summary = GetMovieInfo(summary=summary, urlPath=more_info_link),
 					thumb = Resource.ContentsOfURLWithFallback(url = thumb)
 					)
 				)
@@ -308,12 +317,16 @@ def ShowCategory(title, key=' ', urlpath=None, page_count='1'):
 		name = elem.xpath(".//a[@class='name']//text()")[0]
 		loc = fmovies.BASE_URL + elem.xpath(".//a[@class='name']//@href")[0]
 		thumb = elem.xpath(".//a[@class='poster']//@src")[0].split('url=')[1]
-		summary = 'Plot Summary on Movie Page'
+		summary = 'Plot Summary on Item Page'
+		try:
+			more_info_link = elem.xpath(".//@data-tip")[0]
+		except:
+			more_info_link = None
 
 		oc.add(DirectoryObject(
 			key = Callback(EpisodeDetail, title = name, url = loc, thumb = thumb),
 			title = name,
-			summary = summary,
+			summary = GetMovieInfo(summary=summary, urlPath=more_info_link),
 			thumb = Resource.ContentsOfURLWithFallback(url = thumb)
 			)
 		)
@@ -530,7 +543,7 @@ def EpisodeDetail(title, url, thumb):
 		oc.add(DirectoryObject(
 			key = Callback(RemoveBookmark, title = title, url = url),
 			title = "Remove Bookmark",
-			summary = 'Removes the current movie from the Boomark que',
+			summary = 'Removes the current item from the Boomark que',
 			art = art,
 			thumb = R(ICON_QUEUE)
 		)
@@ -539,7 +552,7 @@ def EpisodeDetail(title, url, thumb):
 		oc.add(DirectoryObject(
 			key = Callback(AddBookmark, title = title, url = url, summary=summary, thumb=thumb),
 			title = "Add Bookmark",
-			summary = 'Adds the current movie to the Boomark que',
+			summary = 'Adds the current item to the Boomark que',
 			art = art,
 			thumb = R(ICON_QUEUE)
 		)
@@ -575,6 +588,59 @@ def EpisodeDetail1(title, url, servers_list_new, server_lab, ep_idx, summary, th
 				pass
 
 	return oc
+	
+####################################################################################################
+@route(PREFIX + "/getmovieinfo")
+def GetMovieInfo(summary, urlPath):
+
+	if urlPath == None and (summary == None or summary == ''):
+		return 'Plot Summary on Item Page'
+	elif urlPath == None:
+		return summary
+		
+	if Prefs["dont_fetch_more_info"]:
+		return summary
+
+	try:
+		url = fmovies.BASE_URL + '/' + urlPath
+		page_data = GetPageElements(url=url)
+		
+		summary = ''
+		
+		try:
+			summary_n = page_data.xpath(".//div[@class='inner']//p[@class='desc']//text()")[0]
+			summary = summary_n + ' |\n '
+		except:
+			pass
+		
+		try:
+			quality = page_data.xpath(".//div[@class='inner']//span[@class='quality']//text()")[0]
+			year = page_data.xpath(".//div[@class='inner']//div[@class='title']//span//text()")[0]
+			rating = (page_data.xpath(".//div[@class='inner']//span[@class='imdb']//text()"))[1].strip()
+			summary += 'IMDb: ' + rating + ' | ' + 'Year: ' + year + ' | ' + 'Quality: ' + quality + ' |\n '
+		except:
+			pass
+		
+		try:
+			country = page_data.xpath(".//div[@class='inner']//div[@class='meta'][1]//a//text()")[0]
+			genre = page_data.xpath(".//div[@class='inner']//div[@class='meta'][2]//a//text()")[0]
+			summary += 'Country: ' + country + ' | ' + 'Genre: ' + genre + ' |\n '
+		except:
+			pass
+		
+		try:
+			actors = (page_data.xpath(".//div[@class='inner']//div[@class='meta'][3]//text()"))[2].strip()
+			summary += 'Actors: ' + actors + '\n '
+		except:
+			pass
+			
+		if summary == '':
+			summary = 'Plot Summary on Item Page'
+
+	except:
+		summary = 'Plot Summary on Item Page'
+		
+	return summary
 
 ######################################################################################
 # Loads bookmarked shows from Dict.  Titles are used as keys to store the show urls.
@@ -628,7 +694,7 @@ def Check(title, url):
 def AddBookmark(title, url, summary, thumb):
 	Dict[title] = title + 'Key4Split' + url +'Key4Split'+ summary + 'Key4Split' + thumb
 	Dict.Save()
-	return ObjectContainer(header=title, message='This movie has been added to your bookmarks.')
+	return ObjectContainer(header=title, message='This item has been added to your bookmarks.')
 
 ######################################################################################
 # Removes a movie to the bookmarks list using the title as a key for the url
@@ -636,7 +702,7 @@ def AddBookmark(title, url, summary, thumb):
 def RemoveBookmark(title, url):
 	del Dict[title]
 	Dict.Save()
-	return ObjectContainer(header=title, message='This movie has been removed from your bookmarks.', no_cache=True)
+	return ObjectContainer(header=title, message='This item has been removed from your bookmarks.', no_cache=True)
 
 ######################################################################################
 # Clears the Dict that stores the bookmarks list
@@ -690,7 +756,6 @@ def ClearSearches():
 def Search(query=None, surl=None, page_count='1'):
 	
 	last_page_no = page_count
-	oc = ObjectContainer(title2='Search Results')
 	
 	if surl != None:
 		url = surl + '&page=%s' % (str(page_count))
@@ -702,20 +767,6 @@ def Search(query=None, surl=None, page_count='1'):
 		page_data = GetPageElements(url=url)
 		
 	elems = page_data.xpath(".//*[@id='body-wrapper']//div[@class='row movie-list']//div[@class='item']")
-		
-	for elem in elems:
-		name = elem.xpath(".//a[@class='name']//text()")[0]
-		loc = fmovies.BASE_URL + elem.xpath(".//a[@class='name']//@href")[0]
-		thumb = elem.xpath(".//a[@class='poster']//@src")[0].split('url=')[1]
-		summary = 'Plot Summary on Page'
-
-		oc.add(DirectoryObject(
-			key = Callback(EpisodeDetail, title = name, url = loc, thumb = thumb),
-			title = name,
-			summary = summary,
-			thumb = Resource.ContentsOfURLWithFallback(url = thumb)
-			)
-		)
 	
 	last_page_no = int(page_count)
 	try:
@@ -723,10 +774,30 @@ def Search(query=None, surl=None, page_count='1'):
 	except:
 		pass
 		
+	oc = ObjectContainer(title2 = 'Search Results|Page ' + str(page_count) + ' of ' + str(last_page_no))
+	
+	for elem in elems:
+		name = elem.xpath(".//a[@class='name']//text()")[0]
+		loc = fmovies.BASE_URL + elem.xpath(".//a[@class='name']//@href")[0]
+		thumb = elem.xpath(".//a[@class='poster']//@src")[0].split('url=')[1]
+		summary = 'Plot Summary on Item Page'
+		try:
+			more_info_link = elem.xpath(".//@data-tip")[0]
+		except:
+			more_info_link = None
+
+		oc.add(DirectoryObject(
+			key = Callback(EpisodeDetail, title = name, url = loc, thumb = thumb),
+			title = name,
+			summary = GetMovieInfo(summary=summary, urlPath=more_info_link),
+			thumb = Resource.ContentsOfURLWithFallback(url = thumb)
+			)
+		)
+		
 	if int(page_count) < last_page_no:
 		oc.add(NextPageObject(
 			key = Callback(Search, query = query, surl = surl, page_count = str(int(page_count) + 1)),
-			title = "Next Page (" + str(int(page_count) + 1) + ") >>",
+			title = "Next Page (" + str(int(page_count) + 1) +'/'+ str(last_page_no) + ") >>",
 			thumb = R(ICON_NEXT)
 			)
 		)
@@ -998,5 +1069,23 @@ def GetPageElements(url):
 		pass
 		
 	return page_data_elems
+	
+######################################################################################
+@route(PREFIX + "/GetPageString")
+def GetPageString(url):
+
+	page_data_string = None
+	try:
+		if Prefs["use_https_alt"]:
+			if Prefs["use_debug"]:
+				Log("Using SSL Alternate Option")
+				Log("Url: " + url)
+			page_data_string = fmovies.request(url = url)
+		else:
+			page_data_string = HTTP.Request(url)
+	except:
+		pass
+		
+	return page_data_string
 	
 	######################################################################################

@@ -222,7 +222,7 @@ def SortMenu(title):
 				
 				quality = elem.xpath(".//div[@class='meta']//span[@class='quality']//text()")[0]
 				
-				summary = elem.xpath("//p[@class='desc']//text()")[0]
+				summary = elem.xpath(".//p[@class='desc']//text()")[0]
 
 				oc.add(DirectoryObject(
 					key = Callback(EpisodeDetail, title = name, url = loc, thumb = thumb),
@@ -347,9 +347,9 @@ def EpisodeDetail(title, url, thumb):
 	page_data = GetPageElements(url=url)
 	
 	try:
-		art = page_data.xpath(".//meta[@property='og:image'][1]//@content")[0][0]
+		art = page_data.xpath(".//meta[@property='og:image'][1]//@content")[0]
 	except:
-		art = R(ART)
+		art = 'https://cdn.rawgit.com/coder-alpha/FMoviesPlus.bundle/master/Contents/Resources/art-default.jpg'
 	oc = ObjectContainer(title2 = title, art = art)
 	
 	summary = page_data.xpath(".//*[@id='info']//div[@class='info col-md-19']//div[@class='desc']//text()")[0]

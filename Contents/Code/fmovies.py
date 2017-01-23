@@ -241,8 +241,8 @@ def request(url, close=True, redirect=True, error=False, proxy=None, post=None, 
 			pass
 		elif not mobile == True:
 			#headers['User-Agent'] = agent()
-			headers['User-Agent'] = USER_AGENT
-			#headers['User-Agent'] = randomagent()			
+			#headers['User-Agent'] = USER_AGENT
+			headers['User-Agent'] = randomagent()			
 		else:
 			headers['User-Agent'] = 'Apple-iPhone/701.341'
 		if 'Referer' in headers:
@@ -449,4 +449,3 @@ def replaceHTMLCodes(txt):
 	txt = txt.replace("&quot;", "\"")
 	txt = txt.replace("&amp;", "&")
 	return txt
-	

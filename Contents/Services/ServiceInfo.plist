@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plist version="1.0">
+<dict>
+	<key>URL</key>
+	<dict>
+		<key>FMovies</key>
+		<dict>
+			<key>URLPatterns</key>
+			<array>
+				<string>^fmovies\:\/\/.+</string>
+			</array>
+		</dict>
+	</dict>
+</dict>
+</plist>

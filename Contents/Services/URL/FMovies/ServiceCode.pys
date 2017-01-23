@@ -1,0 +1,269 @@
+import urllib2, re, base64
+
+
+USER_AGENT = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.64 Safari/537.11'
+
+openloadhdr = {
+	'User-Agent': USER_AGENT,
+	'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+	'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.3',
+	'Accept-Encoding': 'none',
+	'Accept-Language': 'en-US,en;q=0.8',
+	'Connection': 'keep-alive'}
+
+
+
+####################################################################################################
+def NormalizeURL(url):
+
+	return url
+
+####################################################################################################
+def MetadataObjectForURL(url):
+
+	data = get_data(url)
+	
+	furl = data['url']
+	title = data['title']
+	summary = base64.b64decode(data['summary'])
+	thumb = data['thumb']
+	art = data['art']
+	
+	try:
+		content_rating = data['content_rating']
+	except:
+		content_rating = None
+	if content_rating == "None":
+		content_rating = None
+	
+	year = data['year']
+	if year == "None":
+		year = 2000
+	elif year == None:
+		year = 2000
+	else:
+		year = int(year)
+		
+	try:
+		studio = data['studio']
+	except:
+		studio = None
+	if studio == "None":
+		studio = None
+		
+	try:
+		genres_a = []
+		genres = data['genres']
+		for g in genres.split(','):
+			if g != '':
+				genres_a.append(g.strip())
+	except:
+		pass
+		
+	try:
+		writers_a = []
+		writers = data['writers']
+		for w in writers.split(','):
+			if w != '':
+				writers_a.append({'name': w.strip()})
+	except:
+		pass
+	
+	try:
+		directors_a = []
+		directors = data['directors']
+		for d in directors.split(','):
+			if d != '':
+				directors_a.append({'name': d.strip()})
+	except:
+		pass
+		
+	try:
+		roles_a = []
+		roles = data['roles']
+		for r in roles.split(','):
+			if r != '':
+				roles_a.append({'name': r.strip()})
+	except:
+		pass
+	
+	if data['rating'] == "None":
+		rating = float(0)
+	elif data['rating'] == None:
+		rating = float(0)
+	else:
+		rating = float(data['rating'])
+		
+	if data['duration'] == "None":
+		duration = int(1000)
+	elif data['duration'] == None:
+		duration = int(1000)
+	else:
+		duration = int(data['duration']) * 60 * 1000
+		
+	return VideoClipObject(
+		title = title,
+		url = furl,
+		summary = summary,
+		rating = rating,
+		duration = duration,
+		content_rating = content_rating,
+		studio = studio,
+		year = year,
+		genres = genres_a,
+		writers = writers_a,
+		directors = directors_a,
+		roles = roles_a,
+		art = art,
+		thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback='MoviePosterUnavailable.jpg')
+	)
+
+####################################################################################################
+def MediaObjectsForURL(url):
+
+	data = get_data(url)
+	isOpenLoad = data['isOpenLoad']
+	media_obj = []
+	
+	if isOpenLoad.lower() == 'true':
+		ourl = data['server']
+		Log(ourl)
+		
+		mo = MediaObject(
+			container = Container.MP4,
+			video_codec = VideoCodec.H264,
+			audio_codec = AudioCodec.AAC,
+			audio_channels = 2,
+			optimized_for_streaming = True,
+			parts = [PartObject(key=Callback(PlayVideo, url=ourl, isOpenLoad=True))]
+		)
+		media_obj.append(mo)
+		
+	else:
+		files = JSON.ObjectFromString(data['server'])
+		
+		sortable_list = []
+		for file in files:
+			furl = file['file']
+			res = file['label'].replace('p','')
+			if res != '1080':
+				res = '0'+res
+			type = file['type']
+			
+			sortable_list.append({'label': res, 'file':furl, 'type':type})
+			
+		newlist = sorted(sortable_list, key=lambda k: k['label'], reverse=True) 
+		
+		for file in newlist:
+			furl = file['file']
+			res = int(file['label'])
+			type = file['type']
+			
+			if type == 'flv' or '.flv' in furl:
+				mo = MediaObject(
+						container = Container.FLV,
+						video_codec = VideoCodec.H264,
+						audio_codec = AudioCodec.AAC,
+						video_resolution = res,
+						audio_channels = 2,
+						optimized_for_streaming = True,
+						parts = [PartObject(key=Callback(PlayVideo, url=furl))]
+					)
+			elif type == '.m3u8' or '.m3u8' in furl:
+				mo = MediaObject(
+						protocol = 'hls',
+						container = 'mpegts',
+						audio_codec = AudioCodec.AAC,
+						video_resolution = res,
+						audio_channels = 2,
+						optimized_for_streaming = True,
+						parts = [PartObject(key=Callback(PlayVideo, url=furl))]
+					)
+			else:
+				mo = MediaObject(
+						container = Container.MP4,
+						video_codec = VideoCodec.H264,
+						audio_codec = AudioCodec.AAC,
+						video_resolution = res,
+						audio_channels = 2,
+						optimized_for_streaming = True,
+						parts = [PartObject(key=Callback(PlayVideo, url=furl))]
+					)
+			
+			media_obj.append(mo)
+		
+	return media_obj
+
+####################################################################################################
+@indirect
+def PlayVideo(url, isOpenLoad=False):
+
+	if isOpenLoad:
+		url = openload(url)
+
+	http_headers = {'User-Agent': USER_AGENT}
+	if '.m3u8' in url:
+		return IndirectResponse(VideoClipObject, key=HTTPLiveStreamURL(url), http_headers=http_headers)
+	else:
+		return IndirectResponse(VideoClipObject, key=url, http_headers=http_headers)
+
+####################################################################################################
+def get_data(url):
+	return JSON.ObjectFromString(D(url.split('fmovies://')[1]))
+
+
+	
+#########################################################################################################
+#
+# OpenLoad scrapper
+#
+# Coder Alpha
+# https://github.com/coder-alpha
+#
+# Adapted from youtube-dl
+# https://github.com/rg3/youtube-dl
+# and modified for use with Plex Media Server
+#
+#########################################################################################################
+def openload(url):
+	openloadhdr['Referer'] = url
+	req = urllib2.Request(url, None, openloadhdr)
+	res = urllib2.urlopen(req)
+	webpage = res.read()
+
+	if 'File not found' in webpage or 'deleted by the owner' in webpage or 'Sorry!' in webpage:
+		raise Ex.MediaNotAvailable
+
+	ol_id = search_regex('<span[^>]+id="[^"]+"[^>]*>([0-9]+)</span>',webpage, 'openload ID')
+
+	first_three_chars = int(float(ol_id[0:][:3]))
+	fifth_char = int(float(ol_id[3:5]))
+	urlcode = ''
+	num = 5
+
+	while num < len(ol_id):
+	    urlcode += unichr(int(float(ol_id[num:][:3])) + first_three_chars - fifth_char * int(float(ol_id[num + 3:][:2])))
+	    num += 5
+
+	video_url = 'https://openload.co/stream/' + urlcode
+
+	return video_url
+	
+def search_regex(pattern, string, name, default=None, fatal=True, flags=0, group=None):
+	mobj = re.search(pattern, string, flags)
+	if mobj:
+		if group is None:
+		# return the first matching group
+			#return next(g for g in mobj.groups() if g is not None) -- next function is Python 2.6+
+			myIterator  = (g for g in mobj.groups() if g is not None)
+			for nextval in myIterator:
+				return nextval
+		else:
+			return mobj.group(group)
+	else:
+		return None
+	
+def testOpenLoad():
+	print openload('https://openload.co/embed/toiRmtgUUQk/')
+
+#testOpenLoad()

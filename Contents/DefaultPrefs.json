@@ -1,0 +1,1 @@
+[	{		"id": "cache_expiry_time",		"label": "Cache Expiry Time (in mins.)",		"type": "text",		"default": "60"    },	{		"id": "use_https_alt",		"label": "Use Alternate SSL/TLS",		"type": "bool",		"default": "false"    },	{		"id": "use_debug",		"label": "Enable Debug Mode",		"type": "bool",		"default": "false"    }]

@@ -33,22 +33,16 @@ def MetadataObjectForURL(url):
 		content_rating = data['content_rating']
 	except:
 		content_rating = None
-	if content_rating == "None":
-		content_rating = None
 	
-	year = data['year']
-	if year == "None":
-		year = 2000
-	elif year == None:
-		year = 2000
-	else:
+	try:
+		year = data['year']
 		year = int(year)
+	except:
+		year = None
 		
 	try:
 		studio = data['studio']
 	except:
-		studio = None
-	if studio == "None":
 		studio = None
 		
 	try:
@@ -87,20 +81,16 @@ def MetadataObjectForURL(url):
 	except:
 		pass
 	
-	if data['rating'] == "None":
-		rating = float(0)
-	elif data['rating'] == None:
-		rating = float(0)
-	else:
+	try:
 		rating = float(data['rating'])
+	except:
+		rating = None
 		
-	if data['duration'] == "None":
-		duration = int(1000)
-	elif data['duration'] == None:
-		duration = int(1000)
-	else:
+	try:
 		duration = int(data['duration']) * 60 * 1000
-		
+	except:
+		duration = None
+
 	return VideoClipObject(
 		title = title,
 		url = furl,

@@ -356,8 +356,9 @@ def ShowCategory(title, key=' ', urlpath=None, page_count='1'):
 def EpisodeDetail(title, url, thumb):
 
 	title = unicode(title)
-	
 	page_data = GetPageElements(url=url)
+	if page_data == None:
+		return MC.message_container("Unknown Error", "Error: The page was not received.")
 	
 	try:
 		art = page_data.xpath(".//meta[@property='og:image'][1]//@content")[0]
@@ -365,38 +366,70 @@ def EpisodeDetail(title, url, thumb):
 		art = 'https://cdn.rawgit.com/coder-alpha/FMoviesPlus.bundle/master/Contents/Resources/art-default.jpg'
 	oc = ObjectContainer(title2 = title, art = art)
 	
-	summary = page_data.xpath(".//*[@id='info']//div[@class='info col-md-19']//div[@class='desc']//text()")[0]
-	#summary = re.sub(r'[^0-9a-zA-Z \-/.,\':+&!()]', '', summary)
+	try:
+		summary = page_data.xpath(".//*[@id='info']//div[@class='info col-md-19']//div[@class='desc']//text()")[0]
+		#summary = re.sub(r'[^0-9a-zA-Z \-/.,\':+&!()]', '', summary)
+	except:
+		summary = 'Not Available'
 	
 	try:
 		trailer = page_data.xpath(".//*[@id='control']//div['item mbtb watch-trailer hidden-xs']//@data-url")[0]
 	except:
 		trailer = None
 	
-	year = str(page_data.xpath(".//*[@id='info']//dl[@class='meta col-sm-12'][2]//dd[2]//text()")[0][0:4])
+	try:
+		year = str(page_data.xpath(".//*[@id='info']//dl[@class='meta col-sm-12'][2]//dd[2]//text()")[0][0:4])
+	except:
+		year = 'Not Available'
+		
+	try:
+		rating = str(page_data.xpath(".//*[@id='info']//div[@class='info col-md-19']//span[1]//b//text()")[0])
+	except:
+		rating = 'Not Available'
+		
+	try:
+		duration = int(page_data.xpath(".//*[@id='info']//div[@class='info col-md-19']//span[2]//b//text()")[0].strip('/episode').strip(' min'))
+	except:
+		duration = 'Not Available'
+
+	try:
+		genre0 = page_data.xpath(".//*[@id='info']//dl[@class='meta col-sm-12'][1]//dd[1]//a//text()")
+		genre = (','.join(str(x) for x in genre0))
+		if genre == '':
+			genre = 'Not Available'
+	except:
+		genre = 'Not Available'
 	
-	rating = str(page_data.xpath(".//*[@id='info']//div[@class='info col-md-19']//span[1]//b//text()")[0])
-	
-	duration = int(page_data.xpath(".//*[@id='info']//div[@class='info col-md-19']//span[2]//b//text()")[0].strip('/episode').strip(' min'))
-	
-	genre0 = page_data.xpath(".//*[@id='info']//dl[@class='meta col-sm-12'][1]//dd[1]//a//text()")
-	genre = (','.join(str(x) for x in genre0))
-	
-	directors = str(page_data.xpath(".//*[@id='info']//dl[@class='meta col-sm-12']//dd[@itemprop='director']//text()")[0]).strip()
-	if directors == '...':
+	try:
+		directors0 = page_data.xpath(".//*[@id='info']//dl[@class='meta col-sm-12'][1]//dd[3]//text()")
+		directors = (','.join(str(x) for x in directors0))
+		if directors == '...':
+			directors = 'Not Available'
+	except:
 		directors = 'Not Available'
 	
-	roles0 = page_data.xpath("//*[@id='info']//dl[@class='meta col-sm-12'][1]//dd[2]//a//text()")
-	roles = (','.join(str(x) for x in roles0))
-	if roles == '':
+	try:
+		roles0 = page_data.xpath(".//*[@id='info']//dl[@class='meta col-sm-12'][1]//dd[2]//a//text()")
+		roles = (','.join(str(x) for x in roles0))
+		if roles == '':
+			roles = 'Not Available'
+	except:
 		roles = 'Not Available'
 	
-	servers = page_data.xpath(".//*[@id='servers']//div[@class='server row']")
+	try:
+		servers = page_data.xpath(".//*[@id='servers']//div[@class='server row']")
+	except:
+		servers = []
 	
 	summary += '\n '
 	summary += 'Actors: ' + roles + '\n '
 	summary += 'Directors: ' + directors + '\n '
-	summary += 'Runtime: ' + str(duration) + ' min.' + '\n '
+	
+	if str(duration) == 'Not Available':
+		summary += 'Runtime: ' + str(duration) + '\n '
+	else:
+		summary += 'Runtime: ' + str(duration) + ' min.' + '\n '
+	
 	summary += 'Year: ' + year + '\n '
 	summary += 'Genre: ' + genre + '\n '
 	summary += 'IMDB rating: ' + rating + '\n '
@@ -441,16 +474,18 @@ def EpisodeDetail(title, url, thumb):
 	# remap server list - this way its easier to iterate for tv-show episodes
 	servers_list_new = []
 	c=0
-	for k in servers_list:
-		break
-	for no in servers_list[k]:
-		servers_list_new.append([])
-		servers_list_new[c] = {}
-		for label in servers_list:
+	
+	if len(servers_list) > 0:
+		for k in servers_list:
+			break
+		for no in servers_list[k]:
+			servers_list_new.append([])
+			servers_list_new[c] = {}
+			for label in servers_list:
 
-			servers_list_new[c][label] = {}
-			servers_list_new[c][label] = {'quality':servers_list[label][c]['quality'], 'loc':servers_list[label][c]['loc']}
-		c += 1
+				servers_list_new[c][label] = {}
+				servers_list_new[c][label] = {'quality':servers_list[label][c]['quality'], 'loc':servers_list[label][c]['loc']}
+			c += 1
 		
 	# trailer
 	if trailer != None:

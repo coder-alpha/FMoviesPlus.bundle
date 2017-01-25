@@ -8,7 +8,7 @@
 #
 #########################################################################################################
 
-import urllib, urllib2, urlparse, json, time, re, sys, HTMLParser, random, cookielib
+import urllib, urllib2, urlparse, json, time, re, sys, HTMLParser, random, cookielib, datetime, calendar
 
 CACHE = {}
 CACHE_EXPIRY_TIME = 60*60 # 1 Hour
@@ -37,6 +37,11 @@ def GetApiUrl(url, key):
 	use_https_alt = Prefs["use_https_alt"]
 	
 	res = None
+	
+	#past = datetime.datetime.utcnow() - datetime.timedelta(hours=12)
+	#past_fixed = datetime.datetime(past.year, past.month, past.day, past.hour, 0, 0, 0)
+	#myts = calendar.timegm(past_fixed.timetuple())
+		
 	if token_tweak:
 		myts = (int(time.time())/3600)*3600 + GLOBAL_CONST_myts_adjust
 	else:
@@ -87,15 +92,18 @@ def GetApiUrl(url, key):
 	return res, isOpenLoad
 
 def get_sources(url, key, use_debug=True, myts=0, use_https_alt=False):
+
+	if myts == 0:
+		#myts = ((int(time.time())/3600)*3600)
+		past = datetime.datetime.utcnow() - datetime.timedelta(hours=12)
+		past_fixed = datetime.datetime(past.year, past.month, past.day, past.hour, 0, 0, 0)
+		myts = calendar.timegm(past_fixed.timetuple())
 	
 	try:
 		magic_url = None
 		isOpenLoad = False
 		if url == None: return magic_url
 		referer = url
-		
-		if myts == 0:
-			myts = ((int(time.time())/3600)*3600)
 		
 		try:
 			CACHE_EXPIRY = 60 * int(Prefs["cache_expiry_time"])
@@ -357,7 +365,7 @@ def request(url, close=True, redirect=True, error=False, proxy=None, post=None, 
 
 		return result
 	except Exception as e:
-		Log('Client ERR %s, %s:' % (e,url))
+		Log('ERROR %s, %s:' % (e.args,url))
 		return
 	
 #########################################################################################################
@@ -449,3 +457,4 @@ def replaceHTMLCodes(txt):
 	txt = txt.replace("&quot;", "\"")
 	txt = txt.replace("&amp;", "&")
 	return txt
+

@@ -4,7 +4,7 @@ FMoviesPlus.bundle
 
 This is a plugin that creates a new channel in Plex Media Server to view content indexed by the website FMovies
 
-[Plex Support Thread] (TBA)
+[Plex Support Thread](http://forums.plex.tv/discussion/255348/)
 
 
 System Requirements

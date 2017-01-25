@@ -1,6 +1,5 @@
 import urllib2, re, base64
 
-
 USER_AGENT = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.64 Safari/537.11'
 
 openloadhdr = {
@@ -12,10 +11,9 @@ openloadhdr = {
 	'Connection': 'keep-alive'}
 
 
-
 ####################################################################################################
 def NormalizeURL(url):
-
+	
 	return url
 
 ####################################################################################################
@@ -187,10 +185,14 @@ def MediaObjectsForURL(url):
 @indirect
 def PlayVideo(url, isOpenLoad=False):
 
-	if isOpenLoad:
-		url = openload(url)
+	try:
+		if isOpenLoad:
+			url = openload(url)
+	except:
+		raise Ex.MediaNotAvailable
 
 	http_headers = {'User-Agent': USER_AGENT}
+		
 	if '.m3u8' in url:
 		return IndirectResponse(VideoClipObject, key=HTTPLiveStreamURL(url), http_headers=http_headers)
 	else:
@@ -199,7 +201,6 @@ def PlayVideo(url, isOpenLoad=False):
 ####################################################################################################
 def get_data(url):
 	return JSON.ObjectFromString(D(url.split('fmovies://')[1]))
-
 
 	
 #########################################################################################################

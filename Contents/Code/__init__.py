@@ -9,6 +9,7 @@ import re, urllib, urllib2, json, base64, sys
 import common, updater, fmovies
 from DumbTools import DumbKeyboard
 
+SITE = "FMovies"
 TITLE = common.TITLE
 PREFIX = common.PREFIX
 ART = "art-default.jpg"
@@ -84,6 +85,8 @@ def MainMenu():
 	oc.add(DirectoryObject(key = Callback(ShowMenu, title = CAT_GROUPS[1]), title = CAT_GROUPS[1], thumb = R(ICON_MOVIES)))
 	oc.add(DirectoryObject(key = Callback(ShowMenu, title = CAT_GROUPS[2]), title = CAT_GROUPS[2], thumb = R(ICON_FILTER)))
 	
+	# ToDo: Not quite sure how to read back what was actually played from ServiceCode and not just show a viewed item
+	#oc.add(DirectoryObject(key = Callback(RecentWatchList, title="Recent WatchList"), title = "Recent WatchList", thumb = R(ICON_LATEST)))
 	oc.add(DirectoryObject(key = Callback(Bookmarks, title="Bookmarks"), title = "Bookmarks", thumb = R(ICON_QUEUE)))
 	oc.add(DirectoryObject(key = Callback(SearchQueueMenu, title = 'Search Queue'), title = 'Search Queue', summary='Search using saved search terms', thumb = R(ICON_SEARCH_QUE)))
 	
@@ -507,27 +510,49 @@ def EpisodeDetail(title, url, thumb):
 			oc = ObjectContainer(title2 = title, art = art)
 			
 		for episode in episodes:
-			no = episode.xpath(".//div[@class='ep']//i//text()")[0].strip()
 			try:
-				name = episode.xpath(".//span[@class='name']//text()")[0]
+				no = episode.xpath(".//div[@class='ep']//i//text()")[0].strip()
 			except:
-				name = 'Episode Name Not Available'
+				no = '0'
 				
-			air_date = episode.xpath(".//div[@class='date']//text()")[0]
+			if no != '0':
+				try:
+					name = episode.xpath(".//span[@class='name']//text()")[0]
+				except:
+					name = 'Episode Name Not Available'
+				try:
+					air_date = episode.xpath(".//div[@class='date']//text()")[0]
+				except:
+					air_date = ''
+				try:
+					desc = episode.xpath(".//div[@class='desc']//text()")[0]
+				except:
+					desc = 'Episode Summary Not Available'
+
+				episodes_list.append({"name":name,"air_date":air_date,"desc":desc})
+			else:
+				episodes_list.append({"name":'',"air_date":'',"desc":''})
+		
+		eps_i = 1
+		for eps in servers_list_new:
+		
+			if '-' in eps[server_lab[0]]['quality']: # 2 part episode condition
+				qual_i = (int(eps[server_lab[0]]['quality'].split('-')[0])-eps_i)
+				eps_i += 1
+			else:
+				qual_i = (int(eps[server_lab[0]]['quality'])-eps_i)
+			
 			try:
-				desc = episode.xpath(".//div[@class='desc']//text()")[0]
+				title_s = 'Ep:' + eps[server_lab[0]]['quality'] + ' - ' + episodes_list[qual_i]['name']
+			except:
+				title_s = 'Ep:' + eps[server_lab[0]]['quality']
+			try:
+				desc = episodes_list[qual_i]['air_date'] + " : " + episodes_list[qual_i]['desc']
 			except:
 				desc = 'Episode Summary Not Available'
-
-			episodes_list.append({"name":name,"air_date":air_date,"desc":desc})
-			
-		for eps in servers_list_new:
-			qual_i = (int(eps[server_lab[0]]['quality'])-1)
-			title_s = 'Ep:' + eps[server_lab[0]]['quality'] + ' - ' + episodes_list[qual_i]['name']
-			desc = episodes_list[qual_i]['air_date'] + " : " + episodes_list[qual_i]['desc']
 			
 			oc.add(DirectoryObject(
-				key = Callback(EpisodeDetail1, title=title_s, url=url, servers_list_new=servers_list_new[qual_i], server_lab=(','.join(str(x) for x in server_lab)), ep_idx=qual_i, summary=desc+'\n'+summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles),
+				key = Callback(EpisodeDetail1, title=title_s, url=url, servers_list_new=servers_list_new[qual_i], server_lab=(','.join(str(x) for x in server_lab)), ep_idx=qual_i, summary=desc+'\n '+summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles),
 				title = title_s,
 				summary = desc,
 				thumb = Resource.ContentsOfURLWithFallback(url = thumb)
@@ -592,8 +617,9 @@ def EpisodeDetail(title, url, thumb):
 			thumb = R(ICON_QUEUE)
 		)
 	)
-
+	
 	return oc
+	
 
 @route(PREFIX + "/episodedetail1")
 def EpisodeDetail1(title, url, servers_list_new, server_lab, ep_idx, summary, thumb, art, year, rating, duration, genre, directors, roles):
@@ -676,7 +702,84 @@ def GetMovieInfo(summary, urlPath):
 		summary = 'Plot Summary on Item Page'
 		
 	return summary
+	
+######################################################################################
+# Adds a movie to the RecentWatchList list using the (title + 'R4S') as a key for the url
+@route(PREFIX + "/addRecentWatchList")
+def AddRecentWatchList(title, url, summary, thumb):
+	Dict[title+'R4S'] = title + 'RecentWatchList4Split' + url +'RecentWatchList4Split'+ summary + 'RecentWatchList4Split' + thumb
+	Dict.Save()
 
+######################################################################################
+# Loads RecentWatchList shows from Dict.  Titles are used as keys to store the show urls.
+@route(PREFIX + "/RecentWatchList")
+def RecentWatchList(title):
+
+	oc = ObjectContainer(title1=title)
+	c=0
+	for each in Dict:
+		longstring = Dict[each]
+		
+		#Dict[title+'R4S'] = title + 'RecentWatchList4Split' + url +'RecentWatchList4Split'+ summary + 'RecentWatchList4Split' + thumb
+		#Dict.Save()
+		
+		if 'https:' in longstring and 'RecentWatchList4Split' in longstring:
+			if  c < 20:
+				stitle = longstring.split('RecentWatchList4Split')[0]
+				url = longstring.split('RecentWatchList4Split')[1]
+				summary = longstring.split('RecentWatchList4Split')[2]
+				thumb = longstring.split('RecentWatchList4Split')[3]
+				c += 1
+				oc.add(DirectoryObject(
+					key=Callback(EpisodeDetail, title=stitle, url=url, thumb=thumb),
+					title=stitle,
+					thumb=thumb,
+					summary=summary
+					)
+				)
+			else:
+				del Dict[each]
+	
+	if c >= 20:
+		Dict.Save()
+	
+	#add a way to clear RecentWatchList list
+	oc.add(DirectoryObject(
+		key = Callback(ClearRecentWatchList),
+		title = "Clear Recent WatchList",
+		thumb = R(ICON_QUEUE),
+		summary = "CAUTION! This will clear your entire Recent WatchList !"
+		)
+	)
+
+	if len(oc) == 1:
+		return ObjectContainer(header=title, message='No Recently Watched Videos Available')
+	return oc
+	
+######################################################################################
+# Clears the Dict that stores the bookmarks list
+@route(PREFIX + "/clearRecentWatchList")
+def ClearRecentWatchList():
+
+	remove_list = []
+	for each in Dict:
+		try:
+			url = Dict[each]
+			if url.find(SITE.lower()) != -1 and 'http' in url and 'RecentWatchList' in url:
+				remove_list.append(each)
+		except:
+			continue
+
+	for watchlist in remove_list:
+		try:
+			del Dict[watchlist]
+		except Exception as e:
+			Log.Error('Error Clearing Recent WatchList: %s' %str(e))
+			continue
+
+	Dict.Save()
+	return ObjectContainer(header="My Recent WatchList", message='Your Recent WatchList list will be cleared soon.', no_cache=True)
+	
 ######################################################################################
 # Loads bookmarked shows from Dict.  Titles are used as keys to store the show urls.
 @route(PREFIX + "/bookmarks")
@@ -719,7 +822,7 @@ def Bookmarks(title):
 def Check(title, url):
 	longstring = Dict[title]
 	#Log("url-----------" + url)
-	if longstring != None and (longstring.lower()).find('fmovies.'.lower()) != -1:
+	if longstring != None and (longstring.lower()).find(SITE.lower()) != -1:
 		return True
 	return False
 
@@ -748,7 +851,7 @@ def ClearBookmarks():
 	for each in Dict:
 		try:
 			url = Dict[each]
-			if url.find(TITLE.lower()) != -1 and 'http' in url:
+			if url.find(SITE.lower()) != -1 and 'http' in url and 'RecentWatchList' not in url:
 				remove_list.append(each)
 		except:
 			continue
@@ -771,7 +874,7 @@ def ClearSearches():
 	remove_list = []
 	for each in Dict:
 		try:
-			if each.find(TITLE.lower()) != -1 and 'MyCustomSearch' in each:
+			if each.find(SITE.lower()) != -1 and 'MyCustomSearch' in each:
 				remove_list.append(each)
 		except:
 			continue
@@ -796,7 +899,7 @@ def Search(query=None, surl=None, page_count='1'):
 		url = surl + '&page=%s' % (str(page_count))
 		page_data = GetPageElements(url=url)
 	else:
-		Dict[TITLE.lower() +'MyCustomSearch'+query] = query
+		Dict[SITE.lower() +'MyCustomSearch'+query] = query
 		Dict.Save()
 		url = fmovies.BASE_URL + fmovies.SEARCH_PATH + '?page=%s&keyword=%s' % (str(page_count), String.Quote(query, usePlus=True))
 		page_data = GetPageElements(url=url)
@@ -856,7 +959,7 @@ def SearchQueueMenu(title):
 	for each in Dict:
 		query = Dict[each]
 		try:
-			if each.find(TITLE.lower()) != -1 and 'MyCustomSearch' in each and query != 'removed':
+			if each.find(SITE.lower()) != -1 and 'MyCustomSearch' in each and query != 'removed':
 				oc.add(DirectoryObject(key = Callback(Search, query = query, page_count='1'), title = query, thumb = R(ICON_SEARCH)))
 		except:
 			pass

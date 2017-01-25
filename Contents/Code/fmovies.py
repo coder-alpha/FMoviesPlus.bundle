@@ -33,13 +33,19 @@ FILTER_PATH = "/filter"
 def GetApiUrl(url, key):
 
 	use_debug = Prefs["use_debug"]
+	token_tweak = Prefs["tweak_token"]
 	use_https_alt = Prefs["use_https_alt"]
 	
 	res = None
 	
-	past = datetime.datetime.utcnow() - datetime.timedelta(hours=12)
-	past_fixed = datetime.datetime(past.year, past.month, past.day, past.hour, 0, 0, 0)
-	myts = calendar.timegm(past_fixed.timetuple())
+	#past = datetime.datetime.utcnow() - datetime.timedelta(hours=12)
+	#past_fixed = datetime.datetime(past.year, past.month, past.day, past.hour, 0, 0, 0)
+	#myts = calendar.timegm(past_fixed.timetuple())
+		
+	if token_tweak:
+		myts = (int(time.time())/3600)*3600 + GLOBAL_CONST_myts_adjust
+	else:
+		myts = (int(time.time())/3600)*3600
 	
 	try:
 		CACHE_EXPIRY = 60 * int(Prefs["cache_expiry_time"])

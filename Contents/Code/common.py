@@ -2,10 +2,43 @@ import time, fmovies, base64
 
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.04' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.05' # Release notation (x.y - where x is major and y is minor)
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
 ################################################################################
+
+# Vibrant Emoji's (might not be supported on all clients)
+EMOJI_LINK = u'\U0001F517'
+EMOJI_GREEN_HEART = u'\U0001F49A'
+EMOJI_BROKEN_HEART = u'\U0001F494'
+
+# Simple Emoji's
+EMOJI_HEART = u'\u2665'
+EMOJI_TICK = u'\u2713'
+EMOJI_CROSS = u'\u2717'
+EMOJI_QUESTION = u'\u2753'
+
+
+####################################################################################################
+# Get Key from a Dict using Val
+@route(PREFIX + '/GetEmoji')
+def GetEmoji(type, mode='vibrant'):
+
+	# modes = ['simple','vibrant'] - enforce mode to override Prefs for Search Filter
+
+	if mode == 'simple' or Prefs["use_vibrant_emoji"] == False:
+		if type == 'pos' or type == 'true':
+			return EMOJI_TICK
+		elif type =='neg' or type == 'false':
+			return EMOJI_CROSS
+	else:
+		if type == 'pos' or type == 'true':
+			return EMOJI_GREEN_HEART
+		elif type =='neg' or type == 'false':
+			return EMOJI_BROKEN_HEART
+	
+	return EMOJI_QUESTION
+
 
 ####################################################################################################
 # Get Key from a Dict using Val

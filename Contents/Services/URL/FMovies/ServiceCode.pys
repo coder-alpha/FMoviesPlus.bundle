@@ -1,4 +1,4 @@
-import urllib2, re, base64
+import urllib2, re
 
 USER_AGENT = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.11 (KHTML, like Gecko) Chrome/23.0.1271.64 Safari/537.11'
 
@@ -20,10 +20,21 @@ def NormalizeURL(url):
 def MetadataObjectForURL(url):
 
 	data = get_data(url)
+	isOpenLoad = data['isOpenLoad']
+	title = data['title']
+	isVideoOnline = data['isVideoOnline'].lower()
+	
+	status = ''
+	# not using - since very few clients seem to support
+	#if isVideoOnline == 'unknown':
+	#	status = ''
+	#elif isVideoOnline == 'true':
+	#	status = u'\U0001F517' + ' '
+	#else:
+	#	status = u'\U0001F494' + ' '
 	
 	furl = data['url']
-	title = data['title']
-	summary = base64.b64decode(data['summary'])
+	summary = data['summary']
 	thumb = data['thumb']
 	art = data['art']
 	
@@ -90,7 +101,7 @@ def MetadataObjectForURL(url):
 		duration = None
 
 	return VideoClipObject(
-		title = title,
+		title = status + title,
 		url = furl,
 		summary = summary,
 		rating = rating,
@@ -111,7 +122,13 @@ def MediaObjectsForURL(url):
 
 	data = get_data(url)
 	isOpenLoad = data['isOpenLoad']
+	title = data['title']
+	isVideoOnline = data['isVideoOnline'].lower()
 	media_obj = []
+	
+	# Plex does not throw a dialog for Ex.MediaNotAvailable ???
+	#if isVideoOnline != 'unknown' and isVideoOnline != 'true':
+	#	raise Ex.MediaNotAvailable
 	
 	if isOpenLoad.lower() == 'true':
 		ourl = data['server']
@@ -139,7 +156,7 @@ def MediaObjectsForURL(url):
 			
 			sortable_list.append({'label': res, 'file':furl, 'type':type})
 			
-		newlist = sorted(sortable_list, key=lambda k: k['label'], reverse=True) 
+		newlist = sorted(sortable_list, key=lambda k: k['label'], reverse=True)
 		
 		for file in newlist:
 			furl = file['file']
@@ -202,7 +219,9 @@ def PlayVideo(url, isOpenLoad=False):
 def get_data(url):
 	return JSON.ObjectFromString(D(url.split('fmovies://')[1]))
 
+
 	
+#########################################################################################################
 #########################################################################################################
 #
 # OpenLoad scrapper

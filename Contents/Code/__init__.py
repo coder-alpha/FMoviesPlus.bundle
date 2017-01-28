@@ -5,7 +5,7 @@
 #
 ######################################################################################
 
-import re, urllib, urllib2, json, base64, sys
+import re, urllib, urllib2, json, sys, time
 import common, updater, fmovies
 from DumbTools import DumbKeyboard
 
@@ -23,6 +23,8 @@ ICON_MOVIES = "icon-movies.png"
 ICON_FILTER = "icon-filter.png"
 ICON_GENRE = "icon-genre.png"
 ICON_LATEST = "icon-latest.png"
+ICON_SIMILAR = "icon-similar.png"
+ICON_OTHERSEASONS = "icon-otherseasons.png"
 ICON_HOT = "icon-hot.png"
 ICON_COUNTRIES = "icon-countries.png"
 ICON_QUEUE = "icon-bookmark.png"
@@ -39,7 +41,7 @@ MC = common.NewMessageContainer(common.PREFIX, common.TITLE)
 # Set global variables
 
 CAT_WHATS_HOT = ['Sizzlers','Most Favourited','Recommended','Most Watched This Week','Most Watched This Month','Latest Movies','Latest TV-Series','Requested Movies']
-CAT_REGULAR = ['Movies','TV-Series','Most Watched']
+CAT_REGULAR = ['Movies','TV-Series','Top-IMDb','Most Watched']
 CAT_FILTERS = ['Release','Genre','Country','Filter Setup >>>']
 CAT_GROUPS = ['What\'s Hot ?', 'Movies & TV-Series', 'Sort using...']
 
@@ -61,15 +63,15 @@ def Start():
 	HTTP.ClearCache()
 	
 	if Prefs["use_debug"]:
-		HTTP.CacheTime = 0
 		Log(common.TITLE + ' v.' + common.VERSION)
 		Log("OS: " + sys.platform)
-	else:
-		try:
-			CACHE_EXPIRY = 60 * int(Prefs["cache_expiry_time"])
-		except:
-			CACHE_EXPIRY = fmovies.CACHE_EXPIRY_TIME
-		HTTP.CacheTime = CACHE_EXPIRY
+
+	try:
+		CACHE_EXPIRY = 60 * int(Prefs["cache_expiry_time"])
+	except:
+		CACHE_EXPIRY = fmovies.CACHE_EXPIRY_TIME
+
+	HTTP.CacheTime = CACHE_EXPIRY
 	
 	HTTP.Headers['User-Agent'] = fmovies.USER_AGENT
 	HTTP.Headers['Referer'] = fmovies.BASE_URL
@@ -80,13 +82,20 @@ def Start():
 @handler(PREFIX, TITLE, art=ART, thumb=ICON)
 def MainMenu():
 
-	oc = ObjectContainer(title2=TITLE)
+	if Prefs["use_debug"]:
+		try:
+			CACHE_EXPIRY = 60 * int(Prefs["cache_expiry_time"])
+		except:
+			CACHE_EXPIRY = fmovies.CACHE_EXPIRY_TIME
+		HTTP.CacheTime = CACHE_EXPIRY
+
+	oc = ObjectContainer(title2=TITLE, no_cache=isForceNoCache())
 	oc.add(DirectoryObject(key = Callback(ShowMenu, title = CAT_GROUPS[0]), title = CAT_GROUPS[0], thumb = R(ICON_HOT)))
 	oc.add(DirectoryObject(key = Callback(ShowMenu, title = CAT_GROUPS[1]), title = CAT_GROUPS[1], thumb = R(ICON_MOVIES)))
 	oc.add(DirectoryObject(key = Callback(ShowMenu, title = CAT_GROUPS[2]), title = CAT_GROUPS[2], thumb = R(ICON_FILTER)))
 	
 	# ToDo: Not quite sure how to read back what was actually played from ServiceCode and not just show a viewed item
-	#oc.add(DirectoryObject(key = Callback(RecentWatchList, title="Recent WatchList"), title = "Recent WatchList", thumb = R(ICON_LATEST)))
+	oc.add(DirectoryObject(key = Callback(RecentWatchList, title="Recent WatchList"), title = "Recent WatchList", thumb = R(ICON_LATEST)))
 	oc.add(DirectoryObject(key = Callback(Bookmarks, title="Bookmarks"), title = "Bookmarks", thumb = R(ICON_QUEUE)))
 	oc.add(DirectoryObject(key = Callback(SearchQueueMenu, title = 'Search Queue'), title = 'Search Queue', summary='Search using saved search terms', thumb = R(ICON_SEARCH_QUE)))
 	
@@ -119,7 +128,7 @@ def MainMenu():
 @route(PREFIX + "/showMenu")
 def ShowMenu(title):
 
-	oc = ObjectContainer(title2 = title)
+	oc = ObjectContainer(title2 = title, no_cache=isForceNoCache())
 	
 	if title == CAT_GROUPS[0]:
 		elems = CAT_WHATS_HOT
@@ -164,7 +173,7 @@ def ShowMenu(title):
 def SortMenu(title):
 
 	url = fmovies.BASE_URL
-	oc = ObjectContainer(title2 = title)
+	oc = ObjectContainer(title2 = title, no_cache=isForceNoCache())
 	
 	# Test for the site url initially to report a logical error
 	page_data = GetPageElements(url = url)
@@ -257,7 +266,18 @@ def SortMenu(title):
 				name = elem.xpath(".//a[@class='name']//text()")[0]
 				loc = fmovies.BASE_URL + elem.xpath(".//a[@class='name']//@href")[0]
 				thumb = elem.xpath(".//a[@class='poster']//@src")[0].split('url=')[1]
-				summary = 'Plot Summary on Item Page'
+				summary = 'Plot Summary on Item Page.'
+				
+				eps_nos = ''
+				title_eps_no = ''
+				try:
+					eps_nos = elem.xpath(".//div[@class='status']//span//text()")[0]
+					eps_no_i = str(int(eps_nos.strip()))
+					title_eps_no = ' (Eps:'+eps_no_i+')'
+					eps_nos = ' Episodes: ' + eps_no_i
+				except:
+					pass
+				
 				try:
 					more_info_link = elem.xpath(".//@data-tip")[0]
 				except:
@@ -265,8 +285,8 @@ def SortMenu(title):
 
 				oc.add(DirectoryObject(
 					key = Callback(EpisodeDetail, title = name, url = loc, thumb = thumb),
-					title = name,
-					summary = GetMovieInfo(summary=summary, urlPath=more_info_link),
+					title = name + title_eps_no,
+					summary = GetMovieInfo(summary=summary, urlPath=more_info_link) + eps_nos,
 					thumb = Resource.ContentsOfURLWithFallback(url = thumb)
 					)
 				)
@@ -279,7 +299,7 @@ def SortMenu(title):
 	else:
 		oc.add(InputDirectoryObject(key = Callback(Search), thumb = R(ICON_SEARCH), title='Search', summary='Search Channel', prompt='Search for...'))
 	if len(oc) == 1:
-		return ObjectContainer(header=title, message='No Videos Available')
+		return MC.message_container(title, 'No Videos Available')
 	return oc
 	
 ######################################################################################
@@ -300,6 +320,8 @@ def ShowCategory(title, key=' ', urlpath=None, page_count='1'):
 		elif title == CAT_REGULAR[1]:
 			newurl = (fmovies.BASE_URL + '/tv-series' + '?page=%s' % page_count)
 		elif title == CAT_REGULAR[2]:
+			newurl = (fmovies.BASE_URL + '/top-imdb' + '?page=%s' % page_count)
+		elif title == CAT_REGULAR[3]:
 			newurl = (fmovies.BASE_URL + '/most-watched' + '?page=%s' % page_count)
 		
 	page_data = GetPageElements(url=newurl)
@@ -312,15 +334,25 @@ def ShowCategory(title, key=' ', urlpath=None, page_count='1'):
 		pass
 		
 	if key != ' ':
-		oc = ObjectContainer(title2 = title + '|' + key.title() + '|Page ' + str(page_count) + ' of ' + str(last_page_no))
+		oc = ObjectContainer(title2 = title + '|' + key.title() + '|Page ' + str(page_count) + ' of ' + str(last_page_no), no_cache=isForceNoCache())
 	else:
-		oc = ObjectContainer(title2 = title + '|Page ' + str(page_count) + ' of ' + str(last_page_no))
+		oc = ObjectContainer(title2 = title + '|Page ' + str(page_count) + ' of ' + str(last_page_no), no_cache=isForceNoCache())
 		
 	for elem in elems:
 		name = elem.xpath(".//a[@class='name']//text()")[0]
 		loc = fmovies.BASE_URL + elem.xpath(".//a[@class='name']//@href")[0]
 		thumb = elem.xpath(".//a[@class='poster']//@src")[0].split('url=')[1]
-		summary = 'Plot Summary on Item Page'
+		summary = 'Plot Summary on Item Page.'
+		
+		eps_nos = ''
+		title_eps_no = ''
+		try:
+			eps_nos = elem.xpath(".//div[@class='status']//span//text()")[0]
+			eps_no_i = str(int(eps_nos.strip()))
+			title_eps_no = ' (Eps:'+eps_no_i+')'
+			eps_nos = ' Episodes: ' + eps_no_i
+		except:
+			pass
 		try:
 			more_info_link = elem.xpath(".//@data-tip")[0]
 		except:
@@ -328,8 +360,8 @@ def ShowCategory(title, key=' ', urlpath=None, page_count='1'):
 
 		oc.add(DirectoryObject(
 			key = Callback(EpisodeDetail, title = name, url = loc, thumb = thumb),
-			title = name,
-			summary = GetMovieInfo(summary=summary, urlPath=more_info_link),
+			title = name + title_eps_no,
+			summary = GetMovieInfo(summary=summary, urlPath=more_info_link) + eps_nos,
 			thumb = Resource.ContentsOfURLWithFallback(url = thumb)
 			)
 		)
@@ -351,29 +383,56 @@ def ShowCategory(title, key=' ', urlpath=None, page_count='1'):
 		oc.add(InputDirectoryObject(key = Callback(Search), thumb = R(ICON_SEARCH), title='Search', summary='Search Channel', prompt='Search for...'))
 
 	if len(oc) == 1:
-		return ObjectContainer(header=title, message='No More Videos Available')
+		return MC.message_container(title, 'No More Videos Available')
+		
+	oc.add(DirectoryObject(
+		key = Callback(MainMenu),
+		title = '<< Main Menu',
+		thumb = R(ICON)
+		)
+	)
+	
 	return oc
 
 ######################################################################################
 @route(PREFIX + "/episodedetail")
 def EpisodeDetail(title, url, thumb):
 
-	title = unicode(title)
 	page_data = GetPageElements(url=url)
 	if page_data == None:
 		return MC.message_container("Unknown Error", "Error: The page was not received.")
+		
+	try:
+		title = unicode(page_data.xpath(".//*[@id='info']//h1[@class='name']//text()")[0])
+	except:
+		title = unicode(title)
+		
+	try:
+		item_unav = ''
+		errs = page_data.xpath(".//*[@id='movie']//div[@class='alert alert-primary notice'][2]//text()")
+		for err in errs:
+			if 'There is no server for this movie right now, please try again later.' in err:
+				item_unav = ' ' + common.GetEmoji(type='neg')
+				break
+	except:
+		pass
+		
+	try:
+		serverts = page_data.xpath(".//body[@class='watching']//@data-ts")[0]
+	except:
+		serverts = 0
 	
 	try:
 		art = page_data.xpath(".//meta[@property='og:image'][1]//@content")[0]
 	except:
 		art = 'https://cdn.rawgit.com/coder-alpha/FMoviesPlus.bundle/master/Contents/Resources/art-default.jpg'
-	oc = ObjectContainer(title2 = title, art = art)
+	oc = ObjectContainer(title2 = title + item_unav, art = art, no_cache=isForceNoCache())
 	
 	try:
 		summary = page_data.xpath(".//*[@id='info']//div[@class='info col-md-19']//div[@class='desc']//text()")[0]
 		#summary = re.sub(r'[^0-9a-zA-Z \-/.,\':+&!()]', '', summary)
 	except:
-		summary = 'Not Available'
+		summary = 'Summary Not Available.'
 	
 	try:
 		trailer = page_data.xpath(".//*[@id='control']//div['item mbtb watch-trailer hidden-xs']//@data-url")[0]
@@ -406,7 +465,7 @@ def EpisodeDetail(title, url, thumb):
 	try:
 		directors0 = page_data.xpath(".//*[@id='info']//dl[@class='meta col-sm-12'][1]//dd[3]//text()")
 		directors = (','.join(str(x) for x in directors0))
-		if directors == '...':
+		if directors.strip() == '...':
 			directors = 'Not Available'
 	except:
 		directors = 'Not Available'
@@ -438,6 +497,27 @@ def EpisodeDetail(title, url, thumb):
 	summary += 'IMDB rating: ' + rating + '\n '
 	
 	summary = unicode(summary)
+	
+	try:
+		similar_reccos = []
+		similar_reccos_elems = page_data.xpath(".//*[@id='movie']//div[@class='row movie-list']//div[@class='item']")
+
+		for elem in similar_reccos_elems:
+			similar_reccos_name = elem.xpath(".//a[@class='name']//text()")[0]
+			similar_reccos_loc = elem.xpath(".//a[@class='name']//@href")[0]
+			similar_reccos_thumb = elem.xpath(".//a[@class='poster']//@src")[0].split('url=')[1]
+			try:
+				eps_nos = elem.xpath(".//div[@class='status']//span//text()")[0]
+				eps_nos = ' Episodes: ' + str(int(eps_nos.strip()))
+			except:
+				eps_nos = ''
+			try:
+				similar_reccos_more_info_link = elem.xpath(".//@data-tip")[0]
+			except:
+				similar_reccos_more_info_link = None
+			similar_reccos.append({'name':similar_reccos_name, 'loc':similar_reccos_loc, 'thumb':similar_reccos_thumb, 'more_info_link':similar_reccos_more_info_link, 'eps_nos':eps_nos})
+	except:
+		similar_reccos = []
 	
 	episodes = []
 	servers_list = {}
@@ -502,24 +582,29 @@ def EpisodeDetail(title, url, thumb):
 	
 	if len(episodes) > 0:
 		# case for presenting tv-series with synopsis
-		det_Season = title.split(' ')
+		det_Season = title.replace(' (Special)','').split(' ')
+		SeasonN = 0
 		try:
 			SeasonN = int(det_Season[len(det_Season)-1])
-			oc = ObjectContainer(title2 = title.replace(str(SeasonN), '(Season ' + str(SeasonN) + ')'), art = art)
+			oc.title2 = title.replace(str(SeasonN), '(Season ' + str(SeasonN) + ')')
 		except:
-			oc = ObjectContainer(title2 = title, art = art)
+			oc.title2 = title
 			
+		c_not_missing = 1
 		for episode in episodes:
+			ep_no = None
 			try:
-				no = episode.xpath(".//div[@class='ep']//i//text()")[0].strip()
+				noS = episode.xpath(".//div[@class='ep']//i//text()")[0].strip()
+				no = noS
+				ep_no = int(no)
 			except:
 				no = '0'
 				
-			if no != '0':
+			if no != '0' and ep_no == c_not_missing:
 				try:
 					name = episode.xpath(".//span[@class='name']//text()")[0]
 				except:
-					name = 'Episode Name Not Available'
+					name = 'Episode Name Not Available.'
 				try:
 					air_date = episode.xpath(".//div[@class='date']//text()")[0]
 				except:
@@ -527,77 +612,149 @@ def EpisodeDetail(title, url, thumb):
 				try:
 					desc = episode.xpath(".//div[@class='desc']//text()")[0]
 				except:
-					desc = 'Episode Summary Not Available'
+					desc = 'Episode Summary Not Available.'
 
 				episodes_list.append({"name":name,"air_date":air_date,"desc":desc})
 			else:
-				episodes_list.append({"name":'',"air_date":'',"desc":''})
+				# episode does not have a number - could be a Special - its listed alphabetically but might fall in a different airing sequence
+				c=0
+				successIns = False
+				for eps in servers_list_new:
+					
+					if noS in eps[server_lab[0]]['quality']:
+						try:
+							name = episode.xpath(".//span[@class='name']//text()")[0]
+						except:
+							name = 'Episode Name Not Available.'
+						try:
+							air_date = episode.xpath(".//div[@class='date']//text()")[0]
+						except:
+							air_date = ''
+						try:
+							desc = episode.xpath(".//div[@class='desc']//text()")[0]
+						except:
+							desc = 'Episode Summary Not Available.'
+						episodes_list.insert(c, {"name":name,"air_date":air_date,"desc":desc})
+						successIns = True
+						break
+					c += 1
+				if not successIns:
+					episodes_list.append({"name":'',"air_date":'',"desc":''})
+			c_not_missing += 1
 		
 		eps_i = 1
+		c_not_missing=-1
+		c=0
 		for eps in servers_list_new:
 		
-			if '-' in eps[server_lab[0]]['quality']: # 2 part episode condition
+			if '-' in eps[server_lab[0]]['quality'] and verify2partcond(eps[server_lab[0]]['quality']): # 2 part episode condition
 				qual_i = (int(eps[server_lab[0]]['quality'].split('-')[0])-eps_i)
 				eps_i += 1
 			else:
-				qual_i = (int(eps[server_lab[0]]['quality'])-eps_i)
+				try:
+					qual_i = (int(eps[server_lab[0]]['quality'])-eps_i)
+				except:
+					qual_i = c_not_missing+1
+					eps_i = eps_i-1
 			
 			try:
-				title_s = 'Ep:' + eps[server_lab[0]]['quality'] + ' - ' + episodes_list[qual_i]['name']
+				if '-' in eps[server_lab[0]]['quality'] and episodes_list[qual_i]['name'] in eps[server_lab[0]]['quality'] and not verify2partcond(eps[server_lab[0]]['quality']):
+					title_s = 'Ep:' + eps[server_lab[0]]['quality']
+				else:
+					title_s = 'Ep:' + eps[server_lab[0]]['quality'] + ' - ' + episodes_list[qual_i]['name']
 			except:
 				title_s = 'Ep:' + eps[server_lab[0]]['quality']
 			try:
 				desc = episodes_list[qual_i]['air_date'] + " : " + episodes_list[qual_i]['desc']
 			except:
-				desc = 'Episode Summary Not Available'
-			
+				desc = 'Episode Summary Not Available.'
+				
 			oc.add(DirectoryObject(
-				key = Callback(EpisodeDetail1, title=title_s, url=url, servers_list_new=servers_list_new[qual_i], server_lab=(','.join(str(x) for x in server_lab)), ep_idx=qual_i, summary=desc+'\n '+summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles),
+				key = Callback(EpisodeDetail1, title=title_s, url=url, servers_list_new=servers_list_new[c], server_lab=(','.join(str(x) for x in server_lab)), summary=desc+'\n '+summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, serverts=serverts),
 				title = title_s,
-				summary = desc,
+				summary = desc+ '\n ' +summary,
 				thumb = Resource.ContentsOfURLWithFallback(url = thumb)
 				)
 			)
+			c_not_missing = qual_i
+			c += 1
+		if SeasonN > 0:
+			oc.add(DirectoryObject(
+			key = Callback(Search, query = title.replace(str(SeasonN),'').replace('(Special)','').strip(), mode='other seasons'),
+			title = "Other Seasons",
+			summary = 'Other Seasons of ' + title.replace(str(SeasonN),'').replace('(Special)','').strip(),
+			art = art,
+			thumb = R(ICON_OTHERSEASONS)
+			))
 	elif isTvSeries:
 		# case for presenting tv-series without synopsis
-		det_Season = title.split(' ')
+		det_Season = title.replace(' (Special)','').split(' ')
+		SeasonN = 0
 		try:
 			SeasonN = int(det_Season[len(det_Season)-1])
-			oc = ObjectContainer(title2 = title.replace(str(SeasonN), '(Season ' + str(SeasonN) + ')'), art = art)
+			oc.title2 = title.replace(str(SeasonN), '(Season ' + str(SeasonN) + ')')
 		except:
-			oc = ObjectContainer(title2 = title, art = art)
+			oc.title2 = title
 			
+		c=0
 		for eps in servers_list_new:
 			title_s = 'Ep:' + eps[server_lab[0]]['quality']
-			qual_i = (int(eps[server_lab[0]]['quality'])-1)
 			oc.add(DirectoryObject(
-				key = Callback(EpisodeDetail1, title=title_s, url=url, servers_list_new=servers_list_new[qual_i], server_lab=(','.join(str(x) for x in server_lab)), ep_idx=qual_i, summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles),
+				key = Callback(EpisodeDetail1, title=title_s, url=url, servers_list_new=servers_list_new[c], server_lab=(','.join(str(x) for x in server_lab)), summary='Episode Summary Not Available.\n ' + summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, serverts=serverts),
 				title = title_s,
-				summary = summary,
+				summary = 'Episode Summary Not Available.\n ' + summary,
 				thumb = Resource.ContentsOfURLWithFallback(url = thumb)
 				)
 			)
+			c += 1
+		if SeasonN > 0:
+			oc.add(DirectoryObject(
+			key = Callback(Search, query = title.replace(str(SeasonN),'').replace('(Special)','').strip(), mode='other seasons'),
+			title = "Other Seasons",
+			summary = 'Other Seasons of ' + title.replace(str(SeasonN),'').replace('(Special)','').strip(),
+			art = art,
+			thumb = R(ICON_OTHERSEASONS)
+			))
 	else:
 		# case for presenting movies
 		for label in server_lab:
 			for label_i in servers_list[label]:
 				title_s = label + ' - ' + label_i['quality']
 				url_s = label_i['loc']
-				server_info, isOpenLoad = fmovies.GetApiUrl(url=url, key=url_s)
+				server_info, isOpenLoad = fmovies.GetApiUrl(url=url, key=url_s, serverts=serverts)
 				if server_info != None:
-					durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":server_info, "title":title, "summary":base64.b64encode(summary), "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "roles":roles, "directors":directors, "roles":roles, "isOpenLoad":str(isOpenLoad), "useSSL":str(Prefs["use_https_alt"])}))
+					status = ''
+					isVideoOnline = 'unknown'
+					if Prefs["use_linkchecker"]:
+						data = server_info
+						if not isOpenLoad:
+							data = E(JSON.StringFromObject({"server":server_info}))
+						isVideoOnline = isItemVidAvailable(isOpenLoad=isOpenLoad, data=data)
+						status = common.GetEmoji(type=isVideoOnline) + ' '
+					
+					durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":server_info, "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "roles":roles, "directors":directors, "roles":roles, "isOpenLoad":str(isOpenLoad), "useSSL":str(Prefs["use_https_alt"]), "isVideoOnline":str(isVideoOnline)}))
 					try:
 						oc.add(VideoClipObject(
 							url = durl,
-							title = title + ' - ' + title_s,
+							title = status + title + ' - ' + title_s,
 							thumb = thumb,
 							art = art,
-							summary = summary
+							summary = summary,
+							key = AddRecentWatchList(title=title, url=url, summary=summary, thumb=thumb)
 							)
 						)
 					except:
 						pass
-	
+						
+	if len(similar_reccos) > 0:
+		oc.add(DirectoryObject(
+			key = Callback(SimilarRecommendations, title = title, similar_reccos = E(JSON.StringFromObject(similar_reccos))),
+			title = "Similar Recommendations",
+			summary = 'Discover other items similar to ' + title,
+			art = art,
+			thumb = R(ICON_SIMILAR)
+		)
+	)
 		
 	if Check(title=title,url=url):
 		oc.add(DirectoryObject(
@@ -622,9 +779,9 @@ def EpisodeDetail(title, url, thumb):
 	
 
 @route(PREFIX + "/episodedetail1")
-def EpisodeDetail1(title, url, servers_list_new, server_lab, ep_idx, summary, thumb, art, year, rating, duration, genre, directors, roles):
+def EpisodeDetail1(title, url, servers_list_new, server_lab, summary, thumb, art, year, rating, duration, genre, directors, roles, serverts):
 
-	oc = ObjectContainer(title2 = title, art = art)
+	oc = ObjectContainer(title2 = title, art = art, no_cache=isForceNoCache())
 
 	servers_list_new = servers_list_new.replace("'", "\"")
 	servers_list_new = json.loads(servers_list_new)
@@ -633,22 +790,66 @@ def EpisodeDetail1(title, url, servers_list_new, server_lab, ep_idx, summary, th
 	
 	for label in server_lab:
 		url_s = servers_list_new[label]['loc']
-		server_info,isOpenLoad = fmovies.GetApiUrl(url=url, key=url_s)
+		server_info,isOpenLoad = fmovies.GetApiUrl(url=url, key=url_s, serverts=serverts)
 		if server_info != None:
-			durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":server_info, "title":title, "summary":base64.b64encode(summary), "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "directors":directors, "roles":roles, "isOpenLoad":str(isOpenLoad), "useSSL":str(Prefs["use_https_alt"])}))
+			status = ''
+			isVideoOnline = 'unknown'
+			if Prefs["use_linkchecker"]:
+				data = server_info
+				if not isOpenLoad:
+					data = E(JSON.StringFromObject({"server":server_info}))
+				isVideoOnline = isItemVidAvailable(isOpenLoad=isOpenLoad, data=data)
+				status = common.GetEmoji(type=isVideoOnline) + ' '
+				
+			durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":server_info, "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "directors":directors, "roles":roles, "isOpenLoad":str(isOpenLoad), "useSSL":str(Prefs["use_https_alt"]), "isVideoOnline":str(isVideoOnline)}))
 			try:
 				oc.add(VideoClipObject(
 					url = durl,
-					title = title + ' (' + label + ')',
+					title = status + title + ' (' + label + ')',
 					thumb = thumb,
 					art = art,
-					summary = summary
+					summary = summary,
+					key = AddRecentWatchList(title=title, url=url, summary=summary, thumb=thumb)
 					)
 				)
 			except:
 				pass
 
 	return oc
+
+####################################################################################################
+@route(PREFIX + "/SimilarRecommendations")	
+def SimilarRecommendations(title, similar_reccos):
+
+	oc = ObjectContainer(title2 = 'Similar to ' + title, no_cache=isForceNoCache())
+	
+	similar_reccos = JSON.ObjectFromString(D(similar_reccos))
+	
+	for elem in similar_reccos:
+		name = elem['name']
+		loc = fmovies.BASE_URL + elem['loc']
+		thumb = elem['thumb']
+		eps_nos = elem['eps_nos']
+		summary = 'Plot Summary on Item Page.'
+		more_info_link = elem['more_info_link']
+
+		oc.add(DirectoryObject(
+			key = Callback(EpisodeDetail, title = name, url = loc, thumb = thumb),
+			title = name,
+			summary = GetMovieInfo(summary=summary, urlPath=more_info_link) + eps_nos,
+			thumb = Resource.ContentsOfURLWithFallback(url = thumb)
+			)
+		)
+	
+	oc.add(DirectoryObject(
+		key = Callback(MainMenu),
+		title = '<< Main Menu',
+		thumb = R(ICON)
+		)
+	)
+	
+	return oc
+
 	
 ####################################################################################################
 @route(PREFIX + "/getmovieinfo")
@@ -707,41 +908,66 @@ def GetMovieInfo(summary, urlPath):
 # Adds a movie to the RecentWatchList list using the (title + 'R4S') as a key for the url
 @route(PREFIX + "/addRecentWatchList")
 def AddRecentWatchList(title, url, summary, thumb):
-	Dict[title+'R4S'] = title + 'RecentWatchList4Split' + url +'RecentWatchList4Split'+ summary + 'RecentWatchList4Split' + thumb
-	Dict.Save()
+
+	#append the time string to title so we can sort old to new items
+	try:
+		timestr = str(int(time.time()))
+		Dict[timestr+'RR44SS'+title+'RR44SS'] = title + 'RR44SS' + url +'RR44SS'+ summary + 'RR44SS' + thumb + 'RR44SS' + timestr 
+		Dict.Save()
+	except:
+		pass
+		
+	return None
 
 ######################################################################################
 # Loads RecentWatchList shows from Dict.  Titles are used as keys to store the show urls.
 @route(PREFIX + "/RecentWatchList")
 def RecentWatchList(title):
 
-	oc = ObjectContainer(title1=title)
+	oc = ObjectContainer(title1=title, no_cache=isForceNoCache())
+	NO_OF_ITEMS_IN_RECENT_LIST = 50
 	c=0
+	urls_list = []
+	items_to_del = []
+	
 	for each in Dict:
 		longstring = Dict[each]
 		
-		#Dict[title+'R4S'] = title + 'RecentWatchList4Split' + url +'RecentWatchList4Split'+ summary + 'RecentWatchList4Split' + thumb
-		#Dict.Save()
-		
-		if 'https:' in longstring and 'RecentWatchList4Split' in longstring:
-			if  c < 20:
-				stitle = longstring.split('RecentWatchList4Split')[0]
-				url = longstring.split('RecentWatchList4Split')[1]
-				summary = longstring.split('RecentWatchList4Split')[2]
-				thumb = longstring.split('RecentWatchList4Split')[3]
-				c += 1
-				oc.add(DirectoryObject(
-					key=Callback(EpisodeDetail, title=stitle, url=url, thumb=thumb),
-					title=stitle,
-					thumb=thumb,
-					summary=summary
+		if 'https:' in longstring and 'RR44SS' in longstring:
+			if  c < NO_OF_ITEMS_IN_RECENT_LIST:
+				longstringsplit = longstring.split('RR44SS')
+				stitle = longstringsplit[0]
+				url = longstringsplit[1]
+				summary = longstringsplit[2]
+				thumb = longstringsplit[3]
+				timestr = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(longstringsplit[4])))
+				
+				if url in urls_list:
+					items_to_del.append(each)
+				else:
+					urls_list.append(url)
+					c += 1
+					oc.add(DirectoryObject(
+						key=Callback(EpisodeDetail, title=stitle, url=url, thumb=thumb),
+						title=stitle,
+						thumb=thumb,
+						tagline = timestr,
+						summary=summary
+						)
 					)
-				)
+				
 			else:
-				del Dict[each]
-	
-	if c >= 20:
+				items_to_del.append(each)
+
+	if c >= NO_OF_ITEMS_IN_RECENT_LIST or len(items_to_del) > 0:
+		for each in items_to_del:
+			del Dict[each]
 		Dict.Save()
+	
+	if len(oc) == 0:
+		return MC.message_container(title, 'No Items Available')
+		
+	oc.objects.sort(key=lambda obj: obj.tagline, reverse=True)
 	
 	#add a way to clear RecentWatchList list
 	oc.add(DirectoryObject(
@@ -751,9 +977,7 @@ def RecentWatchList(title):
 		summary = "CAUTION! This will clear your entire Recent WatchList !"
 		)
 	)
-
-	if len(oc) == 1:
-		return ObjectContainer(header=title, message='No Recently Watched Videos Available')
+	
 	return oc
 	
 ######################################################################################
@@ -764,8 +988,8 @@ def ClearRecentWatchList():
 	remove_list = []
 	for each in Dict:
 		try:
-			url = Dict[each]
-			if url.find(SITE.lower()) != -1 and 'http' in url and 'RecentWatchList' in url:
+			longstring = Dict[each]
+			if longstring.find(SITE.lower()) != -1 and 'http' in longstring and 'RR44SS' in longstring:
 				remove_list.append(each)
 		except:
 			continue
@@ -778,14 +1002,14 @@ def ClearRecentWatchList():
 			continue
 
 	Dict.Save()
-	return ObjectContainer(header="My Recent WatchList", message='Your Recent WatchList list will be cleared soon.', no_cache=True)
+	return MC.message_container("My Recent WatchList", 'Your Recent WatchList list will be cleared soon.')
 	
 ######################################################################################
 # Loads bookmarked shows from Dict.  Titles are used as keys to store the show urls.
 @route(PREFIX + "/bookmarks")
 def Bookmarks(title):
 
-	oc = ObjectContainer(title1=title)
+	oc = ObjectContainer(title1=title, no_cache=isForceNoCache())
 	for each in Dict:
 		longstring = Dict[each]
 		
@@ -812,8 +1036,9 @@ def Bookmarks(title):
 		)
 	)
 
-	if len(oc) == 0:
-		return ObjectContainer(header=title, message='No Bookmarked Videos Available')
+	if len(oc) == 1:
+		return MC.message_container(title, 'No Bookmarked Videos Available')
+		
 	return oc
 
 ######################################################################################
@@ -832,7 +1057,7 @@ def Check(title, url):
 def AddBookmark(title, url, summary, thumb):
 	Dict[title] = title + 'Key4Split' + url +'Key4Split'+ summary + 'Key4Split' + thumb
 	Dict.Save()
-	return ObjectContainer(header=title, message='This item has been added to your bookmarks.')
+	return MC.message_container(title, 'This item has been added to your bookmarks.')
 
 ######################################################################################
 # Removes a movie to the bookmarks list using the title as a key for the url
@@ -840,7 +1065,7 @@ def AddBookmark(title, url, summary, thumb):
 def RemoveBookmark(title, url):
 	del Dict[title]
 	Dict.Save()
-	return ObjectContainer(header=title, message='This item has been removed from your bookmarks.', no_cache=True)
+	return MC.message_container(title, 'This item has been removed from your bookmarks.')
 
 ######################################################################################
 # Clears the Dict that stores the bookmarks list
@@ -864,7 +1089,7 @@ def ClearBookmarks():
 			continue
 
 	Dict.Save()
-	return ObjectContainer(header="My Bookmarks", message='Your bookmark list will be cleared soon.', no_cache=True)
+	return MC.message_container("Bookmarks", 'Your bookmark list will be cleared soon.')
 
 ######################################################################################
 # Clears the Dict that stores the search list
@@ -887,11 +1112,11 @@ def ClearSearches():
 			continue
 
 	Dict.Save()
-	return ObjectContainer(header="Search Queue", message='Your Search Queue list will be cleared soon.', no_cache=True)
+	return MC.message_container("Search Queue", "Your Search Queue list will be cleared soon.")
 
 ####################################################################################################
 @route(PREFIX + "/search")
-def Search(query=None, surl=None, page_count='1'):
+def Search(query=None, surl=None, page_count='1', mode='default'):
 	
 	last_page_no = page_count
 	
@@ -899,8 +1124,9 @@ def Search(query=None, surl=None, page_count='1'):
 		url = surl + '&page=%s' % (str(page_count))
 		page_data = GetPageElements(url=url)
 	else:
-		Dict[SITE.lower() +'MyCustomSearch'+query] = query
-		Dict.Save()
+		if mode == 'default':
+			Dict[SITE.lower() +'MyCustomSearch'+query] = query
+			Dict.Save()
 		url = fmovies.BASE_URL + fmovies.SEARCH_PATH + '?page=%s&keyword=%s' % (str(page_count), String.Quote(query, usePlus=True))
 		page_data = GetPageElements(url=url)
 		
@@ -912,43 +1138,82 @@ def Search(query=None, surl=None, page_count='1'):
 	except:
 		pass
 		
-	oc = ObjectContainer(title2 = 'Search Results|Page ' + str(page_count) + ' of ' + str(last_page_no))
-	
+	if mode == 'default':
+		oc = ObjectContainer(title2 = 'Search Results|Page ' + str(page_count) + ' of ' + str(last_page_no), no_cache=isForceNoCache())
+	else:
+		oc = ObjectContainer(title2 = 'Other Seasons for ' + query, no_cache=isForceNoCache())
+		
+	no_elems = len(elems)
 	for elem in elems:
 		name = elem.xpath(".//a[@class='name']//text()")[0]
 		loc = fmovies.BASE_URL + elem.xpath(".//a[@class='name']//@href")[0]
 		thumb = elem.xpath(".//a[@class='poster']//@src")[0].split('url=')[1]
-		summary = 'Plot Summary on Item Page'
+		summary = 'Plot Summary on Item Page.'
+		
+		eps_nos = ''
+		title_eps_no = ''
+		try:
+			eps_nos = elem.xpath(".//div[@class='status']//span//text()")[0]
+			eps_no_i = str(int(eps_nos.strip()))
+			title_eps_no = ' (Eps:'+eps_no_i+')'
+			eps_nos = ' Episodes: ' + eps_no_i
+		except:
+			pass
 		try:
 			more_info_link = elem.xpath(".//@data-tip")[0]
 		except:
 			more_info_link = None
-
-		oc.add(DirectoryObject(
+		
+		do = DirectoryObject(
 			key = Callback(EpisodeDetail, title = name, url = loc, thumb = thumb),
-			title = name,
-			summary = GetMovieInfo(summary=summary, urlPath=more_info_link),
+			title = name + title_eps_no,
+			summary = GetMovieInfo(summary=summary, urlPath=more_info_link) + eps_nos,
 			thumb = Resource.ContentsOfURLWithFallback(url = thumb)
 			)
-		)
-		
-	if int(page_count) < last_page_no:
-		oc.add(NextPageObject(
-			key = Callback(Search, query = query, surl = surl, page_count = str(int(page_count) + 1)),
-			title = "Next Page (" + str(int(page_count) + 1) +'/'+ str(last_page_no) + ") >>",
-			thumb = R(ICON_NEXT)
+		if mode == 'default':
+			oc.add(do)
+		elif mode == 'other seasons' and query.lower() in name.lower() and len(name.lower().replace(' (special)','').replace(query.lower(), '').strip()) < 3:
+			fixname_SN = name.lower().replace(query.lower(),'').replace(' ','').strip()
+			# when we clean name we expect the season no. only to be present - if not then maybe its not a related season i.e. skip item
+			try:
+				fixname_SN_i = int(fixname_SN)
+				newname = query + " " + ("%02d" % fixname_SN_i)
+				do.title = newname + title_eps_no
+			except:
+				pass
+			oc.add(do)
+			
+	if mode == 'other seasons':
+		oc.objects.sort(key=lambda obj: obj.title, reverse=False)
+	
+	if mode == 'default' or (mode == 'other seasons' and no_elems == len(oc)):
+		if int(page_count) < last_page_no:
+			oc.add(NextPageObject(
+				key = Callback(Search, query = query, surl = surl, page_count = str(int(page_count) + 1), mode=mode),
+				title = "Next Page (" + str(int(page_count) + 1) +'/'+ str(last_page_no) + ") >>",
+				thumb = R(ICON_NEXT)
+				)
 			)
-		)
 		
 	if len(oc) == 0:
-		return ObjectContainer(header='Search Results', message='No More Videos Available')
+		if mode == 'other seasons':
+			return MC.message_container('Other Seasons', 'No Other Seasons Available currently')
+		else:
+			return MC.message_container('Search Results', 'No More Videos Available')
+		
+	oc.add(DirectoryObject(
+		key = Callback(MainMenu),
+		title = '<< Main Menu',
+		thumb = R(ICON)
+		)
+	)
 
 	return oc
 
 ####################################################################################################
 @route(PREFIX + "/searchQueueMenu")
 def SearchQueueMenu(title):
-	oc = ObjectContainer(title2='Search Using Term')
+	oc = ObjectContainer(title2='Search Using Term', no_cache=isForceNoCache())
 	oc.add(DirectoryObject(
 		key = Callback(ClearSearches),
 		title = "Clear Search Queue",
@@ -970,7 +1235,7 @@ def SearchQueueMenu(title):
 @route(PREFIX + "/filtersetup")
 def FilterSetup(title, key1 = None, key2val = None, mode='add', update=True):
 
-	oc = ObjectContainer(title2 = title)
+	oc = ObjectContainer(title2 = title, no_cache=isForceNoCache())
 	
 	if len(Filter) == 0:
 		# Initialize Filter Data
@@ -994,7 +1259,7 @@ def FilterSetup(title, key1 = None, key2val = None, mode='add', update=True):
 				)
 			)
 	else:
-		oc = ObjectContainer(title2 = title + ' (' + key1.title() + ')')
+		oc = ObjectContainer(title2 = title + ' (' + key1.title() + ')', no_cache=isForceNoCache())
 		
 		for f2_key in sorted(Filter[key1]):
 
@@ -1003,13 +1268,13 @@ def FilterSetup(title, key1 = None, key2val = None, mode='add', update=True):
 	
 			if (key2val != None and key2val == Filter[key1][f2_key]):
 				if (mode == 'add' or key1 == 'sort' or key1 == 'order'):
-					selected = ' ' + u'\u2713'
+					selected = ' ' + common.GetEmoji(type='pos', mode='simple')
 			
 			elif (key1 != 'sort' and key1 != 'order' and key1 in Filter_Search and Filter[key1][f2_key] in Filter_Search[key1]):
-				selected = ' ' + u'\u2713'
+				selected = ' ' + common.GetEmoji(type='pos', mode='simple')
 			
 			elif (key2val == None and key1 in Filter_Search and Filter[key1][f2_key] in Filter_Search[key1]):
-				selected = ' ' + u'\u2713'
+				selected = ' ' + common.GetEmoji(type='pos', mode='simple')
 				
 				
 			key_title = f2_key.title() + selected
@@ -1117,7 +1382,7 @@ def MakeSelections(key1, key2val, mode, k2v):
 def ClearFilter():
 	Filter_Search.clear()
 	
-	oc = ObjectContainer(title2 = "Filter Reset")
+	oc = ObjectContainer(title2 = "Filter Reset", no_cache=isForceNoCache())
 	oc.add(DirectoryObject(
 		key = Callback(FilterSetup, title=CAT_FILTERS[3]),
 		title = CAT_FILTERS[3]
@@ -1226,4 +1491,94 @@ def GetPageString(url):
 		
 	return page_data_string
 	
-	######################################################################################
+######################################################################################
+@route(PREFIX + "/isItemVidAvailable")
+def isItemVidAvailable(isOpenLoad, data):
+	# responses - true, false, unknown
+	ourl = None
+	httpsskip = Prefs["use_https_alt"]
+	
+	if isOpenLoad:
+		ourl = data
+	else:
+		data = D(data)
+		data = JSON.ObjectFromString(data)
+		files = JSON.ObjectFromString(data['server'])
+		sortable_list = []
+		for file in files:
+			furl = file['file']
+			res = file['label'].replace('p','')
+			if res != '1080':
+				res = '0'+res
+			type = file['type']
+			sortable_list.append({'label': res, 'file':furl, 'type':type})
+		newlist = sorted(sortable_list, key=lambda k: k['label'], reverse=True)
+		for file in newlist:
+			ourl = file['file']
+			break
+			
+	isVideoOnline = 'false'
+	http_res = 0
+	
+	if ourl != None:
+		try:
+			if isOpenLoad:
+				http_res, red_url = fmovies.request(url=ourl, output='responsecodeext', followredirect = True, httpsskip=httpsskip)
+				if http_res in fmovies.HTTP_GOOD_RESP_CODES:
+					http_res = fmovies.request(url=red_url, output='responsecode', httpsskip=httpsskip)
+					if http_res in fmovies.HTTP_GOOD_RESP_CODES:
+						isVideoOnline = 'true'
+			else:
+				http_res, red_url = fmovies.request(url=ourl, output='responsecodeext', followredirect = True, httpsskip=httpsskip)
+				if http_res in fmovies.HTTP_GOOD_RESP_CODES:
+					chunk = fmovies.request(url=red_url, output='chunk', httpsskip=httpsskip)
+					if 'mp4' in str(chunk[0:20]):
+						isVideoOnline = 'true'
+		except Exception as e:
+			Log('ERROR init.py>isItemVidAvailable %s, %s:' % (e.args,ourl))
+			isVideoOnline = 'unknown'
+			
+	return isVideoOnline
+
+######################################################################################
+@route(PREFIX + "/isForceNoCache")
+def isForceNoCache():
+	# no_cache=isForceNoCache()
+	
+	try:
+		CACHE_EXPIRY = 60 * int(Prefs["cache_expiry_time"])
+	except:
+		CACHE_EXPIRY = fmovies.CACHE_EXPIRY_TIME
+	if CACHE_EXPIRY == 0:
+		return True
+	return False
+
+######################################################################################
+@route(PREFIX + "/verify2partcond")
+def verify2partcond(ep_title):
+# verify 2 part episode condition (eg. "01-02" type of titles)
+# single parts can also have "-" in episode titles and this condition will verify (eg "00 - Special - The Journey So Far")
+
+	try:
+		splitem = ep_title.split("-")
+		for item in splitem:
+			i = int(item.strip()) # if success for both splits then it must be a 2 part vid
+		return True
+	except:
+		pass
+	return False
+
+######################################################################################
+#
+# Supposed to run when Prefs are changed but doesnt seem to work on Plex as expected
+# https://forums.plex.tv/discussion/182523/validateprefs-not-working
+#
+@route(PREFIX + "/ValidatePrefs")
+def ValidatePrefs():
+
+	try:
+		test_cache_time = int(Prefs["cache_expiry_time"])
+	except:
+		return MC.message_container('Error Cache Time', 'Cache Time field needs only numbers.')
+
+	return

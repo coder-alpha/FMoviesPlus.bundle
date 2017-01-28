@@ -10,7 +10,7 @@ This is a plugin that creates a new channel in Plex Media Server to view content
 System Requirements
 ===================
 
-- **Plex Media Server:**
+- **Plex Media Server: ver. 1.3.3.3148**
 	- Tested Working:
 		- Windows
 		- Linux (Due to PMS issue - requires SSL option enabled under Channel Prefs.)
@@ -22,7 +22,7 @@ System Requirements
 		- Samsung Plex App
 		- Android M (Samsung Galaxy S6)
 		- iOS (Apple iPhone6)
-
+		- Chromecast
 
 How To Install
 ==============
@@ -39,9 +39,13 @@ How To Install
         - ~/Library/Application Support/Plex Media Server/Plug-ins
 - Restart PMS
 
+Features & Issues
+=================
+Please visit the [Plex Support Thread](http://forums.plex.tv/discussion/255348/) for additional information.
 
 Acknowledgements
-==============
-- [lambda81](https://github.com/lambda81) for his work on FMovies scrapper for Kodi
-- [youtube-dl](https://github.com/rg3/youtube-dl) for their work on openload scrapper
+================
+- [mrknow](https://github.com/mrknow) for work on FMovies movie sources routine for Kodi
+- [lambda](https://github.com/lambda81) for HTTP Request routine for SSL/Alternate lambdalib for Kodi
+- [youtube-dl](https://github.com/rg3/youtube-dl) for their work on OpenLoad scrapper
 - [coryo123] (https://forums.plex.tv/discussion/194503) for DumbTools-for-Plex

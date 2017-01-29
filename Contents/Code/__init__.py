@@ -88,7 +88,7 @@ def MainMenu():
 		except:
 			CACHE_EXPIRY = fmovies.CACHE_EXPIRY_TIME
 		HTTP.CacheTime = CACHE_EXPIRY
-
+	
 	oc = ObjectContainer(title2=TITLE, no_cache=isForceNoCache())
 	oc.add(DirectoryObject(key = Callback(ShowMenu, title = CAT_GROUPS[0]), title = CAT_GROUPS[0], thumb = R(ICON_HOT)))
 	oc.add(DirectoryObject(key = Callback(ShowMenu, title = CAT_GROUPS[1]), title = CAT_GROUPS[1], thumb = R(ICON_MOVIES)))
@@ -536,7 +536,7 @@ def EpisodeDetail(title, url, thumb):
 			label = label.replace('Server F','Google ')
 		
 		server_lab.append(label)
-		items = server.xpath(".//ul[@class='episodes range active']//li")
+		items = server.xpath(".//ul//li")
 		if len(items) > 1:
 			isTvSeries = True
 			
@@ -1523,9 +1523,9 @@ def isItemVidAvailable(isOpenLoad, data):
 	if ourl != None:
 		try:
 			if isOpenLoad:
-				http_res, red_url = fmovies.request(url=ourl, output='responsecodeext', followredirect = True, httpsskip=httpsskip)
-				if http_res in fmovies.HTTP_GOOD_RESP_CODES:
-					http_res = fmovies.request(url=red_url, output='responsecode', httpsskip=httpsskip)
+				vidurl = fmovies.openload(url=ourl)
+				if vidurl != None:
+					http_res = fmovies.request(url=vidurl, output='responsecode', httpsskip=httpsskip)
 					if http_res in fmovies.HTTP_GOOD_RESP_CODES:
 						isVideoOnline = 'true'
 			else:

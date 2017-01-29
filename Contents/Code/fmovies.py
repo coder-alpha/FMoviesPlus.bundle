@@ -500,5 +500,71 @@ def replaceHTMLCodes(txt):
 	txt = txt.replace("&amp;", "&")
 	return txt
 	
+#########################################################################################################
+#########################################################################################################
+#
+# OpenLoad scrapper
+#
+# Coder Alpha
+# https://github.com/coder-alpha
+#
+# Adapted from youtube-dl
+# https://github.com/rg3/youtube-dl
+# and modified for use with Plex Media Server
+#
+#########################################################################################################
+openloadhdr = {
+	'User-Agent': USER_AGENT,
+	'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+	'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.3',
+	'Accept-Encoding': 'none',
+	'Accept-Language': 'en-US,en;q=0.8',
+	'Connection': 'keep-alive'}
 
+def openload(url):
+
+	try:
+		openloadhdr['Referer'] = url
+		req = urllib2.Request(url, None, openloadhdr)
+		res = urllib2.urlopen(req)
+		webpage = res.read()
+
+		if 'File not found' in webpage or 'deleted by the owner' in webpage or 'Sorry!' in webpage:
+			return None
+
+		ol_id = search_regex('<span[^>]+id="[^"]+"[^>]*>([0-9]+)</span>',webpage, 'openload ID')
+
+		first_three_chars = int(float(ol_id[0:][:3]))
+		fifth_char = int(float(ol_id[3:5]))
+		urlcode = ''
+		num = 5
+
+		while num < len(ol_id):
+			urlcode += unichr(int(float(ol_id[num:][:3])) + first_three_chars - fifth_char * int(float(ol_id[num + 3:][:2])))
+			num += 5
+
+		video_url = 'https://openload.co/stream/' + urlcode
+
+		return video_url
+	except:
+		return None
+	
+def search_regex(pattern, string, name, default=None, fatal=True, flags=0, group=None):
+	mobj = re.search(pattern, string, flags)
+	if mobj:
+		if group is None:
+		# return the first matching group
+			#return next(g for g in mobj.groups() if g is not None) -- next function is Python 2.6+
+			myIterator  = (g for g in mobj.groups() if g is not None)
+			for nextval in myIterator:
+				return nextval
+		else:
+			return mobj.group(group)
+	else:
+		return None
+	
+def testOpenLoad():
+	print openload('https://openload.co/embed/toiRmtgUUQk/')
+
+#testOpenLoad()
 	

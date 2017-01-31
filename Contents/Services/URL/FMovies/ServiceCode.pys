@@ -56,7 +56,7 @@ def MetadataObjectForURL(url):
 		
 	try:
 		genres_a = []
-		genres = data['genres']
+		genres = data['genre']
 		for g in genres.split(','):
 			if g != '':
 				genres_a.append(g.strip())

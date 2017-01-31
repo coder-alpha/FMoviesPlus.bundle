@@ -243,7 +243,7 @@ def SortMenu(title):
 					key = Callback(EpisodeDetail, title = name, url = loc, thumb = thumb),
 					title = name + " (" + quality + ")",
 					summary = GetMovieInfo(summary=summary, urlPath=more_info_link),
-					thumb = Resource.ContentsOfURLWithFallback(url = thumb)
+					thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback=ICON_UNAV)
 					)
 				)
 		else:
@@ -287,7 +287,7 @@ def SortMenu(title):
 					key = Callback(EpisodeDetail, title = name, url = loc, thumb = thumb),
 					title = name + title_eps_no,
 					summary = GetMovieInfo(summary=summary, urlPath=more_info_link) + eps_nos,
-					thumb = Resource.ContentsOfURLWithFallback(url = thumb)
+					thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback=ICON_UNAV)
 					)
 				)
 	
@@ -362,7 +362,7 @@ def ShowCategory(title, key=' ', urlpath=None, page_count='1'):
 			key = Callback(EpisodeDetail, title = name, url = loc, thumb = thumb),
 			title = name + title_eps_no,
 			summary = GetMovieInfo(summary=summary, urlPath=more_info_link) + eps_nos,
-			thumb = Resource.ContentsOfURLWithFallback(url = thumb)
+			thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback=ICON_UNAV)
 			)
 		)
 		
@@ -673,12 +673,12 @@ def EpisodeDetail(title, url, thumb):
 				key = Callback(EpisodeDetail1, title=title_s, url=url, servers_list_new=servers_list_new[c], server_lab=(','.join(str(x) for x in server_lab)), summary=desc+'\n '+summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, serverts=serverts),
 				title = title_s,
 				summary = desc+ '\n ' +summary,
-				thumb = Resource.ContentsOfURLWithFallback(url = thumb)
+				thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback=ICON_UNAV)
 				)
 			)
 			c_not_missing = qual_i
 			c += 1
-		if SeasonN > 0:
+		if SeasonN > 0 or True: # enable for all - even if this might be a single season
 			oc.add(DirectoryObject(
 			key = Callback(Search, query = title.replace(str(SeasonN),'').replace('(Special)','').strip(), mode='other seasons'),
 			title = "Other Seasons",
@@ -703,11 +703,11 @@ def EpisodeDetail(title, url, thumb):
 				key = Callback(EpisodeDetail1, title=title_s, url=url, servers_list_new=servers_list_new[c], server_lab=(','.join(str(x) for x in server_lab)), summary='Episode Summary Not Available.\n ' + summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, serverts=serverts),
 				title = title_s,
 				summary = 'Episode Summary Not Available.\n ' + summary,
-				thumb = Resource.ContentsOfURLWithFallback(url = thumb)
+				thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback=ICON_UNAV)
 				)
 			)
 			c += 1
-		if SeasonN > 0:
+		if SeasonN > 0 or True: # enable for all - even if this might be a single season
 			oc.add(DirectoryObject(
 			key = Callback(Search, query = title.replace(str(SeasonN),'').replace('(Special)','').strip(), mode='other seasons'),
 			title = "Other Seasons",
@@ -837,7 +837,7 @@ def SimilarRecommendations(title, similar_reccos):
 			key = Callback(EpisodeDetail, title = name, url = loc, thumb = thumb),
 			title = name,
 			summary = GetMovieInfo(summary=summary, urlPath=more_info_link) + eps_nos,
-			thumb = Resource.ContentsOfURLWithFallback(url = thumb)
+			thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback=ICON_UNAV)
 			)
 		)
 	
@@ -926,48 +926,55 @@ def RecentWatchList(title):
 
 	oc = ObjectContainer(title1=title, no_cache=isForceNoCache())
 	NO_OF_ITEMS_IN_RECENT_LIST = 50
-	c=0
+	
 	urls_list = []
 	items_to_del = []
+	items_in_recent = []
 	
 	for each in Dict:
 		longstring = Dict[each]
 		
 		if 'https:' in longstring and 'RR44SS' in longstring:
-			if  c < NO_OF_ITEMS_IN_RECENT_LIST:
-				longstringsplit = longstring.split('RR44SS')
-				stitle = longstringsplit[0]
-				url = longstringsplit[1]
-				summary = longstringsplit[2]
-				thumb = longstringsplit[3]
-				timestr = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(longstringsplit[4])))
+			longstringsplit = longstring.split('RR44SS')
+			urls_list.append({'key': each, 'time': longstringsplit[4], 'val': longstring})
 				
-				if url in urls_list:
-					items_to_del.append(each)
-				else:
-					urls_list.append(url)
-					c += 1
-					oc.add(DirectoryObject(
-						key=Callback(EpisodeDetail, title=stitle, url=url, thumb=thumb),
-						title=stitle,
-						thumb=thumb,
-						tagline = timestr,
-						summary=summary
-						)
-					)
+	if len(urls_list) == 0:
+		return MC.message_container(title, 'No Items Available')
+		
+	newlist = sorted(urls_list, key=lambda k: k['time'], reverse=True)
+
+	c=0
+	for each in newlist:
+	
+		longstring = each['val']
+		longstringsplit = longstring.split('RR44SS')
+		stitle = longstringsplit[0]
+		url = longstringsplit[1]
+		summary = longstringsplit[2]
+		thumb = longstringsplit[3]
+		timestr = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(longstringsplit[4])))
+		
+		if url in items_in_recent:
+			items_to_del.append(each['key'])
+		else:
+			items_in_recent.append(url)
 				
-			else:
-				items_to_del.append(each)
+			oc.add(DirectoryObject(
+				key=Callback(EpisodeDetail, title=stitle, url=url, thumb=thumb),
+				title=stitle,
+				thumb=thumb,
+				tagline = timestr,
+				summary=summary
+				)
+			)
+			c += 1
 
 	if c >= NO_OF_ITEMS_IN_RECENT_LIST or len(items_to_del) > 0:
 		for each in items_to_del:
 			del Dict[each]
 		Dict.Save()
-	
-	if len(oc) == 0:
-		return MC.message_container(title, 'No Items Available')
-		
-	oc.objects.sort(key=lambda obj: obj.tagline, reverse=True)
+
+	#oc.objects.sort(key=lambda obj: obj.tagline, reverse=True)
 	
 	#add a way to clear RecentWatchList list
 	oc.add(DirectoryObject(
@@ -1076,7 +1083,7 @@ def ClearBookmarks():
 	for each in Dict:
 		try:
 			url = Dict[each]
-			if url.find(SITE.lower()) != -1 and 'http' in url and 'RecentWatchList' not in url:
+			if url.find(SITE.lower()) != -1 and 'http' in url and 'RR44SS' not in url:
 				remove_list.append(each)
 		except:
 			continue
@@ -1168,7 +1175,7 @@ def Search(query=None, surl=None, page_count='1', mode='default'):
 			key = Callback(EpisodeDetail, title = name, url = loc, thumb = thumb),
 			title = name + title_eps_no,
 			summary = GetMovieInfo(summary=summary, urlPath=more_info_link) + eps_nos,
-			thumb = Resource.ContentsOfURLWithFallback(url = thumb)
+			thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback=ICON_UNAV)
 			)
 		if mode == 'default':
 			oc.add(do)
@@ -1176,8 +1183,11 @@ def Search(query=None, surl=None, page_count='1', mode='default'):
 			fixname_SN = name.lower().replace(query.lower(),'').replace(' ','').strip()
 			# when we clean name we expect the season no. only to be present - if not then maybe its not a related season i.e. skip item
 			try:
-				fixname_SN_i = int(fixname_SN)
-				newname = query + " " + ("%02d" % fixname_SN_i)
+				if len(fixname_SN) > 0:
+					fixname_SN_i = int(fixname_SN)
+					newname = query + " " + ("%02d" % fixname_SN_i)
+				else:
+					newname = query
 				do.title = newname + title_eps_no
 			except:
 				pass

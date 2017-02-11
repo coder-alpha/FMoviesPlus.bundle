@@ -1,0 +1,84 @@
+import urllib2, re
+import constants as Constants
+
+#########################################################################################################
+#
+# OpenLoad scrapper
+#
+# Coder Alpha
+# https://github.com/coder-alpha
+#
+# Adapted from youtube-dl
+# https://github.com/rg3/youtube-dl
+# and modified for use with Plex Media Server
+#
+#########################################################################################################
+
+openloadhdr = {
+	'User-Agent': Constants.USER_AGENT,
+	'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+	'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.3',
+	'Accept-Encoding': 'none',
+	'Accept-Language': 'en-US,en;q=0.8',
+	'Connection': 'keep-alive'}
+
+def openload(url):
+	try:
+		openloadhdr['Referer'] = url
+		req = urllib2.Request(url, None, openloadhdr)
+		res = urllib2.urlopen(req)
+		webpage = res.read()
+
+		if 'File not found' in webpage or 'deleted by the owner' in webpage or 'Sorry!' in webpage:
+			return None
+
+		ol_id = search_regex('<span[^>]+id="[^"]+"[^>]*>([0-9]+)</span>',webpage, 'openload ID')
+
+		
+		video_url = openloadURLfromID(ol_id=ol_id)
+
+		return video_url
+	except Exception as e:
+		print ('ERROR openload.pys>openload: Args:%s Url:%s' % (e.args, url))
+		return None
+		
+def openloadURLfromID(ol_id):
+	try:
+		first_two_chars = int(float(ol_id[0:][:2]))
+		urlcode = {}
+		num = 2
+
+		while num < len(ol_id):
+			key = int(float(ol_id[num + 3:][:2]))
+			urlcode[key] = chr(int(float(ol_id[num:][:3])) - first_two_chars)
+			num += 5
+
+		sorted(urlcode, key=lambda key: urlcode[key])
+
+		urllink = ''.join(['%s' % (value) for (key, value) in urlcode.items()])
+
+		video_url = 'https://openload.co/stream/' + urllink
+
+		return video_url
+	except Exception as e:
+		print ('ERROR openload.pys>openloadURLfromID: Args:%s Url:%s' % (e.args, url))
+		return None
+	
+def search_regex(pattern, string, name, default=None, fatal=True, flags=0, group=None):
+	mobj = re.search(pattern, string, flags)
+	if mobj:
+		if group is None:
+		# return the first matching group
+			#return next(g for g in mobj.groups() if g is not None) -- next function is Python 2.6+
+			myIterator  = (g for g in mobj.groups() if g is not None)
+			for nextval in myIterator:
+				return nextval
+		else:
+			return mobj.group(group)
+	else:
+		return None
+	
+def testOpenLoad():
+	print openload('https://openload.co/embed/Q0ZlJq6OHIE/')
+
+#testOpenLoad()

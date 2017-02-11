@@ -10,19 +10,29 @@
 
 import urllib, urllib2, urlparse, json, time, re, sys, HTMLParser, random, cookielib, datetime, calendar
 
+Constants = SharedCodeService.constants
+
 CACHE = {}
 CACHE_EXPIRY_TIME = 60*60 # 1 Hour
 
 GLOBAL_TIMEOUT_FOR_HTTP_REQUEST = 15
 HTTP_GOOD_RESP_CODES = ['200','206']
 
-USER_AGENT = "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:48.0) Gecko/20100101 Firefox/48.0"
-
 BASE_URL = "https://www.fmovies.se"
 HASH_PATH_MENU = "/user/ajax/menu-bar"
 HASH_PATH_INFO = "/ajax/episode/info"
 SEARCH_PATH = "/search"
 FILTER_PATH = "/filter"
+KEYWORD_PATH = "/tag/"
+STAR_PATH = "/star/"
+
+# SSL Web Proxy
+PROXY_URL = "https://ssl-proxy.my-addr.org/myaddrproxy.php/"
+PROXY_PART1 = "/myaddrproxy.php/https/fmovies.se/"
+PROXY_PART1_REPLACE = "/"
+PROXY_PART2A = "/myaddrproxy.php/https/"
+PROXY_PART2B = "/myaddrproxy.php/http/"
+PROXY_PART2_REPLACE = "//"
 
 ####################################################################################################
 
@@ -32,6 +42,7 @@ def GetApiUrl(url, key, serverts=0):
 
 	use_debug = Prefs["use_debug"]
 	use_https_alt = Prefs["use_https_alt"]
+	use_web_proxy = Prefs["use_web_proxy"]
 	
 	res = None
 	myts = time.time()
@@ -56,13 +67,13 @@ def GetApiUrl(url, key, serverts=0):
 		if use_debug:
 			Log("Retrieving Fresh Movie Link")
 			
-		ret, isOpenLoad = get_sources(url=url, key=key, use_debug=use_debug, serverts=serverts, myts=myts, use_https_alt=use_https_alt)
+		ret, isOpenLoad = get_sources(url=url, key=key, use_debug=use_debug, serverts=serverts, myts=myts, use_https_alt=use_https_alt, webproxy=None if not use_web_proxy else PROXY_URL)
 		
 		if ret == None: # if the request ever fails - clear CACHE right away and make 2nd attempt
 			if use_debug:
 				Log("GetSources returned None for " + url + " : " + key)
 			CACHE.clear()
-			ret, isOpenLoad = get_sources(url=url, key=key, use_debug=use_debug, serverts=serverts, myts=myts, use_https_alt=use_https_alt)
+			ret, isOpenLoad = get_sources(url=url, key=key, use_debug=use_debug, serverts=serverts, myts=myts, use_https_alt=use_https_alt, webproxy=None if not use_web_proxy else PROXY_URL)
 			
 		if ret != None:
 			if isOpenLoad:
@@ -75,11 +86,39 @@ def GetApiUrl(url, key, serverts=0):
 				if use_debug:
 					Log("Added " + key + " to CACHE")
 			else:
+				# fix api url to https
+				ret = ret.replace('http://','https://')
+
+				data = None
 				if use_https_alt:
-					dataPage = request(url=ret)
-					data = json.loads(dataPage)
+					try:
+						vars = request(url=ret, output='response')
+						if vars != None and len(vars) > 0 and vars[0] in HTTP_GOOD_RESP_CODES:
+							data = json.loads(vars[1])
+						else:
+							Log('ERROR fmovies.py>GetApiUrl1: Url:%s returned Vars:%s' % (ret, vars))
+					except Exception as e:
+						Log('ERROR fmovies.py>GetApiUrl2: Args:%s, Url:%s returned %s' % (e.args,ret,vars))
+						pass
+				elif use_web_proxy:
+					json_data_string = HTTP.Request(PROXY_URL + ret).content
+					json_data_string = json_data_string.replace(PROXY_PART1, PROXY_PART1_REPLACE)
+					json_data_string = json_data_string.replace(PROXY_PART2A, PROXY_PART2_REPLACE)
+					json_data_string = json_data_string.replace(PROXY_PART2B, PROXY_PART2_REPLACE)
+					try:
+						data = JSON.ObjectFromString(json_data_string)
+					except Exception as e:
+						Log('ERROR fmovies.py>GetApiUrl3: Args:%s, Url:%s, StringData:%s' % (e.args,ret,json_data_string))
+						pass
 				else:
-					data = JSON.ObjectFromURL(ret)
+					try:
+						data = JSON.ObjectFromURL(ret)
+					except Exception as e:
+						Log('ERROR fmovies.py>GetApiUrl4: Args:%s, Url:%s' % (e.args,ret))
+						pass
+					
+				if data == None:
+					return None, isOpenLoad
 				if data['error'] == None:
 					res = JSON.StringFromObject(data['data'])
 					CACHE[key] = {}
@@ -92,7 +131,7 @@ def GetApiUrl(url, key, serverts=0):
 
 	return res, isOpenLoad
 
-def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=False):
+def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=False, webproxy=None):
 
 	if serverts == 0:
 		#serverts = ((int(time.time())/3600)*3600)
@@ -141,7 +180,7 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 			CACHE['cookie'] = {}
 			serverts = str(serverts)
 			time.sleep(0.2)
-			result, headers, content, cookie1 = request(url, limit='0', output='extended', httpsskip=use_https_alt)
+			result, headers, content, cookie1 = request(url, limit='0', output='extended', httpsskip=use_https_alt, webproxy=webproxy)
 			#print result
 			CACHE['cookie']['cookie1'] = cookie1
 			hash_url = urlparse.urljoin(BASE_URL, HASH_PATH_MENU)
@@ -149,7 +188,7 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 			query.update(get_token(query))
 			hash_url = hash_url + '?' + urllib.urlencode(query)
 			time.sleep(0.2)
-			r1, headers, content, cookie2 = request(hash_url, limit='0', output='extended', cookie=cookie1, httpsskip=use_https_alt)
+			r1, headers, content, cookie2 = request(hash_url, limit='0', output='extended', cookie=cookie1, httpsskip=use_https_alt, webproxy=webproxy)
 			#print r1
 			CACHE['cookie']['cookie2'] = cookie2
 			CACHE['cookie']['myts'] = myts
@@ -169,7 +208,11 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 			
 			time.sleep(0.4)
 			#print hash_url
-			result = request(hash_url, headers=headers, limit='0')
+			result = request(hash_url, headers=headers, limit='0', webproxy=webproxy)
+			if webproxy != None:
+				result = result.replace(PROXY_PART1, PROXY_PART1_REPLACE)
+				result = result.replace(PROXY_PART2A, PROXY_PART2_REPLACE)
+				result = result.replace(PROXY_PART2B, PROXY_PART2_REPLACE)
 			#print result
 			
 			result = json.loads(result)
@@ -226,11 +269,16 @@ def get_token(data):
 
 	
 #########################################################################################################
-def request(url, close=True, redirect=True, followredirect=False, error=False, proxy=None, post=None, headers=None, mobile=False, limit=None, referer=None, cookie=None, output='', timeout='30', httpsskip=False):
+def request(url, close=True, redirect=True, followredirect=False, error=False, proxy=None, post=None, headers=None, mobile=False, limit=None, referer=None, cookie=None, output='', timeout='30', httpsskip=False, webproxy=None, use_web_proxy=False):
 	try:
 
 		handlers = []
 		redirectURL = url
+		
+		if webproxy != None:
+			url = webproxy + url
+		elif use_web_proxy:
+			url = PROXY_URL + url
 
 		if not proxy == None:
 			handlers += [urllib2.ProxyHandler({'http':'%s' % (proxy)}), urllib2.HTTPHandler]
@@ -239,7 +287,7 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 
 		if output == 'cookie2' or output == 'cookie' or output == 'extended' or not close == True:
 			cookies = cookielib.LWPCookieJar()
-			if httpsskip:
+			if httpsskip or webproxy != None or use_web_proxy:
 				handlers += [urllib2.HTTPHandler(), urllib2.HTTPCookieProcessor(cookies)]
 			else:
 				handlers += [urllib2.HTTPHandler(), urllib2.HTTPSHandler(), urllib2.HTTPCookieProcessor(cookies)]
@@ -263,7 +311,7 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 			pass
 		elif not mobile == True:
 			#headers['User-Agent'] = agent()
-			#headers['User-Agent'] = USER_AGENT
+			#headers['User-Agent'] = Constants.USER_AGENT
 			headers['User-Agent'] = randomagent()			
 		else:
 			headers['User-Agent'] = 'Apple-iPhone/701.341'
@@ -407,7 +455,7 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 
 		return result
 	except Exception as e:
-		Log('ERROR fmovies.py>request %s, %s:' % (e.args,url))
+		Log('ERROR fmovies.py>request %s, %s' % (e.args,url))
 		return
 	
 #########################################################################################################
@@ -467,7 +515,7 @@ def cfcookie(netloc, ua, timeout):
 
 		return cookie
 	except Exception as e:
-		Log('Client ERR: %s' % (e))
+		Log('ERROR fmovies.py>cfcookie: %s' % (e.args))
 		return
 		
 def parseJSString(s):
@@ -501,70 +549,3 @@ def replaceHTMLCodes(txt):
 	return txt
 	
 #########################################################################################################
-#########################################################################################################
-#
-# OpenLoad scrapper
-#
-# Coder Alpha
-# https://github.com/coder-alpha
-#
-# Adapted from youtube-dl
-# https://github.com/rg3/youtube-dl
-# and modified for use with Plex Media Server
-#
-#########################################################################################################
-openloadhdr = {
-	'User-Agent': USER_AGENT,
-	'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-	'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.3',
-	'Accept-Encoding': 'none',
-	'Accept-Language': 'en-US,en;q=0.8',
-	'Connection': 'keep-alive'}
-
-def openload(url):
-
-	try:
-		openloadhdr['Referer'] = url
-		req = urllib2.Request(url, None, openloadhdr)
-		res = urllib2.urlopen(req)
-		webpage = res.read()
-
-		if 'File not found' in webpage or 'deleted by the owner' in webpage or 'Sorry!' in webpage:
-			return None
-
-		ol_id = search_regex('<span[^>]+id="[^"]+"[^>]*>([0-9]+)</span>',webpage, 'openload ID')
-
-		first_three_chars = int(float(ol_id[0:][:3]))
-		fifth_char = int(float(ol_id[3:5]))
-		urlcode = ''
-		num = 5
-
-		while num < len(ol_id):
-			urlcode += unichr(int(float(ol_id[num:][:3])) + first_three_chars - fifth_char * int(float(ol_id[num + 3:][:2])))
-			num += 5
-
-		video_url = 'https://openload.co/stream/' + urlcode
-
-		return video_url
-	except:
-		return None
-	
-def search_regex(pattern, string, name, default=None, fatal=True, flags=0, group=None):
-	mobj = re.search(pattern, string, flags)
-	if mobj:
-		if group is None:
-		# return the first matching group
-			#return next(g for g in mobj.groups() if g is not None) -- next function is Python 2.6+
-			myIterator  = (g for g in mobj.groups() if g is not None)
-			for nextval in myIterator:
-				return nextval
-		else:
-			return mobj.group(group)
-	else:
-		return None
-	
-def testOpenLoad():
-	print openload('https://openload.co/embed/toiRmtgUUQk/')
-
-#testOpenLoad()
-	

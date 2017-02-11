@@ -1,11 +1,13 @@
-import time, fmovies, base64
+import time, fmovies, base64, unicodedata, re
+Openload = SharedCodeService.openload
 
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.07' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.08' # Release notation (x.y - where x is major and y is minor)
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
 ################################################################################
+
 
 # Vibrant Emoji's (might not be supported on all clients)
 EMOJI_LINK = u'\U0001F517'
@@ -144,24 +146,127 @@ def GetHttpRequest(url, cookies=None):
 		req = None
 	return req
 	
+######################################################################################
+@route(PREFIX + "/GetPageElements")
+def GetPageElements(url, headers=None):
+
+	page_data_elems = None
+	try:
+		page_data_string = GetPageAsString(url=url, headers=headers)
+		page_data_elems = HTML.ElementFromString(page_data_string)
+	except:
+		pass
+		
+	return page_data_elems
+	
+######################################################################################
+@route(PREFIX + "/GetPageAsString")
+def GetPageAsString(url, headers=None):
+
+	page_data_string = None
+	try:
+		if Prefs["use_https_alt"]:
+			if Prefs["use_debug"]:
+				Log("Using SSL Alternate Option")
+				Log("Url: " + url)
+			page_data_string = fmovies.request(url = url, headers=headers)
+		elif Prefs["use_web_proxy"]:
+			if Prefs["use_debug"]:
+				Log("Using SSL Web-Proxy Option")
+				Log("Url: " + url)
+				
+			if headers == None:
+				page_data_string = HTTP.Request(fmovies.PROXY_URL + url).content
+			else:
+				page_data_string = HTTP.Request(fmovies.PROXY_URL + url, headers=headers).content
+			page_data_string = page_data_string.replace(fmovies.PROXY_PART1, fmovies.PROXY_PART1_REPLACE)
+			page_data_string = page_data_string.replace(fmovies.PROXY_PART2A, fmovies.PROXY_PART2_REPLACE)
+			page_data_string = page_data_string.replace(fmovies.PROXY_PART2B, fmovies.PROXY_PART2_REPLACE)
+		else:
+			if headers == None:
+				page_data_string = HTTP.Request(url).content
+			else:
+				page_data_string = HTTP.Request(url, headers=headers).content
+	except Exception as e:
+		Log('ERROR common.py>GetPageAsString: %s' % (e.args))
+		pass
+		
+	return page_data_string
+	
+####################################################################################################
+@route(PREFIX + "/getOpenloadID")
+def getOpenloadID(url):
+
+	ol_id = None
+	try:
+		Openload.openloadhdr['Referer'] = url
+		webpage = GetPageAsString(url=url, headers=Openload.openloadhdr)
+
+		if 'File not found' in webpage or 'deleted by the owner' in webpage or 'Sorry!' in webpage:
+			return None
+
+		ol_id = Openload.search_regex('<span[^>]+id="[^"]+"[^>]*>([0-9]+)</span>',webpage, 'openload ID')
+	except:
+		pass
+		
+	return ol_id
+		
+####################################################################################################
+@route(PREFIX + "/removeAccents")
+def removeAccents(text):
+	"""
+	Convert input text to id.
+
+	:param text: The input string.
+	:type text: String.
+
+	:returns: The processed String.
+	:rtype: String.
+	"""
+	text = strip_accents(text.lower())
+	text = re.sub('[ ]+', '_', text)
+	text = re.sub('[^0-9a-zA-Z]', ' ', text)
+	text = text.title()
+	return text
+
+def strip_accents(text):
+	"""
+	Strip accents from input String.
+
+	:param text: The input string.
+	:type text: String.
+
+	:returns: The processed String.
+	:rtype: String.
+	"""
+	try:
+		text = unicode(text, 'utf-8')
+	except NameError: # unicode is a default on python 3 
+		pass
+	text = unicodedata.normalize('NFD', text)
+	text = text.encode('ascii', 'ignore')
+	text = text.decode("utf-8")
+	return str(text)
+
+
 ####################################################################################################
 # author: Twoure
 # source: https://github.com/Twoure/HindiMoviesOnline.bundle/blob/master/Contents/Code/messages.py
 #
 class NewMessageContainer(object):
-    def __init__(self, prefix, title):
-        self.title = title
-        Route.Connect(prefix + '/message', self.message_container)
+	def __init__(self, prefix, title):
+		self.title = title
+		Route.Connect(prefix + '/message', self.message_container)
 
-    def message_container(self, header, message):
-        """Setup MessageContainer depending on Platform"""
+	def message_container(self, header, message):
+		"""Setup MessageContainer depending on Platform"""
 
-        if Client.Platform in ['Plex Home Theater', 'OpenPHT']:
-            oc = ObjectContainer(
-                title1=self.title, title2=header, no_cache=True,
-                no_history=True, replace_parent=True
-                )
-            oc.add(PopupDirectoryObject(title=header, summary=message))
-            return oc
-        else:
-            return MessageContainer(header, message)
+		if Client.Platform in ['Plex Home Theater', 'OpenPHT']:
+			oc = ObjectContainer(
+				title1=self.title, title2=header, no_cache=True,
+				no_history=True, replace_parent=True
+				)
+			oc.add(PopupDirectoryObject(title=header, summary=message))
+			return oc
+		else:
+			return MessageContainer(header, message)

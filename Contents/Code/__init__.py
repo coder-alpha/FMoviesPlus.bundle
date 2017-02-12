@@ -462,7 +462,7 @@ def EpisodeDetail(title, url, thumb):
 		return MC.message_container("Unknown Error", "Error: The page was not received.")
 		
 	session = common.getSession()
-	client_id = Client.Product +'-'+ session
+	client_id = '%s-%s' % (Client.Product, session)
 	if client_id not in CUSTOM_TIMEOUT_DICT:
 		CUSTOM_TIMEOUT_DICT[client_id] = {}
 		
@@ -930,7 +930,7 @@ def EpisodeDetail1(title, url, servers_list_new, server_lab, summary, thumb, art
 	server_lab = server_lab.split(',')
 	
 	session = common.getSession()
-	client_id = Client.Product + '-' + session
+	client_id = '%s-%s' % (Client.Product, session)
 		
 	# create timeout thread
 	Thread.Create(ThreadTimeoutTimer, {}, E(url), client_id)
@@ -1423,8 +1423,10 @@ def Search(query=None, surl=None, page_count='1', mode='default', thumb=None, su
 		page_data = common.GetPageElements(url=url)
 	else:
 		if mode == 'default':
-			Dict[SITE.lower() +'MyCustomSearch'+query] = query
+			timestr = str(int(time.time()))
+			Dict[SITE.lower() +'MyCustomSearch'+query] = query + 'MyCustomSearch' + timestr
 			Dict.Save()
+			url = fmovies.BASE_URL + fmovies.SEARCH_PATH + '?page=%s&keyword=%s' % (str(page_count), String.Quote(query, usePlus=True))
 		elif mode == 'other seasons':
 			url = fmovies.BASE_URL + fmovies.FILTER_PATH + '?type=series&page=%s&keyword=%s' % (str(page_count), String.Quote(query, usePlus=True))
 		else:
@@ -1541,6 +1543,29 @@ def Search(query=None, surl=None, page_count='1', mode='default', thumb=None, su
 def SearchQueueMenu(title):
 
 	oc = ObjectContainer(title2='Search Using Term', no_cache=isForceNoCache())
+	
+	urls_list = []
+	
+	for each in Dict:
+		query = Dict[each]
+		try:
+			if each.find(SITE.lower()) != -1 and 'MyCustomSearch' in each and query != 'removed':
+				timestr = '1483228800'
+				if 'MyCustomSearch' in query:
+					split_query = query.split('MyCustomSearch')
+					query = split_query[0]
+					timestr = split_query[1]
+					
+				urls_list.append({'key': query, 'time': timestr})
+				
+		except:
+			pass
+			
+	if len(urls_list) == 0:
+		return MC.message_container(title, 'No Items Available')
+		
+	newlist = sorted(urls_list, key=lambda k: k['time'], reverse=True)
+		
 	oc.add(DirectoryObject(
 		key = Callback(ClearSearches),
 		title = "Clear Search Queue",
@@ -1548,13 +1573,11 @@ def SearchQueueMenu(title):
 		summary = "CAUTION! This will clear your entire search queue list!"
 		)
 	)
-	for each in Dict:
-		query = Dict[each]
-		try:
-			if each.find(SITE.lower()) != -1 and 'MyCustomSearch' in each and query != 'removed':
-				oc.add(DirectoryObject(key = Callback(Search, query = query, page_count='1'), title = query, thumb = R(ICON_SEARCH)))
-		except:
-			pass
+	
+	for item in newlist:
+		timestr = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(item['time'])))
+		query = item['key']
+		oc.add(DirectoryObject(key = Callback(Search, query = query, page_count='1'), title = query, tagline = timestr, thumb = R(ICON_SEARCH)))
 
 	return oc
 	

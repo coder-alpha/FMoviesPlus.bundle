@@ -3,7 +3,7 @@ Openload = SharedCodeService.openload
 
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.08' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.09' # Release notation (x.y - where x is major and y is minor)
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
 ################################################################################

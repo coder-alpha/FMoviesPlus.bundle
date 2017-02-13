@@ -35,6 +35,8 @@ ICON_UNAV = "MoviePosterUnavailable.jpg"
 ICON_PREFS = "icon-prefs.png"
 ICON_UPDATE = "icon-update.png"
 ICON_UPDATE_NEW = "icon-update-new.png"
+ICON_OPTIONS = "icon-options.png"
+ICON_CLEAR = "icon-clear.png"
 ICON_DK_ENABLE = "icon-dumbKeyboardE.png"
 ICON_DK_DISABLE = "icon-dumbKeyboardD.png"
 ICON_INFO = "icon-info.png"
@@ -114,12 +116,6 @@ def MainMenu():
 	oc.add(DirectoryObject(key = Callback(Bookmarks, title="Bookmarks"), title = "Bookmarks", thumb = R(ICON_QUEUE)))
 	oc.add(DirectoryObject(key = Callback(SearchQueueMenu, title = 'Search Queue'), title = 'Search Queue', summary='Search using saved search terms', thumb = R(ICON_SEARCH_QUE)))
 	
-	session = common.getSession()
-	if Dict['ToggleDumbKeyboard'+session] == None or Dict['ToggleDumbKeyboard'+session] == 'disabled':
-		oc.add(DirectoryObject(key = Callback(common.ToggleDumbKeyboard, session=session), title = 'Enable DumbKeyboard', summary='Click here to Enable DumbKeyboard for this Device', thumb = R(ICON_DK_ENABLE)))
-	else:
-		oc.add(DirectoryObject(key = Callback(common.ToggleDumbKeyboard, session=session), title = 'Disable DumbKeyboard', summary='Click here to Disable DumbKeyboard for this Device', thumb = R(ICON_DK_DISABLE)))
-	
 	if common.UseDumbKeyboard():
 		DumbKeyboard(PREFIX, oc, Search,
 				dktitle = 'Search',
@@ -128,6 +124,7 @@ def MainMenu():
 	else:
 		oc.add(InputDirectoryObject(key = Callback(Search), thumb = R(ICON_SEARCH), title='Search', summary='Search Channel', prompt='Search for...'))
 	
+	oc.add(DirectoryObject(key = Callback(Options), title = 'Options', thumb = R(ICON_OPTIONS), summary='Options that can be accessed from a Client, includes Enabling DumbKeyboard & Clearing Cache'))
 	oc.add(PrefsObject(title = 'Preferences', thumb = R(ICON_PREFS)))
 	try:
 		if updater.update_available()[0]:
@@ -138,6 +135,31 @@ def MainMenu():
 		pass
 	
 	return oc
+
+######################################################################################
+@route(PREFIX + "/options")
+def Options():
+	oc = ObjectContainer(title2='Options', no_cache=isForceNoCache())
+	
+	session = common.getSession()
+	if Dict['ToggleDumbKeyboard'+session] == None or Dict['ToggleDumbKeyboard'+session] == 'disabled':
+		oc.add(DirectoryObject(key = Callback(common.ToggleDumbKeyboard, session=session), title = 'Enable DumbKeyboard', summary='Click here to Enable DumbKeyboard for this Device', thumb = R(ICON_DK_ENABLE)))
+	else:
+		oc.add(DirectoryObject(key = Callback(common.ToggleDumbKeyboard, session=session), title = 'Disable DumbKeyboard', summary='Click here to Disable DumbKeyboard for this Device', thumb = R(ICON_DK_DISABLE)))
+		
+	oc.add(DirectoryObject(key = Callback(ClearCache), title = "Clear Cache", summary='Forces clearing of the Cache cookies and links', thumb = R(ICON_CLEAR)))
+	
+	return oc
+	
+	
+######################################################################################
+@route(PREFIX + "/clearcache")
+def ClearCache():
+	
+	fmovies.CACHE.clear()
+	HTTP.ClearCache()
+	return MC.message_container('Clear Cache', 'Cache has been cleared !')
+	
 	
 ######################################################################################
 @route(PREFIX + "/testSite")
@@ -864,7 +886,8 @@ def EpisodeDetail(title, url, thumb):
 					pass
 			if isTimeoutApproaching(item = E(url), client_id=client_id):
 				Log("isTimeoutApproaching action")
-				break
+				#break
+				return MC.message_container('Timeout', 'Timeout: Please try again !')
 						
 	itemtype = ('show' if isTvSeries else 'movie')
 						
@@ -963,7 +986,8 @@ def EpisodeDetail1(title, url, servers_list_new, server_lab, summary, thumb, art
 				pass
 		if isTimeoutApproaching(item = E(url), client_id=client_id):
 			Log("isTimeoutApproaching action")
-			break
+			#break
+			return MC.message_container('Timeout', 'Timeout: Please try again !')
 
 	return oc
 	
@@ -992,7 +1016,7 @@ def isTimeoutApproaching(item, client_id):
 			return False
 	else:
 		# return False for clients not defined in custom timeout checker
-		False
+		return False
 	
 	# remove entry before returning True
 	if Prefs["use_debug"]:
@@ -1914,8 +1938,6 @@ def ValidatePrefs():
 @route(PREFIX + "/DumpPrefs")
 def DumpPrefs():
 	Log("=================FMoviesPlus Prefs=================")
-	Log(common.TITLE + ' v.' + common.VERSION)
-	Log("OS: " + sys.platform)
 	Log("Channel Preferences:")
 	Log("Cache Expiry Time (in mins.): %s" % (Prefs["cache_expiry_time"]))
 	Log("No Extra Info. for Nav. Pages (Speeds Up Navigation): %s" % (Prefs["dont_fetch_more_info"]))
@@ -1935,7 +1957,7 @@ def ClientInfo():
 	Log("Client.Product: %s" % Client.Product)
 	Log("Client.Platform: %s" % Client.Platform)
 	Log("Client.Version: %s" % Client.Version)
-
+	Log("=============================================")
 
 ######################################################################################
 @route(PREFIX + "/ValidateMyPrefs")

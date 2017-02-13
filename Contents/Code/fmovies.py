@@ -68,14 +68,20 @@ def GetApiUrl(url, key, serverts=0):
 			Log("Retrieving Fresh Movie Link")
 			
 		ret, isOpenLoad = get_sources(url=url, key=key, use_debug=use_debug, serverts=serverts, myts=myts, use_https_alt=use_https_alt, webproxy=None if not use_web_proxy else PROXY_URL)
+		if use_debug:
+			Log("get_sources url: %s, key: %s" % (url,key))
+			Log("get_sources ret: %s" % ret)
 		
 		if ret == None: # if the request ever fails - clear CACHE right away and make 2nd attempt
-			if use_debug:
-				Log("GetSources returned None for " + url + " : " + key)
 			CACHE.clear()
+			if use_debug:
+				Log("CACHE cleared due to null response from API - maybe cookie issue for %s" % url)
 			ret, isOpenLoad = get_sources(url=url, key=key, use_debug=use_debug, serverts=serverts, myts=myts, use_https_alt=use_https_alt, webproxy=None if not use_web_proxy else PROXY_URL)
 			
-		if ret != None:
+		if ret == None:
+			if use_debug:
+				Log("null response from API (possible file deleted) - for %s" % url)
+		else:
 			if isOpenLoad:
 				res = ret
 				CACHE[key] = {}

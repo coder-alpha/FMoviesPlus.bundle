@@ -30,6 +30,7 @@ ICON_LATEST = "icon-latest.png"
 ICON_SIMILAR = "icon-similar.png"
 ICON_OTHERSEASONS = "icon-otherseasons.png"
 ICON_HOT = "icon-hot.png"
+ICON_ENTER = "icon-enter.png"
 ICON_QUEUE = "icon-bookmark.png"
 ICON_UNAV = "MoviePosterUnavailable.jpg"
 ICON_PREFS = "icon-prefs.png"
@@ -39,6 +40,8 @@ ICON_OPTIONS = "icon-options.png"
 ICON_CLEAR = "icon-clear.png"
 ICON_DK_ENABLE = "icon-dumbKeyboardE.png"
 ICON_DK_DISABLE = "icon-dumbKeyboardD.png"
+ICON_GL_ENABLE = "icon-gl-enable.png"
+ICON_GL_DISABLE = "icon-gl-disable.png"
 ICON_INFO = "icon-info.png"
 ICON_STAR = "icon-star.png"
 ICON_PEOPLE = "icon-people.png"
@@ -64,6 +67,8 @@ VALID_PREFS_MSGS = []
 CONVERT_BMS = []
 
 CUSTOM_TIMEOUT_DICT = {}
+
+CUSTOM_TIMEOUT_CLIENTS = {'Plex Web': 15}
 
 ######################################################################################
 
@@ -116,7 +121,7 @@ def MainMenu():
 	oc.add(DirectoryObject(key = Callback(Bookmarks, title="Bookmarks"), title = "Bookmarks", thumb = R(ICON_QUEUE)))
 	oc.add(DirectoryObject(key = Callback(SearchQueueMenu, title = 'Search Queue'), title = 'Search Queue', summary='Search using saved search terms', thumb = R(ICON_SEARCH_QUE)))
 	
-	if common.UseDumbKeyboard():
+	if common.UsingOption(key='ToggleDumbKeyboard'):
 		DumbKeyboard(PREFIX, oc, Search,
 				dktitle = 'Search',
 				dkthumb = R(ICON_SEARCH)
@@ -143,15 +148,19 @@ def Options():
 	
 	session = common.getSession()
 	if Dict['ToggleDumbKeyboard'+session] == None or Dict['ToggleDumbKeyboard'+session] == 'disabled':
-		oc.add(DirectoryObject(key = Callback(common.ToggleDumbKeyboard, session=session), title = 'Enable DumbKeyboard', summary='Click here to Enable DumbKeyboard for this Device', thumb = R(ICON_DK_ENABLE)))
+		oc.add(DirectoryObject(key=Callback(common.setDictVal,key='ToggleDumbKeyboard',session=session, val='enabled'), title = 'Enable DumbKeyboard', summary='Click here to Enable DumbKeyboard for this Device', thumb = R(ICON_DK_ENABLE)))
 	else:
-		oc.add(DirectoryObject(key = Callback(common.ToggleDumbKeyboard, session=session), title = 'Disable DumbKeyboard', summary='Click here to Disable DumbKeyboard for this Device', thumb = R(ICON_DK_DISABLE)))
+		oc.add(DirectoryObject(key=Callback(common.setDictVal,key='ToggleDumbKeyboard',session=session, val='disabled'), title = 'Disable DumbKeyboard', summary='Click here to Disable DumbKeyboard for this Device', thumb = R(ICON_DK_DISABLE)))
 		
-	oc.add(DirectoryObject(key = Callback(ClearCache), title = "Clear Cache", summary='Forces clearing of the Cache cookies and links', thumb = R(ICON_CLEAR)))
+	if Dict['ToggleRedirector'+session] == None or Dict['ToggleRedirector'+session] == 'disabled':
+		oc.add(DirectoryObject(key=Callback(common.setDictVal,key='ToggleRedirector',session=session, val='enabled'), title = 'Enable Redirector', summary='Click here to Enable Redirector method for this Device', thumb = R(ICON_GL_ENABLE)))
+	else:
+		oc.add(DirectoryObject(key=Callback(common.setDictVal,key='ToggleRedirector',session=session, val='disabled'), title = 'Disable Redirector', summary='Click here to Disable Redirector method for this Device', thumb = R(ICON_GL_DISABLE)))
+		
+	oc.add(DirectoryObject(key = Callback(ClearCache), title = "Clear Cache", summary='Forces clearing of the Cache cookies and links. Cache items: %s' % (len(fmovies.CACHE)), thumb = R(ICON_CLEAR)))
 	
 	return oc
-	
-	
+
 ######################################################################################
 @route(PREFIX + "/clearcache")
 def ClearCache():
@@ -259,7 +268,7 @@ def ShowMenu(title):
 					)
 				)
 			
-	if common.UseDumbKeyboard():
+	if common.UsingOption(key='ToggleDumbKeyboard'):
 		DumbKeyboard(PREFIX, oc, Search,
 				dktitle = 'Search',
 				dkthumb = R(ICON_SEARCH)
@@ -372,7 +381,7 @@ def SortMenu(title):
 					)
 				)
 	
-	if common.UseDumbKeyboard():
+	if common.UsingOption(key='ToggleDumbKeyboard'):
 		DumbKeyboard(PREFIX, oc, Search,
 				dktitle = 'Search',
 				dkthumb = R(ICON_SEARCH)
@@ -455,7 +464,7 @@ def ShowCategory(title, key=' ', urlpath=None, page_count='1'):
 			)
 		)
 		
-	if common.UseDumbKeyboard():
+	if common.UsingOption(key='ToggleDumbKeyboard'):
 		DumbKeyboard(PREFIX, oc, Search,
 				dktitle = 'Search',
 				dkthumb = R(ICON_SEARCH)
@@ -785,7 +794,7 @@ def EpisodeDetail(title, url, thumb):
 				
 			try:
 				oc.add(DirectoryObject(
-					key = Callback(EpisodeDetail1, title=title_s, url=url, servers_list_new=servers_list_new[c], server_lab=(','.join(str(x) for x in server_lab)), summary=desc+'\n '+summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, serverts=serverts),
+					key = Callback(TvShowDetail, tvshow=title, title=title_s, url=url, servers_list_new=servers_list_new[c], server_lab=(','.join(str(x) for x in server_lab)), summary=desc+'\n '+summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, serverts=serverts),
 					title = title_s,
 					summary = desc+ '\n ' +summary,
 					art = art,
@@ -825,7 +834,7 @@ def EpisodeDetail(title, url, thumb):
 			try:
 				title_s = 'Ep:' + eps[server_lab[0]]['quality']
 				oc.add(DirectoryObject(
-					key = Callback(EpisodeDetail1, title=title_s, url=url, servers_list_new=servers_list_new[c], server_lab=(','.join(str(x) for x in server_lab)), summary='Episode Summary Not Available.\n ' + summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, serverts=serverts),
+					key = Callback(TvShowDetail, tvshow=title, title=title_s, url=url, servers_list_new=servers_list_new[c], server_lab=(','.join(str(x) for x in server_lab)), summary='Episode Summary Not Available.\n ' + summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, serverts=serverts),
 					title = title_s,
 					summary = 'Episode Summary Not Available.\n ' + summary,
 					thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback=ICON_UNAV)
@@ -849,7 +858,7 @@ def EpisodeDetail(title, url, thumb):
 			Log("case for presenting movies")
 		
 		# create timeout thread
-		Thread.Create(ThreadTimeoutTimer, {}, E(url), client_id)
+		Thread.Create(ThreadTimeoutTimer, {}, Client.Product, E(url), client_id)
 	
 		for label in server_lab:
 			for label_i in servers_list[label]:
@@ -867,27 +876,35 @@ def EpisodeDetail(title, url, thumb):
 							isVideoOnline = isItemVidAvailable(isOpenLoad=isOpenLoad, data=data)
 							status = common.GetEmoji(type=isVideoOnline) + ' '
 						
-						durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":server_info, "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "roles":roles, "directors":directors, "roles":roles, "isOpenLoad":str(isOpenLoad), "useSSL":str(Prefs["use_https_alt"]), "isVideoOnline":str(isVideoOnline)}))
 						try:
+							redirector_stat = ''
+							redirector_enabled = 'false'
+							if common.UsingOption(key='ToggleRedirector') and isOpenLoad == False:
+								redirector_stat = ' (via Redirector)'
+								redirector_enabled = 'true'
+								
+							durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":server_info, "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "roles":roles, "directors":directors, "roles":roles, "isOpenLoad":str(isOpenLoad), "useSSL":str(Prefs["use_https_alt"]), "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled}))
+							
 							oc.add(VideoClipObject(
 								url = durl,
-								title = status + title + ' - ' + title_s,
+								title = status + title + ' - ' + title_s + redirector_stat,
 								thumb = thumb,
 								art = art,
 								summary = summary,
 								key = AddRecentWatchList(title=title, url=url, summary=summary, thumb=thumb)
 								)
 							)
+						
 						except Exception as e:
 							Log('ERROR init.py>EpisodeDetail>Movie %s, %s' % (e.args, (title + ' - ' + title_s)))
 							pass
 				except Exception as e:
 					Log('ERROR init.py>EpisodeDetail>Movie %s, %s' % (e.args, (title + ' - ' + title_s)))
 					pass
-			if isTimeoutApproaching(item = E(url), client_id=client_id):
+			if isTimeoutApproaching(clientProd = Client.Product, item = E(url), client_id=client_id):
 				Log("isTimeoutApproaching action")
-				#break
-				return MC.message_container('Timeout', 'Timeout: Please try again !')
+				break
+				#return MC.message_container('Timeout', 'Timeout: Please try again !')
 						
 	itemtype = ('show' if isTvSeries else 'movie')
 						
@@ -942,8 +959,8 @@ def EpisodeDetail(title, url, thumb):
 	
 	return oc
 
-@route(PREFIX + "/episodedetail1")
-def EpisodeDetail1(title, url, servers_list_new, server_lab, summary, thumb, art, year, rating, duration, genre, directors, roles, serverts):
+@route(PREFIX + "/TvShowDetail")
+def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thumb, art, year, rating, duration, genre, directors, roles, serverts):
 
 	oc = ObjectContainer(title2 = title, art = art, no_cache=isForceNoCache())
 
@@ -956,7 +973,7 @@ def EpisodeDetail1(title, url, servers_list_new, server_lab, summary, thumb, art
 	client_id = '%s-%s' % (Client.Product, session)
 		
 	# create timeout thread
-	Thread.Create(ThreadTimeoutTimer, {}, E(url), client_id)
+	Thread.Create(ThreadTimeoutTimer, {}, Client.Product, E(url), client_id)
 	
 	for label in server_lab:
 		url_s = servers_list_new[label]['loc']
@@ -971,46 +988,56 @@ def EpisodeDetail1(title, url, servers_list_new, server_lab, summary, thumb, art
 				isVideoOnline = isItemVidAvailable(isOpenLoad=isOpenLoad, data=data)
 				status = common.GetEmoji(type=isVideoOnline) + ' '
 				
-			durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":server_info, "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "directors":directors, "roles":roles, "isOpenLoad":str(isOpenLoad), "useSSL":str(Prefs["use_https_alt"]), "isVideoOnline":str(isVideoOnline)}))
+				
+			redirector_stat = ''
+			redirector_enabled = 'false'
+			if common.UsingOption(key='ToggleRedirector') and isOpenLoad == False:
+				redirector_stat = ' (via Redirector)'
+				redirector_enabled = 'true'
+			
+			durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":server_info, "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "directors":directors, "roles":roles, "isOpenLoad":str(isOpenLoad), "useSSL":str(Prefs["use_https_alt"]), "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled}))
 			try:
 				oc.add(VideoClipObject(
 					url = durl,
-					title = status + title + ' (' + label + ')',
+					title = status + title + ' (' + label + ')' + redirector_stat,
 					thumb = thumb,
 					art = art,
 					summary = summary,
-					key = AddRecentWatchList(title=title, url=url, summary=summary, thumb=thumb)
+					key = AddRecentWatchList(title = "%s - %s" % (tvshow,title), url=url, summary=summary, thumb=thumb)
 					)
 				)
 			except:
 				pass
-		if isTimeoutApproaching(item = E(url), client_id=client_id):
+			
+		if isTimeoutApproaching(clientProd = Client.Product, item = E(url), client_id=client_id):
 			Log("isTimeoutApproaching action")
-			#break
-			return MC.message_container('Timeout', 'Timeout: Please try again !')
+			break
+			#return MC.message_container('Timeout', 'Timeout: Please try again !')
 
 	return oc
-	
+
 ####################################################################################################
 @route(PREFIX + "/ThreadTimeoutTimer")	
-def ThreadTimeoutTimer(item, client_id):
+def ThreadTimeoutTimer(clientProd, item, client_id):
 
-	c=0
-	while c < 60:
-		CUSTOM_TIMEOUT_DICT[client_id][item] = c
-		time.sleep(1.0)
-		c += 1
-		
-	del CUSTOM_TIMEOUT_DICT[client_id][item]
+	if clientProd in CUSTOM_TIMEOUT_CLIENTS:
+		c=0
+		while c < 60:
+			CUSTOM_TIMEOUT_DICT[client_id][item] = c
+			time.sleep(1.0)
+			c += 1
+			
+		del CUSTOM_TIMEOUT_DICT[client_id][item]
 	
 ####################################################################################################
 @route(PREFIX + "/isTimeoutApproaching")	
-def isTimeoutApproaching(item, client_id):
+def isTimeoutApproaching(clientProd, item, client_id):
 	
 	# define custom timeouts for each client along with session & item to make it unique for multiple instances
-	if Client.Product == 'Plex Web':
+	
+	if Client.Product in CUSTOM_TIMEOUT_CLIENTS:
 		t_sec = int(CUSTOM_TIMEOUT_DICT[client_id][item])
-		if t_sec < 15:
+		if t_sec < int(CUSTOM_TIMEOUT_CLIENTS[clientProd]):
 			if Prefs["use_debug"]:
 				Log("Custom Timout Timer: %s on %s: %s sec." % (D(item), client_id, t_sec))
 			return False

@@ -1,4 +1,6 @@
-import urllib2, re
+#!/usr/bin/env python
+
+import urllib2, re, urlparse
 
 # import Shared ServiceCode
 import openload as Openload
@@ -137,7 +139,13 @@ def MediaObjectsForURL(url):
 		media_obj.append(mo)
 		
 	else:
+		
 		files = JSON.ObjectFromString(data['server'])
+		useRedirect = False
+		redUrl = None
+		if data['useRedirector'] == 'true':
+			useRedirect = True
+			redUrl = data['url']
 		
 		sortable_list = []
 		for file in files:
@@ -164,7 +172,7 @@ def MediaObjectsForURL(url):
 						video_resolution = res,
 						audio_channels = 2,
 						optimized_for_streaming = True,
-						parts = [PartObject(key=Callback(PlayVideo, url=furl))]
+						parts = [PartObject(key=Callback(PlayVideo, url=furl, useRedirect=useRedirect, refUrl=redUrl))]
 					)
 			elif type == '.m3u8' or '.m3u8' in furl:
 				mo = MediaObject(
@@ -174,7 +182,7 @@ def MediaObjectsForURL(url):
 						video_resolution = res,
 						audio_channels = 2,
 						optimized_for_streaming = True,
-						parts = [PartObject(key=Callback(PlayVideo, url=furl))]
+						parts = [PartObject(key=Callback(PlayVideo, url=furl, useRedirect=useRedirect, refUrl=redUrl))]
 					)
 			else:
 				mo = MediaObject(
@@ -184,7 +192,7 @@ def MediaObjectsForURL(url):
 						video_resolution = res,
 						audio_channels = 2,
 						optimized_for_streaming = True,
-						parts = [PartObject(key=Callback(PlayVideo, url=furl))]
+						parts = [PartObject(key=Callback(PlayVideo, url=furl, useRedirect=useRedirect, refUrl=redUrl))]
 					)
 			
 			media_obj.append(mo)
@@ -193,7 +201,7 @@ def MediaObjectsForURL(url):
 
 ####################################################################################################
 @indirect
-def PlayVideo(url, isOpenLoad=False):
+def PlayVideo(url, isOpenLoad=False, useRedirect=False, refUrl=None):
 
 	try:
 		if isOpenLoad:
@@ -202,6 +210,10 @@ def PlayVideo(url, isOpenLoad=False):
 		raise Ex.MediaNotAvailable
 
 	http_headers = {'User-Agent': Constants.USER_AGENT}
+	
+	if useRedirect and refUrl != None:
+		url = GetRedirect(url, 10, ref=refUrl)
+		http_headers['Referer'] = refUrl
 		
 	if '.m3u8' in url:
 		return IndirectResponse(VideoClipObject, key=HTTPLiveStreamURL(url), http_headers=http_headers)
@@ -213,3 +225,41 @@ def get_data(url):
 	return JSON.ObjectFromString(D(url.split('fmovies://')[1]))
 	
 #########################################################################################################
+
+def GetRedirect(url, timeout=10, ref=None):
+	class HTTPRedirectHandler(urllib2.HTTPRedirectHandler):
+		def redirect_request(self, req, fp, code, msg, headers, newurl):
+			newreq = urllib2.HTTPRedirectHandler.redirect_request(self,
+				req, fp, code, msg, headers, newurl)
+			if newreq is not None:
+				self.redirections.append(newreq.get_full_url())
+			return newreq
+	
+	redirectHandler = HTTPRedirectHandler()
+	redirectHandler.max_redirections = 10
+	redirectHandler.redirections = []
+
+	opener = urllib2.build_opener(redirectHandler)
+	opener = urllib2.install_opener(opener)
+	
+	headers = {}
+	headers['User-Agent'] = Constants.USER_AGENT
+	
+	if ref != None:
+		headers['Referer'] = '%s://%s/' % (urlparse.urlparse(url).scheme, urlparse.urlparse(url).netloc)
+
+	request = urllib2.Request(url, headers=headers)
+
+	try:
+		response = urllib2.urlopen(request, timeout=int(timeout))
+		for redURL in redirectHandler.redirections:
+			#urlList.append(redURL) # make a list, might be useful
+			url = redURL
+			
+		Log("Redirect Url: %s" % url)
+		return url
+	except urllib2.HTTPError as response:
+		Log('URL: %s' % url)
+		Log('Error: %s' % response)
+		return url
+

@@ -3,7 +3,7 @@ Openload = SharedCodeService.openload
 
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.10' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.11' # Release notation (x.y - where x is major and y is minor)
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
 ################################################################################
@@ -54,15 +54,17 @@ def GetKeyFromVal(list, val_look):
 # Gets a client specific identifier
 @route(PREFIX + '/getsession')
 def getSession():
+
+	session = 'UnknownPlexClientSession'
 	if 'X-Plex-Client-Identifier' in str(Request.Headers):
-		return str(Request.Headers['X-Plex-Client-Identifier'])
+		session = str(Request.Headers['X-Plex-Client-Identifier'])
 	elif 'X-Plex-Target-Client-Identifier' in str(Request.Headers):
-		return str(Request.Headers['X-Plex-Target-Client-Identifier'])
+		session = str(Request.Headers['X-Plex-Target-Client-Identifier'])
 	elif 'User-Agent' in str(Request.Headers) and 'X-Plex-Token' in str(Request.Headers):
-		return 'UnknownClient-'+encode(str(Request.Headers['User-Agent']) + str(Request.Headers['X-Plex-Token'][:3]))[:10]
-	else:
-		return 'UnknownPlexClientSession'
-		
+		session = 'UnknownClient-'+encode(str(Request.Headers['User-Agent']) + str(Request.Headers['X-Plex-Token'][:3]))[:10]
+	
+	return (session)
+
 #######################################################################################################
 # base64 decode
 @route(PREFIX + '/decode')
@@ -77,24 +79,22 @@ def encode(str):
 	return base64.b64encode(str)
 
 #######################################################################################################
-@route(PREFIX + "/UseDumbKeyboard")
-def UseDumbKeyboard():
+@route(PREFIX + "/setDictVal")
+def setDictVal(key, session, val):
+	Dict[key+session] = val
+	Dict.Save()
+	if Prefs["use_debug"]:
+		Log("%s status: %s" % (key,val))
+		
+	return ObjectContainer(header=key, message=key.replace('Toggle','') + ' has been ' + Dict[key+session] + ' for this device.', title1=key)
+
+@route(PREFIX + "/UsingOption")
+def UsingOption(key):
 	session = getSession()
-	if Dict['ToggleDumbKeyboard'+session] == None or Dict['ToggleDumbKeyboard'+session] == 'disabled':
+	if Dict[key+session] == None or Dict[key+session] == 'disabled':
 		return False
 	else:
 		return True
-
-@route(PREFIX + "/ToggleDumbKeyboard")
-def ToggleDumbKeyboard(session):
-	
-	if Dict['ToggleDumbKeyboard'+session] == None or Dict['ToggleDumbKeyboard'+session] == 'disabled':
-		Dict['ToggleDumbKeyboard'+session] = 'enabled'
-	else:
-		Dict['ToggleDumbKeyboard'+session] = 'disabled'
-
-	Dict.Save()
-	return ObjectContainer(header='DumbKeyboard', message='DumbKeyboard has been ' + Dict['ToggleDumbKeyboard'+session] + ' for this device.', title1='DumbKeyboard')
 
 ####################################################################################################
 # Get HTTP response code (200 == good)
@@ -161,7 +161,7 @@ def GetPageElements(url, headers=None):
 	
 ######################################################################################
 @route(PREFIX + "/GetPageAsString")
-def GetPageAsString(url, headers=None):
+def GetPageAsString(url, headers=None, timeout=15):
 
 	page_data_string = None
 	try:
@@ -169,26 +169,26 @@ def GetPageAsString(url, headers=None):
 			if Prefs["use_debug"]:
 				Log("Using SSL Alternate Option")
 				Log("Url: " + url)
-			page_data_string = fmovies.request(url = url, headers=headers)
+			page_data_string = fmovies.request(url = url, headers=headers, timeout=timeout)
 		elif Prefs["use_web_proxy"]:
 			if Prefs["use_debug"]:
 				Log("Using SSL Web-Proxy Option")
 				Log("Url: " + url)
 				
 			if headers == None:
-				page_data_string = HTTP.Request(fmovies.PROXY_URL + url).content
+				page_data_string = HTTP.Request(fmovies.PROXY_URL + url, timeout=timeout).content
 			else:
-				page_data_string = HTTP.Request(fmovies.PROXY_URL + url, headers=headers).content
+				page_data_string = HTTP.Request(fmovies.PROXY_URL + url, headers=headers, timeout=timeout).content
 			page_data_string = page_data_string.replace(fmovies.PROXY_PART1, fmovies.PROXY_PART1_REPLACE)
 			page_data_string = page_data_string.replace(fmovies.PROXY_PART2A, fmovies.PROXY_PART2_REPLACE)
 			page_data_string = page_data_string.replace(fmovies.PROXY_PART2B, fmovies.PROXY_PART2_REPLACE)
 		else:
 			if headers == None:
-				page_data_string = HTTP.Request(url).content
+				page_data_string = HTTP.Request(url, timeout=timeout).content
 			else:
-				page_data_string = HTTP.Request(url, headers=headers).content
+				page_data_string = HTTP.Request(url, headers=headers, timeout=timeout).content
 	except Exception as e:
-		Log('ERROR common.py>GetPageAsString: %s' % (e.args))
+		Log('ERROR common.py>GetPageAsString: %s URL: %s' % (e.args,url))
 		pass
 		
 	return page_data_string

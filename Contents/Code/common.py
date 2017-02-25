@@ -1,9 +1,8 @@
 import time, fmovies, base64, unicodedata, re
-Openload = SharedCodeService.openload
 
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.11' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.12' # Release notation (x.y - where x is major and y is minor)
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
 ################################################################################
@@ -192,24 +191,6 @@ def GetPageAsString(url, headers=None, timeout=15):
 		pass
 		
 	return page_data_string
-	
-####################################################################################################
-@route(PREFIX + "/getOpenloadID")
-def getOpenloadID(url):
-
-	ol_id = None
-	try:
-		Openload.openloadhdr['Referer'] = url
-		webpage = GetPageAsString(url=url, headers=Openload.openloadhdr)
-
-		if 'File not found' in webpage or 'deleted by the owner' in webpage or 'Sorry!' in webpage:
-			return None
-
-		ol_id = Openload.search_regex('<span[^>]+id="[^"]+"[^>]*>([0-9]+)</span>',webpage, 'openload ID')
-	except:
-		pass
-		
-	return ol_id
 		
 ####################################################################################################
 @route(PREFIX + "/removeAccents")

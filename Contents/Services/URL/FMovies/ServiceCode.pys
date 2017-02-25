@@ -206,6 +206,8 @@ def PlayVideo(url, isOpenLoad=False, useRedirect=False, refUrl=None):
 	try:
 		if isOpenLoad:
 			url = Openload.openload(url)
+			if url == None:
+				raise Ex.MediaNotAvailable
 	except:
 		raise Ex.MediaNotAvailable
 

@@ -894,10 +894,14 @@ def EpisodeDetail(title, url, thumb):
 								key = AddRecentWatchList(title=title, url=url, summary=summary, thumb=thumb)
 								)
 							)
-						
 						except Exception as e:
 							Log('ERROR init.py>EpisodeDetail>Movie %s, %s' % (e.args, (title + ' - ' + title_s)))
-							pass
+							Log("ERROR: %s with key:%s returned %s" % (url,url_s,server_info))
+					else:
+						pass
+						if Prefs["use_debug"]:
+							Log("Video will not be displayed as playback option !")
+							Log("ERROR: %s with key:%s returned %s" % (url,url_s,server_info))
 				except Exception as e:
 					Log('ERROR init.py>EpisodeDetail>Movie %s, %s' % (e.args, (title + ' - ' + title_s)))
 					pass
@@ -1007,7 +1011,13 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 					)
 				)
 			except:
-				pass
+				Log('ERROR init.py>TvShowDetail %s, %s' % (e.args, (title + ' - ' + title_s)))
+				Log("ERROR: %s with key:%s returned %s" % (url,url_s,server_info))
+		else:
+			pass
+			if Prefs["use_debug"]:
+				Log("Video will not be displayed as playback option !")
+				Log("ERROR: %s with key:%s returned %s" % (url,url_s,server_info))
 			
 		if isTimeoutApproaching(clientProd = Client.Product, item = E(url), client_id=client_id):
 			Log("isTimeoutApproaching action")
@@ -1888,10 +1898,7 @@ def isItemVidAvailable(isOpenLoad, data):
 	if ourl != None:
 		try:
 			if isOpenLoad:
-				ol_id = common.getOpenloadID(url=ourl)
-				vidurl = None
-				if ol_id != None:
-					vidurl = Openload.openloadURLfromID(ol_id=ol_id)
+				vidurl = Openload.openload(url=ourl)
 				if vidurl != None:
 					http_res = fmovies.request(url=vidurl, output='responsecode', httpsskip=httpsskip)
 					if http_res in fmovies.HTTP_GOOD_RESP_CODES:
@@ -1906,7 +1913,7 @@ def isItemVidAvailable(isOpenLoad, data):
 			Log('ERROR init.py>isItemVidAvailable %s, %s:' % (e.args,ourl))
 			Log(data)
 			isVideoOnline = 'unknown'
-			
+
 	if Prefs["use_debug"]:
 		Log("--- LinkChecker ---")
 		Log("Url: %s" % (ourl))

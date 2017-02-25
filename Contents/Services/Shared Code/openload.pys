@@ -1,5 +1,8 @@
+#!/usr/bin/env python
+
 import urllib2, re
-import constants as Constants
+
+from __builtin__ import ord
 
 #########################################################################################################
 #
@@ -14,8 +17,10 @@ import constants as Constants
 #
 #########################################################################################################
 
+USER_AGENT = "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:48.0) Gecko/20100101 Firefox/48.0"
+
 openloadhdr = {
-	'User-Agent': Constants.USER_AGENT,
+	'User-Agent': USER_AGENT,
 	'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
 	'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.3',
 	'Accept-Encoding': 'none',
@@ -30,11 +35,11 @@ def openload(url):
 		webpage = res.read()
 
 		if 'File not found' in webpage or 'deleted by the owner' in webpage or 'Sorry!' in webpage:
+			print 'File removed'
 			return None
 
-		ol_id = search_regex('<span[^>]+id="[^"]+"[^>]*>([0-9]+)</span>',webpage, 'openload ID')
+		ol_id = search_regex('<span[^>]+id="[^"]+"[^>]*>([0-9A-Za-z]+)</span>',webpage, 'openload ID')
 
-		
 		video_url = openloadURLfromID(ol_id=ol_id)
 
 		return video_url
@@ -44,25 +49,33 @@ def openload(url):
 		
 def openloadURLfromID(ol_id):
 	try:
-		first_two_chars = int(float(ol_id[0:][:2]))
-		urlcode = {}
-		num = 2
+		first_char = int(ol_id[0])
+		urlcode = []
+		num = 1
 
 		while num < len(ol_id):
-			key = int(float(ol_id[num + 3:][:2]))
-			urlcode[key] = chr(int(float(ol_id[num:][:3])) - first_two_chars)
+			i = ord(ol_id[num])
+			key = 0
+			if i <= 90:
+				key = i - 65
+			elif i >= 97:
+				key = 25 + i - 97
+			urlcode.append((key, compat_chr(int(ol_id[num + 2:num + 5]) // int(ol_id[num + 1]) - first_char)))
 			num += 5
 
-		sorted(urlcode, key=lambda key: urlcode[key])
-
-		urllink = ''.join(['%s' % (value) for (key, value) in urlcode.items()])
+		urllink = ''.join([value for _, value in sorted(urlcode, key=lambda x: x[0])])
 
 		video_url = 'https://openload.co/stream/' + urllink
 
 		return video_url
 	except Exception as e:
-		print ('ERROR openload.pys>openloadURLfromID: Args:%s Url:%s' % (e.args, url))
+		print ('ERROR openload.pys>openloadURLfromID: Args:%s ol_id:%s' % (e.args, ol_id))
 		return None
+		
+try:
+    compat_chr = unichr  # Python 2
+except NameError:
+    compat_chr = chr
 	
 def search_regex(pattern, string, name, default=None, fatal=True, flags=0, group=None):
 	mobj = re.search(pattern, string, flags)
@@ -79,6 +92,6 @@ def search_regex(pattern, string, name, default=None, fatal=True, flags=0, group
 		return None
 	
 def testOpenLoad():
-	print openload('https://openload.co/embed/Q0ZlJq6OHIE/')
+	print openload('https://openload.co/embed/jcR8gjl6KoA/')
 
 #testOpenLoad()

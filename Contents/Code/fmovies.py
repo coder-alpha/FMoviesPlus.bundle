@@ -18,7 +18,7 @@ CACHE_EXPIRY_TIME = 60*60 # 1 Hour
 GLOBAL_TIMEOUT_FOR_HTTP_REQUEST = 15
 HTTP_GOOD_RESP_CODES = ['200','206']
 
-BASE_URL = "https://www.fmovies.se"
+BASE_URL = "https://www.fmovies.to"
 HASH_PATH_MENU = "/user/ajax/menu-bar"
 HASH_PATH_INFO = "/ajax/episode/info"
 SEARCH_PATH = "/search"
@@ -28,7 +28,7 @@ STAR_PATH = "/star/"
 
 # SSL Web Proxy
 PROXY_URL = "https://ssl-proxy.my-addr.org/myaddrproxy.php/"
-PROXY_PART1 = "/myaddrproxy.php/https/fmovies.se/"
+PROXY_PART1 = "/myaddrproxy.php/https/fmovies.to/"
 PROXY_PART1_REPLACE = "/"
 PROXY_PART2A = "/myaddrproxy.php/https/"
 PROXY_PART2B = "/myaddrproxy.php/http/"

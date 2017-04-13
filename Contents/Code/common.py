@@ -2,7 +2,7 @@ import time, fmovies, base64, unicodedata, re
 
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.13' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.14' # Release notation (x.y - where x is major and y is minor)
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
 ################################################################################
@@ -179,6 +179,8 @@ def GetPageAsString(url, headers=None, timeout=15):
 			else:
 				page_data_string = HTTP.Request(fmovies.PROXY_URL + url, headers=headers, timeout=timeout).content
 			page_data_string = page_data_string.replace(fmovies.PROXY_PART1, fmovies.PROXY_PART1_REPLACE)
+			page_data_string = page_data_string.replace(fmovies.PROXY_PART1B, fmovies.PROXY_PART1_REPLACE)
+			page_data_string = page_data_string.replace(fmovies.PROXY_PART1C, fmovies.PROXY_PART1_REPLACE)
 			page_data_string = page_data_string.replace(fmovies.PROXY_PART2A, fmovies.PROXY_PART2_REPLACE)
 			page_data_string = page_data_string.replace(fmovies.PROXY_PART2B, fmovies.PROXY_PART2_REPLACE)
 		else:

@@ -8,8 +8,8 @@
 #
 #########################################################################################################
 
-import urllib, urllib2, urlparse, json, time, re, sys, HTMLParser, random, cookielib, datetime, calendar
-
+import urllib, urllib2, urlparse, json, time, re, sys, HTMLParser, random, cookielib, datetime, calendar, base64
+from __builtin__ import ord
 Constants = SharedCodeService.constants
 
 CACHE = {}
@@ -29,6 +29,8 @@ STAR_PATH = "/star/"
 # SSL Web Proxy
 PROXY_URL = "https://ssl-proxy.my-addr.org/myaddrproxy.php/"
 PROXY_PART1 = "/myaddrproxy.php/https/fmovies.to/"
+PROXY_PART1B = "/myaddrproxy.php/https/fmovies.se/"
+PROXY_PART1C = "/myaddrproxy.php/https/fmovies.is/"
 PROXY_PART1_REPLACE = "/"
 PROXY_PART2A = "/myaddrproxy.php/https/"
 PROXY_PART2B = "/myaddrproxy.php/http/"
@@ -109,6 +111,8 @@ def GetApiUrl(url, key, serverts=0):
 				elif use_web_proxy:
 					json_data_string = HTTP.Request(PROXY_URL + ret).content
 					json_data_string = json_data_string.replace(PROXY_PART1, PROXY_PART1_REPLACE)
+					json_data_string = json_data_string.replace(PROXY_PART1B, PROXY_PART1_REPLACE)
+					json_data_string = json_data_string.replace(PROXY_PART1C, PROXY_PART1_REPLACE)
 					json_data_string = json_data_string.replace(PROXY_PART2A, PROXY_PART2_REPLACE)
 					json_data_string = json_data_string.replace(PROXY_PART2B, PROXY_PART2_REPLACE)
 					try:
@@ -217,6 +221,8 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 			result = request(hash_url, headers=headers, limit='0', webproxy=webproxy)
 			if webproxy != None:
 				result = result.replace(PROXY_PART1, PROXY_PART1_REPLACE)
+				result = result.replace(PROXY_PART1B, PROXY_PART1_REPLACE)
+				result = result.replace(PROXY_PART1C, PROXY_PART1_REPLACE)
 				result = result.replace(PROXY_PART2A, PROXY_PART2_REPLACE)
 				result = result.replace(PROXY_PART2B, PROXY_PART2_REPLACE)
 			#print result
@@ -247,7 +253,7 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 	except:
 		return magic_url, isOpenLoad
 
-def get_token(data):
+def get_token_(data):
 
 	index1 = 0
 	sn = 256
@@ -272,6 +278,50 @@ def get_token(data):
 				index4 += ord(data[index2][index8]) ^ (i[(i[s] +i[n]) % sn]) * index8 + index8
 			index1 += index4
 	return {'_': str(index1)}
+	
+def r01(e, n):
+	v = t01(e, n);
+	return v
+
+def t01(t, e):
+		T = ""
+		sn = 256
+		o = list(range(0, sn))
+		for r in range(0, sn):
+			o[r] = r
+		i = 0
+		for r in range(0,sn):
+			i = (i + o[r] + ord(t[(r % len(t))])) % sn
+			n = o[r]
+			o[r] = o[i]
+			o[i] = n
+		r = 0
+		i = 0
+		a = T
+		for s in range(0, len(e)):
+			r = (r + 1) % sn
+			i = (i + o[r]) % sn 
+			n = o[r]
+			o[r] = o[i] 
+			o[i] = n
+			a += chr(ord(e[s]) ^ o[(o[r] + o[i]) % sn])
+		return T + a
+
+def a01(t):
+	i = 0
+	for e in range(0, len(t)): 
+		i += ord(t[e])
+	return i
+
+def get_token(n, **kwargs):
+	try:
+		d = base64.b64decode(base64.b64decode("UWxFMFFYZENaMVJTZW5CQ1lsTkxURUk9"))
+		s = a01(d)
+		for i in n: 
+			s += a01(r01(d + i, n[i]))
+		return {'_': str(s)}
+	except Exception as e:
+		Log("fmovies.py > get_token > %s" % e)
 
 	
 #########################################################################################################

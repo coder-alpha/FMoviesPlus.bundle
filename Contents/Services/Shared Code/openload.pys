@@ -1,8 +1,4 @@
-#!/usr/bin/env python
-
-import urllib2, re
-
-from __builtin__ import ord
+# -*- coding: utf-8 -*-
 
 #########################################################################################################
 #
@@ -13,103 +9,43 @@ from __builtin__ import ord
 #
 # Adapted from youtube-dl
 # https://github.com/rg3/youtube-dl
+# https://github.com/rg3/youtube-dl/issues/10408
 # and modified for use with Plex Media Server
 #
 #########################################################################################################
 
-USER_AGENT = "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:48.0) Gecko/20100101 Firefox/48.0"
+import re
 
-openloadhdr = {
-	'User-Agent': USER_AGENT,
-	'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-	'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.3',
-	'Accept-Encoding': 'none',
-	'Accept-Language': 'en-US,en;q=0.8',
-	'Connection': 'keep-alive'}
+API_URL = 'https://api.openload.co/1'
+PAIR_INFO_URL = API_URL + '/streaming/info'
+GET_VIDEO_URL = API_URL + '/streaming/get?file=%s'
+VALID_URL = r'https?://(?:openload\.(?:co|io)|oload\.tv)/(?:f|embed)/(?P<id>[a-zA-Z0-9-_]+)'
 
-def openload(url):
+def openloadS(url):
+	video_id = match_id(url)
+	video_url = pairing_method(video_id)
+	return video_url
+		
+def pairing_method(video_id):
 	try:
-		openloadhdr['Referer'] = url
-		req = urllib2.Request(url, None, openloadhdr)
-		res = urllib2.urlopen(req)
-		webpage = res.read()
-
-		if 'File not found' in webpage or 'deleted by the owner' in webpage or 'Sorry!' in webpage:
-			print 'File removed'
-			return None
-
-		ol_id = search_regex('<span[^>]+id="[^"]+"[^>]*>([0-9A-Za-z]+)</span>',webpage, 'openload ID')
-
-		video_url = openloadURLfromID(ol_id=ol_id)
-
-		return video_url
-	except Exception as e:
-		print ('ERROR openload.pys>openload: Args:%s Url:%s' % (e.args, url))
-		return None
+		get_info = JSON.ObjectFromURL(GET_VIDEO_URL % video_id)
+		#print "get_info --- %s" % get_info
 		
-def openloadURLfromID(ol_id):
-	try:
-		video_url_chars = []
-
-		first_char = ord(ol_id[0])
-		key = first_char - 53
-		maxKey = max(2, key)
-		key = min(maxKey, len(ol_id) - 22)
-		t = ol_id[key:key + 20]
-
-		hashMap = {}
-		v = ol_id.replace(t, "")
-		h = 0
+		status = get_info.get('status')
+		#print "status --- %s" % status
 		
-		while h < len(t):
-			f = t[h:h + 2]
-			i = int(f, 16)
-			hashMap[h / 2] = i
-			h += 2
-
-		h = 0
-
-		while h < len(v):
-			B = v[h:h + 3]
-			i = int(B, 16)
-			if (h / 3) % 3 == 0:
-				i = int(B, 8)
-			index = (h / 3) % 10
-			A = hashMap[index]
-			i = i ^ 47
-			i = i ^ A
-			video_url_chars.append(compat_chr(i))
-			h += 3
-
-		urllink = ''.join(video_url_chars)
-
-		video_url = 'https://openload.co/stream/' + urllink
-
-		return video_url
-	except Exception as e:
-		print ('ERROR openload.pys>openloadURLfromID: Args:%s ol_id:%s' % (e.args, ol_id))
-		return None
-		
-try:
-    compat_chr = unichr  # Python 2
-except NameError:
-    compat_chr = chr
+		if status == 200:
+			result = get_info.get('result', {})
+			return result.get('url')
+	except:
+		pass
 	
-def search_regex(pattern, string, name, default=None, fatal=True, flags=0, group=None):
-	mobj = re.search(pattern, string, flags)
-	if mobj:
-		if group is None:
-		# return the first matching group
-			#return next(g for g in mobj.groups() if g is not None) -- next function is Python 2.6+
-			myIterator  = (g for g in mobj.groups() if g is not None)
-			for nextval in myIterator:
-				return nextval
-		else:
-			return mobj.group(group)
-	else:
-		return None
-	
-def testOpenLoad():
-	print openload('https://openload.co/embed/jcR8gjl6KoA/')
+	return None
+		
+#############################################################################################
 
-#testOpenLoad()
+def match_id(url):
+	VALID_URL_RE = re.compile(VALID_URL)
+	m = VALID_URL_RE.match(url)
+	assert m
+	return m.group('id')

@@ -50,10 +50,15 @@ def removeParanthesisAndSeason(title,season):
 	title = otitle
 	if len(title) < 2:
 		title = otitle
+		
+	title = removeParanthesis(title)
 
 	return title.strip()
 		
-def tvWatchTitle(title,season,episode):
+def tvWatchTitle(title,season,episode,etitle):
+
+	title = removeParanthesis(title)
+	
 	if len(title) > 5:
 		otitle = title[:-4] + title[-4:].replace(str(season),'') # replace season no. from end only not if those chars are within the title
 	elif len(title) > 3:
@@ -63,7 +68,15 @@ def tvWatchTitle(title,season,episode):
 	title = otitle
 	if len(title) < 2:
 		title = otitle
-	title = "%s - S%sE%s" % (removeParanthesis(title),season,episode)
+		
+	if etitle != None:
+		if '-' in etitle:
+			etitle = etitle.split('-')[1]
+	else:
+		etitle = ''
+	etitle = etitle.strip()
+		
+	title = "%s - S%sE%s - %s" % (removeParanthesis(title),season,episode,etitle)
 	return title
 
 def get(title):

@@ -1,8 +1,8 @@
-from resources.lib.sources import sources
-from resources.lib.libraries import client
-from resources.lib import resolvers
-import time, os, json, re, sys
+import time, sys, os, json, re
 import omdb
+from resources.lib.sources import sources
+from resources.lib import resolvers
+from resources.lib.libraries import client
 
 initA = []
 initBool = []
@@ -94,7 +94,27 @@ def runGetSources(
 	
 	if wait_for_init() == False:
 		return
-	return initA[0].getSources(name, title, year, imdb, tmdb, tvdb, tvrage, season, episode, tvshowtitle, alter, date, proxy_options, key)
+		
+	initA[0].getSources(name, title, year, imdb, tmdb, tvdb, tvrage, season, episode, tvshowtitle, alter, date, proxy_options, key)
+	
+	# while initA[0].checkProgress() != 100:
+		# time.sleep(1)
+		# if Prefs["use_debug"]:
+			# Log('Threads progress: %s' % initA[0].checkProgress())
+	
+	# sources = initA[0].sourcesFilter()
+	# if Prefs["use_debug"]:
+		# Log("Length sources: %s" % len(sources))
+		# for source in sources:
+			# if True:# and source['provider'] == 'G2G':
+				# Log('Provider---------: %s' % source['provider'])
+				# Log('Source---------: %s' % source)
+				# Log('Online----------: %s' % source['online'])
+				# #Log('Type: %s --- Quality: %s' % (source['rip'],source['quality']))
+				# #Log('%s URL---------: %s' % (source['source'], source['url']))
+				# #Log('Key: %s' % source['key'])
+				# #Log('urldata: %s' % json.loads(client.b64decode(source['urldata'])))
+				# #Log('params: %s' % json.loads(client.b64decode(source['params'])))
 
 def clearSources():
 	if wait_for_init() == False:

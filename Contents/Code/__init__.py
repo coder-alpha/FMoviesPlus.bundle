@@ -1655,10 +1655,16 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 	session = common.getSession()
 	client_id = '%s-%s' % (Client.Product, session)
 
+	watch_title = tvshow
+	if treatasmovie==False:
+		tvshowcleaned = tvshow.replace(' ' + str(season),'')
+		#watch_title = "%s - S%sE%s" % (tvshowtitle.replace(str(season),'').replace('(Special)','').strip(),season,episode)
+		watch_title = common.cleantitle.tvWatchTitle(tvshowcleaned,season,episode,title)
+		
 	if treatasmovie==False and Prefs['disable_extsources'] == False:
 		#Thread.Create(ExtSources, {}, tvshowtitle=tvshow, season=season, episode=episode, title=title, url=url, summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles)
 		tvshowcleaned = tvshow.replace(' ' + str(season),'')
-
+		
 		key = generatemoviekey(movtitle=None, year=year, tvshowtitle=tvshowcleaned, season=season, episode=episode)
 		if common.interface.getExtSourcesThreadStatus(key=key) == False:
 			#common.interface.clearSources()
@@ -1716,7 +1722,7 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 					thumb = GetThumb(thumb),
 					art = art,
 					summary = summary,
-					key = AddRecentWatchList(title = "%s - %s" % (tvshow,title), url=url, summary=summary, thumb=thumb)
+					key = AddRecentWatchList(title = watch_title, url=url, summary=summary, thumb=thumb)
 					)
 				)
 			except:
@@ -1748,7 +1754,10 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 @route(PREFIX + "/ExtSources-%s" % GetCacheTimeString())
 def ExtSources(title, url, summary, thumb, art, year, rating, duration, genre, directors, roles, movtitle=None, year=None, tvshowtitle=None, season=None, episode=None, session=None, **kwargs):
 	
-	key = generatemoviekey(movtitle=movtitle, year=year, tvshowtitle=tvshowtitle, season=season, episode=episode)
+	tvshowcleaned = tvshowtitle
+	if tvshowtitle != None:
+		tvshowcleaned = tvshowtitle.replace(' ' + str(season),'')
+	key = generatemoviekey(movtitle=movtitle, year=year, tvshowtitle=tvshowcleaned, season=season, episode=episode)
 	
 	prog = common.interface.checkProgress(key)
 	if prog == 0:
@@ -1775,25 +1784,41 @@ def ExtSources(title, url, summary, thumb, art, year, rating, duration, genre, d
 	watch_title = movtitle
 	if season != None and episode != None:
 		#watch_title = "%s - S%sE%s" % (tvshowtitle.replace(str(season),'').replace('(Special)','').strip(),season,episode)
-		watch_title = common.cleantitle.tvWatchTitle(tvshowtitle,season,episode)
+		watch_title = common.cleantitle.tvWatchTitle(tvshowtitle,season,episode,title)
 		
 	#Log("Title: %s" % watch_title)
 	#Log("External Sources Progress: %s" % prog)
 	
-	extSources = JSON.ObjectFromString(D(common.interface.getSources()))
+	#extSour = JSON.ObjectFromString(D(common.interface.getSources()))
+	extSour = common.interface.getSources(encode=False)
+	if Prefs["use_debug"]:
+		Log("---------=====------------")
+		Log("Length sources: %s" % len(extSour))
+		for source in extSour:
+			if True:# and source['provider'] == 'G2G':
+				Log('Provider---------: %s' % source['provider'])
+				Log('Source---------: %s' % source)
+				Log('Online----------: %s' % source['online'])
+				#Log('Type: %s --- Quality: %s' % (source['rip'],source['quality']))
+				#Log('%s URL---------: %s' % (source['source'], source['url']))
+				#Log('Key: %s' % source['key'])
+				#Log('urldata: %s' % json.loads(client.b64decode(source['urldata'])))
+				#Log('params: %s' % json.loads(client.b64decode(source['params'])))
 	
-	if len(extSources) == 0:
-		return MC.message_container('External Sources', 'No External Sources Available for this video.')
+	if len(extSour) == 0:
+		return MC.message_container('External Sources', 'No External Sources Available.')
 	
 	# match key
 	filter_extSources = []
-	filter_extSources += [i for i in extSources if i['key'] == key]
-	extSources = filter_extSources
+	filter_extSources += [i for i in extSour if i['key'] == key]
 	
-	if len(extSources) == 0:
+	extSourKey = []
+	extSourKey += [i for i in filter_extSources]
+	
+	if len(extSourKey) == 0:
 		return MC.message_container('External Sources', 'No External Sources Available for this video.')
 		
-	internal_extSources = extSources
+	internal_extSources = extSourKey
 		
 	# filter sources based on enabled quality in common.INTERNAL_SOURCES_QUALS
 	#Log(common.INTERNAL_SOURCES_QUALS)
@@ -2391,7 +2416,7 @@ def convertbookmarks(**kwargs):
 def Check(title, url, **kwargs):
 	
 	longstring = Dict[title+'-'+E(url)]
-	Log("%s --- %s" % (longstring, url))
+	#Log("%s --- %s" % (longstring, url))
 	if longstring != None and (longstring.lower()).find(SITE.lower()) != -1 and url in longstring:
 		return True
 		

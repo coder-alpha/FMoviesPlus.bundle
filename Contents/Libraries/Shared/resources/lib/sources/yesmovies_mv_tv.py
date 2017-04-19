@@ -20,10 +20,7 @@
 
 # TODO: Check gvideo resolving
 
-import re,urllib,urlparse,json,hashlib
-import base64
-import random,string
-import time
+import re,urllib,urlparse,json,hashlib,base64,time
 
 from resources.lib.libraries import cleantitle
 from resources.lib.libraries import client
@@ -59,7 +56,7 @@ class source:
 	def __init__(self):
 		print " -- Initializing Yesmovies Start --"
 		self.base_link = 'https://yesmovies.to'
-		self.ssl = True
+		self.ssl = False
 		self.name = 'YesMovies'
 		self.logo = 'http://i.imgur.com/4g0iJ8Y.png'
 		
@@ -92,26 +89,24 @@ class source:
 		}
 		
 	def testSite(self):
-		print " -- testSite start --"
 		try:
 			x1 = time.time()
-			http_res = proxies.request(url=self.base_link, output='responsecode', use_web_proxy=False)
+			http_res = proxies.request(url=self.base_link, output='responsecode', httpsskip=self.ssl, use_web_proxy=False)
 			self.speedtest = time.time() - x1
-			if http_res not in client.HTTP_GOOD_RESP_CODES:
+			if http_res == None or http_res not in client.HTTP_GOOD_RESP_CODES:
 				log('ERROR', self.name, 'HTTP Resp : %s for %s' % (http_res,self.base_link))
 				x1 = time.time()
-				http_res = proxies.request(url=self.base_link, output='responsecode', use_web_proxy=True)
-				self.speedtest = ((time.time() - x1) + self.speedtest)/2
-				if http_res not in client.HTTP_GOOD_RESP_CODES:
+				http_res = proxies.request(url=self.base_link, output='responsecode', httpsskip=self.ssl, use_web_proxy=True)
+				self.speedtest = time.time() - x1
+				if http_res == None or http_res not in client.HTTP_GOOD_RESP_CODES:
 					log('ERROR via proxy', self.name, 'HTTP Resp : %s for %s' % (http_res,self.base_link))
 					return False
 				else:
 					self.proxyrequired = True
+			return True
 		except Exception as e:
 			log('ERROR', self.name, '%s : %s' % (self.base_link, e))
 			return False
-		print " -- testSite end --"
-		return True
 		
 	def testParser(self):
 		print " -- testParser start --"
@@ -128,7 +123,7 @@ class source:
 		except Exception as e:
 			print " -- testParser end with error --"
 			print ('ERROR', self.name, '%s : %s' % (self.base_link, e))
-			return True
+			return False
 
 	def get_movie(self, imdb, title, year, proxy_options=None, key=None):
 		try:
@@ -363,3 +358,6 @@ class source:
 		except Exception as e:
 			print "Exception in uncensored2 > %s" % e
 			pass
+
+def log(type, name, msg):
+	control.log('%s: %s %s' % (type, name, msg))

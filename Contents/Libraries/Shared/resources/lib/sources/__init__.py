@@ -90,9 +90,12 @@ class sources:
 					control.log('Error: Loading File %s' % name)
 					error_info = {
 						'url': 'Unknown',
-						'name': name,
+						'name': "%s.py - Loading Error" % name,
+						'speed': 0.0,
 						'logo': 'Unknown',
+						'ssl': 'Unknown',
 						'online': 'Unknown',
+						'online_via_proxy' : 'Unknown',
 						'parser': 'Unknown'
 					}
 					self.providers.append(error_info)

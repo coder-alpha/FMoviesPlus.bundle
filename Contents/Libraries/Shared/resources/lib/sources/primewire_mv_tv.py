@@ -66,12 +66,12 @@ class source:
 			x1 = time.time()
 			http_res = proxies.request(url=self.base_link, output='responsecode', httpsskip=self.ssl, use_web_proxy=False)
 			self.speedtest = time.time() - x1
-			if http_res not in client.HTTP_GOOD_RESP_CODES:
+			if http_res == None or http_res not in client.HTTP_GOOD_RESP_CODES:
 				log('ERROR', self.name, 'HTTP Resp : %s for %s' % (http_res,self.base_link))
 				x1 = time.time()
 				http_res = proxies.request(url=self.base_link, output='responsecode', httpsskip=self.ssl, use_web_proxy=True)
-				self.speedtest = ((time.time() - x1) + self.speedtest)/2
-				if http_res not in client.HTTP_GOOD_RESP_CODES:
+				self.speedtest = time.time() - x1
+				if http_res == None or http_res not in client.HTTP_GOOD_RESP_CODES:
 					log('ERROR via proxy', self.name, 'HTTP Resp : %s for %s' % (http_res,self.base_link))
 					return False
 				else:
@@ -82,14 +82,20 @@ class source:
 			return False
 		
 	def testParser(self):
-		getmovieurl = self.get_movie(title=testparams.movie, year=testparams.movieYear, imdb=testparams.movieIMDb)
-		movielinks = self.get_sources(url=getmovieurl, testing=True)
+		print " -- testParser start --"
+		try:
+			getmovieurl = self.get_movie(title=testparams.movie, year=testparams.movieYear, imdb=testparams.movieIMDb)
+			movielinks = self.get_sources(url=getmovieurl, testing=True)
+			print movielinks
+			print " -- testParser end --"
 		
-		#print movielinks
-		
-		if len(movielinks) > 0:
-			return True
-		else:
+			if movielinks != None and len(movielinks) > 0:
+				return True
+			else:
+				return False
+		except Exception as e:
+			print " -- testParser end with error --"
+			print ('ERROR', self.name, '%s : %s' % (self.base_link, e))
 			return False
 
 	def lose_match_year(self, str, text):

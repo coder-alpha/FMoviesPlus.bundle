@@ -58,6 +58,7 @@ ICON_ALERT = "icon-alert.png"
 ICON_HELP = "icon-help.png"
 ICON_OK = "icon-ok.png"
 ICON_NOTOK = "icon-error.png"
+ICON_SUMMARY = "icon-summary.png"
 
 MC = common.NewMessageContainer(common.PREFIX, common.TITLE)
 
@@ -344,6 +345,49 @@ def InterfaceOptions(session=None, **kwargs):
 	oc.add(DirectoryObject(key = Callback(ExtHostsQuals, session=session), title = "Qualities Allowed", summary='Enable/Disable External Host Qualities.', thumb = R(ICON_QUALITIES)))
 	oc.add(DirectoryObject(key = Callback(ExtHostsRipType, session=session), title = "Rip Type Allowed", summary='Enable/Disable External Host Rip Type.', thumb = R(ICON_RIPTYPE)))
 	
+	oc.add(DirectoryObject(key = Callback(Summarize, session=session), title = "Summarize Options", summary='Shows a quick glance of all options', thumb = R(ICON_SUMMARY)))
+	
+	return oc
+	
+######################################################################################
+@route(PREFIX + "/Summarize-%s" % GetCacheTimeString())
+def Summarize(session=None, **kwargs):
+
+	oc = ObjectContainer(title2='Summary of Options')
+	c = 0
+	for proxy in common.OPTIONS_PROXY:
+		c += 1
+		title_msg = "Enabled: %s | Proxy: %s | Url: %s | Captcha: %s | SSL: %s | Working: %s | Speed: %s sec." % (common.GetEmoji(type=proxy['working'], mode='simple', session=session), proxy['name'], proxy['url'], common.GetEmoji(type=str(proxy['captcha']), mode='simple', session=session), common.GetEmoji(type=proxy['SSL'], mode='simple', session=session), common.GetEmoji(type=proxy['working'], mode='simple', session=session), proxy['speed'])
+		oc.add(DirectoryObject(title = title_msg))
+
+	c = 0
+	for host in common.INTERNAL_SOURCES:
+		c += 1
+		title_msg = "Enabled: %s | Host: %s | Quality: %s | Captcha: %s | Working: %s | Speed: %s sec." % (common.GetEmoji(type=host['working'], mode='simple', session=session), host['name'], host['quality'], common.GetEmoji(type=str(host['captcha']), mode='simple', session=session), common.GetEmoji(type=host['working'], mode='simple', session=session), host['speed'])
+		oc.add(DirectoryObject(title = title_msg))
+
+	c = 0
+	for provider in common.OPTIONS_PROVIDERS:
+		c += 1
+		label = provider['name']
+		bool = provider['enabled']
+		website = provider['url']
+		title_msg = "Enabled: %s | Provider: %s | Url: %s | Online: %s | Proxy Req.: %s | Parser: %s | Speed: %s sec." % (common.GetEmoji(type=bool, mode='simple', session=session), label, website, common.GetEmoji(type=str(provider['online']), mode='simple', session=session),common.GetEmoji(type=str(provider['online_via_proxy']), mode='simple', session=session), common.GetEmoji(type=str(provider['parser']), mode='simple', session=session), provider['speed'])
+		oc.add(DirectoryObject(title = title_msg))
+		
+	
+	for qual in common.INTERNAL_SOURCES_QUALS:
+		label = qual['label']
+		bool = qual['enabled']
+		title_msg = "Enabled: %s | Quality: %s" % (common.GetEmoji(type=bool, mode='simple', session=session), label)
+		oc.add(DirectoryObject(title = title_msg))
+	
+	for qual in common.INTERNAL_SOURCES_RIPTYPE:
+		label = qual['label']
+		bool = qual['enabled']
+		title_msg = "Enabled: %s | Rip-Type: %s" % (common.GetEmoji(type=bool, mode='simple', session=session), label)
+		oc.add(DirectoryObject(title = title_msg))
+		
 	return oc
 	
 ######################################################################################
@@ -367,7 +411,7 @@ def ExtHostsRipType(item=None, setbool='True', session=None, **kwargs):
 		if label == item:
 			bool = not bool
 		
-		title_msg = "Enabled: %s | Rip-Type: %s" % (common.GetEmoji(type=bool, session=session), label)
+		title_msg = "Enabled: %s | Rip-Type: %s" % (common.GetEmoji(type=bool, mode='simple', session=session), label)
 		oc.add(DirectoryObject(key = Callback(ExtHostsRipType, item=label, setbool=not bool), title = title_msg, thumb = Resource.ContentsOfURLWithFallback(url=None, fallback=None)))
 		
 	oc.add(DirectoryObject(
@@ -421,7 +465,7 @@ def ExtHostsQuals(item=None, setbool='True', session=None, **kwargs):
 		if label == item:
 			bool = not bool
 		
-		title_msg = "Enabled: %s | Quality: %s" % (common.GetEmoji(type=bool, session=session), label)
+		title_msg = "Enabled: %s | Quality: %s" % (common.GetEmoji(type=bool, mode='simple', session=session), label)
 		oc.add(DirectoryObject(key = Callback(ExtHostsQuals, item=label, setbool=not bool), title = title_msg, thumb = Resource.ContentsOfURLWithFallback(url=None, fallback=None)))
 		
 	oc.add(DirectoryObject(
@@ -510,7 +554,7 @@ def ExtProviders(curr_provs=None, refresh=False, item=None, setbool='True', sess
 		else:
 			bool = False
 
-		title_msg = "%02d | Enabled: %s | Site: %s | Url: %s | Online: %s | Proxy Req.: %s | Parser: %s | Speed: %s sec." % (c, common.GetEmoji(type=bool, session=session), label, website, common.GetEmoji(type=str(provider['online']), session=session),common.GetEmoji(type=str(provider['online_via_proxy']), session=session), common.GetEmoji(type=str(provider['parser']), session=session), provider['speed'])
+		title_msg = "%02d | Enabled: %s | Provider: %s | Url: %s | Online: %s | Proxy Req.: %s | Parser: %s | Speed: %s sec." % (c, common.GetEmoji(type=bool, mode='simple', session=session), label, website, common.GetEmoji(type=str(provider['online']), mode='simple', session=session),common.GetEmoji(type=str(provider['online_via_proxy']), mode='simple', session=session), common.GetEmoji(type=str(provider['parser']), mode='simple', session=session), provider['speed'])
 		oc.add(DirectoryObject(key = Callback(ExtProviders, curr_provs=None, item=label, setbool=not bool), title = title_msg, thumb = Resource.ContentsOfURLWithFallback(url = provider['logo'], fallback=ICON_QUESTION)))
 		
 	#oc.add(DirectoryObject(key = Callback(ExtProviders, refresh=True), title = "Refresh External Providers", summary='Reload newly installed External Host Providers.', thumb = R(ICON_REFRESH)))
@@ -594,7 +638,7 @@ def ExtHosts(refresh=False, n=None, curr_sources=None, session=None, **kwargs):
 		if c == 0:
 			n = host
 		c += 1
-		title_msg = "%02d | Enabled: %s | Site: %s | Quality: %s | Captcha: %s | Working: %s | Speed: %s sec." % (c, common.GetEmoji(type=host['working'], session=session), host['name'], host['quality'], common.GetEmoji(type=str(host['captcha']), session=session), common.GetEmoji(type=host['working'], session=session), host['speed'])
+		title_msg = "%02d | Enabled: %s | Host: %s | Quality: %s | Captcha: %s | Working: %s | Speed: %s sec." % (c, common.GetEmoji(type=host['working'], mode='simple', session=session), host['name'], host['quality'], common.GetEmoji(type=str(host['captcha']), mode='simple', session=session), common.GetEmoji(type=host['working'], mode='simple', session=session), host['speed'])
 		
 		summary = "%s%s" % ('' if host['msg'] == '' else '%s%s%s' % ('**', host['msg'], '** | '), title_msg)
 		try:
@@ -670,7 +714,7 @@ def ExtProxies(refresh=False, n=None, curr_proxies=None, session=None, **kwargs)
 		if c == 0:
 			n = proxy
 		c += 1
-		title_msg = "%02d | Enabled: %s | Site: %s | Url: %s | Captcha: %s | SSL: %s | Working: %s | Speed: %s sec." % (c, common.GetEmoji(type=proxy['working'], session=session), proxy['name'], proxy['url'], common.GetEmoji(type=str(proxy['captcha']), session=session), common.GetEmoji(type=proxy['SSL'], session=session), common.GetEmoji(type=proxy['working'], session=session), proxy['speed'])
+		title_msg = "%02d | Enabled: %s | Proxy: %s | Url: %s | Captcha: %s | SSL: %s | Working: %s | Speed: %s sec." % (c, common.GetEmoji(type=proxy['working'], mode='simple', session=session), proxy['name'], proxy['url'], common.GetEmoji(type=str(proxy['captcha']), mode='simple', session=session), common.GetEmoji(type=proxy['SSL'], mode='simple', session=session), common.GetEmoji(type=proxy['working'], mode='simple', session=session), proxy['speed'])
 		
 		try:
 			common.OPTIONS_PROXY.append(proxy)
@@ -1912,7 +1956,7 @@ def ExtSources(title, url, summary, thumb, art, year, rating, duration, genre, d
 				pass
 	
 	if Prefs['use_ext_urlservices']:
-		external_extSources = extSources
+		external_extSources = extSourKey
 		
 		# filter sources based on enabled quality in common.INTERNAL_SOURCES_QUALS
 		filter_extSources = []
@@ -1939,7 +1983,7 @@ def ExtSources(title, url, summary, thumb, art, year, rating, duration, genre, d
 		external_extSources = filter_extSources
 		
 		extSources_urlservice = []
-		for source in extSources:
+		for source in external_extSources:
 			ls = source
 			bool = True
 			for i in common.INTERNAL_SOURCES:

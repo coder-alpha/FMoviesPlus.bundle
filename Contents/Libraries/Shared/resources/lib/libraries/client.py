@@ -168,7 +168,8 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 					redirectURL = redURL
 					
 		except urllib2.HTTPError as response:
-			#Log("AAAA- CODE %s|%s " % (url, response.code))
+			control.log('HTTPError client.py>request : %s' % url)
+			control.log('HTTPError client.py>request : %s' % (response.code))
 			if response.code == 503:
 				#Log("AAAA- CODE %s|%s " % (url, response.code))
 				if 'cf-browser-verification' in response.read(5242880):
@@ -202,6 +203,16 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 				if IPv4 == True:
 					setIP6()
 				return
+			else:
+				if IPv4 == True:
+					setIP6()
+				return
+		except Exception as e:
+			control.log('Error client.py>request : %s' % url)
+			control.log('Error client.py>request : %s' % (e.args))
+			if IPv4 == True:
+				setIP6()
+			return None
 
 		if output == 'cookie':
 			try: result = '; '.join(['%s=%s' % (i.name, i.value) for i in cookies])

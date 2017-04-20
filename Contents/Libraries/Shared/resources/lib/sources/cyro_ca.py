@@ -30,8 +30,10 @@ from resources.lib import proxies
 class source:
 	def __init__(self):
 		self.base_link = 'http://cyro.se'
+		self.MainPageValidatingContent = 'Cyro.se - The Many-Named Site.'
 		self.urlhost = 'cyro.se'
 		self.name = 'G2G'
+		self.loggertxt = []
 		self.ssl = False
 		self.logo = 'http://i.imgur.com/3VRoX2c.png'
 		self.watch_link = '/watch/%s'
@@ -56,44 +58,64 @@ class source:
 			'parser': self.testparser
 		}
 		
+	def log(self, type, method, err, dolog=False, disp=True):
+		msg = '%s : %s>%s - : %s' % (type, self.name, method, err)
+		if dolog == True:
+			self.loggertxt.append(msg)
+		if disp == True:
+			logger(msg)
+		
 	def testSite(self):
 		try:
 			x1 = time.time()
-			http_res = proxies.request(url=self.base_link, output='responsecode', httpsskip=self.ssl, use_web_proxy=False)
+			http_res, content = proxies.request(url=self.base_link, output='response', use_web_proxy=False)
 			self.speedtest = time.time() - x1
-			if http_res==None or http_res not in client.HTTP_GOOD_RESP_CODES:
-				log('ERROR', self.name, 'HTTP Resp : %s for %s' % (http_res,self.base_link))
+			if content != None and content.find(self.MainPageValidatingContent) >-1:
+				self.log('SUCCESS', 'testSite', 'HTTP Resp : %s for %s' % (http_res,self.base_link), dolog=True)
+				return True
+			else:
+				self.log('ERROR', 'testSite', 'HTTP Resp : %s for %s' % (http_res,self.base_link), dolog=True)
 				x1 = time.time()
-				http_res = proxies.request(url=self.base_link, output='responsecode', httpsskip=self.ssl, use_web_proxy=True)
+				http_res, content = proxies.request(url=self.base_link, output='response', use_web_proxy=True)
 				self.speedtest = time.time() - x1
-				if http_res==None or http_res not in client.HTTP_GOOD_RESP_CODES:
-					log('ERROR via proxy', self.name, 'HTTP Resp : %s for %s' % (http_res,self.base_link))
-					return False
-				else:
+				if content != None and content.find(self.MainPageValidatingContent) >-1:
 					self.proxyrequired = True
-			return True
+					self.log('SUCCESS', 'testSite', 'HTTP Resp : %s via proxy for %s' % (http_res,self.base_link), dolog=True)
+					return True
+				else:
+					time.sleep(2.0)
+					x1 = time.time()
+					http_res, content = proxies.request(url=self.base_link, output='response', use_web_proxy=True)
+					self.speedtest = time.time() - x1
+					if content != None and content.find(self.MainPageValidatingContent) >-1:
+						self.proxyrequired = True
+						self.log('SUCCESS', 'testSite', 'HTTP Resp : %s via proxy for %s' % (http_res,self.base_link), dolog=True)
+						return True
+					else:
+						self.log('ERROR', 'testSite', 'HTTP Resp : %s via proxy for %s' % (http_res,self.base_link), dolog=True)
+						self.log('ERROR', 'testSite', content, dolog=True)
+			return False
 		except Exception as e:
-			log('ERROR', self.name, '%s : %s' % (self.base_link, e))
+			self.log('ERROR','testSite', '%s' % e, dolog=True)
 			return False
 		
 	def testParser(self):
-		print " -- testParser start --"
 		try:
-			getmovieurl = self.get_movie(title=testparams.movie, year=testparams.movieYear, imdb=testparams.movieIMDb)
+			getmovieurl = self.get_movie(title=testparams.movie, year=testparams.movieYear, imdb=testparams.movieIMDb, testing=True)
 			movielinks = self.get_sources(url=getmovieurl, testing=True)
-			print movielinks
-			print " -- testParser end --"
-		
+			
 			if movielinks != None and len(movielinks) > 0:
+				self.log('SUCCESS', 'testParser', 'links : %s' % len(movielinks), dolog=True)
 				return True
 			else:
+				self.log('ERROR', 'testParser', 'getmovieurl : %s' % getmovieurl, dolog=True)
+				self.log('ERROR', 'testParser', 'movielinks : %s' % movielinks, dolog=True)
 				return False
 		except Exception as e:
-			print " -- testParser end with error --"
-			print ('ERROR', self.name, '%s : %s' % (self.base_link, e))
+			self.log('ERROR', 'testParser', '%s' % e, dolog=True)
 			return False
 
-	def get_movie(self,imdb, title, year, proxy_options=None, key=None):
+	def get_movie(self,imdb, title, year, proxy_options=None, key=None, testing=False):
 		try:
 			url = {'imdb': imdb, 'title': title, 'year': year}
 			url = urllib.urlencode(url)
@@ -253,6 +275,6 @@ class source:
 		except:
 			return
 
-def log(type, name, msg):
-	control.log('%s: %s %s' % (type, name, msg))
+def logger(msg):
+	control.log(msg)
 

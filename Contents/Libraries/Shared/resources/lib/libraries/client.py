@@ -64,8 +64,10 @@ ANDROID_USER_AGENT = 'Mozilla/5.0 (Linux; Android 4.4.2; Nexus 4 Build/KOT49H) A
 
 
 def request(url, close=True, redirect=True, followredirect=False, error=False, proxy=None, post=None, headers=None, mobile=False, limit=None, referer=None, cookie=None, output='', timeout='30', httpsskip=False, use_web_proxy=False, XHR=False, IPv4=False):
-	try:
 
+# output extended = 4, response = 2, responsecodeext = 2
+	
+	try:
 		handlers = []
 		redirectURL = url
 		
@@ -168,8 +170,12 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 					redirectURL = redURL
 					
 		except urllib2.HTTPError as response:
-			control.log('HTTPError client.py>request : %s' % url)
-			control.log('HTTPError client.py>request : %s' % (response.code))
+			
+			try:
+				resp_code = response.code
+			except:
+				resp_code = None
+			
 			if response.code == 503:
 				#Log("AAAA- CODE %s|%s " % (url, response.code))
 				if 'cf-browser-verification' in response.read(5242880):
@@ -197,7 +203,12 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 				request = urllib2.Request(response.headers['Location'], data=post, headers=headers)
 				response = urllib2.urlopen(request, timeout=int(timeout))
 				#Log("AAAA- BBBBBBB %s" %  response.code)
-
+			elif resp_code != None:
+				if IPv4 == True:
+					setIP6()
+				if output == 'response':
+					return (resp_code, None)
+				return resp_code
 			elif error == False:
 				#print ("Response code",response.code, response.msg,url)
 				if IPv4 == True:
@@ -212,6 +223,8 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 			control.log('Error client.py>request : %s' % (e.args))
 			if IPv4 == True:
 				setIP6()
+			if output == 'response':
+				return (None, None)
 			return None
 
 		if output == 'cookie':
@@ -282,12 +295,33 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 		if IPv4 == True:
 			setIP6()
 		return result
+		
 	except Exception as e:
 		control.log('ERROR client.py>request %s, %s' % (e.args,url))
 		traceback.print_exc()
 		if IPv4 == True:
 			setIP6()
 		return
+		
+def getPageDataBasedOnOutput(res, output):
+	if output == 'extended':
+		page_data_string, headers, content, cookie = res
+	elif output == 'response' or output == 'responsecodeext':
+		resp_code, page_data_string = res
+	else:
+		page_data_string = res
+		
+	return page_data_string
+	
+def getResponseDataBasedOnOutput(page_data_string, res, output):
+	if output == 'extended':
+		x, headers, content, cookie = res
+		return (page_data_string, headers, content, cookie)
+	elif output == 'response' or output == 'responsecodeext':
+		resp_code, x = res
+		return (resp_code, page_data_string)
+	else:
+		return page_data_string
 
 def setIP4():
 	#replace the original socket.getaddrinfo by our version

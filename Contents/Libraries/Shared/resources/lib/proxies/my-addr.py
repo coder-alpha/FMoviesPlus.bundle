@@ -5,7 +5,6 @@ from resources.lib.libraries import client
 from resources.lib.libraries import control
 from resources.lib import resolvers
 
-
 # SSL Web Proxy
 name = 'MyAddr'
 
@@ -40,16 +39,21 @@ class proxy:
 		
 	def request(self, url, close=True, redirect=True, followredirect=False, error=False, proxy=None, post=None, headers=None, mobile=False, limit=None, referer=None, cookie=None, output='', timeout='30', httpsskip=False, use_web_proxy=False):
 	
+		if self.working == False:
+			print "Proxy: %s is disabled internally" % (name)
+			return None
+	
 		if headers == None:
 			headers = self.headers
 		else:
 			headers['Connection'] = self.headers['Connection']
 
 		return requestdirect(url=url, close=close, redirect=redirect, followredirect=followredirect, error=error, proxy=proxy, post=post, headers=headers, mobile=mobile, limit=limit, referer=referer, cookie=cookie, output=output, timeout=timeout, httpsskip=httpsskip, use_web_proxy=use_web_proxy)
-			
+
 def requestdirect(url, close=True, redirect=True, followredirect=False, error=False, proxy=None, post=None, headers=None, mobile=False, limit=None, referer=None, cookie=None, output='', timeout='30', httpsskip=False, use_web_proxy=False):
 	#try:
-	print "Requesting: %s Using via: %s" % (url, PROXY_URL)
+		
+	control.log("Requesting: %s Using via: %s" % (url, PROXY_URL))
 	
 	urlhost = re.findall('([\w]+[.][\w]+)$', urlparse.urlparse(url.strip().lower()).netloc)[0]
 	
@@ -57,10 +61,23 @@ def requestdirect(url, close=True, redirect=True, followredirect=False, error=Fa
 		headers = {'Connection' : 'keep-alive'}
 	headers['User-Agent'] = client.randomagent()
 	
-	page_data_string = client.request(url = PROXY_URL + url, close=close, redirect=redirect, followredirect=followredirect, error=error, proxy=proxy, post=post, headers=headers, mobile=mobile, limit=limit, referer=referer, cookie=cookie, output=output, timeout=timeout, httpsskip=httpsskip, use_web_proxy=use_web_proxy)
+	res = client.request(url = PROXY_URL + url, close=close, redirect=redirect, followredirect=followredirect, error=error, proxy=proxy, post=post, headers=headers, mobile=mobile, limit=limit, referer=referer, cookie=cookie, output=output, timeout=timeout, httpsskip=httpsskip, use_web_proxy=use_web_proxy)
 	
-	page_data_string = unicode(page_data_string, "utf-8")
+	page_data_string = client.getPageDataBasedOnOutput(res, output)
 
+	page_data_string = page_data_string.replace('\n','<br/>')	
+	#page_data_string = page_data_string.replace('\r','r').replace('\n','<br/>').replace('\w','').replace('\.','').replace('\t','').replace('\ ','')
+	try:
+		r = unicode(page_data_string, "utf-8")
+		page_data_string = r
+	except Exception as e:
+		try:
+			r = str(page_data_string)
+			page_data_string = r
+		except Exception as e:
+			control.log("Error: %s - %s" % (name, e))
+			print page_data_string
+		
 	PROXY_PART0A = PROXY_PART0 % urlhost
 	PROXY_PART1A = PROXY_PART1 % urlhost
 	PROXY_PART3A = PROXY_PART3 % (urlhost,urlhost)
@@ -72,7 +89,7 @@ def requestdirect(url, close=True, redirect=True, followredirect=False, error=Fa
 	page_data_string = page_data_string.replace(PROXY_PART2B, PROXY_PART2_REPLACE)
 	page_data_string = page_data_string.replace(PROXY_PART3A, PROXY_PART3A_REPLACE)
 	
-	return page_data_string
+	return client.getResponseDataBasedOnOutput(page_data_string, res, output)
 	# except Exception as e:
 		# print "Error: %s - %s" % (name, e)	
 		# return None

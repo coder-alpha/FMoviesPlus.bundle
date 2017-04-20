@@ -388,6 +388,8 @@ def Summarize(session=None, **kwargs):
 		title_msg = "Enabled: %s | Rip-Type: %s" % (common.GetEmoji(type=bool, mode='simple', session=session), label)
 		oc.add(DirectoryObject(title = title_msg))
 		
+	common.interface.getProvidersLoggerTxts()
+		
 	return oc
 	
 ######################################################################################

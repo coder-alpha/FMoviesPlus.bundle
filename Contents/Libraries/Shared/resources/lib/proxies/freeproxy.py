@@ -18,18 +18,25 @@ class proxy:
 		self.ssl = False
 		self.speedtest = 0
 		self.headers = {'Connection' : 'keep-alive'}
-		self.working = self.testSite()
+		self.working = self.testSite(disabled=True)
 		
-	def testSite(self):
+	def testSite(self, disabled=False):
 		x1 = time.time()
 		http_res = client.request(url=self.base_link, output='responsecode')
-		print "http_res : %s" % http_res
 		self.speedtest = time.time() - x1
+		
+		if disabled == True:
+			return False
+		
 		if http_res not in client.HTTP_GOOD_RESP_CODES:
 			return False
 		return True
 		
 	def request(self, url, close=True, redirect=True, followredirect=False, error=False, proxy=None, post=None, headers=None, mobile=False, limit=None, referer=None, cookie=None, output='', timeout='30', httpsskip=False, use_web_proxy=False):
+	
+		if self.working == False:
+			print "Proxy: %s is disabled internally" % (name)
+			return None
 	
 		if headers == None:
 			headers = self.headers
@@ -40,6 +47,7 @@ class proxy:
 			
 def requestdirect(url, close=True, redirect=True, followredirect=False, error=False, proxy=None, post=None, headers=None, mobile=False, limit=None, referer=None, cookie=None, output='', timeout='30', httpsskip=False, use_web_proxy=False):
 	#try:
+
 	print "Requesting: %s Using via: %s" % (url, PROXY_URL)
 	
 	urlhost = re.findall('([\w]+[.][\w]+)$', urlparse.urlparse(url.strip().lower()).netloc)[0]
@@ -48,7 +56,9 @@ def requestdirect(url, close=True, redirect=True, followredirect=False, error=Fa
 		headers = {'Connection' : 'keep-alive'}
 	headers['User-Agent'] = client.randomagent()
 	
-	page_data_string = client.request(url = PROXY_URL + url, close=close, redirect=redirect, followredirect=followredirect, error=error, proxy=proxy, post=post, headers=headers, mobile=mobile, limit=limit, referer=referer, cookie=cookie, output=output, timeout=timeout, httpsskip=httpsskip, use_web_proxy=use_web_proxy)
+	res = client.request(url = PROXY_URL + url, close=close, redirect=redirect, followredirect=followredirect, error=error, proxy=proxy, post=post, headers=headers, mobile=mobile, limit=limit, referer=referer, cookie=cookie, output=output, timeout=timeout, httpsskip=httpsskip, use_web_proxy=use_web_proxy)
+	
+	page_data_string = client.getPageDataBasedOnOutput(res, output)
 	
 	page_data_string = page_data_string.decode('utf-8')
 	page_data_string = urllib.unquote_plus(page_data_string)
@@ -57,8 +67,6 @@ def requestdirect(url, close=True, redirect=True, followredirect=False, error=Fa
 	page_data_string = page_data_string.replace('/o.php?b=4&amp;f=frame&amp;mobile=&amp;u=', '')
 	page_data_string = page_data_string.replace('/o.php?b=4&amp;mobile=&amp;u=', '')
 	page_data_string = page_data_string.replace('/o.php?b=4&mobile=&u=', '')
-	
-	
 	
 	# page_data_string_t = None
 	# regex = r'{.*[token:]}]}'
@@ -69,7 +77,7 @@ def requestdirect(url, close=True, redirect=True, followredirect=False, error=Fa
 	# if page_data_string_t != None and 'token' in page_data_string_t:
 		# page_data_string = page_data_string_t
 	
-	return page_data_string
+	return client.getResponseDataBasedOnOutput(page_data_string, res, output)
 	#except Exception as e:
 	#	print "Error: %s - %s" % (name, e)	
 	#	return None

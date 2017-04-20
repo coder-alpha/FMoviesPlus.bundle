@@ -31,7 +31,9 @@ from resources.lib import proxies
 class source:
 	def __init__(self):
 		self.base_link = 'http://www.primewire.ag'
+		self.MainPageValidatingContent = '1Channel | PrimeWire.ag - Watch Movies Online'
 		self.name = 'Primewire'
+		self.loggertxt = []
 		self.ssl = False
 		self.logo = 'http://i.imgur.com/6zeDNpu.png'
 		self.key_link = '/index.php?search'
@@ -60,42 +62,62 @@ class source:
 			'online_via_proxy' : self.proxyrequired,
 			'parser': self.testparser
 		}
+
+	def log(self, type, method, err, dolog=False, disp=True):
+		msg = '%s : %s>%s - : %s' % (type, self.name, method, err)
+		if dolog == True:
+			self.loggertxt.append(msg)
+		if disp == True:
+			logger(msg)
 		
 	def testSite(self):
 		try:
 			x1 = time.time()
-			http_res = proxies.request(url=self.base_link, output='responsecode', httpsskip=self.ssl, use_web_proxy=False)
+			http_res, content = proxies.request(url=self.base_link, output='response', use_web_proxy=False)
 			self.speedtest = time.time() - x1
-			if http_res == None or http_res not in client.HTTP_GOOD_RESP_CODES:
-				log('ERROR', self.name, 'HTTP Resp : %s for %s' % (http_res,self.base_link))
+			if content != None and content.find(self.MainPageValidatingContent) >-1:
+				self.log('SUCCESS', 'testSite', 'HTTP Resp : %s for %s' % (http_res,self.base_link), dolog=True)
+				return True
+			else:
+				self.log('ERROR', 'testSite', 'HTTP Resp : %s for %s' % (http_res,self.base_link), dolog=True)
 				x1 = time.time()
-				http_res = proxies.request(url=self.base_link, output='responsecode', httpsskip=self.ssl, use_web_proxy=True)
+				http_res, content = proxies.request(url=self.base_link, output='response', use_web_proxy=True)
 				self.speedtest = time.time() - x1
-				if http_res == None or http_res not in client.HTTP_GOOD_RESP_CODES:
-					log('ERROR via proxy', self.name, 'HTTP Resp : %s for %s' % (http_res,self.base_link))
-					return False
-				else:
+				if content != None and content.find(self.MainPageValidatingContent) >-1:
 					self.proxyrequired = True
-			return True
+					self.log('SUCCESS', 'testSite', 'HTTP Resp : %s via proxy for %s' % (http_res,self.base_link), dolog=True)
+					return True
+				else:
+					time.sleep(2.0)
+					x1 = time.time()
+					http_res, content = proxies.request(url=self.base_link, output='response', use_web_proxy=True)
+					self.speedtest = time.time() - x1
+					if content != None and content.find(self.MainPageValidatingContent) >-1:
+						self.proxyrequired = True
+						self.log('SUCCESS', 'testSite', 'HTTP Resp : %s via proxy for %s' % (http_res,self.base_link), dolog=True)
+						return True
+					else:
+						self.log('ERROR', 'testSite', 'HTTP Resp : %s via proxy for %s' % (http_res,self.base_link), dolog=True)
+						self.log('ERROR', 'testSite', content, dolog=True)
+			return False
 		except Exception as e:
-			log('ERROR', self.name, '%s : %s' % (self.base_link, e))
+			self.log('ERROR','testSite', '%s' % e, dolog=True)
 			return False
 		
 	def testParser(self):
-		print " -- testParser start --"
 		try:
-			getmovieurl = self.get_movie(title=testparams.movie, year=testparams.movieYear, imdb=testparams.movieIMDb)
+			getmovieurl = self.get_movie(title=testparams.movie, year=testparams.movieYear, imdb=testparams.movieIMDb, testing=True)
 			movielinks = self.get_sources(url=getmovieurl, testing=True)
-			print movielinks
-			print " -- testParser end --"
-		
+			
 			if movielinks != None and len(movielinks) > 0:
+				self.log('SUCCESS', 'testParser', 'links : %s' % len(movielinks), dolog=True)
 				return True
 			else:
+				self.log('ERROR', 'testParser', 'getmovieurl : %s' % getmovieurl, dolog=True)
+				self.log('ERROR', 'testParser', 'movielinks : %s' % movielinks, dolog=True)
 				return False
 		except Exception as e:
-			print " -- testParser end with error --"
-			print ('ERROR', self.name, '%s : %s' % (self.base_link, e))
+			self.log('ERROR', 'testParser', '%s' % e, dolog=True)
 			return False
 
 	def lose_match_year(self, str, text):
@@ -110,29 +132,36 @@ class source:
 			False
 
 
-	def get_movie(self, imdb, title, year, proxy_options=None, key=None):
+	def get_movie(self, imdb, title, year, proxy_options=None, key=None, testing=False):
 		try:
 			#print "PRIMEWIRE get_movie %s" % title
-			
-			key = urlparse.urljoin(self.base_link, self.key_link)
+			result = None
+			query = urlparse.urljoin(self.base_link, self.key_link)
 			#print "key ------------ %s" % key
 			
 			#key = proxies.request(key, 'searchform', proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
-			key = proxies.request(key, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
-			#print "key ------------ %s" % key
+			query = proxies.request(query, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+			self.log('SUCCESS', 'get_movie-1', 'query', dolog=testing, disp=False)
 			
-			key = client.parseDOM(key, 'input', ret='value', attrs = {'name': 'key'})[0]
+			query = client.parseDOM(query, 'input', ret='value', attrs = {'name': 'key'})[0]
+			self.log('SUCCESS', 'get_movie-1b', 'query', dolog=testing, disp=False)
 			#print "key ------------ %s" % key
 
-			query = self.moviesearch_link % (urllib.quote_plus(cleantitle.query(title)), key)
+			query = self.moviesearch_link % (urllib.quote_plus(cleantitle.query(title)), query)
+			self.log('SUCCESS', 'get_movie-1c', 'query', dolog=testing, disp=False)
+			
 			query = urlparse.urljoin(self.base_link, query)
+			self.log('SUCCESS', 'get_movie-1d', 'query', dolog=testing, disp=False)
 
 			#result = str(proxies.request(query, 'index_item', proxy_options=proxy_options, use_web_proxy=self.proxyrequired))
 			result = proxies.request(query, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+			self.log('SUCCESS', 'get_movie-2', 'result', dolog=testing, disp=False)
 			
 			#if 'page=2' in result or 'page%3D2' in result: result += str(proxies.request(query + '&page=2', 'index_item', proxy_options=proxy_options, use_web_proxy=self.proxyrequired))
-			if 'page=2' in result or 'page%3D2' in result: result += str(proxies.request(query + '&page=2', proxy_options=proxy_options, use_web_proxy=self.proxyrequired))
-
+			if 'page=2' in result or 'page%3D2' in result:
+				result += str(proxies.request(query + '&page=2', proxy_options=proxy_options, use_web_proxy=self.proxyrequired))
+				self.log('SUCCESS', 'get_movie-3', '', dolog=testing, disp=False)
+			
 			result = client.parseDOM(result, 'div', attrs = {'class': 'index_item.+?'})
 
 			title = 'watch' + cleantitle.get(title)
@@ -171,6 +200,7 @@ class source:
 						if len(match) > 0: url = match[0] ; break
 						#r = proxies.request(urlparse.urljoin(self.base_link, i), 'choose_tabs', proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
 						r = proxies.request(urlparse.urljoin(self.base_link, i), proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+						self.log('SUCCESS', 'get_movie-4', 'r', dolog=testing, disp=False)
 						if imdb != None and imdb in str(r): url = i ; break
 						r = client.parseDOM(r, 'div', attrs={'class':'movie_info'})
 						#print "tag -- %s" % r
@@ -181,12 +211,18 @@ class source:
 			url = re.findall('(?://.+?|)(/.+)', url)[0]
 			url = client.replaceHTMLCodes(url)
 			url = url.encode('utf-8')
-			
+			if url != None and'http://' not in url:
+				url = 'http:' + url
 			#print "PRIMEWIRE get_movie %s" % url
 			
+			self.log('SUCCESS', 'get_movie','%s' % url, dolog=testing)
 			return url
 		except Exception as e:
-			print "Error primewire get_movie %s" % e
+			self.log('ERROR', 'get_movie','%s' % e, dolog=testing)		
+			self.log('ERROR', 'get_movie','%s' % '-- query --', dolog=testing)
+			self.log('ERROR', 'get_movie','%s' % query, dolog=testing)
+			self.log('ERROR', 'get_movie','%s' % '-- result --', dolog=testing)
+			self.log('ERROR', 'get_movie','%s' % result, dolog=testing)
 			return
 
 	def get_show(self, imdb, tvdb, tvshowtitle, year, proxy_options=None, key=None):
@@ -331,9 +367,10 @@ class source:
 				except:
 					pass
 
+			self.log('SUCCESS', 'get_sources','links : %s' % len(sources), dolog=testing)
 			return sources
 		except Exception as e:
-			control.log('ERROR PRIME %s' % e)
+			self.log('ERROR', 'get_sources','%s' % e, dolog=testing)
 			return sources
 
 
@@ -344,6 +381,6 @@ class source:
 		except:
 			return
 
-def log(type, name, msg):
-	control.log('%s: %s %s' % (type, name, msg))
+def logger(msg):
+	control.log(msg)
 

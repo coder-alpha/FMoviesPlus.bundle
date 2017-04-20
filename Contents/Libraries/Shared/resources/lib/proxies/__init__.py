@@ -29,6 +29,7 @@ def info():
 	
 def request(url, proxy_name=None, proxy_url=None, close=True, redirect=True, followredirect=False, error=False, proxy=None, post=None, headers=None, mobile=False, limit=None, referer=None, cookie=None, output='', timeout='30', httpsskip=False, use_web_proxy=False, proxy_options=None):
 
+# output extended = 4, response = 2, responsecodeext = 2
 	#try:
 	ret = None
 	if use_web_proxy != True:
@@ -64,6 +65,10 @@ def request(url, proxy_name=None, proxy_url=None, close=True, redirect=True, fol
 			if ret != None:
 				return ret
 			
+	if output == 'extended':
+		return (None, None, None, None)
+	elif output == 'response' or output == 'responsecodeext':
+		return (None, None)
 	return None
 	# except Exception as e:
 		# print ('ERROR proxies request > %s url %s' % (e.args, url))

@@ -2,7 +2,7 @@ import time, sys, os, json, re
 import omdb
 from resources.lib.sources import sources
 from resources.lib import resolvers
-from resources.lib.libraries import client
+from resources.lib.libraries import client, control
 
 initA = []
 initBool = []
@@ -185,6 +185,27 @@ def getProviders():
 	if wait_for_init() == False:
 		return
 	return E(JSON.StringFromObject(initA[0].getProviders()))
+	
+def getProvidersLoggerTxts():
+	if wait_for_init() == False:
+		return
+	loggertxt = []
+	if Prefs["use_debug"]:
+		Log(" === LOGGER txt START === ")
+		for provider in initA[0].providersCaller:
+			Log(" === Provider: %s Start ===" % provider['name'])
+			for txt in provider['call'].loggertxt:
+				loggertxt.append(txt)
+				Log(txt)
+			Log(" === Provider: %s Start End ===" % provider['name'])
+			
+			Log(" === CONTROL txt Start ===")
+			for txt in control.loggertxt:
+				loggertxt.append(txt)
+				Log(txt)
+			Log(" === CONTROL txt End ===")
+		Log(" === LOGGER txt END === ")
+	return loggertxt
 	
 def getExtSourcesThreadStatus(key=None):
 	if key in InterfaceThread:

@@ -10,7 +10,7 @@
 	
 import urllib, urlparse, json, time, re, datetime, calendar, base64
 import common
-from __builtin__ import ord
+from __builtin__ import ord, format
 
 BASE_URL = "https://fmovies.to"
 HASH_PATH_MENU = "/user/ajax/menu-bar"

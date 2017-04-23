@@ -283,33 +283,26 @@ def get_token_(data, **kwargs):
 		Log("fmovies.py > get_token_ > %s" % e)
 		
 		
-def r01(e, n):
-	v = t01(e, n);
-	return v
+def r01(t, e):
+	i = 0
+	n = 0
+	for i in range(0, max(len(t), len(e))):
+		if i < len(e):
+			n += ord(e[i])
+		if i < len(t):
+			n += ord(t[i])
+	h = format(int(hex(n),16),'x')
+	return h
 
 def t01(t, e):
-		T = ""
-		sn = 256
-		o = list(range(0, sn))
-		for r in range(0, sn):
-			o[r] = r
-		i = 0
-		for r in range(0,sn):
-			i = (i + o[r] + ord(t[(r % len(t))])) % sn
-			n = o[r]
-			o[r] = o[i]
-			o[i] = n
-		r = 0
-		i = 0
-		a = T
-		for s in range(0, len(e)):
-			r = (r + 1) % sn
-			i = (i + o[r]) % sn 
-			n = o[r]
-			o[r] = o[i] 
-			o[i] = n
-			a += chr(ord(e[s]) ^ o[(o[r] + o[i]) % sn])
-		return T + a
+	i = 0
+	n = 0
+	for i in range(0, max(len(t), len(e))):
+		if i < len(e):
+			n += ord(e[i])
+		if i < len(t):
+			n += ord(t[i])
+	return hex(n)
 
 def a01(t):
 	i = 0
@@ -320,7 +313,7 @@ def a01(t):
 
 def get_token(n, **kwargs):
 	try:
-		d = base64.b64decode(base64.b64decode("UWxFMFFYZENaMVJTZW5CQ1lsTkxURUk9"))
+		d = D("QlE0QXdC")
 		s = a01(d)
 		for i in n: 
 			s += a01(r01(d + i, n[i]))

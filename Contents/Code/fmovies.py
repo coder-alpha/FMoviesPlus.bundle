@@ -9,7 +9,7 @@
 #########################################################################################################
 
 import urllib, urllib2, urlparse, json, time, re, sys, HTMLParser, random, cookielib, datetime, calendar, base64
-from __builtin__ import ord
+from __builtin__ import ord, format
 Constants = SharedCodeService.constants
 
 CACHE = {}
@@ -253,59 +253,56 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 	except:
 		return magic_url, isOpenLoad
 
-def get_token_(data):
+def get_token_(data, **kwargs):
 
-	index1 = 0
-	sn = 256
-	for index2 in data:
-		i = list(range(0, sn))
-		if not index2.startswith('_'):
-			n = 0
-			index4 = 0
-			for s in range(0, sn):
-				n = (n + i[s] +
-					 ord(index2[s % len(index2)])) % sn
-				r = i[s]
-				i[s] = i[n]
-				i[n] = r
-			n = 0
-			for index8 in range(0, len(data[index2])):
-				s = index8 + 1  # line:15
-				n = (n + i[s]) % (sn)
-				r = i[s]
-				i[s] = i[n]
-				i[n] = r
-				index4 += ord(data[index2][index8]) ^ (i[(i[s] +i[n]) % sn]) * index8 + index8
-			index1 += index4
-	return {'_': str(index1)}
-	
-def r01(e, n):
-	v = t01(e, n);
-	return v
+	try:
+		index1 = 0
+		sn = 256
+		for index2 in data:
+			i = list(range(0, sn))
+			if not index2.startswith('_'):
+				n = 0
+				index4 = 0
+				for s in range(0, sn):
+					n = (n + i[s] +
+						 ord(index2[s % len(index2)])) % sn
+					r = i[s]
+					i[s] = i[n]
+					i[n] = r
+				n = 0
+				for index8 in range(0, len(data[index2])):
+					s = index8 + 1  # line:15
+					n = (n + i[s]) % (sn)
+					r = i[s]
+					i[s] = i[n]
+					i[n] = r
+					index4 += ord(data[index2][index8]) ^ (i[(i[s] +i[n]) % sn]) * index8 + index8
+				index1 += index4
+		return {'_': str(index1)}
+	except Exception as e:
+		Log("fmovies.py > get_token_ > %s" % e)
+		
+		
+def r01(t, e):
+	i = 0
+	n = 0
+	for i in range(0, max(len(t), len(e))):
+		if i < len(e):
+			n += ord(e[i])
+		if i < len(t):
+			n += ord(t[i])
+	h = format(int(hex(n),16),'x')
+	return h
 
 def t01(t, e):
-		T = ""
-		sn = 256
-		o = list(range(0, sn))
-		for r in range(0, sn):
-			o[r] = r
-		i = 0
-		for r in range(0,sn):
-			i = (i + o[r] + ord(t[(r % len(t))])) % sn
-			n = o[r]
-			o[r] = o[i]
-			o[i] = n
-		r = 0
-		i = 0
-		a = T
-		for s in range(0, len(e)):
-			r = (r + 1) % sn
-			i = (i + o[r]) % sn 
-			n = o[r]
-			o[r] = o[i] 
-			o[i] = n
-			a += chr(ord(e[s]) ^ o[(o[r] + o[i]) % sn])
-		return T + a
+	i = 0
+	n = 0
+	for i in range(0, max(len(t), len(e))):
+		if i < len(e):
+			n += ord(e[i])
+		if i < len(t):
+			n += ord(t[i])
+	return hex(n)
 
 def a01(t):
 	i = 0
@@ -313,9 +310,10 @@ def a01(t):
 		i += ord(t[e])
 	return i
 
+
 def get_token(n, **kwargs):
 	try:
-		d = base64.b64decode(base64.b64decode("UWxFMFFYZENaMVJTZW5CQ1lsTkxURUk9"))
+		d = D("QlE0QXdC")
 		s = a01(d)
 		for i in n: 
 			s += a01(r01(d + i, n[i]))

@@ -168,16 +168,16 @@ def GetPageAsString(url, headers=None, timeout=15):
 			if Prefs["use_debug"]:
 				Log("Using SSL Alternate Option")
 				Log("Url: " + url)
-			page_data_string = fmovies.request(url = url, headers=headers, timeout=timeout)
+			page_data_string = fmovies.request(url = url, headers=headers, timeout=str(timeout))
 		elif Prefs["use_web_proxy"]:
 			if Prefs["use_debug"]:
 				Log("Using SSL Web-Proxy Option")
 				Log("Url: " + url)
 				
 			if headers == None:
-				page_data_string = fmovies.request(fmovies.PROXY_URL + url, timeout=timeout)
+				page_data_string = HTTP.Request(fmovies.PROXY_URL + url, timeout=timeout).content
 			else:
-				page_data_string = fmovies.request(fmovies.PROXY_URL + url, headers=headers, timeout=timeout)
+				page_data_string = HTTP.Request(fmovies.PROXY_URL + url, headers=headers, timeout=timeout).content
 			page_data_string = page_data_string.replace(fmovies.PROXY_PART1, fmovies.PROXY_PART1_REPLACE)
 			page_data_string = page_data_string.replace(fmovies.PROXY_PART1B, fmovies.PROXY_PART1_REPLACE)
 			page_data_string = page_data_string.replace(fmovies.PROXY_PART1C, fmovies.PROXY_PART1_REPLACE)
@@ -185,11 +185,11 @@ def GetPageAsString(url, headers=None, timeout=15):
 			page_data_string = page_data_string.replace(fmovies.PROXY_PART2B, fmovies.PROXY_PART2_REPLACE)
 		else:
 			if headers == None:
-				page_data_string = fmovies.request(url, timeout=timeout)
+				page_data_string = HTTP.Request(url, timeout=timeout).content
 			else:
-				page_data_string = fmovies.request(url, headers=headers, timeout=timeout)
+				page_data_string = HTTP.Request(url, headers=headers, timeout=timeout).content
 	except Exception as e:
-		Log('ERROR common.py>GetPageAsString: %s URL: %s' % (e.args,url))
+		Log('ERROR common.py>GetPageAsString: %s URL: %s' % (e,url))
 		pass
 		
 	return page_data_string

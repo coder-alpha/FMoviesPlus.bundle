@@ -18,7 +18,7 @@ CACHE_EXPIRY_TIME = 60*60 # 1 Hour
 GLOBAL_TIMEOUT_FOR_HTTP_REQUEST = 15
 HTTP_GOOD_RESP_CODES = ['200','206']
 
-BASE_URL = "https://www.fmovies.to"
+BASE_URL = "https://fmovies.to"
 HASH_PATH_MENU = "/user/ajax/menu-bar"
 HASH_PATH_INFO = "/ajax/episode/info"
 SEARCH_PATH = "/search"
@@ -35,6 +35,8 @@ PROXY_PART1_REPLACE = "/"
 PROXY_PART2A = "/myaddrproxy.php/https/"
 PROXY_PART2B = "/myaddrproxy.php/http/"
 PROXY_PART2_REPLACE = "//"
+
+USE_COOKIES = False
 
 ####################################################################################################
 
@@ -172,41 +174,42 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 		except:
 			CACHE_EXPIRY = CACHE_EXPIRY_TIME
 		
-		if 'cookie' in CACHE and 'myts' in CACHE['cookie'] and (myts - int(CACHE['cookie']['myts'])) < CACHE_EXPIRY:
-			# use cache to minimize requests
-			if use_debug:
-				try:
-					Log('Using Cookies from Cache')
-				except:
-					print 'Using Cookies from Cache'
-			cookie1 = CACHE['cookie']['cookie1']
-			cookie2 = CACHE['cookie']['cookie2']
-		else:
-			if use_debug:
-				try:
-					Log('NOT Using Cookies from Cache')
-				except:
-					print 'NOT Using Cookies from Cache'
-			CACHE['cookie'] = {}
-			serverts = str(serverts)
-			time.sleep(0.2)
-			result, headers, content, cookie1 = request(url, limit='0', output='extended', httpsskip=use_https_alt, webproxy=webproxy)
-			#print result
-			CACHE['cookie']['cookie1'] = cookie1
-			hash_url = urlparse.urljoin(BASE_URL, HASH_PATH_MENU)
-			query = {'ts': serverts}
-			query.update(get_token(query))
-			hash_url = hash_url + '?' + urllib.urlencode(query)
-			time.sleep(0.2)
-			r1, headers, content, cookie2 = request(hash_url, limit='0', output='extended', cookie=cookie1, httpsskip=use_https_alt, webproxy=webproxy)
-			#print r1
-			CACHE['cookie']['cookie2'] = cookie2
-			CACHE['cookie']['myts'] = myts
+		if USE_COOKIES:
+			if 'cookie' in CACHE and 'myts' in CACHE['cookie'] and (myts - int(CACHE['cookie']['myts'])) < CACHE_EXPIRY:
+				# use cache to minimize requests
+				if use_debug:
+					try:
+						Log('Using Cookies from Cache')
+					except:
+						print 'Using Cookies from Cache'
+				cookie1 = CACHE['cookie']['cookie1']
+				cookie2 = CACHE['cookie']['cookie2']
+			else:
+				if use_debug:
+					try:
+						Log('NOT Using Cookies from Cache')
+					except:
+						print 'NOT Using Cookies from Cache'
+				CACHE['cookie'] = {}
+				serverts = str(serverts)
+				time.sleep(0.2)
+				result, headers, content, cookie1 = request(url, limit='0', output='extended', httpsskip=use_https_alt, webproxy=webproxy)
+				#print result
+				CACHE['cookie']['cookie1'] = cookie1
+				hash_url = urlparse.urljoin(BASE_URL, HASH_PATH_MENU)
+				query = {'ts': serverts, 'update':'0'}
+				query.update(get_token(query))
+				hash_url = hash_url + '?' + urllib.urlencode(query)
+				time.sleep(0.2)
+				r1, headers, content, cookie2 = request(hash_url, limit='0', output='extended', cookie=cookie1, httpsskip=use_https_alt, webproxy=webproxy)
+				#print r1
+				CACHE['cookie']['cookie2'] = cookie2
+				CACHE['cookie']['myts'] = myts
 
 		try:
 			headers = {'X-Requested-With': 'XMLHttpRequest'}
 			hash_url = urlparse.urljoin(BASE_URL, HASH_PATH_INFO)
-			query = {'ts': serverts, 'id': key}
+			query = {'ts': serverts, 'id': key, 'update':'0'}
 
 			query.update(get_token(query))
 			hash_url = hash_url + '?' + urllib.urlencode(query)
@@ -214,10 +217,14 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 			headers['Referer'] = urlparse.urljoin(url, key)
 			oldmarketgidstorage = 'MarketGidStorage=%7B%220%22%3A%7B%22svspr%22%3A%22%22%2C%22svsds%22%3A3%2C%22TejndEEDj%22%3A%22MTQ4MTM2ODE0NzM0NzQ4NTMyOTAx%22%7D%2C%22C48532%22%3A%7B%22page%22%3A1%2C%22time%22%3A1481368147359%7D%2C%22C77945%22%3A%7B%22page%22%3A1%2C%22time%22%3A1481368147998%7D%2C%22C77947%22%3A%7B%22page%22%3A1%2C%22time%22%3A1481368148109%7D%7D'
 			newmarketgidstorage = 'MarketGidStorage=%7B%220%22%3A%7B%22svspr%22%3A%22%22%2C%22svsds%22%3A75%2C%22TejndEEDj%22%3A%22MTQ4NDc3MzczNzkzOTc3OTQ0NjgwMQ%3D%3D%22%7D%2C%22C77944%22%3A%7B%22page%22%3A1%2C%22time%22%3A1485149595898%7D%2C%22C77946%22%3A%7B%22page%22%3A1%2C%22time%22%3A1485149600480%7D%2C%22C77948%22%3A%7B%22page%22%3A1%2C%22time%22%3A1485149600326%7D%7D'
-			headers['Cookie'] = cookie1 + ';' + cookie2 + ';user-info=null; ' + newmarketgidstorage
+			if USE_COOKIES:
+				headers['Cookie'] = cookie1 + ';' + cookie2 + ';user-info=null; ' + newmarketgidstorage
+			else:
+				headers['Cookie'] = 'user-info=null; ' + newmarketgidstorage
 			
 			time.sleep(0.4)
-			#print hash_url
+			if use_debug:
+				Log(hash_url)
 			result = request(hash_url, headers=headers, limit='0', webproxy=webproxy)
 			if webproxy != None:
 				result = result.replace(PROXY_PART1, PROXY_PART1_REPLACE)

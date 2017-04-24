@@ -70,6 +70,8 @@ CUSTOM_TIMEOUT_DICT = {}
 
 CUSTOM_TIMEOUT_CLIENTS = {'Plex Web': 15}
 
+NoMovieInfo = True
+
 ######################################################################################
 
 def Start():
@@ -1155,7 +1157,7 @@ def MoviesWithTag(tags):
 @route(PREFIX + "/getmovieinfo")
 def GetMovieInfo(summary, urlPath):
 
-	if urlPath == None and (summary == None or summary == ''):
+	if NoMovieInfo or urlPath == None and (summary == None or summary == ''):
 		return 'Plot Summary on Item Page'
 	elif urlPath == None:
 		return summary

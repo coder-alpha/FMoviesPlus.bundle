@@ -313,7 +313,7 @@ def a01(t):
 
 def get_token(n, **kwargs):
 	try:
-		d = D("QlE0QXdC")
+		d = D("bG9jYXRpb24=")
 		s = a01(d)
 		for i in n: 
 			s += a01(r01(d + i, n[i]))

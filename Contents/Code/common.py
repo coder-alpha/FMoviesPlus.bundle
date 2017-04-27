@@ -1,12 +1,23 @@
-import time, fmovies, base64, unicodedata, re
+import time, base64, unicodedata, re
+from resources.lib.libraries import client, cleantitle
+from resources.lib.resolvers import host_openload, host_gvideo
+import interface
 
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.16' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.17' # Release notation (x.y - where x is major and y is minor)
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
 ################################################################################
 
+CACHE = {}
+CACHE_META = {}
+CACHE_EXPIRY_TIME = 3600 # 1 Hour
+CACHE_EXPIRY = 3600
+CACHE_COOKIE = []
+
+# Help videos on Patebin
+Help_Videos = "https://pastebin.com/raw/BMMHQund"
 
 # Vibrant Emoji's (might not be supported on all clients)
 EMOJI_LINK = u'\U0001F517'
@@ -19,24 +30,67 @@ EMOJI_TICK = u'\u2713'
 EMOJI_CROSS = u'\u2717'
 EMOJI_QUESTION = u'\u2753'
 
+# Text Emoji equivalent
+EMOJI_TXT_POS = u'(v)'
+EMOJI_TXT_NEG = u'(x)'
+EMOJI_TXT_QUES = u'(?)'
+
+OPTIONS_PROXY = []
+INTERNAL_SOURCES = []
+OPTIONS_PROVIDERS = []
+INTERNAL_SOURCES_QUALS = [{'label':'4K','enabled': 'True'},{'label':'1080p','enabled': 'True'},{'label':'720p','enabled': 'True'},{'label':'480p','enabled': 'True'},{'label':'360p','enabled': 'True'}]
+INTERNAL_SOURCES_RIPTYPE = [{'label':'BRRIP','enabled': 'True'},{'label':'PREDVD','enabled': 'True'},{'label':'CAM','enabled': 'True'},{'label':'TS','enabled': 'True'},{'label':'SCR','enabled': 'True'},{'label':'UNKNOWN','enabled': 'True'}]
+
+INTERNAL_SOURCES_QUALS_CONST = [{'label':'4K','enabled': 'True'},{'label':'1080p','enabled': 'True'},{'label':'720p','enabled': 'True'},{'label':'480p','enabled': 'True'},{'label':'360p','enabled': 'True'}]
+INTERNAL_SOURCES_RIPTYPE_CONST = [{'label':'BRRIP','enabled': 'True'},{'label':'PREDVD','enabled': 'True'},{'label':'CAM','enabled': 'True'},{'label':'TS','enabled': 'True'},{'label':'SCR','enabled': 'True'},{'label':'UNKNOWN','enabled': 'True'}]
+
+DEVICE_OPTIONS = ['Dumb-Keyboard','List-View','Redirector','Simple-Emoji','Vibrant-Emoji','Multi-Link-View','Full-poster display']
+DEVICE_OPTION = {DEVICE_OPTIONS[0]:'The awesome Keyboard for Search impaired devices',
+				DEVICE_OPTIONS[1]:'Force List-View of Playback page listing sources',
+				DEVICE_OPTIONS[2]:'Required in certain cases - *Experimental (refer forum)',
+				DEVICE_OPTIONS[3]:'Enable Simple Emoji Icons (%s|%s - Supported by Most Clients)' % (EMOJI_TICK,EMOJI_CROSS),
+				DEVICE_OPTIONS[4]:'Enable Vibrant Emoji Icons (%s|%s - Supported by Limited Clients)' % (EMOJI_GREEN_HEART,EMOJI_BROKEN_HEART),
+				DEVICE_OPTIONS[5]:'Shows All Video Items in single container - makes many requests to server',
+				DEVICE_OPTIONS[6]:'Shows Uncropped Poster - client compatibility is untested'}
+DEVICE_OPTION_CONSTRAINTS = {DEVICE_OPTIONS[2]:[{'Pref':'use_https_alt','Desc':'Use Alternate SSL/TLS','ReqValue':'disabled'}]}
+DEVICE_OPTION_CONSTRAINTS2 = {DEVICE_OPTIONS[5]:[{'Option':6,'ReqValue':False}], DEVICE_OPTIONS[6]:[{'Option':5,'ReqValue':False}]}
+
+DEV_DEBUG = False
 
 ####################################################################################################
 # Get Key from a Dict using Val
 @route(PREFIX + '/GetEmoji')
-def GetEmoji(type, mode='vibrant'):
+def GetEmoji(type, mode='vibrant', session=None):
 
 	# modes = ['simple','vibrant'] - enforce mode to override Prefs for Search Filter
 
-	if mode == 'simple' or Prefs["use_vibrant_emoji"] == False:
+	type = str(type).lower()
+	
+	if session == None:
+		session = getSession()
+	
+	if mode == 'simple' and (UsingOption(DEVICE_OPTIONS[3], session=session) or UsingOption(DEVICE_OPTIONS[4], session=session)):
+		if type == 'pos' or type == 'true':
+			return EMOJI_TICK
+		elif type =='neg' or type == 'false':
+			return EMOJI_CROSS
+	elif mode=='vibrant' and UsingOption(DEVICE_OPTIONS[4], session=session):
+		if type == 'pos' or type == 'true':
+			return EMOJI_GREEN_HEART
+		elif type =='neg' or type == 'false':
+			return EMOJI_BROKEN_HEART
+	elif UsingOption(DEVICE_OPTIONS[3], session=session):
 		if type == 'pos' or type == 'true':
 			return EMOJI_TICK
 		elif type =='neg' or type == 'false':
 			return EMOJI_CROSS
 	else:
 		if type == 'pos' or type == 'true':
-			return EMOJI_GREEN_HEART
+			return EMOJI_TXT_POS
 		elif type =='neg' or type == 'false':
-			return EMOJI_BROKEN_HEART
+			return EMOJI_TXT_NEG
+		else:
+			return EMOJI_TXT_QUES
 	
 	return EMOJI_QUESTION
 
@@ -68,29 +122,73 @@ def getSession():
 # base64 decode
 @route(PREFIX + '/decode')
 def decode(str):
-
 	return base64.b64decode(str)
 	
 # base64 encode
 @route(PREFIX + '/encode')
 def encode(str):
-
 	return base64.b64encode(str)
+	
+#######################################################################################################
+@route(PREFIX + '/getHighestQualityLabel')
+def getHighestQualityLabel(strr, q_label):
+
+	try:
+		i =  (q_label.lower().replace('p','').replace('hd','').strip()) # fail when q_label = TS, CAM, etc.
+		i = int(i.strip())
+		s = ''
+		q_label = '%sp' % i
+	except:
+		s = ' (%s)' % q_label
+	
+	if '1080' in strr:
+		return '1080p' + s
+	elif '720' in strr:
+		return '720p' + s
+	elif '480' in strr:
+		return '480p' + s
+	elif '360' in strr:
+		return '360p' + s
+	else:
+		return q_label
+	
 
 #######################################################################################################
 @route(PREFIX + "/setDictVal")
-def setDictVal(key, session, val):
-	Dict[key+session] = val
+def setDictVal(key, val, session=None):
+
+	if str(val).lower() == 'true':
+		val = 'enabled'
+	elif str(val).lower() == 'false':
+		val = 'disabled'
+		
+	key = key.replace('Toggle','')
+
+	if DEVICE_OPTION_CONSTRAINTS != None and key in DEVICE_OPTION_CONSTRAINTS.keys():
+		for key_cons in DEVICE_OPTION_CONSTRAINTS[key]:
+			if Prefs[key_cons['Pref']] and val!=key_cons['ReqValue']:
+				return ObjectContainer(header='Sorry', message='Sorry %s has conflict with Pref: %s needs to be %s.' % (key, key_cons['Desc'], key_cons['ReqValue']), title1=key)
+				
+	if DEVICE_OPTION_CONSTRAINTS2 != None and key in DEVICE_OPTION_CONSTRAINTS2.keys():
+		for key_cons in DEVICE_OPTION_CONSTRAINTS2[key]:
+			if str(UsingOption(DEVICE_OPTIONS[key_cons['Option']])) != str(key_cons['ReqValue']):
+				return ObjectContainer(header='Sorry', message='Sorry %s has conflict with Device Option: %s needs to be %s.' % (key, DEVICE_OPTIONS[key_cons['Option']], key_cons['ReqValue']), title1=key)
+				
+	if session == None:
+		session = getSession()
+
+	Dict['Toggle'+key+session] = val
 	Dict.Save()
 	if Prefs["use_debug"]:
 		Log("%s status: %s" % (key,val))
 		
-	return ObjectContainer(header=key, message=key.replace('Toggle','') + ' has been ' + Dict[key+session] + ' for this device.', title1=key)
+	return ObjectContainer(header=key, message=key + ' has been ' + val + ' for this device.', title1=key)
 
 @route(PREFIX + "/UsingOption")
-def UsingOption(key):
-	session = getSession()
-	if Dict[key+session] == None or Dict[key+session] == 'disabled':
+def UsingOption(key, session=None):
+	if session == None:
+		session = getSession()
+	if Dict['Toggle'+key+session] == None or Dict['Toggle'+key+session] == 'disabled':
 		return False
 	else:
 		return True
@@ -98,11 +196,11 @@ def UsingOption(key):
 ####################################################################################################
 # Get HTTP response code (200 == good)
 @route(PREFIX + '/gethttpstatus')
-def GetHttpStatus(url):
+def GetHttpStatus(url, cookies=None):
 	try:
-		req = GetHttpRequest(url=url)
+		req = GetHttpRequest(url=url, cookies=cookies)
 		if req != None:
-			conn = urllib2.urlopen(req, timeout=fmovies.GLOBAL_TIMEOUT_FOR_HTTP_REQUEST)
+			conn = urllib2.urlopen(req, timeout=client.GLOBAL_TIMEOUT_FOR_HTTP_REQUEST)
 			resp = str(conn.getcode())
 		else:
 			resp = '0'
@@ -115,7 +213,7 @@ def GetHttpStatus(url):
 @route(PREFIX + '/gethttprequest')
 def GetHttpRequest(url, cookies=None):
 	try:
-		headers = {'User-Agent': fmovies.USER_AGENT,
+		headers = {'User-Agent': client.USER_AGENT,
 		   'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
 		   'Accept-Charset': 'ISO-8859-1,utf-8;q=0.7,*;q=0.3',
 		   'Accept-Encoding': 'none',
@@ -146,21 +244,181 @@ def GetHttpRequest(url, cookies=None):
 	return req
 	
 ######################################################################################
-@route(PREFIX + "/GetPageElements")
-def GetPageElements(url, headers=None):
+def ResolveFinalUrl(isOpenLoad, data, pair_required=False, params=None, **kwargs):
+	# responses - true, false, unknown
+	vidurl = data
+	err = ''
+		
+	if params != None:
+		params = JSON.ObjectFromString(D(params))
+		headers = params['headers']		
+		cookie = params['cookie']
+		
+	if vidurl != None:
+		if isOpenLoad and pair_required == False:
+			vidurl, err = host_openload.resolve(vidurl)
+		else:
+			pass
 
+	if Prefs["use_debug"]:
+		Log("--- Resolved Final Url ---")
+		Log("Video Url: %s : Error: %s" % (vidurl, err))
+			
+	return vidurl
+	
+######################################################################################
+@route(PREFIX + "/isItemVidAvailable")
+def isItemVidAvailable(isOpenLoad, data, params=None, **kwargs):
+	# responses - true, false, unknown
+	vidurl = None
+	httpsskip = Prefs["use_https_alt"]
+	use_web_proxy = Prefs["use_web_proxy"]
+	
+	if isOpenLoad:
+		vidurl = data
+	else:
+		data = D(data)
+		data = JSON.ObjectFromString(data)
+		files = JSON.ObjectFromString(data['server'])
+		sortable_list = []
+		for file in files:
+			furl = file['file']
+			res = file['label'].replace('p','')
+			if res != '1080':
+				res = '0'+res
+			type = file['type']
+			sortable_list.append({'label': res, 'file':furl, 'type':type})
+		newlist = sorted(sortable_list, key=lambda k: k['label'], reverse=True)
+		for file in newlist:
+			vidurl = file['file']
+			break
+			
+	isVideoOnline = 'false'
+
+	headers = None
+	cookie = None
+	if params != None:
+		params = JSON.ObjectFromString(D(params))
+		headers = params['headers']		
+		cookie = params['cookie']
+		
+	if vidurl != None:
+		try:
+			if isOpenLoad:
+				if host_openload.check(vidurl, embedpage=True, headers=headers, cookie=cookie)[0] == True:
+						isVideoOnline = 'true'
+			else:
+				if host_gvideo.check(vidurl, headers=headers, cookie=cookie)[0] == True:
+						isVideoOnline = 'true'
+
+		except Exception as e:
+			Log('ERROR common.py>isItemVidAvailable %s, %s:' % (e.args,vidurl))
+			Log(data)
+			isVideoOnline = 'unknown'
+
+	if Prefs["use_debug"]:
+		Log("--- LinkChecker ---")
+		Log("Video Url: %s : Online: %s" % (vidurl, isVideoOnline))
+			
+	return isVideoOnline
+	
+######################################################################################
+@route(PREFIX + "/GetPageElements")
+def GetPageElements(url, headers=None, referer=None):
+
+	page_data_string = None
 	page_data_elems = None
 	try:
-		page_data_string = GetPageAsString(url=url, headers=headers)
+		if url in CACHE_META.keys():
+			try:
+				CACHE_EXPIRY = 60 * int(Prefs["cache_expiry_time"])
+			except:
+				CACHE_EXPIRY = CACHE_EXPIRY_TIME
+			if CACHE_META[url]['ts'] + CACHE_EXPIRY > time.time():
+				page_data_string = D(CACHE_META[url]['data'])
+				
+		if page_data_string == None:
+			page_data_string = GetPageAsString(url=url, headers=headers, referer=referer)
+
 		page_data_elems = HTML.ElementFromString(page_data_string)
-	except:
+		
+		CACHE_META[url] = {}
+		CACHE_META[url]['ts'] = time.time()
+		CACHE_META[url]['data'] = E(page_data_string)
+		
+	except Exception as e:
+		Log('ERROR common.py>GetPageElements: %s URL: %s DATA: %s' % (e.args,url,page_data_string))
 		pass
 		
 	return page_data_elems
 	
 ######################################################################################
 @route(PREFIX + "/GetPageAsString")
-def GetPageAsString(url, headers=None, timeout=15):
+def GetPageAsString(url, headers=None, timeout=15, referer=None):
+
+	use_debug = Prefs["use_debug"]
+	page_data_string = None
+	if headers == None:
+		headers = {}
+	if referer != None:
+		headers['Referer'] = referer
+	elif 'Referer' in headers:
+		pass
+	else:
+		headers['Referer'] = url
+
+	if len(CACHE_COOKIE) > 0:
+		if CACHE_COOKIE[0]['ts'] + 100*60 >= time.time():
+			del CACHE_COOKIE[:]
+		else:
+			headers['Cookie'] = CACHE_COOKIE[0]['cookie']
+		
+	try:
+		if len(CACHE_COOKIE) > 0 and use_debug:
+			Log("Using Cookie retrieved at: %s" % CACHE_COOKIE[0]['ts'])
+			Log("Using Cookie retrieved at: %s" % CACHE_COOKIE[0]['cookie'])
+		if Prefs["use_https_alt"] or (len(CACHE_COOKIE) == 0 and Prefs["use_web_proxy"] == False):
+			if use_debug:
+				Log("Using SSL Alternate Option")
+				Log("Url: " + url)
+			if len(CACHE_COOKIE) == 0:
+				page_data_string, headers, content, cookie = interface.request(url, output='extended', headers=headers, timeout=str(timeout))
+				CACHE_COOKIE.append({'ts':time.time(), 'cookie': cookie})
+				if use_debug:
+					Log("Cookie retrieved: %s" % cookie)
+			else:
+				page_data_string = interface.request(url = url, headers=headers, timeout=str(timeout))
+		elif Prefs["use_web_proxy"]:
+			page_data_string = None
+			if use_debug:
+				Log("Using Web-proxy option")
+				Log("Url: " + url)
+			for proxy in OPTIONS_PROXY:
+				if use_debug:
+					Log("Using Proxy: %s - %s" % (proxy['name'], proxy['url']))
+				if proxy['working']:
+					page_data_string = interface.request_via_proxy(url=url, proxy_name=proxy['name'], proxy_url=proxy['url'], headers=headers, timeout=str(timeout), use_web_proxy=True)
+					if page_data_string != None:
+						if use_debug:
+							Log(page_data_string[:100])
+						break
+		else:
+			if len(CACHE_COOKIE) == 0:
+				cookie = HTTP.CookiesForURL(url)
+				CACHE_COOKIE.append({'ts':time.time(), 'cookie': cookie})
+				headers['Cookie'] = CACHE_COOKIE[0]['cookie']
+				if use_debug:
+					Log("Cookie retrieved: %s" % cookie)
+			
+			page_data_string = HTTP.Request(url, headers=headers, timeout=timeout).content
+	except Exception as e:
+		Log('ERROR common.py>GetPageAsString: %s URL: %s' % (e.args,url))
+		pass
+		
+	return page_data_string
+	
+@route(PREFIX + "/request")
+def request(url, close=True, redirect=True, followredirect=False, error=False, proxy=None, post=None, headers=None, mobile=False, limit=None, referer=None, cookie=None, output='', timeout=15, httpsskip=False, use_web_proxy=False):
 
 	page_data_string = None
 	try:
@@ -168,28 +426,28 @@ def GetPageAsString(url, headers=None, timeout=15):
 			if Prefs["use_debug"]:
 				Log("Using SSL Alternate Option")
 				Log("Url: " + url)
-			page_data_string = fmovies.request(url = url, headers=headers, timeout=str(timeout))
+			page_data_string = interface.request(url = url, headers=headers, timeout=str(timeout))
 		elif Prefs["use_web_proxy"]:
+			page_data_string = None
+			use_web_proxy = True
 			if Prefs["use_debug"]:
-				Log("Using SSL Web-Proxy Option")
+				Log("Using Web-proxy option")
 				Log("Url: " + url)
-				
-			if headers == None:
-				page_data_string = HTTP.Request(fmovies.PROXY_URL + url, timeout=timeout).content
-			else:
-				page_data_string = HTTP.Request(fmovies.PROXY_URL + url, headers=headers, timeout=timeout).content
-			page_data_string = page_data_string.replace(fmovies.PROXY_PART1, fmovies.PROXY_PART1_REPLACE)
-			page_data_string = page_data_string.replace(fmovies.PROXY_PART1B, fmovies.PROXY_PART1_REPLACE)
-			page_data_string = page_data_string.replace(fmovies.PROXY_PART1C, fmovies.PROXY_PART1_REPLACE)
-			page_data_string = page_data_string.replace(fmovies.PROXY_PART2A, fmovies.PROXY_PART2_REPLACE)
-			page_data_string = page_data_string.replace(fmovies.PROXY_PART2B, fmovies.PROXY_PART2_REPLACE)
+			for proxy in OPTIONS_PROXY:
+				if proxy['working']:
+					if Prefs["use_debug"]:
+						Log("Using Proxy: %s - %s" % (proxy['name'], proxy['url']))
+					page_data_string = interface.request_via_proxy(url=url, proxy_name=proxy['name'], proxy_url=proxy['url'], close=close, redirect=redirect, followredirect=followredirect, error=error, proxy=proxy, post=post, headers=headers, mobile=mobile, limit=limit, referer=referer, cookie=cookie, output=output, timeout=str(timeout), httpsskip=httpsskip, use_web_proxy=use_web_proxy)
+					if page_data_string != None:
+						break
 		else:
 			if headers == None:
 				page_data_string = HTTP.Request(url, timeout=timeout).content
 			else:
 				page_data_string = HTTP.Request(url, headers=headers, timeout=timeout).content
+		
 	except Exception as e:
-		Log('ERROR common.py>GetPageAsString: %s URL: %s' % (e,url))
+		Log('ERROR common.py>request: %s URL: %s' % (e.args,url))
 		pass
 		
 	return page_data_string
@@ -232,6 +490,14 @@ def strip_accents(text):
 	return str(text)
 
 
+####################################################################################################
+@route(PREFIX + "/MakeStringLength")
+def MakeStringLength(text, n=15):
+
+	ns = n - len(text)
+	text += ' ' * ns
+	return text
+	
 ####################################################################################################
 # author: Twoure
 # source: https://github.com/Twoure/HindiMoviesOnline.bundle/blob/master/Contents/Code/messages.py

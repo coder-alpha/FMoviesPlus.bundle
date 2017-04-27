@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 
-import urllib2, re, urlparse
-
+import urllib2, re, urlparse, base64
 # import Shared ServiceCode
 import openload as Openload
-import constants as Constants
+
+USER_AGENT = "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:48.0) Gecko/20100101 Firefox/48.0"
 
 ####################################################################################################
 def NormalizeURL(url):
@@ -113,114 +113,179 @@ def MetadataObjectForURL(url):
 	)
 
 ####################################################################################################
-def MediaObjectsForURL(url):
+def MediaObjectsForURL(url, **kwargs):
 
 	data = get_data(url)
 	isOpenLoad = data['isOpenLoad']
 	title = data['title']
 	isVideoOnline = data['isVideoOnline'].lower()
 	media_obj = []
+	params = None
+	
+	direct_play = True
+	
+	try:
+		params = data['params']
+		# p = JSON.ObjectFromString(D(params))
+		# if len(p['cookie']) > 0:
+			# direct_play = False
+	except:
+		pass
 	
 	# Plex does not throw a dialog for Ex.MediaNotAvailable ???
 	#if isVideoOnline != 'unknown' and isVideoOnline != 'true':
 	#	raise Ex.MediaNotAvailable
 	
-	if isOpenLoad.lower() == 'true':
-		ourl = data['server']
+	try:
+		if isOpenLoad.lower() == 'true':
 		
-		mo = MediaObject(
-			container = Container.MP4,
-			video_codec = VideoCodec.H264,
-			audio_codec = AudioCodec.AAC,
-			audio_channels = 2,
-			optimized_for_streaming = True,
-			parts = [PartObject(key=Callback(PlayVideo, url=ourl, isOpenLoad=True))]
-		)
-		media_obj.append(mo)
-		
-	else:
-		
-		files = JSON.ObjectFromString(data['server'])
-		useRedirect = False
-		redUrl = None
-		if data['useRedirector'] == 'true':
-			useRedirect = True
-			redUrl = data['url']
-		
-		sortable_list = []
-		for file in files:
-			furl = file['file']
-			res = file['label'].replace('p','')
-			if res != '1080':
-				res = '0'+res
-			type = file['type']
+			ourl = data['server']
+			#Log("ourl -------- %s" % ourl)
 			
-			sortable_list.append({'label': res, 'file':furl, 'type':type})
+			pairrequired = data['pairrequired']
 			
-		newlist = sorted(sortable_list, key=lambda k: k['label'], reverse=True)
-		
-		for file in newlist:
-			furl = file['file']
-			res = int(file['label'])
-			type = file['type']
-			
-			if type == 'flv' or '.flv' in furl:
-				mo = MediaObject(
-						container = Container.FLV,
-						video_codec = VideoCodec.H264,
-						audio_codec = AudioCodec.AAC,
-						video_resolution = res,
-						audio_channels = 2,
-						optimized_for_streaming = True,
-						parts = [PartObject(key=Callback(PlayVideo, url=furl, useRedirect=useRedirect, refUrl=redUrl))]
-					)
-			elif type == '.m3u8' or '.m3u8' in furl:
-				mo = MediaObject(
-						protocol = 'hls',
-						container = 'mpegts',
-						audio_codec = AudioCodec.AAC,
-						video_resolution = res,
-						audio_channels = 2,
-						optimized_for_streaming = True,
-						parts = [PartObject(key=Callback(PlayVideo, url=furl, useRedirect=useRedirect, refUrl=redUrl))]
-					)
-			else:
-				mo = MediaObject(
-						container = Container.MP4,
-						video_codec = VideoCodec.H264,
-						audio_codec = AudioCodec.AAC,
-						video_resolution = res,
-						audio_channels = 2,
-						optimized_for_streaming = True,
-						parts = [PartObject(key=Callback(PlayVideo, url=furl, useRedirect=useRedirect, refUrl=redUrl))]
-					)
-			
+			res = '480p'
+			try:
+				res = data['quality']
+				res = int(res.replace('p',''))
+			except:
+				res = 480
+				
+			mo = MediaObject(
+				container = Container.MP4,
+				video_codec = VideoCodec.H264,
+				audio_codec = AudioCodec.AAC,
+				video_resolution = res,
+				audio_channels = 2,
+				optimized_for_streaming = direct_play,
+				parts = [PartObject(key=Callback(PlayVideo, url=ourl, isOpenLoad=True, pairrequired=pairrequired))]
+			)
 			media_obj.append(mo)
+			
+		else:
+			files = data['server']
+			try:
+				filesJ = JSON.ObjectFromString(files)
+				files = filesJ
+			except:
+				try:
+					urldata = data['urldata']
+					#Log("urldata -------- %s" % urldata)
+					if urldata != '':
+						filesJ = JSON.ObjectFromString(D(urldata))
+						#Log("filesJ -------- %s" % filesJ)
+						files = JSON.ObjectFromString(filesJ)
+					else:
+						quality = data['quality']
+						if quality == '1080p' or quality == '720p':
+							pass
+						else:
+							quality = '480p'
+						
+						files = [{'file':files,'label': quality,'type':'mp4'}]
+				except:
+					pass
+			
+			useRedirect = False
+			redUrl = None
+			if data['useRedirector'] == 'true':
+				useRedirect = True
+				redUrl = data['url']
+			
+			sortable_list = []
+			for file in files:
+				furl = file['file']
+				res = file['label'].replace('p','')
+				if res != '1080':
+					res = '0'+res
+				type = file['type']
+				
+				sortable_list.append({'label': res, 'file':furl, 'type':type})
+				
+			newlist = sorted(sortable_list, key=lambda k: k['label'], reverse=True)
+			
+			for file in newlist:
+				furl = file['file']
+				res = int(file['label'])
+				type = file['type']
+				
+				#Log("furl ---- %s" % furl)
+				
+				if type == 'flv' or '.flv' in furl:
+					mo = MediaObject(
+							container = Container.FLV,
+							video_codec = VideoCodec.H264,
+							audio_codec = AudioCodec.AAC,
+							video_resolution = res,
+							audio_channels = 2,
+							optimized_for_streaming = direct_play,
+							parts = [PartObject(key=Callback(PlayVideo, url=furl, useRedirect=useRedirect, refUrl=redUrl, params=params))]
+						)
+				elif type == '.m3u8' or '.m3u8' in furl:
+					mo = MediaObject(
+							protocol = 'hls',
+							container = 'mpegts',
+							audio_codec = AudioCodec.AAC,
+							video_resolution = res,
+							audio_channels = 2,
+							optimized_for_streaming = direct_play,
+							parts = [PartObject(key=Callback(PlayVideo, url=furl, useRedirect=useRedirect, refUrl=redUrl, params=params))]
+						)
+				else:
+					mo = MediaObject(
+							container = Container.MP4 if direct_play else None,
+							video_codec = VideoCodec.H264 if direct_play else None,
+							audio_codec = AudioCodec.AAC if direct_play else None,
+							video_resolution = res,
+							audio_channels = 2,
+							optimized_for_streaming = direct_play,
+							parts = [PartObject(key=Callback(PlayVideo, url=furl, useRedirect=useRedirect, refUrl=redUrl, params=params))]
+						)
+				
+				media_obj.append(mo)
+	except Exception as e:
+		Log('ERROR FMovies.ServiceCode MediaObjectsForURL > %s : URL:%s' % (e.args, data['server']))
+		raise Ex.MediaNotAvailable
 		
 	return media_obj
 
 ####################################################################################################
 @indirect
-def PlayVideo(url, isOpenLoad=False, useRedirect=False, refUrl=None):
+def PlayVideo(url, isOpenLoad=False, useRedirect=False, refUrl=None, params=None, pairrequired=False):
 
 	try:
 		if isOpenLoad:
-			url = Openload.openload(url)
+			if pairrequired == True:
+				url = Openload.openloadS(url)
 			if url == None:
 				raise Ex.MediaNotAvailable
 	except:
 		raise Ex.MediaNotAvailable
 
-	http_headers = {'User-Agent': Constants.USER_AGENT}
+	http_headers = {'User-Agent': USER_AGENT}
+	http_cookies = None
 	
+	if params != None:
+		params = JSON.ObjectFromString(D(params))
+		headers = params['headers']
+		if headers != None and headers != '':
+			for key in headers.keys():
+				http_headers[key] = headers[key]
+				
+		cookie = params['cookie']
+		if cookie != None and cookie != '':
+			headers['Cookie'] = cookie
+			http_cookies = cookie
+			http_headers['Cookie'] = cookie
+			
 	if useRedirect and refUrl != None:
-		url = GetRedirect(url, 10, ref=refUrl)
+		url = GetRedirect(url, 10, ref=refUrl, headers=http_headers, cookie=http_cookies)
 		http_headers['Referer'] = refUrl
 		
 	if '.m3u8' in url:
-		return IndirectResponse(VideoClipObject, key=HTTPLiveStreamURL(url), http_headers=http_headers)
+		return IndirectResponse(VideoClipObject, key=HTTPLiveStreamURL(url), http_headers=http_headers, http_cookies=http_cookies)
 	else:
-		return IndirectResponse(VideoClipObject, key=url, http_headers=http_headers)
+		return IndirectResponse(VideoClipObject, key=url, http_headers=http_headers, http_cookies=http_cookies)
 
 ####################################################################################################
 def get_data(url):
@@ -228,7 +293,10 @@ def get_data(url):
 	
 #########################################################################################################
 
-def GetRedirect(url, timeout=10, ref=None):
+#########################################################################################################
+import cookielib
+
+def GetRedirect(url, timeout=10, ref=None, headers=None, cookie=None):
 	class HTTPRedirectHandler(urllib2.HTTPRedirectHandler):
 		def redirect_request(self, req, fp, code, msg, headers, newurl):
 			newreq = urllib2.HTTPRedirectHandler.redirect_request(self,
@@ -244,9 +312,13 @@ def GetRedirect(url, timeout=10, ref=None):
 	opener = urllib2.build_opener(redirectHandler)
 	opener = urllib2.install_opener(opener)
 	
-	headers = {}
-	headers['User-Agent'] = Constants.USER_AGENT
+	cookies = cookielib.LWPCookieJar()
+	handlers = [urllib2.HTTPHandler(), urllib2.HTTPSHandler(), urllib2.HTTPCookieProcessor(cookies)]
+	opener = urllib2.build_opener(*handlers)
+	opener = urllib2.install_opener(opener)
 	
+	if cookie != None:
+		headers['Cookie'] = cookie
 	if ref != None:
 		headers['Referer'] = '%s://%s/' % (urlparse.urlparse(url).scheme, urlparse.urlparse(url).netloc)
 

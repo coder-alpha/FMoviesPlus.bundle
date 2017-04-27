@@ -29,7 +29,7 @@ from resources.lib import proxies
 
 class source:
 	def __init__(self):
-		self.base_link = 'http://cyro.se'
+		self.base_link = 'https://cyro.se'
 		self.MainPageValidatingContent = 'Cyro.se - The Many-Named Site.'
 		self.urlhost = 'cyro.se'
 		self.name = 'G2G'

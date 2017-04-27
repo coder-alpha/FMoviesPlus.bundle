@@ -8,10 +8,11 @@ class DumbKeyboard:
 	#clients = ['Plex for iOS', 'Plex Media Player', 'Plex Web']
 	clients = ['Plex for iOS', 'Plex Media Player']
 	KEYS = list('abcdefghijklmnopqrstuvwxyz1234567890-=;[]\\\',./')
+	NUM_KEYS = list('1234567890')
 	SHIFT_KEYS = list('ABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*()_+:{}|\"<>?')
 
 	def __init__(self, prefix, oc, callback, dktitle=None, dkthumb=None,
-				 dkplaceholder=None, dksecure=False, **kwargs):
+				 dkplaceholder=None, dksecure=False, dkNumOnly=False, dkHistory=True, **kwargs):
 		cb_hash = hash(str(callback)+str(kwargs))
 		Route.Connect(prefix+'/dumbkeyboard/%s'%cb_hash, self.Keyboard)
 		Route.Connect(prefix+'/dumbkeyboard/%s/submit'%cb_hash, self.Submit)
@@ -30,6 +31,9 @@ class DumbKeyboard:
 		self.Callback = callback
 		self.callback_args = kwargs
 		self.secure = dksecure
+		self.dkNumOnly = dkNumOnly
+		self.dkHistory = dkHistory
+		self.dktitle=str(dktitle)
 
 	def Keyboard(self, query=None, shift=False):
 		if self.secure and query is not None:
@@ -37,30 +41,43 @@ class DumbKeyboard:
 		else:
 			string = query if query else ""
 
-		oc = ObjectContainer(title2='DumbKeyboard')
+		if self.dktitle == None:
+			oc = ObjectContainer(title2='DumbKeyboard')
+		else:
+			oc = ObjectContainer(title2=self.dktitle)
+			
 		# Submit
 		oc.add(DirectoryObject(key=Callback(self.Submit, query=query),
 							   title=u'%s: %s'%(L('Submit'), string.replace(' ', '_'))))
 		# Search History
-		if Dict['DumbKeyboard-History']:
+		if self.dkHistory and Dict['DumbKeyboard-History']:
 			oc.add(DirectoryObject(key=Callback(self.History),
 								   title=u'%s'%L('Search History')))
 		# Space
-		oc.add(DirectoryObject(key=Callback(self.Keyboard,
+		if self.dkNumOnly == False:
+			oc.add(DirectoryObject(key=Callback(self.Keyboard,
 											query=query+" " if query else " "),
 							   title='Space'))
 		# Backspace (not really needed since you can just hit back)
-		if query is not None:
-			oc.add(DirectoryObject(key=Callback(self.Keyboard, query=query[:-1]),
-								   title='Backspace'))
+		if self.dkNumOnly == False:
+			if query is not None:
+				oc.add(DirectoryObject(key=Callback(self.Keyboard, query=query[:-1]),
+									   title='Backspace'))
 		# Shift
-		oc.add(DirectoryObject(key=Callback(self.Keyboard, query=query, shift=True),
+		if self.dkNumOnly == False:
+			oc.add(DirectoryObject(key=Callback(self.Keyboard, query=query, shift=True),
 							   title='Shift'))
 		# Keys
-		for key in self.KEYS if not shift else self.SHIFT_KEYS:
-			oc.add(DirectoryObject(key=Callback(self.Keyboard,
-												query=query+key if query else key),
-								   title=u'%s'%key))
+		if self.dkNumOnly:
+			for key in self.NUM_KEYS if not shift else self.SHIFT_KEYS:
+				oc.add(DirectoryObject(key=Callback(self.Keyboard,
+													query=query+key if query else key),
+									   title=u'%s'%key))
+		else:
+			for key in self.KEYS if not shift else self.SHIFT_KEYS:
+				oc.add(DirectoryObject(key=Callback(self.Keyboard,
+													query=query+key if query else key),
+									   title=u'%s'%key))
 		return oc
 
 	def History(self):

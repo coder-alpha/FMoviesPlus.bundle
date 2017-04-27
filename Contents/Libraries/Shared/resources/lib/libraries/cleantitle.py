@@ -78,7 +78,35 @@ def tvWatchTitle(title,season,episode,etitle):
 		
 	title = "%s - S%sE%s - %s" % (removeParanthesis(title),season,episode,etitle)
 	return title
+	
+def getTitleAndYear(title):
+	if ' ' in title:
+		xtitle = title.split(' ')
+		ntitle = ''
+		for i in range(0, len(xtitle)-1):
+			ntitle += xtitle[i] + ' '
+		yr = xtitle[len(xtitle)-1]
+		try:
+			iyr = int(yr)
+			if iyr > 1900 and iyr < 3000:
+				return (ntitle.strip(), str(iyr))
+		except:
+			pass
 
+	return (title, None)
+	
+def onlytitle(title):
+	if title == None: return
+	if ' ' in title:
+		xtitle = title.split(' ')
+		ntitle = ''
+		for i in range(0, len(xtitle)-1):
+			ntitle += xtitle[i] + ' '
+		title = ntitle
+
+	return title
+	
+	
 def get(title):
     if title == None: return
     title = re.sub('(&#[0-9]+)([^;^0-9]+)', '\\1;\\2', title)

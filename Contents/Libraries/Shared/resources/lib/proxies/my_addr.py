@@ -1,4 +1,4 @@
-import re,urllib,urlparse,base64,time
+import re,urllib,urlparse,base64,time,json
 
 from resources.lib.libraries import cleantitle
 from resources.lib.libraries import client
@@ -37,7 +37,7 @@ class proxy:
 			return False
 		return True
 		
-	def request(self, url, close=True, redirect=True, followredirect=False, error=False, proxy=None, post=None, headers=None, mobile=False, limit=None, referer=None, cookie=None, output='', timeout='30', httpsskip=False, use_web_proxy=False):
+	def request(self, url, close=True, redirect=True, followredirect=False, error=False, proxy=None, post=None, headers=None, mobile=False, limit=None, referer=None, cookie=None, output='', timeout='30', httpsskip=False, use_web_proxy=False, XHR=False):
 	
 		if self.working == False:
 			print "Proxy: %s is disabled internally" % (name)
@@ -48,9 +48,9 @@ class proxy:
 		else:
 			headers['Connection'] = self.headers['Connection']
 
-		return requestdirect(url=url, close=close, redirect=redirect, followredirect=followredirect, error=error, proxy=proxy, post=post, headers=headers, mobile=mobile, limit=limit, referer=referer, cookie=cookie, output=output, timeout=timeout, httpsskip=httpsskip, use_web_proxy=use_web_proxy)
+		return requestdirect(url=url, close=close, redirect=redirect, followredirect=followredirect, error=error, proxy=proxy, post=post, headers=headers, mobile=mobile, limit=limit, referer=referer, cookie=cookie, output=output, timeout=timeout, httpsskip=httpsskip, use_web_proxy=use_web_proxy, XHR=XHR)
 
-def requestdirect(url, close=True, redirect=True, followredirect=False, error=False, proxy=None, post=None, headers=None, mobile=False, limit=None, referer=None, cookie=None, output='', timeout='30', httpsskip=False, use_web_proxy=False):
+def requestdirect(url, close=True, redirect=True, followredirect=False, error=False, proxy=None, post=None, headers=None, mobile=False, limit=None, referer=None, cookie=None, output='', timeout='30', httpsskip=False, use_web_proxy=False, XHR=False):
 	#try:
 		
 	control.log("Requesting: %s Using via: %s" % (url, PROXY_URL))
@@ -59,24 +59,32 @@ def requestdirect(url, close=True, redirect=True, followredirect=False, error=Fa
 	
 	if headers == None:
 		headers = {'Connection' : 'keep-alive'}
-	headers['User-Agent'] = client.randomagent()
 	
-	res = client.request(url = PROXY_URL + url, close=close, redirect=redirect, followredirect=followredirect, error=error, proxy=proxy, post=post, headers=headers, mobile=mobile, limit=limit, referer=referer, cookie=cookie, output=output, timeout=timeout, httpsskip=httpsskip, use_web_proxy=use_web_proxy)
+	res = client.request(url = PROXY_URL + url, close=close, redirect=redirect, followredirect=followredirect, error=error, proxy=proxy, post=post, headers=headers, mobile=mobile, limit=limit, referer=referer, cookie=cookie, output=output, timeout=timeout, httpsskip=httpsskip, use_web_proxy=use_web_proxy, XHR=XHR)
 	
 	page_data_string = client.getPageDataBasedOnOutput(res, output)
+	
+	try:
+		#page_data_string = page_data_string.replace('\n','<br/>')	
+		page_data_string = page_data_string.replace('\r','r').replace('\n','<br/>').replace('\w','').replace('\.','').replace('\t','').replace('\ ','')
+	except Exception as e:
+		control.log("Error1: %s - %s" % (name, e))
+		
+	page_data_string = json.dumps(page_data_string)
+	page_data_string = page_data_string.replace('\\\\','')
+	
+	#print page_data_string
 
-	page_data_string = page_data_string.replace('\n','<br/>')	
-	#page_data_string = page_data_string.replace('\r','r').replace('\n','<br/>').replace('\w','').replace('\.','').replace('\t','').replace('\ ','')
 	try:
 		r = unicode(page_data_string, "utf-8")
 		page_data_string = r
 	except Exception as e:
+		control.log("Error2: %s - %s" % (name, e))
 		try:
 			r = str(page_data_string)
 			page_data_string = r
 		except Exception as e:
-			control.log("Error: %s - %s" % (name, e))
-			print page_data_string
+			control.log("Error3: %s - %s" % (name, e))
 		
 	PROXY_PART0A = PROXY_PART0 % urlhost
 	PROXY_PART1A = PROXY_PART1 % urlhost

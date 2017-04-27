@@ -14,6 +14,7 @@ CACHE = {}
 CACHE_META = {}
 CACHE_EXPIRY_TIME = 3600 # 1 Hour
 CACHE_EXPIRY = 3600
+CACHE_COOKIE = []
 
 # Help videos on Patebin
 Help_Videos = "https://pastebin.com/raw/BMMHQund"
@@ -43,13 +44,18 @@ INTERNAL_SOURCES_RIPTYPE = [{'label':'BRRIP','enabled': 'True'},{'label':'PREDVD
 INTERNAL_SOURCES_QUALS_CONST = [{'label':'4K','enabled': 'True'},{'label':'1080p','enabled': 'True'},{'label':'720p','enabled': 'True'},{'label':'480p','enabled': 'True'},{'label':'360p','enabled': 'True'}]
 INTERNAL_SOURCES_RIPTYPE_CONST = [{'label':'BRRIP','enabled': 'True'},{'label':'PREDVD','enabled': 'True'},{'label':'CAM','enabled': 'True'},{'label':'TS','enabled': 'True'},{'label':'SCR','enabled': 'True'},{'label':'UNKNOWN','enabled': 'True'}]
 
-DEVICE_OPTIONS = ['Dumb-Keyboard','List-View','Redirector','Simple-Emoji','Vibrant-Emoji']
+DEVICE_OPTIONS = ['Dumb-Keyboard','List-View','Redirector','Simple-Emoji','Vibrant-Emoji','Multi-Link-View','Full-poster display']
 DEVICE_OPTION = {DEVICE_OPTIONS[0]:'The awesome Keyboard for Search impaired devices',
 				DEVICE_OPTIONS[1]:'Force List-View of Playback page listing sources',
 				DEVICE_OPTIONS[2]:'Required in certain cases - *Experimental (refer forum)',
 				DEVICE_OPTIONS[3]:'Enable Simple Emoji Icons (%s|%s - Supported by Most Clients)' % (EMOJI_TICK,EMOJI_CROSS),
-				DEVICE_OPTIONS[4]:'Enable Vibrant Emoji Icons (%s|%s - Supported by Limited Clients)' % (EMOJI_GREEN_HEART,EMOJI_BROKEN_HEART)}
-DEVICE_OPTION_CONSTRAINTS = {DEVICE_OPTIONS[2]:{'use_https_alt':'Use Alternate SSL/TLS'}}
+				DEVICE_OPTIONS[4]:'Enable Vibrant Emoji Icons (%s|%s - Supported by Limited Clients)' % (EMOJI_GREEN_HEART,EMOJI_BROKEN_HEART),
+				DEVICE_OPTIONS[5]:'Shows All Video Items in single container - makes many requests to server',
+				DEVICE_OPTIONS[6]:'Shows Uncropped Poster - client compatibility is untested'}
+DEVICE_OPTION_CONSTRAINTS = {DEVICE_OPTIONS[2]:[{'Pref':'use_https_alt','Desc':'Use Alternate SSL/TLS','ReqValue':'disabled'}]}
+DEVICE_OPTION_CONSTRAINTS2 = {DEVICE_OPTIONS[5]:[{'Option':6,'ReqValue':False}], DEVICE_OPTIONS[6]:[{'Option':5,'ReqValue':False}]}
+
+DEV_DEBUG = False
 
 ####################################################################################################
 # Get Key from a Dict using Val
@@ -159,9 +165,14 @@ def setDictVal(key, val, session=None):
 	key = key.replace('Toggle','')
 
 	if DEVICE_OPTION_CONSTRAINTS != None and key in DEVICE_OPTION_CONSTRAINTS.keys():
-		for key_cons in DEVICE_OPTION_CONSTRAINTS[key].keys():
-			if Prefs[key_cons] and val=='enabled':
-				return ObjectContainer(header='Sorry', message='Sorry %s has conflict with Pref: %s enabled.' % (key, DEVICE_OPTION_CONSTRAINTS[key][key_cons]), title1=key)
+		for key_cons in DEVICE_OPTION_CONSTRAINTS[key]:
+			if Prefs[key_cons['Pref']] and val!=key_cons['ReqValue']:
+				return ObjectContainer(header='Sorry', message='Sorry %s has conflict with Pref: %s needs to be %s.' % (key, key_cons['Desc'], key_cons['ReqValue']), title1=key)
+				
+	if DEVICE_OPTION_CONSTRAINTS2 != None and key in DEVICE_OPTION_CONSTRAINTS2.keys():
+		for key_cons in DEVICE_OPTION_CONSTRAINTS2[key]:
+			if str(UsingOption(DEVICE_OPTIONS[key_cons['Option']])) != str(key_cons['ReqValue']):
+				return ObjectContainer(header='Sorry', message='Sorry %s has conflict with Device Option: %s needs to be %s.' % (key, DEVICE_OPTIONS[key_cons['Option']], key_cons['ReqValue']), title1=key)
 				
 	if session == None:
 		session = getSession()
@@ -185,9 +196,9 @@ def UsingOption(key, session=None):
 ####################################################################################################
 # Get HTTP response code (200 == good)
 @route(PREFIX + '/gethttpstatus')
-def GetHttpStatus(url):
+def GetHttpStatus(url, cookies=None):
 	try:
-		req = GetHttpRequest(url=url)
+		req = GetHttpRequest(url=url, cookies=cookies)
 		if req != None:
 			conn = urllib2.urlopen(req, timeout=client.GLOBAL_TIMEOUT_FOR_HTTP_REQUEST)
 			resp = str(conn.getcode())
@@ -313,7 +324,7 @@ def isItemVidAvailable(isOpenLoad, data, params=None, **kwargs):
 	
 ######################################################################################
 @route(PREFIX + "/GetPageElements")
-def GetPageElements(url, headers=None):
+def GetPageElements(url, headers=None, referer=None):
 
 	page_data_string = None
 	page_data_elems = None
@@ -327,7 +338,7 @@ def GetPageElements(url, headers=None):
 				page_data_string = D(CACHE_META[url]['data'])
 				
 		if page_data_string == None:
-			page_data_string = GetPageAsString(url=url, headers=headers)
+			page_data_string = GetPageAsString(url=url, headers=headers, referer=referer)
 
 		page_data_elems = HTML.ElementFromString(page_data_string)
 		
@@ -343,32 +354,63 @@ def GetPageElements(url, headers=None):
 	
 ######################################################################################
 @route(PREFIX + "/GetPageAsString")
-def GetPageAsString(url, headers=None, timeout=15):
+def GetPageAsString(url, headers=None, timeout=15, referer=None):
 
+	use_debug = Prefs["use_debug"]
 	page_data_string = None
+	if headers == None:
+		headers = {}
+	if referer != None:
+		headers['Referer'] = referer
+	elif 'Referer' in headers:
+		pass
+	else:
+		headers['Referer'] = url
+
+	if len(CACHE_COOKIE) > 0:
+		if CACHE_COOKIE[0]['ts'] + 100*60 >= time.time():
+			del CACHE_COOKIE[:]
+		else:
+			headers['Cookie'] = CACHE_COOKIE[0]['cookie']
+		
 	try:
-		if Prefs["use_https_alt"]:
-			if Prefs["use_debug"]:
+		if len(CACHE_COOKIE) > 0 and use_debug:
+			Log("Using Cookie retrieved at: %s" % CACHE_COOKIE[0]['ts'])
+			Log("Using Cookie retrieved at: %s" % CACHE_COOKIE[0]['cookie'])
+		if Prefs["use_https_alt"] or (len(CACHE_COOKIE) == 0 and Prefs["use_web_proxy"] == False):
+			if use_debug:
 				Log("Using SSL Alternate Option")
 				Log("Url: " + url)
-			page_data_string = interface.request(url = url, headers=headers, timeout=str(timeout))
+			if len(CACHE_COOKIE) == 0:
+				page_data_string, headers, content, cookie = interface.request(url, output='extended', headers=headers, timeout=str(timeout))
+				CACHE_COOKIE.append({'ts':time.time(), 'cookie': cookie})
+				if use_debug:
+					Log("Cookie retrieved: %s" % cookie)
+			else:
+				page_data_string = interface.request(url = url, headers=headers, timeout=str(timeout))
 		elif Prefs["use_web_proxy"]:
 			page_data_string = None
-			if Prefs["use_debug"]:
+			if use_debug:
 				Log("Using Web-proxy option")
 				Log("Url: " + url)
 			for proxy in OPTIONS_PROXY:
-				if Prefs["use_debug"]:
+				if use_debug:
 					Log("Using Proxy: %s - %s" % (proxy['name'], proxy['url']))
 				if proxy['working']:
 					page_data_string = interface.request_via_proxy(url=url, proxy_name=proxy['name'], proxy_url=proxy['url'], headers=headers, timeout=str(timeout), use_web_proxy=True)
 					if page_data_string != None:
+						if use_debug:
+							Log(page_data_string[:100])
 						break
 		else:
-			if headers == None:
-				page_data_string = HTTP.Request(url, timeout=timeout).content
-			else:
-				page_data_string = HTTP.Request(url, headers=headers, timeout=timeout).content
+			if len(CACHE_COOKIE) == 0:
+				cookie = HTTP.CookiesForURL(url)
+				CACHE_COOKIE.append({'ts':time.time(), 'cookie': cookie})
+				headers['Cookie'] = CACHE_COOKIE[0]['cookie']
+				if use_debug:
+					Log("Cookie retrieved: %s" % cookie)
+			
+			page_data_string = HTTP.Request(url, headers=headers, timeout=timeout).content
 	except Exception as e:
 		Log('ERROR common.py>GetPageAsString: %s URL: %s' % (e.args,url))
 		pass

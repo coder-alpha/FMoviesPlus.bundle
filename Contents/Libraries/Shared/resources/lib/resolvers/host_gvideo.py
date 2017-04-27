@@ -152,11 +152,15 @@ class host:
 						mfile = json.loads(mfile)
 						#print "mfile --- : %s" % mfile
 						furl = mfile['src']
-						furl = client.request(furl, followredirect=True, output='geturl')
-						#print "furl --- : %s" % furl
-						quality = file_quality(furl, mfile['res'], videoData)[0]
-						isOnlineT = check(furl, videoData, headers=headers, cookie=cookie)[0]
-						type = rip_type(furl, quality)
+						f2url = client.request(furl, followredirect=True, output='geturl')
+						if 'http' in f2url:
+							furl = f2url
+							#print "furl --- : %s" % furl
+							quality = file_quality(furl, mfile['res'], videoData)[0]
+							isOnlineT = check(furl, videoData, headers=headers, cookie=cookie)[0]
+							type = rip_type(furl, quality)
+						else:
+							isOnlineT = 'Unknown'
 						
 						p = {'headers':'','cookie':''}
 						p = json.dumps(p, encoding='utf-8')

@@ -52,7 +52,7 @@ class sources:
 		proxies.init()
 		self.sources = []
 		self.sourcesDictionary()
-		self.threads = []
+		self.threads = {}
 		self.providers = []
 		self.providersCaller = []
 		self.getSourcesAlive = False
@@ -67,8 +67,8 @@ class sources:
 		proxy = proxies.info()
 		return proxy
 		
-	def request_via_proxy(self, url, proxy_name, proxy_url, close=True, redirect=True, followredirect=False, error=False, proxy=None, post=None, headers=None, mobile=False, limit=None, referer=None, cookie=None, output='', timeout='30', httpsskip=False, use_web_proxy=False):
-		return proxies.request(url=url, proxy_name=proxy_name, proxy_url=proxy_url, close=close, redirect=redirect, followredirect=followredirect, error=error, proxy=proxy, post=post, headers=headers, mobile=mobile, limit=limit, referer=referer, cookie=cookie, output=output, timeout=timeout, httpsskip=httpsskip, use_web_proxy=use_web_proxy)
+	def request_via_proxy(self, url, proxy_name, proxy_url, close=True, redirect=True, followredirect=False, error=False, proxy=None, post=None, headers=None, mobile=False, limit=None, referer=None, cookie=None, output='', timeout='30', httpsskip=False, use_web_proxy=False, use_web_proxy_as_backup=False, XHR=False):
+		return proxies.request(url=url, proxy_name=proxy_name, proxy_url=proxy_url, close=close, redirect=redirect, followredirect=followredirect, error=error, proxy=proxy, post=post, headers=headers, mobile=mobile, limit=limit, referer=referer, cookie=cookie, output=output, timeout=timeout, httpsskip=httpsskip, use_web_proxy=use_web_proxy, use_web_proxy_as_backup=use_web_proxy_as_backup, XHR=XHR)
 		
 	def getProviders(self):
 		while self.isProvThreadRunning == True:
@@ -84,7 +84,7 @@ class sources:
 				try:
 					c = __import__(name, globals(), locals(), [], -1).source()
 					print "Adding Provider %s : %s to Interface" % (c.info()['name'], c.info()['url'])
-					self.providersCaller.append({'name':c.info()['name'], 'call':c})
+					self.providersCaller.append({'name':c.info()['name'], 'url':c.info()['url'], 'call':c})
 					self.providers.append(c.info())
 				except:
 					control.log('Error: Loading File %s' % name)
@@ -103,20 +103,26 @@ class sources:
 			pass
 		self.isProvThreadRunning = False
 
-	def getSources(self, name, title, year, imdb, tmdb, tvdb, tvrage, season, episode, tvshowtitle, alter, date, proxy_options, key):
+	def getSources(self, name, title, year, imdb, tmdb, tvdb, tvrage, season, episode, tvshowtitle, alter, date, proxy_options, provider_options, key):
 		sourceDict = []
 		self.getSourcesAlive = True
 		
+		if provider_options !=None:
+			myProviders = []
+			for prov in provider_options: myProviders += [i for i in self.providersCaller if i['url'].lower() == prov['url'].lower() and str(prov['enabled'])=='True']
+		else:
+			myProviders = self.providersCaller
+		
 		content = 'movie' if tvshowtitle == None else 'episode'
 		
-		del self.threads[:]
+		self.threads[key] = []
 		if content == 'movie':
 			print 'Searching Movie'
 			title = cleantitle.normalize(title)
-			for source in self.providersCaller:
+			for source in myProviders:
 				try:
 					thread_i = workers.Thread(self.getMovieSource, title, year, imdb, proxy_options, key, re.sub('_mv_tv$|_mv$|_tv$', '', source['name']), source['call'])
-					self.threads.append(thread_i)
+					self.threads[key].append(thread_i)
 					thread_i.start()
 				except Exception as e:
 					print ('Source getSources %s ERROR %s' % (source,e))
@@ -126,10 +132,10 @@ class sources:
 			print 'Searching Episode'
 			tvshowtitle = cleantitle.normalize(tvshowtitle)
 			season, episode = alterepisode.alterepisode().get(imdb, tmdb, tvdb, tvrage, season, episode, alter, title, date)
-			for source in self.providersCaller:
+			for source in myProviders:
 				try:
 					thread_i = workers.Thread(self.getEpisodeSource, title, year, imdb, tvdb, season, episode, tvshowtitle, date, proxy_options, key, re.sub('_mv_tv$|_mv$|_tv$', '', source['name']), source['call'])
-					self.threads.append(thread_i)
+					self.threads[key].append(thread_i)
 					thread_i.start()
 				except Exception as e:
 					print ('Source getSources %s ERROR %s' % (source, e))
@@ -144,16 +150,20 @@ class sources:
 		self.getSourcesAlive = False
 		return self.sources
 
-	def checkProgress(self):
-		c = 0
-		for x in self.threads:
-			if not x.isAlive():
-				c += 1
-				
-		if len(self.threads) == 0:
-			return 0
+	def checkProgress(self, key=None):
+	
+		if key in self.threads.keys():
+			c = 0
+			for x in self.threads[key]:
+				if not x.isAlive():
+					c += 1
 					
-		return float(int(float((float(c)/float(len(self.threads)))*100.0))*100)/100.0
+			if len(self.threads[key]) == 0:
+				return 0
+						
+			return float(int(float((float(c)/float(len(self.threads[key])))*100.0))*100)/100.0
+		else:
+			return 0
 
 
 	def getMovieSource(self, title, year, imdb, proxy_options, key, source, call):
@@ -198,10 +208,10 @@ class sources:
 		except:
 			pass
 
-	def clearSources(self):
+	def clearSources(self, key=None):
 		try:
 			del self.sources[:]
-			del self.threads[:]
+			self.threads.clear()
 		except:
 			pass
 			

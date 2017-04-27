@@ -73,8 +73,8 @@ class source:
 			proxies.init()
 		self.proxyrequired = False
 		self.siteonline = self.testSite()
-		self.testsiteparser = 'Unknown'
-		self.testsiteparser = self.testParser()
+		self.testparser = 'Unknown'
+		self.testparser = self.testParser()
 		print " -- Initializing Yesmovies End --"
 		
 	def info(self):
@@ -86,7 +86,7 @@ class source:
 			'ssl' : self.ssl,
 			'online': self.siteonline,
 			'online_via_proxy' : self.proxyrequired,
-			'parser': self.testsiteparser
+			'parser': self.testparser
 		}
 		
 	def log(self, type, method, err, dolog=False, disp=True):

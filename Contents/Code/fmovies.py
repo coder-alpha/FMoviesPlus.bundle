@@ -20,6 +20,9 @@ FILTER_PATH = "/filter"
 KEYWORD_PATH = "/tag/"
 STAR_PATH = "/star/"
 
+oldmarketgidstorage = 'MarketGidStorage=%7B%220%22%3A%7B%22svspr%22%3A%22%22%2C%22svsds%22%3A3%2C%22TejndEEDj%22%3A%22MTQ4MTM2ODE0NzM0NzQ4NTMyOTAx%22%7D%2C%22C48532%22%3A%7B%22page%22%3A1%2C%22time%22%3A1481368147359%7D%2C%22C77945%22%3A%7B%22page%22%3A1%2C%22time%22%3A1481368147998%7D%2C%22C77947%22%3A%7B%22page%22%3A1%2C%22time%22%3A1481368148109%7D%7D'
+newmarketgidstorage = 'MarketGidStorage=%7B%220%22%3A%7B%22svspr%22%3A%22%22%2C%22svsds%22%3A15%2C%22TejndEEDj%22%3A%22MTQ5MzIxMTc0OTQ0NDExMDAxNDc3NDE%3D%22%7D%2C%22C110014%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493215038742%7D%2C%22C110025%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493216772437%7D%2C%22C110023%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493216771928%7D%7D; reqkey='
+
 USE_COOKIES = True
 USE_SECOND_REQUEST = False
 
@@ -27,13 +30,14 @@ USE_SECOND_REQUEST = False
 
 # Get FMovies-API
 #@route(PREFIX + '/getapiurl')
-def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web_proxy=False, cache_expiry_time=60, **kwargs):
+def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web_proxy=False, cache_expiry_time=60, reqCookie='', **kwargs):
 
 	try:
 		use_debug = Prefs["use_debug"]
 		use_https_alt = Prefs["use_https_alt"]
 		use_web_proxy = Prefs["use_web_proxy"]
 		cache_expiry_time = int(Prefs["cache_expiry_time"])
+		reqCookie = Prefs["req_cookie"]
 	except:
 		pass
 	
@@ -44,6 +48,9 @@ def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web
 		CACHE_EXPIRY = 60 * cache_expiry_time
 	except:
 		CACHE_EXPIRY = common.CACHE_EXPIRY_TIME
+		
+	if reqCookie == None:
+		reqCookie = ''
 	
 	if key in common.CACHE and 'myts' in common.CACHE[key] and (myts - int(common.CACHE[key]['myts']) < common.CACHE_EXPIRY):
 		if use_debug:
@@ -65,7 +72,7 @@ def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web
 		if use_debug:
 			Log("Retrieving Fresh Movie Link")
 			
-		ret, isOpenLoad = get_sources(url=url, key=key, use_debug=use_debug, serverts=serverts, myts=myts, use_https_alt=use_https_alt, use_web_proxy=use_web_proxy)
+		ret, isOpenLoad = get_sources(url=url, key=key, use_debug=use_debug, serverts=serverts, myts=myts, use_https_alt=use_https_alt, use_web_proxy=use_web_proxy, reqCookie=reqCookie)
 		if use_debug:
 			Log("get_sources url: %s, key: %s" % (url,key))
 			Log("get_sources ret: %s" % ret)
@@ -75,7 +82,7 @@ def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web
 			if use_debug:
 				Log("CACHE cleared due to null response from API - maybe cookie issue for %s" % url)
 			time.sleep(1.0)
-			ret, isOpenLoad = get_sources(url=url, key=key, use_debug=use_debug, serverts=serverts, myts=myts, use_https_alt=use_https_alt, use_web_proxy=use_web_proxy)
+			ret, isOpenLoad = get_sources(url=url, key=key, use_debug=use_debug, serverts=serverts, myts=myts, use_https_alt=use_https_alt, use_web_proxy=use_web_proxy, reqCookie=reqCookie)
 			if use_debug:
 				Log("API - attempt 2nd")
 				Log("get_sources url: %s, key: %s" % (url,key))
@@ -132,8 +139,40 @@ def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web
 						Log("%s : %s : File has been deleted !" % (url,key))
 
 	return res, isOpenLoad
+	
+def setTokenCookie():
+	
+	serverts = str(((int(time.time())/3600)*3600))
+	
+	headersS = {'X-Requested-With': 'XMLHttpRequest'}
+	headersS['Referer'] = BASE_URL
+	
+	result, headers, content, cookie1 = common.interface.request_via_proxy_as_backup(BASE_URL, headers=headersS, limit='0', output='extended')
+	time.sleep(1.0)
 
-def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=False, use_web_proxy=False, **kwargs):
+	query = {'ts': serverts}
+	tk = get_token(query)
+	query.update(tk)
+	hash_url = urlparse.urljoin(BASE_URL, HASH_PATH_MENU)
+	hash_url = hash_url + '?' + urllib.urlencode(query)
+		
+	headersS['Cookie'] = cookie1
+	r1, headers, content, cookie2 = common.interface.request_via_proxy_as_backup(hash_url, headers=headersS, limit='0', output='extended')
+	time.sleep(1.0)
+	
+	reqCookie = Prefs["req_cookie"]
+	if reqCookie == None:
+		reqCookie = ''
+	
+	cookie = cookie1 + '; ' + cookie2 + '; user-info=null; ' + newmarketgidstorage + reqCookie
+	
+	del common.CACHE_COOKIE[:]
+	common.CACHE_COOKIE.append({'ts':time.time(), 'cookie': cookie})
+	
+	return cookie
+
+
+def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=False, use_web_proxy=False, reqCookie='', **kwargs):
 
 	if serverts == 0:
 		#serverts = ((int(time.time())/3600)*3600)
@@ -161,8 +200,6 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 		serverts = str(serverts)
 		T_BASE_URL = BASE_URL
 		#T_BASE_URL = "https://fmovies.unlockpro.top"
-		oldmarketgidstorage = 'MarketGidStorage=%7B%220%22%3A%7B%22svspr%22%3A%22%22%2C%22svsds%22%3A3%2C%22TejndEEDj%22%3A%22MTQ4MTM2ODE0NzM0NzQ4NTMyOTAx%22%7D%2C%22C48532%22%3A%7B%22page%22%3A1%2C%22time%22%3A1481368147359%7D%2C%22C77945%22%3A%7B%22page%22%3A1%2C%22time%22%3A1481368147998%7D%2C%22C77947%22%3A%7B%22page%22%3A1%2C%22time%22%3A1481368148109%7D%7D'
-		newmarketgidstorage = 'MarketGidStorage=%7B%220%22%3A%7B%22svspr%22%3A%22%22%2C%22svsds%22%3A15%2C%22TejndEEDj%22%3A%22MTQ5MzIxMTc0OTQ0NDExMDAxNDc3NDE%3D%22%7D%2C%22C110014%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493215038742%7D%2C%22C110025%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493216772437%7D%2C%22C110023%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493216771928%7D%7D'
 		
 		time.sleep(0.5)
 		
@@ -214,7 +251,7 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 				common.CACHE['cookie']['cookie2'] = cookie2
 				common.CACHE['cookie']['myts'] = myts
 				
-				cookie = cookie1 + '; ' + cookie2 + '; user-info=null; ' + newmarketgidstorage
+				cookie = cookie1 + '; ' + cookie2 + '; user-info=null; ' + newmarketgidstorage + reqCookie
 				if use_debug:
 					Log("Storing Cookie: %s" % cookie)
 				del common.CACHE_COOKIE[:]
@@ -237,7 +274,7 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 			# watching_query = '{"%s":"%s"}' % (key0,key)
 			# watching_query = watching_query.replace('"','%22').replace(':','%3A').replace('{','%7B').replace('}','%7D')
 			
-			headers['Cookie'] = cookie1 + '; ' + cookie2 + '; user-info=null; ' + newmarketgidstorage
+			headers['Cookie'] = cookie1 + '; ' + cookie2 + '; user-info=null; ' + newmarketgidstorage + reqCookie
 
 			if use_debug:
 				Log("Using cookies : %s" % headers['Cookie'])
@@ -245,7 +282,7 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 			#print hash_url
 			if use_debug:
 				Log("get_sources Request-3: %s" % hash_url)
-			result = common.interface.request_via_proxy_as_backup(hash_url, headers=headers)
+			result = common.interface.request_via_proxy_as_backup(hash_url, headers=headers, httpsskip=use_https_alt)
 			Log("Request-3 result: %s" % result)
 			#print result
 			result = json.loads(result)
@@ -292,7 +329,7 @@ def a01(t):
 
 def get_token(n, **kwargs):
 	try:
-		d = D("bG9jYXRpb24=")
+		d = "b826ae04"
 		s = a01(d)
 		for i in n: 
 			s += a01(r01(d + i, n[i]))

@@ -127,6 +127,7 @@ def MainMenu(**kwargs):
 
 	fmovies.BASE_URL = Prefs["base_url"]
 	HTTP.Headers['Referer'] = fmovies.BASE_URL
+	
 	session = common.getSession()
 	ClientInfo(session=session)
 	if len(VALID_PREFS_MSGS) > 0:
@@ -166,15 +167,31 @@ def MainMenu(**kwargs):
 	
 	return oc
 	
+
+######################################################################################
+@route(PREFIX + "/SiteCookieRoutine")
+def SiteCookieRoutine(session=None, **kwargs):
+
+	# This will get/set cookie that might be required for search before listing stage
+	if len(common.CACHE_COOKIE) == 0:
+		fmovies.setTokenCookie()
+		if Prefs["use_debug"]:
+			Log('Cookie set : %s' % common.CACHE_COOKIE[0]['cookie'])
 	
 ######################################################################################
 @route(PREFIX + "/SleepAndUpdateThread")
 def SleepAndUpdateThread(update=True, startthread=True, session=None, **kwargs):
 
 	if update == True:
+		x1 = time.time()
 		ret = common.interface.init()
+		x2 = time.time()
+		
 		if Prefs["use_debug"]:
-			Log("%s at %s !" % (ret, time.ctime(time.time())))
+			Log("%s at %s !" % (ret, time.ctime(x2)))
+			Log("Interface Initialization took %s sec. !" % (x2-x1))
+			
+		Thread.Create(SiteCookieRoutine)
 			
 	if session == None:
 		session = common.getSession()
@@ -1620,6 +1637,8 @@ def EpisodeDetail(title, url, thumb, session=None, **kwargs):
 									url = durl,
 									title = status + title + ' - ' + title_s + redirector_stat,
 									thumb = GetThumb(thumb),
+									duration = int(duration) * 60 * 1000,
+									year = int(year),
 									art = art,
 									summary = summary,
 									key = AddRecentWatchList(title=title, url=url, summary=summary, thumb=thumb)
@@ -1652,10 +1671,9 @@ def EpisodeDetail(title, url, thumb, session=None, **kwargs):
 							)
 						)
 					else:
-						oc.add(VideoClipObject(
+						oc.add(DirectoryObject(
 							key = Callback(VideoDetail, title=title, url=url, url_s=url_s, label=label, label_i_qual=label_i['quality'], serverts=serverts, summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles),
 							title = label,
-							rating_key = url+url_s,
 							summary = summary,
 							thumb = GetThumb(thumb)
 							)
@@ -1810,6 +1828,8 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 						url = durl,
 						title = status + title + ' (' + label + ')' + redirector_stat,
 						thumb = GetThumb(thumb),
+						duration = int(duration) * 60 * 1000,
+						year = int(year),
 						art = art,
 						summary = summary,
 						key = AddRecentWatchList(title = watch_title, url=url, summary=summary, thumb=thumb)
@@ -1836,10 +1856,9 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 					)
 				)
 			else:
-				oc.add(VideoClipObject(
+				oc.add(DirectoryObject(
 					key = Callback(VideoDetail, title=title, url=url, url_s=url_s, label=label, label_i_qual=None, serverts=serverts, summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles),
 					title = label,
-					rating_key = url+url_s,
 					summary = summary,
 					thumb = GetThumb(thumb)
 					)
@@ -1869,6 +1888,7 @@ def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary
 	try:
 		# url_s = label_i['loc']
 		# label_i_qual = label_i['quality']
+		server_info = None
 		title_s = ''
 		if Prefs["use_debug"]:
 			Log("%s - %s" % (url, url_s))
@@ -1919,6 +1939,8 @@ def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary
 					url = durl,
 					title = status + title + ' - ' + title_s + redirector_stat,
 					thumb = GetThumb(thumb),
+					duration = int(duration) * 60 * 1000,
+					year = int(year),
 					art = art,
 					summary = summary,
 					key = AddRecentWatchList(title=title, url=url, summary=summary, thumb=thumb)
@@ -2750,7 +2772,6 @@ def Search(query=None, surl=None, page_count='1', mode='default', thumb=None, su
 			url = surl + '?page=%s' % (str(page_count))
 		else:
 			url = surl + '&page=%s' % (str(page_count))
-		page_data = common.GetPageElements(url=url)
 	else:
 		if mode == 'default':
 			timestr = str(int(time.time()))
@@ -2761,72 +2782,85 @@ def Search(query=None, surl=None, page_count='1', mode='default', thumb=None, su
 			url = fmovies.BASE_URL + fmovies.FILTER_PATH + '?type=series&page=%s&keyword=%s' % (str(page_count), String.Quote(query, usePlus=True))
 		else:
 			url = fmovies.BASE_URL + fmovies.SEARCH_PATH + '?page=%s&keyword=%s' % (str(page_count), String.Quote(query, usePlus=True))
+
+	page_data = common.GetPageElements(url=url)
+	if page_data == None and mode == 'other seasons':
+		url = fmovies.BASE_URL + fmovies.SEARCH_PATH + '?page=%s&keyword=%s' % (str(page_count), String.Quote(query, usePlus=True))
 		page_data = common.GetPageElements(url=url)
 		
-	elems = page_data.xpath(".//*[@id='body-wrapper']//div[@class='row movie-list']//div[@class='item']")
-	
-	last_page_no = int(page_count)
 	try:
+		elems = page_data.xpath(".//*[@id='body-wrapper']//div[@class='row movie-list']//div[@class='item']")
+		last_page_no = int(page_count)
 		last_page_no = int(page_data.xpath(".//*[@id='body-wrapper']//ul[@class='pagination'][1]//li[last()-1]//text()")[0])
 	except:
 		pass
 		
-	if mode == 'default':
-		oc = ObjectContainer(title2 = 'Search Results|Page ' + str(page_count) + ' of ' + str(last_page_no), no_cache=isForceNoCache())
-	elif mode == 'tag':
-		oc = ObjectContainer(title2 = 'Tag: ' + query, no_cache=isForceNoCache())
-	elif mode == 'people':
-		oc = ObjectContainer(title2 = 'People: ' + query, no_cache=isForceNoCache())
-	else:
-		oc = ObjectContainer(title2 = 'Other Seasons for ' + query, no_cache=isForceNoCache())
-		
-	no_elems = len(elems)
-	for elem in elems:
-		name = elem.xpath(".//a[@class='name']//text()")[0]
-		loc = fmovies.BASE_URL + elem.xpath(".//a[@class='name']//@href")[0]
-		thumb = elem.xpath(".//a[@class='poster']//@src")[0].split('url=')[1]
-		summary = 'Plot Summary on Item Page.'
-		if query2 == None:
-			query2 = common.cleantitle.onlytitle(name)
-		
-		eps_nos = ''
-		title_eps_no = ''
-		try:
-			eps_nos = elem.xpath(".//div[@class='status']//span//text()")[0]
-			eps_no_i = str(int(eps_nos.strip()))
-			title_eps_no = ' (Eps:'+eps_no_i+')'
-			eps_nos = ' Episodes: ' + eps_no_i
-		except:
-			pass
-		try:
-			more_info_link = elem.xpath(".//@data-tip")[0]
-		except:
-			more_info_link = None
-		
-		do = DirectoryObject(
-			key = Callback(EpisodeDetail, title = name, url = loc, thumb = thumb),
-			title = name + title_eps_no,
-			summary = GetMovieInfo(summary=summary, urlPath=more_info_link, referer=url) + eps_nos,
-			thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback=ICON_UNAV)
-			)
-		if mode == 'default' or mode == 'people' or mode == 'tag':
-			oc.add(do)
-		elif mode == 'other seasons' and query.lower() in name.lower() and len(common.cleantitle.removeParanthesis(name).lower().replace(query.lower(), '').strip()) < 3:
-			fixname_SN = name.lower().replace(query.lower(),'').replace(' ','').strip()
-			# when we clean name we expect the season no. only to be present - if not then maybe its not a related season i.e. skip item
+	try:
+		oc = ObjectContainer(title2 = 'Search Results for %s' % query, no_cache=isForceNoCache())
+
+		if mode == 'default':
+			oc = ObjectContainer(title2 = 'Search Results|Page ' + str(page_count) + ' of ' + str(last_page_no), no_cache=isForceNoCache())
+		elif mode == 'tag':
+			oc = ObjectContainer(title2 = 'Tag: ' + query, no_cache=isForceNoCache())
+		elif mode == 'people':
+			oc = ObjectContainer(title2 = 'People: ' + query, no_cache=isForceNoCache())
+		else:
+			oc = ObjectContainer(title2 = 'Other Seasons for ' + query, no_cache=isForceNoCache())
+			
+		no_elems = len(elems)
+		for elem in elems:
+			name = elem.xpath(".//a[@class='name']//text()")[0]
+			loc = fmovies.BASE_URL + elem.xpath(".//a[@class='name']//@href")[0]
+			thumb = elem.xpath(".//a[@class='poster']//@src")[0].split('url=')[1]
+			summary = 'Plot Summary on Item Page.'
+			if query2 == None:
+				try:
+					query2 = common.cleantitle.onlytitle(name)
+					query2 = common.cleantitle.get(query2)
+				except:
+					query2 = None
+			
+			eps_nos = ''
+			title_eps_no = ''
 			try:
-				if len(fixname_SN) > 0:
-					fixname_SN_i = int(fixname_SN)
-					newname = query + " " + ("%02d" % fixname_SN_i)
-				else:
-					newname = query
-				do.title = newname + title_eps_no
+				eps_nos = elem.xpath(".//div[@class='status']//span//text()")[0]
+				eps_no_i = str(int(eps_nos.strip()))
+				title_eps_no = ' (Eps:'+eps_no_i+')'
+				eps_nos = ' Episodes: ' + eps_no_i
 			except:
 				pass
-			oc.add(do)
+			try:
+				more_info_link = elem.xpath(".//@data-tip")[0]
+			except:
+				more_info_link = None
 			
-	if mode == 'other seasons' or mode == 'tag':
-		oc.objects.sort(key=lambda obj: obj.title, reverse=False)
+			do = DirectoryObject(
+				key = Callback(EpisodeDetail, title = name, url = loc, thumb = thumb),
+				title = name + title_eps_no,
+				summary = GetMovieInfo(summary=summary, urlPath=more_info_link, referer=url) + eps_nos,
+				thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback=ICON_UNAV)
+				)
+			if mode == 'default' or mode == 'people' or mode == 'tag':
+				oc.add(do)
+			elif mode == 'other seasons' and query.lower() in name.lower() and len(common.cleantitle.removeParanthesis(name).lower().replace(query.lower(), '').strip()) < 3:
+				fixname_SN = name.lower().replace(query.lower(),'').replace(' ','').strip()
+				# when we clean name we expect the season no. only to be present - if not then maybe its not a related season i.e. skip item
+				try:
+					if len(fixname_SN) > 0:
+						fixname_SN_i = int(fixname_SN)
+						newname = query + " " + ("%02d" % fixname_SN_i)
+					else:
+						newname = query
+					do.title = newname + title_eps_no
+				except:
+					pass
+				oc.add(do)
+				
+		if mode == 'other seasons' or mode == 'tag':
+			oc.objects.sort(key=lambda obj: obj.title, reverse=False)
+	except Exception as e:
+		Log('__init.py__ > Search Error: %s URL: %s' % (e, url))
+		pass
 			
 	if Prefs['disable_extsources'] == False and common.interface.isInitialized() and page_count=='1' and mode == 'default':
 		if True:
@@ -3615,8 +3649,10 @@ def ValidatePrefs(changed=True, **kwargs):
 	if changed == True:
 		Log("Your Channel Preferences have changed !")
 	
-	fmovies.BASE_URL = Prefs["base_url"]
-	HTTP.Headers['Referer'] = fmovies.BASE_URL
+	if fmovies.BASE_URL != Prefs["base_url"]:
+		del common.CACHE_COOKIE[:]
+		fmovies.BASE_URL = Prefs["base_url"]
+		HTTP.Headers['Referer'] = fmovies.BASE_URL
 	
 	try:
 		common.CACHE_EXPIRY = 60 * int(Prefs["cache_expiry_time"])

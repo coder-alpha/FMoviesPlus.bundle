@@ -34,7 +34,9 @@ def checkRet(ret, output):
 		return True
 	elif (output != 'responsecodeext' and ret != None) or (output == 'responsecodeext' and ret[0] != None):
 		return True
-	
+	elif ret != None:
+		return True
+
 	return False
 	
 def request(url, proxy_name=None, proxy_url=None, close=True, redirect=True, followredirect=False, error=False, proxy=None, post=None, headers=None, mobile=False, limit=None, referer=None, cookie=None, output='', timeout='30', httpsskip=False, use_web_proxy=False, proxy_options=None, use_web_proxy_as_backup=False, XHR=False):

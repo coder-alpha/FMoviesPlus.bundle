@@ -5,7 +5,7 @@ import interface
 
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.17' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.18' # Release notation (x.y - where x is major and y is minor)
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
 ################################################################################
@@ -349,7 +349,7 @@ def GetPageElements(url, headers=None, referer=None):
 	except Exception as e:
 		Log('ERROR common.py>GetPageElements: %s URL: %s DATA: %s' % (e.args,url,page_data_string))
 		pass
-		
+
 	return page_data_elems
 	
 ######################################################################################
@@ -368,7 +368,7 @@ def GetPageAsString(url, headers=None, timeout=15, referer=None):
 		headers['Referer'] = url
 
 	if len(CACHE_COOKIE) > 0:
-		if CACHE_COOKIE[0]['ts'] + 100*60 >= time.time():
+		if CACHE_COOKIE[0]['ts'] + 100*60 < time.time():
 			del CACHE_COOKIE[:]
 		else:
 			headers['Cookie'] = CACHE_COOKIE[0]['cookie']
@@ -399,8 +399,6 @@ def GetPageAsString(url, headers=None, timeout=15, referer=None):
 				if proxy['working']:
 					page_data_string = interface.request_via_proxy(url=url, proxy_name=proxy['name'], proxy_url=proxy['url'], headers=headers, timeout=str(timeout), use_web_proxy=True)
 					if page_data_string != None:
-						if use_debug:
-							Log(page_data_string[:100])
 						break
 		else:
 			if len(CACHE_COOKIE) == 0:
@@ -497,6 +495,17 @@ def MakeStringLength(text, n=15):
 	ns = n - len(text)
 	text += ' ' * ns
 	return text
+	
+####################################################################################################
+# search array item's presence in string
+@route(PREFIX + "/arrayitemsinstring")
+def ArrayItemsInString(arr, mystr):
+
+	for item in arr:
+		if item in mystr:
+			return True
+			
+	return False
 	
 ####################################################################################################
 # author: Twoure

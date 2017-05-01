@@ -103,7 +103,7 @@ class host:
 	
 		if 'http' not in url and 'google.com/file' in url:
 			url = 'https://drive.google.com/' + url.split('.com/')[1]
-				
+
 		#print "createMeta1 : %s %s %s %s" % (url, provider, logo, quality)
 		videoData, headers, content, cookie = getVideoMetaData(url)
 		

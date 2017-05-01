@@ -211,7 +211,9 @@ class sources:
 	def clearSources(self, key=None):
 		try:
 			del self.sources[:]
+			self.sources = []
 			self.threads.clear()
+			self.threads = {}
 		except:
 			pass
 			

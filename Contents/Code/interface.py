@@ -26,14 +26,14 @@ def isInitialized():
 	else:
 		return False
 	
-def wait_for_init(timeout=60):
+def wait_for_init(timeout=300):
 
 	if len(initA) == 0 and len(initBool) == 0:
 		initBool.append(True)
 		init()
 
 	c = 0
-	while len(initA) == 0 or c > timeout:
+	while len(initA) == 0 and c < timeout:
 		time.sleep(1)
 		c += 1
 		
@@ -81,6 +81,9 @@ def runGetSources(
 		filter_extSources = []
 		filter_extSources += [i for i in srcs if i['key'] == key]
 		if len(filter_extSources) > 0:
+			if Prefs["use_debug"]:
+				Log("name:%s title:%s tvshowtitle:%s year:%s season:%s episode:%s imdb:%s key:%s" % (name, title, tvshowtitle, year, season, episode, imdb, key))
+				Log("Available in Cache Already. Key: %s" % key)
 			return
 	
 	if imdb == None:

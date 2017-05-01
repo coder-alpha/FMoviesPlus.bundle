@@ -59,22 +59,31 @@ def requestdirect(url, close=True, redirect=True, followredirect=False, error=Fa
 	
 	if headers == None:
 		headers = {'Connection' : 'keep-alive'}
+	else:
+		headers['Connection'] = 'keep-alive'
 	
 	res = client.request(url = PROXY_URL + url, close=close, redirect=redirect, followredirect=followredirect, error=error, proxy=proxy, post=post, headers=headers, mobile=mobile, limit=limit, referer=referer, cookie=cookie, output=output, timeout=timeout, httpsskip=httpsskip, use_web_proxy=use_web_proxy, XHR=XHR)
 	
 	page_data_string = client.getPageDataBasedOnOutput(res, output)
 	
+	pattern = re.compile('<script[\s\S]+?/script>')
+	page_data_string = re.sub(pattern, '', page_data_string)
+		
 	try:
-		#page_data_string = page_data_string.replace('\n','<br/>')	
-		page_data_string = page_data_string.replace('\r','r').replace('\n','<br/>').replace('\w','').replace('\.','').replace('\t','').replace('\ ','')
+		page_data_string = page_data_string.replace('\n','')	
+		#page_data_string = page_data_string.replace('\r','r').replace('\n','<br/>').replace('\w','').replace('\.','').replace('\t','').replace('\ ','')
 	except Exception as e:
 		control.log("Error1: %s - %s" % (name, e))
 		
-	page_data_string = json.dumps(page_data_string)
-	page_data_string = page_data_string.replace('\\\\','')
-	
 	#print page_data_string
 
+	page_data_string = json.dumps(page_data_string)
+	page_data_string = page_data_string.replace('\\','')
+	page_data_string = page_data_string[1:-1]
+	
+	#print page_data_string
+	#page_data_string = str(page_data_string)
+	
 	try:
 		r = unicode(page_data_string, "utf-8")
 		page_data_string = r

@@ -170,13 +170,11 @@ def MainMenu(**kwargs):
 
 ######################################################################################
 @route(PREFIX + "/SiteCookieRoutine")
-def SiteCookieRoutine(session=None, **kwargs):
+def SiteCookieRoutine(session=None, reset=False, **kwargs):
 
 	# This will get/set cookie that might be required for search before listing stage
 	if len(common.CACHE_COOKIE) == 0:
-		fmovies.setTokenCookie()
-		if Prefs["use_debug"]:
-			Log('Cookie set : %s' % common.CACHE_COOKIE[0]['cookie'])
+		fmovies.setTokenCookie(use_debug=Prefs["use_debug"], reset=reset)
 	
 ######################################################################################
 @route(PREFIX + "/SleepAndUpdateThread")
@@ -295,6 +293,8 @@ def Options(session=None, **kwargs):
 		extmemory = common.interface.getCacheSize()
 	
 	oc.add(DirectoryObject(key = Callback(ClearCache), title = "Clear Cache (%s items)" % smsg, summary='Forces clearing of the Cached cookies, sources and webpages. %s Cached Sources and %s WebPages/Links consuming %s KB memory.' % (msg,len(common.CACHE_META), round(((sys.getsizeof(common.CACHE)+sys.getsizeof(common.CACHE_META)+extmemory)/1024),2)), thumb = R(ICON_CLEAR)))
+	
+	oc.add(DirectoryObject(key = Callback(ResetCookies), title = "Reset Cookies", summary='Reset Session, CF, etc. cookies', thumb = R(ICON_CLEAR)))
 	
 	if common.interface.isInitialized():
 		oc.add(DirectoryObject(key = Callback(InterfaceOptions, session=session), title = 'Interface Options', thumb = R(ICON_PREFS), summary='Interface for Proxies, Hosts, Providers and Playback Quality'))
@@ -780,6 +780,7 @@ def ClearCache(**kwargs):
 	common.CACHE.clear()
 	common.CACHE_META.clear()
 	HTTP.ClearCache()
+
 	msg = 'Internal'
 	try:
 		if common.interface.isInitialized():
@@ -787,7 +788,18 @@ def ClearCache(**kwargs):
 			common.interface.clearSources()
 	except:
 		pass
+
 	return MC.message_container('Clear Cache', '%s Cache has been cleared !' % msg)
+	
+######################################################################################
+@route(PREFIX + "/resetcookies")
+def ResetCookies(**kwargs):
+	
+	del common.CACHE_COOKIE[:]
+	
+	SiteCookieRoutine(reset=True)
+	
+	return MC.message_container('Reset Cookies', 'Cookies have been reset and token text dumped to Log. Please update reqkey cookie value in Prefs !')
 	
 ######################################################################################
 @route(PREFIX + "/ResetExtOptions")
@@ -1594,7 +1606,7 @@ def EpisodeDetail(title, url, thumb, session=None, **kwargs):
 						title_s = ''
 						if Prefs["use_debug"]:
 							Log("%s - %s" % (url, url_s))
-						server_info, isOpenLoad = fmovies.GetApiUrl(url=url, key=url_s, serverts=serverts)
+						server_info, isOpenLoad, error = fmovies.GetApiUrl(url=url, key=url_s, serverts=serverts)
 						
 						if server_info != None:
 							qual = common.getHighestQualityLabel(server_info, label_i['quality'])
@@ -1652,6 +1664,7 @@ def EpisodeDetail(title, url, thumb, session=None, **kwargs):
 							pass
 							if Prefs["use_debug"]:
 								Log("Video will not be displayed as playback option !")
+								Log("ERROR: %s" % error)
 								Log("ERROR: %s with key:%s returned %s" % (url,url_s,server_info))
 					except Exception as e:
 						Log("ERROR init.py>EpisodeDetail>Movie2b %s %s" % (url,url_s))
@@ -1788,7 +1801,7 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 		url_s = servers_list_new[label]['loc']
 		
 		if common.UsingOption(common.DEVICE_OPTIONS[5]):	
-			server_info,isOpenLoad = fmovies.GetApiUrl(url=url, key=url_s, serverts=serverts)
+			server_info,isOpenLoad, error = fmovies.GetApiUrl(url=url, key=url_s, serverts=serverts)
 			if server_info != None:
 			
 				pair = ''
@@ -1842,6 +1855,7 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 				pass
 				if Prefs["use_debug"]:
 					Log("Video will not be displayed as playback option !")
+					Log("ERROR: %s" % error)
 					Log("ERROR: %s with key:%s returned %s" % (url,url_s,server_info))
 		else:
 			if common.UsingOption(common.DEVICE_OPTIONS[6]):
@@ -1892,7 +1906,7 @@ def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary
 		title_s = ''
 		if Prefs["use_debug"]:
 			Log("%s - %s" % (url, url_s))
-		server_info, isOpenLoad = fmovies.GetApiUrl(url=url, key=url_s, serverts=serverts)
+		server_info, isOpenLoad, error = fmovies.GetApiUrl(url=url, key=url_s, serverts=serverts)
 		
 		if server_info != None:
 			if label_i_qual != None:
@@ -1954,13 +1968,15 @@ def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary
 			pass
 			if Prefs["use_debug"]:
 				Log("Video will not be displayed as playback option !")
+				Log("ERROR: %s" % error)
 				Log("ERROR: %s with key:%s returned %s" % (url,url_s,server_info))
-			return MC.message_container('Video Unavailable', 'Video Unavailable')
+			return MC.message_container('Video Unavailable', 'Video Unavailable. Error: %s' % error)
 	except Exception as e:
 		Log("ERROR init.py>VideoDetail>Movie3 %s %s" % (url,url_s))
 		Log("ERROR init.py>VideoDetail>Movie3 %s" % (server_info))
 		Log('ERROR init.py>VideoDetail>Movie3 %s, %s' % (e.args, (title + ' - ' + title_s)))
-		return MC.message_container('Error: Video Unavailable', 'Error: Video Unavailable')
+		
+		return MC.message_container('Video Unavailable', 'Video Unavailable. Error in Code.')
 
 	return oc
 	

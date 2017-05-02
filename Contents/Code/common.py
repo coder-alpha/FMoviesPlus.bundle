@@ -15,6 +15,7 @@ CACHE_META = {}
 CACHE_EXPIRY_TIME = 3600 # 1 Hour
 CACHE_EXPIRY = 3600
 CACHE_COOKIE = []
+TOKEN_CODE = []
 
 # Help videos on Patebin
 Help_Videos = "https://pastebin.com/raw/BMMHQund"
@@ -357,6 +358,14 @@ def GetPageElements(url, headers=None, referer=None):
 def GetPageAsString(url, headers=None, timeout=15, referer=None):
 
 	use_debug = Prefs["use_debug"]
+	reqCookie = Prefs["req_cookie"]
+	try:
+		CACHE_EXPIRY = 60 * int(Prefs["cache_expiry_time"])
+	except:
+		CACHE_EXPIRY = CACHE_EXPIRY_TIME
+		
+	if reqCookie == None:
+		reqCookie = ''
 	page_data_string = None
 	if headers == None:
 		headers = {}
@@ -367,27 +376,22 @@ def GetPageAsString(url, headers=None, timeout=15, referer=None):
 	else:
 		headers['Referer'] = url
 
-	if len(CACHE_COOKIE) > 0:
-		if CACHE_COOKIE[0]['ts'] + 100*60 < time.time():
-			del CACHE_COOKIE[:]
-		else:
-			headers['Cookie'] = CACHE_COOKIE[0]['cookie']
-		
+	if len(CACHE_COOKIE) == 0:
+		fmovies.setTokenCookie(use_debug=use_debug)
+	
+	headers['Cookie'] = CACHE_COOKIE[0]['cookie'] + reqCookie
+	headers['User-Agent'] = CACHE_COOKIE[0]['UA']
+
+	if len(CACHE_COOKIE) > 0 and use_debug:
+		Log("Using Cookie retrieved at: %s" % CACHE_COOKIE[0]['ts'])
+		Log("Using Cookie retrieved at: %s" % (CACHE_COOKIE[0]['cookie'] + reqCookie))
+
 	try:
-		if len(CACHE_COOKIE) > 0 and use_debug:
-			Log("Using Cookie retrieved at: %s" % CACHE_COOKIE[0]['ts'])
-			Log("Using Cookie retrieved at: %s" % CACHE_COOKIE[0]['cookie'])
-		if Prefs["use_https_alt"] or (len(CACHE_COOKIE) == 0 and Prefs["use_web_proxy"] == False):
+		if Prefs["use_https_alt"]:
 			if use_debug:
 				Log("Using SSL Alternate Option")
 				Log("Url: " + url)
-			if len(CACHE_COOKIE) == 0:
-				page_data_string, headers, content, cookie = interface.request(url, output='extended', headers=headers, timeout=str(timeout))
-				CACHE_COOKIE.append({'ts':time.time(), 'cookie': cookie})
-				if use_debug:
-					Log("Cookie retrieved: %s" % cookie)
-			else:
-				page_data_string = interface.request(url = url, headers=headers, timeout=str(timeout))
+			page_data_string = interface.request(url = url, headers=headers, timeout=str(timeout))
 		elif Prefs["use_web_proxy"]:
 			page_data_string = None
 			if use_debug:
@@ -401,13 +405,6 @@ def GetPageAsString(url, headers=None, timeout=15, referer=None):
 					if page_data_string != None:
 						break
 		else:
-			if len(CACHE_COOKIE) == 0:
-				cookie = HTTP.CookiesForURL(url)
-				CACHE_COOKIE.append({'ts':time.time(), 'cookie': cookie})
-				headers['Cookie'] = CACHE_COOKIE[0]['cookie']
-				if use_debug:
-					Log("Cookie retrieved: %s" % cookie)
-			
 			page_data_string = HTTP.Request(url, headers=headers, timeout=timeout).content
 	except Exception as e:
 		Log('ERROR common.py>GetPageAsString: %s URL: %s' % (e.args,url))

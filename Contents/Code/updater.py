@@ -127,7 +127,7 @@ def test_version():
 	update_avail, latest_version, summ, tag = update_available()
 	if not update_avail:
 		result		 = True
-		result_str	 = common.VERSION
+		result_str	 = common.VERSION + ' - ' + common.TAG
 		result_summary = 'Running latest version.'
 	else:
 		result		 = 'Update'

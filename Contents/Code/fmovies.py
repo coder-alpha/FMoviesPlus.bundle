@@ -145,6 +145,7 @@ def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web
 	
 def setTokenCookie(serverts=None, use_debug=False, reset=False):
 	
+	use_https_alt = Prefs['use_https_alt']
 	if reset:
 		cookie_dict_Str = None
 		Dict['CACHE_COOKIE'] = None
@@ -161,8 +162,10 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False):
 	
 	if time.time() - cookie_dict['ts'] < 3 * 24 * 60 * 60:
 		cookie = cookie_dict['cookie']
-		if use_debug:
-			Log("Retrieved Saved Cookie: %s" % cookie)
+		Log("=====================TOKEN START============================")
+		Log("USING SAVED COOKIE TOKEN - TO DUMP TOKEN PERFORM RESET COOKIE UNDER OPTIONS MENU")
+		Log("Retrieved Saved Cookie: %s" % cookie)
+		Log("=====================TOKEN END============================")
 	else:
 		if serverts == None:
 			serverts = str(((int(time.time())/3600)*3600))
@@ -173,12 +176,12 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False):
 		headersS['Referer'] = BASE_URL
 		headersS['User-Agent'] = UA
 		
-		result, headers, content, cookie1 = common.interface.request_via_proxy_as_backup(BASE_URL, headers=headersS, limit='0', output='extended')
+		result, headers, content, cookie1 = common.interface.request_via_proxy_as_backup(BASE_URL, headers=headersS, limit='0', output='extended', httpsskip=use_https_alt)
 		headersS['Cookie'] = cookie1
 		time.sleep(0.1)
 		
 		token_url = urlparse.urljoin(BASE_URL, TOKEN_PATH)
-		r1 = common.interface.request_via_proxy_as_backup(token_url, headers=headersS)
+		r1 = common.interface.request_via_proxy_as_backup(token_url, headers=headersS, httpsskip=use_https_alt)
 		time.sleep(0.1)
 		del common.TOKEN_CODE[:]
 		common.TOKEN_CODE.append(common.client.b64encode(r1))
@@ -192,7 +195,7 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False):
 		hash_url = urlparse.urljoin(BASE_URL, HASH_PATH_MENU)
 		hash_url = hash_url + '?' + urllib.urlencode(query)
 
-		r1, headers, content, cookie2 = common.interface.request_via_proxy_as_backup(hash_url, headers=headersS, limit='0', output='extended')
+		r1, headers, content, cookie2 = common.interface.request_via_proxy_as_backup(hash_url, headers=headersS, limit='0', output='extended', httpsskip=use_https_alt)
 		time.sleep(0.5)
 		
 		common.CACHE['cookie'] = {}

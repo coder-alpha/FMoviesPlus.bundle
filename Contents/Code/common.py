@@ -6,6 +6,7 @@ import interface
 ################################################################################
 TITLE = "FMoviesPlus"
 VERSION = '0.18' # Release notation (x.y - where x is major and y is minor)
+TAG = 'b 0.1'
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
 ################################################################################
@@ -376,11 +377,9 @@ def GetPageAsString(url, headers=None, timeout=15, referer=None):
 	else:
 		headers['Referer'] = url
 
-	if len(CACHE_COOKIE) == 0:
-		fmovies.setTokenCookie(use_debug=use_debug)
-	
-	headers['Cookie'] = CACHE_COOKIE[0]['cookie'] + reqCookie
-	headers['User-Agent'] = CACHE_COOKIE[0]['UA']
+	if len(CACHE_COOKIE) > 0:
+		headers['Cookie'] = CACHE_COOKIE[0]['cookie'] + reqCookie
+		headers['User-Agent'] = CACHE_COOKIE[0]['UA']
 
 	if len(CACHE_COOKIE) > 0 and use_debug:
 		Log("Using Cookie retrieved at: %s" % CACHE_COOKIE[0]['ts'])

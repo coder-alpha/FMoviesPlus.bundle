@@ -81,6 +81,7 @@ CONVERT_BMS = []
 
 CUSTOM_TIMEOUT_DICT = {}
 
+USE_CUSTOM_TIMEOUT = False
 CUSTOM_TIMEOUT_CLIENTS = {'Plex Web': 15}
 
 NoMovieInfo = True
@@ -184,10 +185,9 @@ def SleepAndUpdateThread(update=True, startthread=True, session=None, **kwargs):
 		x1 = time.time()
 		ret = common.interface.init()
 		x2 = time.time()
-		
-		if Prefs["use_debug"]:
-			Log("%s at %s !" % (ret, time.ctime(x2)))
-			Log("Interface Initialization took %s sec. !" % (x2-x1))
+
+		Log("%s at %s !" % (ret, time.ctime(x2)))
+		Log("Interface Initialization took %s sec. !" % (x2-x1))
 			
 		Thread.Create(SiteCookieRoutine)
 			
@@ -1692,7 +1692,7 @@ def EpisodeDetail(title, url, thumb, session=None, **kwargs):
 							)
 						)
 				
-			if label != server_lab[len(server_lab)-1] and isTimeoutApproaching(clientProd = Client.Product, item = E(url), client_id=client_id):
+			if label != server_lab[len(server_lab)-1] and isTimeoutApproaching(clientProd = Client.Product, item = E(url), client_id=client_id, session=session):
 				Log("isTimeoutApproaching action")
 				break
 				#return MC.message_container('Timeout', 'Timeout: Please try again !')
@@ -1878,7 +1878,7 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 					)
 				)
 			
-		if label != server_lab[len(server_lab)-1] and isTimeoutApproaching(clientProd = Client.Product, item = E(url), client_id=client_id):
+		if label != server_lab[len(server_lab)-1] and isTimeoutApproaching(clientProd = Client.Product, item = E(url), client_id=client_id, session=session):
 			Log("isTimeoutApproaching action")
 			break
 			#return MC.message_container('Timeout', 'Timeout: Please try again !')
@@ -2237,11 +2237,11 @@ def ThreadTimeoutTimer(clientProd, item, client_id, **kwargs):
 	
 ####################################################################################################
 @route(PREFIX + "/isTimeoutApproaching")	
-def isTimeoutApproaching(clientProd, item, client_id, **kwargs):
+def isTimeoutApproaching(clientProd, item, client_id, session=None, **kwargs):
 	
 	# define custom timeouts for each client along with session & item to make it unique for multiple instances
 	
-	if Client.Product in CUSTOM_TIMEOUT_CLIENTS:
+	if USE_CUSTOM_TIMEOUT and common.UsingOption(common.DEVICE_OPTIONS[5], session=session) and Client.Product in CUSTOM_TIMEOUT_CLIENTS:
 		if client_id in CUSTOM_TIMEOUT_DICT and item in CUSTOM_TIMEOUT_DICT[client_id]:
 			t_sec = int(CUSTOM_TIMEOUT_DICT[client_id][item])
 			if t_sec < int(CUSTOM_TIMEOUT_CLIENTS[clientProd]):
@@ -3708,7 +3708,7 @@ def DumpPrefs(changed=False, **kwargs):
 @route(PREFIX + "/ClientInfo")
 def ClientInfo(session=None, **kwargs):
 	Log("=================FMoviesPlus Client Info=================")
-	Log(common.TITLE + ' v.' + common.VERSION)
+	Log(common.TITLE + ' v. %s %s' % (common.VERSION, common.TAG))
 	Log("OS: " + sys.platform)
 	Log("Client.Product: %s" % Client.Product)
 	Log("Client.Platform: %s" % Client.Platform)

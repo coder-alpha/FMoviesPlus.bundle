@@ -3080,7 +3080,7 @@ def SearchExt(query=None, query2=None, session=None, append=False, **kwargs):
 	
 ####################################################################################################
 @route(PREFIX + "/DoIMDBExtSources")
-def DoIMDBExtSources(title, year, type, imdbid, season=None, episode=None, episodeNr='1', summary=None, thumb=None, item=None, session=None, **kwargs):
+def DoIMDBExtSources(title, year, type, imdbid, season=None, episode=None, episodeNr='1', summary=None, simpleSummary=False, thumb=None, item=None, session=None, **kwargs):
 
 	if type == 'movie':
 		res = common.interface.searchOMDB(title, year)
@@ -3132,7 +3132,6 @@ def DoIMDBExtSources(title, year, type, imdbid, season=None, episode=None, episo
 		if episode != None:
 			episode = str(int(episode))
 	
-		# we assume a lotta season and iterate and checkProgress
 		if season == None:
 			oc = ObjectContainer(title2='%s (%s)' % (title, year), no_cache=isForceNoCache())
 			try:
@@ -3142,6 +3141,7 @@ def DoIMDBExtSources(title, year, type, imdbid, season=None, episode=None, episo
 					oc.add(DirectoryObject(key = Callback(DoIMDBExtSources, title=title, year=year, type=type, imdbid=imdbid, thumb=thumb, summary=summary, season=str(i), episode=None, session=session), 
 						title = '*%s (Season %s)' % (title, str(i)),
 						thumb = thumb))
+				DumbKeyboard(PREFIX, oc, DoIMDBExtSourcesSeason, dktitle = 'Input Season No.', dkthumb=R(ICON_DK_ENABLE), dkNumOnly=True, dkHistory=False, title=title, year=year, type=type, imdbid=imdbid, thumb=thumb, summary=summary, session=session)
 			except:
 				DumbKeyboard(PREFIX, oc, DoIMDBExtSourcesSeason, dktitle = 'Input Season No.', dkthumb=R(ICON_DK_ENABLE), dkNumOnly=True, dkHistory=False, title=title, year=year, type=type, imdbid=imdbid, thumb=thumb, summary=summary, session=session)
 	
@@ -3210,7 +3210,7 @@ def DoIMDBExtSources(title, year, type, imdbid, season=None, episode=None, episo
 				summary = watch_title + ' : ' + summary
 				watch_title = unicode(watch_title)
 				
-				if str(released) != 'N/A':
+				if str(released) != 'N/A' and str(released) != 'Not Available':
 					summary = released + ' : ' + summary
 				
 				summary = unicode(summary.replace('–','-'))
@@ -3249,28 +3249,29 @@ def DoIMDBExtSources(title, year, type, imdbid, season=None, episode=None, episo
 			genre = item['genre']
 			released = item['released']
 			
-			if str(summary) == 'N/A':
-				summary = 'Plot Summary Not Available'
-			if str(directors) == 'N/A':
-				directors = 'Not Available'
-			if str(roles) == 'N/A':
-				roles = 'Not Available'
-		
-			summary += '\n '
-			summary += 'Actors: ' + roles + '\n '
-			summary += 'Directors: ' + directors + '\n '
+			if simpleSummary == False:
+				if str(summary) == 'N/A':
+					summary = 'Plot Summary Not Available'
+				if str(directors) == 'N/A':
+					directors = 'Not Available'
+				if str(roles) == 'N/A':
+					roles = 'Not Available'
 			
-			if str(duration) == 'Not Available':
-				summary += 'Runtime: ' + str(duration) + '\n '
-			else:
-				summary += 'Runtime: ' + str(duration) + ' min.' + '\n '
-			
-			summary += 'Year: ' + year + '\n '
-			summary += 'Genre: ' + genre + '\n '
-			summary += 'IMDB rating: ' + rating + '\n '
-			
-			if str(released) != 'N/A':
-				summary = released + ' : ' + summary
+				summary += '\n '
+				summary += 'Actors: ' + roles + '\n '
+				summary += 'Directors: ' + directors + '\n '
+				
+				if str(duration) == 'Not Available':
+					summary += 'Runtime: ' + str(duration) + '\n '
+				else:
+					summary += 'Runtime: ' + str(duration) + ' min.' + '\n '
+				
+				summary += 'Year: ' + year + '\n '
+				summary += 'Genre: ' + genre + '\n '
+				summary += 'IMDB rating: ' + rating + '\n '
+				
+				if str(released) != 'N/A' and str(released) != 'Not Available':
+					summary = released + ' : ' + summary
 			
 			summary = unicode(summary.replace('–','-'))
 			
@@ -3328,7 +3329,7 @@ def DoIMDBExtSourcesEpisode(query, title, year, type, imdbid, season, summary, t
 	
 	oc = ObjectContainer(title2='%s (%s)' % (title, watch_title), no_cache=isForceNoCache())
 	oc.add(DirectoryObject(
-		key = Callback(DoIMDBExtSources, title=title, year=year, type=type, imdbid=imdbid, item=E(JSON.StringFromObject(item)), season=season, episode=episode, session=session), 
+		key = Callback(DoIMDBExtSources, title=title, year=year, type=type, imdbid=imdbid, item=E(JSON.StringFromObject(item)), simpleSummary=True, season=season, episode=episode, session=session), 
 		title = '*'+watch_title,
 		summary = watch_title + ' : ' + summary,
 		thumb = thumb))

@@ -195,48 +195,120 @@ class source:
 				data = {}
 				data['tvshowtitle'] = title
 			
-			t = cleantitle.get(data['tvshowtitle'])
-			title = data['tvshowtitle']
-			season = '%01d' % int(season) ; episode = '%01d' % int(episode)
-			#year = re.findall('(\d{4})', date)[0]
-			years = [str(year), str(int(year)+1), str(int(year)-1)]
-
-			r = cache.get(self.ymovies_info_season, 720, title, season)
-			r = [(i[0], re.findall('(.+?)\s+(?:-|)\s+season\s+(\d+)$', i[1].lower())) for i in r]
-			r = [(i[0], i[1][0][0], i[1][0][1]) for i in r if i[1]]
-			r = [i[0] for i in r if t == cleantitle.get(i[1]) and season == '%01d' % int(i[2])][:2]
-			r = [(i, re.findall('(\d+)', i)[-1]) for i in r]
+			t1 = data['tvshowtitle']
+			#t2 = cleantitle.get(data['tvshowtitle'])
+			titles = [t1]
+			if '\'s' in t1:
+				t0 = t1.replace('\'s','')
+				titles.append(t0)
+				if ' ' in t0:
+					t0 = t0.split(' ')
+					t0 = t0[0]
+					titles.append(t0)
+			elif '\'' in t1:
+				t0 = t1.replace('\'','')
+				titles.append(t0)
+				if ' ' in t0:
+					t0 = t0.split(' ')
+					t0 = t0[0]
+					titles.append(t0)
 			
-			#print r
-
-			for i in r:
+			for title in titles:
+				#print title
 				try:
-					y, q = cache.get(self.ymovies_info, 9000, i[1])
-					mychk = False
-					years = [str(year),str(int(year) + 1),str(int(year) - 1)]
-					for x in years:
-						if str(y) == x: mychk = True
-					if mychk == False: raise Exception()
-					return urlparse.urlparse(i[0]).path, (episode)
+					season = '%01d' % int(season) ; episode = '%01d' % int(episode)
+					#year = re.findall('(\d{4})', date)[0]
+					years = [str(year), str(int(year)+1), str(int(year)-1)]
+
+					r = cache.get(self.ymovies_info_season, 720, title, season)
+					if r == None or len(r) == 0: raise Exception()
+					#print r
+					
+					r = [(i[0], re.findall('(.+?)\s+(?:-|)\s+season\s+(\d+)$', i[1].lower())) for i in r]
+					#print r
+					
+					r = [(i[0], i[1][0][0], i[1][0][1]) for i in r if i[1]]
+					#print r
+					
+					r1 = []
+					try:
+						r1 = [i[0] for i in r if title == cleantitle.get(i[1]) and int(season) == int(i[2])][:2]
+					except:
+						pass
+					if len(r1) == 0:
+						r = [i[0] for i in r if int(season) == int(i[2])][:2]
+					else:
+						r = r1
+
+					#print r
+						
+					r = [(i, re.findall('(\d+)', i)[-1]) for i in r]					
+					#print r
+
+					for i in r:
+						try:
+							y, q = cache.get(self.ymovies_info, 9000, i[1])
+							mychk = False
+							years = [str(year),str(int(year) + 1),str(int(year) - 1)]
+							for x in years:
+								if str(y) == x: mychk = True
+							if mychk == False: raise Exception()
+							return urlparse.urlparse(i[0]).path, (episode)
+						except:
+							pass
+							
+					# yr variation for shows
+					try:
+						year = int(year) - int(season)
+						for i in r:
+							try:
+								y, q = cache.get(self.ymovies_info, 9000, i[1])
+								mychk = False
+								years = [str(year),str(int(year) + 1),str(int(year) - 1)]
+								for x in years:
+									if str(y) == x: mychk = True
+								if mychk == False: raise Exception()
+								return urlparse.urlparse(i[0]).path, (episode)
+							except:
+								pass
+					except:
+						pass
+						
+					# yr ignore for shows
+					for i in r:
+						return urlparse.urlparse(i[0]).path, (episode)
+							
 				except:
 					pass
+			return
 		except Exception as e:
 			control.log('Error %s > get_episode %s' % (self.name, e))
 			return
 
 	def ymovies_info_season(self, title, season):
 		try:
+			qs = []
 			q = '%s Season %s' % (cleantitle.query(title), season)
-			q = '/search/%s.html' % (urllib.quote_plus(q))
-			q = urlparse.urljoin(self.base_link, q)
-
-			for i in range(3):
-				r = client.request(q)
-				if not r == None: break
-
-			r = client.parseDOM(r, 'div', attrs = {'class': 'ml-item'})
-			r = [(client.parseDOM(i, 'a', ret='href'), client.parseDOM(i, 'a', ret='title')) for i in r]
-			r = [(i[0][0], i[1][0]) for i in r if i[0] and i[1]]
+			qs.append(q)
+			q = cleantitle.query(title)
+			qs.append(q)
+			
+			#print qs
+			for qm in qs:
+				try:
+					q = '/search/%s.html' % (urllib.quote_plus(qm))
+					q = urlparse.urljoin(self.base_link, q)
+					#print q
+					for i in range(3):
+						r = client.request(q)
+						if not r == None: break
+					
+					r = client.parseDOM(r, 'div', attrs = {'class': 'ml-item'})
+					r = [(client.parseDOM(i, 'a', ret='href'), client.parseDOM(i, 'a', ret='title')) for i in r]
+					r = [(i[0][0], i[1][0]) for i in r if i[0] and i[1]]
+					if not r == None and len(r) > 0: break
+				except:
+					pass
 
 			return r
 		except:

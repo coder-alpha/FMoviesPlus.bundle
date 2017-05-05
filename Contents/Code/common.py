@@ -1,12 +1,12 @@
 import time, base64, unicodedata, re
-from resources.lib.libraries import client, cleantitle
+from resources.lib.libraries import client, cleantitle, jsfdecoder
 from resources.lib.resolvers import host_openload, host_gvideo
 import interface
 
 ################################################################################
 TITLE = "FMoviesPlus"
 VERSION = '0.18' # Release notation (x.y - where x is major and y is minor)
-TAG = 'b 0.2'
+TAG = 'b 0.3'
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
 ################################################################################
@@ -359,14 +359,13 @@ def GetPageElements(url, headers=None, referer=None):
 def GetPageAsString(url, headers=None, timeout=15, referer=None):
 
 	use_debug = Prefs["use_debug"]
-	reqCookie = Prefs["req_cookie"]
+	user_defined_reqkey_cookie = Prefs['reqkey_cookie']
+	
 	try:
 		CACHE_EXPIRY = 60 * int(Prefs["cache_expiry_time"])
 	except:
 		CACHE_EXPIRY = CACHE_EXPIRY_TIME
-		
-	if reqCookie == None:
-		reqCookie = ''
+
 	page_data_string = None
 	if headers == None:
 		headers = {}
@@ -378,12 +377,15 @@ def GetPageAsString(url, headers=None, timeout=15, referer=None):
 		headers['Referer'] = url
 
 	if len(CACHE_COOKIE) > 0:
-		headers['Cookie'] = CACHE_COOKIE[0]['cookie'] + reqCookie
+		reqkey_cookie = CACHE_COOKIE[0]['reqkey']
+		if user_defined_reqkey_cookie != None and user_defined_reqkey_cookie != '':
+			reqkey_cookie = user_defined_reqkey_cookie
+		headers['Cookie'] = CACHE_COOKIE[0]['cookie'] + reqkey_cookie
 		headers['User-Agent'] = CACHE_COOKIE[0]['UA']
 
-	if len(CACHE_COOKIE) > 0 and use_debug:
-		Log("Using Cookie retrieved at: %s" % CACHE_COOKIE[0]['ts'])
-		Log("Using Cookie retrieved at: %s" % (CACHE_COOKIE[0]['cookie'] + reqCookie))
+		if use_debug:
+			Log("Using Cookie retrieved at: %s" % CACHE_COOKIE[0]['ts'])
+			Log("Using Cookie: %s" % (CACHE_COOKIE[0]['cookie'] + reqkey_cookie))
 
 	try:
 		if Prefs["use_https_alt"]:

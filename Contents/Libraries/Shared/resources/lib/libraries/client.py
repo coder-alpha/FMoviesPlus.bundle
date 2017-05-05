@@ -106,7 +106,7 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 		elif not mobile == True:
 			#headers['User-Agent'] = agent()
 			#headers['User-Agent'] = Constants.USER_AGENT
-			headers['User-Agent'] = randomagent()			
+			headers['User-Agent'] = randomagent()		
 		else:
 			headers['User-Agent'] = 'Apple-iPhone/701.341'
 		if 'Referer' in headers:

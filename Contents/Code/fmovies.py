@@ -10,7 +10,7 @@
 	
 import urllib, urlparse, json, time, re, datetime, calendar
 import common
-from __builtin__ import ord, format
+from __builtin__ import ord, format, eval
 
 BASE_URL = "https://fmovies.to"
 HASH_PATH_MENU = "/user/ajax/menu-bar"
@@ -38,7 +38,10 @@ def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web
 		use_https_alt = Prefs["use_https_alt"]
 		use_web_proxy = Prefs["use_web_proxy"]
 		cache_expiry_time = int(Prefs["cache_expiry_time"])
-		reqCookie = Prefs["req_cookie"]
+		user_defined_reqkey_cookie = Prefs['reqkey_cookie']
+		reqCookie = common.CACHE_COOKIE[0]['reqkey']
+		if user_defined_reqkey_cookie != None and user_defined_reqkey_cookie != '':
+			reqCookie = user_defined_reqkey_cookie
 	except:
 		pass
 	
@@ -51,9 +54,6 @@ def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web
 	except:
 		CACHE_EXPIRY = common.CACHE_EXPIRY_TIME
 		
-	if reqCookie == None:
-		reqCookie = ''
-	
 	if key in common.CACHE and 'myts' in common.CACHE[key] and (myts - int(common.CACHE[key]['myts']) < common.CACHE_EXPIRY):
 		if use_debug:
 			Log("Using Movie Link from Cache")
@@ -142,17 +142,23 @@ def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web
 					error = 'Unknown error'
 
 	return res, isOpenLoad, error
-	
-def setTokenCookie(serverts=None, use_debug=False, reset=False):
+		
+def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False):
+
+	try:
+		CACHE_EXPIRY = 60 * int(Prefs["cache_expiry_time"])
+	except:
+		CACHE_EXPIRY = common.CACHE_EXPIRY_TIME
 	
 	use_https_alt = Prefs['use_https_alt']
+	
 	if reset:
 		cookie_dict_Str = None
 		Dict['CACHE_COOKIE'] = None
 	else:
 		cookie_dict_Str = Dict['CACHE_COOKIE']
 	
-	cookie_dict = {'ts':0, 'cookie': '', 'UA': ''}
+	cookie_dict = {'ts':0, 'cookie': '', 'UA': '', 'reqkey':''}
 	
 	if cookie_dict_Str != None:
 		try:
@@ -160,12 +166,19 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False):
 		except:
 			pass
 	
-	if time.time() - cookie_dict['ts'] < 3 * 24 * 60 * 60:
-		cookie = cookie_dict['cookie']
-		Log("=====================TOKEN START============================")
-		Log("USING SAVED COOKIE TOKEN - TO DUMP TOKEN PERFORM RESET COOKIE UNDER OPTIONS MENU")
+	if time.time() - cookie_dict['ts'] < CACHE_EXPIRY:
+	
+		try:
+			cookie = cookie_dict['cookie']
+			reqkey_cookie = cookie_dict['reqkey']
+		except:
+			setTokenCookie(use_debug=use_debug, reset=True)
+		
+		#Log("=====================TOKEN START============================")
+		#Log("USING SAVED COOKIE TOKEN - TO DUMP TOKEN PERFORM RESET COOKIE UNDER OPTIONS MENU")
 		Log("Retrieved Saved Cookie: %s" % cookie)
-		Log("=====================TOKEN END============================")
+		Log("Retrieved Saved reqkey Cookie: %s" % reqkey_cookie)
+		#Log("=====================TOKEN END============================")
 	else:
 		if serverts == None:
 			serverts = str(((int(time.time())/3600)*3600))
@@ -184,10 +197,19 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False):
 		r1 = common.interface.request_via_proxy_as_backup(token_url, headers=headersS, httpsskip=use_https_alt)
 		time.sleep(0.1)
 		del common.TOKEN_CODE[:]
-		common.TOKEN_CODE.append(common.client.b64encode(r1))
-		Log("=====================TOKEN START============================")
-		Log(common.TOKEN_CODE[0])
-		Log("=====================TOKEN END============================")
+		
+		token_enc = common.client.b64encode(r1)
+		common.TOKEN_CODE.append(token_enc)
+		
+		try:
+			reqkey_cookie = decodeAndParse(token_enc)
+		except:
+			reqkey_cookie = ''
+		
+		if dump:
+			Log("=====================TOKEN START============================")
+			Log(common.TOKEN_CODE[0])
+			Log("=====================TOKEN END============================")
 
 		query = {'ts': serverts}
 		tk = get_token(query)
@@ -203,11 +225,12 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False):
 		common.CACHE['cookie']['cookie2'] = cookie2
 		common.CACHE['cookie']['myts'] = time.time()
 		common.CACHE['cookie']['UA'] = UA
+		common.CACHE['cookie']['reqkey'] = reqkey_cookie
 		
 		cookie = cookie1 + '; ' + cookie2 + '; user-info=null; ' + newmarketgidstorage
-		cookie_dict = {'ts':time.time(), 'cookie': cookie, 'UA': UA}
-		if use_debug:
-			Log("Storing Cookie: %s" % cookie)
+		cookie_dict = {'ts':time.time(), 'cookie': cookie, 'UA': UA, 'reqkey':reqkey_cookie}
+		Log("Storing Cookie: %s" % cookie)
+		Log("Storing reqkey Cookie: %s" % reqkey_cookie)
 		Dict['CACHE_COOKIE'] = E(JSON.StringFromObject(cookie_dict))
 		Dict.Save()
 
@@ -216,6 +239,12 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False):
 	
 	return cookie
 
+def decodeAndParse(token):
+	dec = common.jsfdecoder.JSFDecoder(common.client.b64decode(token)).ca_decode()
+	dec = dec.split('reqkey=')
+	dec = dec[1].split(';')
+	dec = dec[0]
+	return dec
 
 def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=False, use_web_proxy=False, reqCookie='', **kwargs):
 
@@ -254,6 +283,10 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 				pass
 			else:
 				setTokenCookie(serverts=serverts, use_debug=use_debug)
+				user_defined_reqkey_cookie = Prefs['reqkey_cookie']
+				reqCookie = common.CACHE_COOKIE[0]['reqkey']
+				if user_defined_reqkey_cookie != None and user_defined_reqkey_cookie != '':
+					reqCookie = user_defined_reqkey_cookie
 
 			cookie = common.CACHE_COOKIE[0]['cookie'] + reqCookie
 		else:
@@ -270,13 +303,6 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 			hash_url = hash_url + '?' + urllib.urlencode(query)
 
 			headers['Referer'] = '%s/%s' % (url, key)
-			
-			# key0 = url.split('/')
-			# key0 = key0[len(key0)-1]
-			# key0 = key0.split('.')
-			# key0 = key0[len(key0)-1]
-			# watching_query = '{"%s":"%s"}' % (key0,key)
-			# watching_query = watching_query.replace('"','%22').replace(':','%3A').replace('{','%7B').replace('}','%7D')
 			
 			headers['Cookie'] = cookie
 

@@ -91,6 +91,7 @@ NoMovieInfo = True
 def Start():
 
 	Thread.Create(SleepAndUpdateThread)
+	Thread.Create(SleepPersistAndUpdateCookie)
 	
 	ObjectContainer.title1 = TITLE
 	ObjectContainer.art = R(ART)
@@ -171,11 +172,28 @@ def MainMenu(**kwargs):
 
 ######################################################################################
 @route(PREFIX + "/SiteCookieRoutine")
-def SiteCookieRoutine(session=None, reset=False, **kwargs):
+def SiteCookieRoutine(session=None, reset=False, dump=False, **kwargs):
 
 	# This will get/set cookie that might be required for search before listing stage
 	if len(common.CACHE_COOKIE) == 0:
-		fmovies.setTokenCookie(use_debug=Prefs["use_debug"], reset=reset)
+		fmovies.setTokenCookie(use_debug=Prefs["use_debug"], reset=reset, dump=dump)
+		
+######################################################################################
+@route(PREFIX + "/SleepPersistAndUpdateCookie")
+def SleepPersistAndUpdateCookie(**kwargs):
+
+	while common.interface.isInitialized() == False:
+		time.sleep(1)
+
+	while True:
+		SiteCookieRoutine()
+		try:
+			CACHE_EXPIRY = 60 * int(Prefs["cache_expiry_time"])
+		except:
+			CACHE_EXPIRY = common.CACHE_EXPIRY_TIME
+		if Prefs["use_debug"]:
+			Log("Thread SleepPersistAndUpdateCookie: Sleeping for %s mins." % int(CACHE_EXPIRY/60))
+		time.sleep(CACHE_EXPIRY)
 	
 ######################################################################################
 @route(PREFIX + "/SleepAndUpdateThread")
@@ -188,8 +206,6 @@ def SleepAndUpdateThread(update=True, startthread=True, session=None, **kwargs):
 
 		Log("%s at %s !" % (ret, time.ctime(x2)))
 		Log("Interface Initialization took %s sec. !" % (x2-x1))
-			
-		Thread.Create(SiteCookieRoutine)
 			
 	if session == None:
 		session = common.getSession()
@@ -797,9 +813,9 @@ def ResetCookies(**kwargs):
 	
 	del common.CACHE_COOKIE[:]
 	
-	SiteCookieRoutine(reset=True)
+	SiteCookieRoutine(reset=True, dump=True)
 	
-	return MC.message_container('Reset Cookies', 'Cookies have been reset and token text dumped to Log. Please update reqkey cookie value in Prefs !')
+	return MC.message_container('Reset Cookies', 'Cookies have been reset and token text dumped to log (if required) !')
 	
 ######################################################################################
 @route(PREFIX + "/ResetExtOptions")

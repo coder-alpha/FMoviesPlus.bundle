@@ -211,8 +211,6 @@ class source:
 			url = re.findall('(?://.+?|)(/.+)', url)[0]
 			url = client.replaceHTMLCodes(url)
 			url = url.encode('utf-8')
-			if url != None and'http://' not in url:
-				url = 'http:' + url
 			#print "PRIMEWIRE get_movie %s" % url
 			
 			self.log('SUCCESS', 'get_movie','%s' % url, dolog=testing)

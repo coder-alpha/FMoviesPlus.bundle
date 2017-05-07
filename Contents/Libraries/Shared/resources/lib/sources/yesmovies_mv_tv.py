@@ -148,29 +148,36 @@ class source:
 
 	def get_movie(self, imdb, title, year, proxy_options=None, key=None, testing=False):
 		try:
-			t = cleantitle.get(title)
-
-			q = '/search/%s.html' % (urllib.quote_plus(cleantitle.query(title)))
-			q = urlparse.urljoin(self.base_link, q)
-
-			for i in range(3):
-				r = client.request(q)
-				if not r == None: break
-
-			r = client.parseDOM(r, 'div', attrs = {'class': 'ml-item'})
-			r = [(client.parseDOM(i, 'a', ret='href'), client.parseDOM(i, 'a', ret='title')) for i in r]
-			r = [(i[0][0], i[1][0]) for i in r if i[0] and i[1]]
-			r = [i[0] for i in r if t == cleantitle.get(i[1])][:2]
-			r = [(i, re.findall('(\d+)', i)[-1]) for i in r]
-
-			for i in r:
+			variations = [title, title.replace('&','and')]
+			
+			for title in variations:
 				try:
-					y, q = cache.get(self.ymovies_info, 9000, i[1])
-					if not y == year: raise Exception()
-					return urlparse.urlparse(i[0]).path, ''
+					t = cleantitle.get(title)
+
+					q = '/search/%s.html' % (urllib.quote_plus(cleantitle.query(title)))
+					print q
+					q = urlparse.urljoin(self.base_link, q)
+					print q
+
+					for i in range(3):
+						r = client.request(q)
+						if not r == None: break
+
+					r = client.parseDOM(r, 'div', attrs = {'class': 'ml-item'})
+					r = [(client.parseDOM(i, 'a', ret='href'), client.parseDOM(i, 'a', ret='title')) for i in r]
+					r = [(i[0][0], i[1][0]) for i in r if i[0] and i[1]]
+					r = [i[0] for i in r if t == cleantitle.get(i[1])][:2]
+					r = [(i, re.findall('(\d+)', i)[-1]) for i in r]
+
+					for i in r:
+						try:
+							y, q = cache.get(self.ymovies_info, 9000, i[1])
+							if not y == year: raise Exception()
+							return urlparse.urlparse(i[0]).path, ''
+						except:
+							pass
 				except:
 					pass
-
 		except Exception as e:
 			control.log('Error %s > get_movie %s' % (self.name, e))
 			return
@@ -335,7 +342,7 @@ class source:
 		#try:
 		try:
 			sources = []
-			
+
 			#print url
 
 			if url is None: return sources
@@ -358,7 +365,6 @@ class source:
 			except:
 				episode = None
 
-			
 			#print mid
 
 			links_m = []

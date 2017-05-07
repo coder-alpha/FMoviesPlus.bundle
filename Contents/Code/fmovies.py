@@ -10,7 +10,7 @@
 	
 import urllib, urlparse, json, time, re, datetime, calendar
 import common
-from __builtin__ import ord, format, eval
+from __builtin__ import ord, format
 
 BASE_URL = "https://fmovies.to"
 HASH_PATH_MENU = "/user/ajax/menu-bar"
@@ -23,9 +23,6 @@ STAR_PATH = "/star/"
 
 oldmarketgidstorage = 'MarketGidStorage=%7B%220%22%3A%7B%22svspr%22%3A%22%22%2C%22svsds%22%3A3%2C%22TejndEEDj%22%3A%22MTQ4MTM2ODE0NzM0NzQ4NTMyOTAx%22%7D%2C%22C48532%22%3A%7B%22page%22%3A1%2C%22time%22%3A1481368147359%7D%2C%22C77945%22%3A%7B%22page%22%3A1%2C%22time%22%3A1481368147998%7D%2C%22C77947%22%3A%7B%22page%22%3A1%2C%22time%22%3A1481368148109%7D%7D'
 newmarketgidstorage = 'MarketGidStorage=%7B%220%22%3A%7B%22svspr%22%3A%22%22%2C%22svsds%22%3A15%2C%22TejndEEDj%22%3A%22MTQ5MzIxMTc0OTQ0NDExMDAxNDc3NDE%3D%22%7D%2C%22C110014%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493215038742%7D%2C%22C110025%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493216772437%7D%2C%22C110023%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493216771928%7D%7D; reqkey='
-
-USE_COOKIES = True
-USE_SECOND_REQUEST = False
 
 ####################################################################################################
 
@@ -79,7 +76,7 @@ def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web
 			Log("get_sources url: %s, key: %s" % (url,key))
 			Log("get_sources ret: %s" % ret)
 		
-		if USE_SECOND_REQUEST and ret == None: # if the request ever fails - clear CACHE right away and make 2nd attempt
+		if common.USE_SECOND_REQUEST == True and ret == None: # if the request ever fails - clear CACHE right away and make 2nd attempt
 			common.CACHE.clear()
 			if use_debug:
 				Log("CACHE cleared due to null response from API - maybe cookie issue for %s" % url)
@@ -167,18 +164,18 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False):
 			pass
 	
 	if time.time() - cookie_dict['ts'] < CACHE_EXPIRY:
-	
 		try:
 			cookie = cookie_dict['cookie']
 			reqkey_cookie = cookie_dict['reqkey']
 		except:
 			setTokenCookie(use_debug=use_debug, reset=True)
 		
-		#Log("=====================TOKEN START============================")
-		#Log("USING SAVED COOKIE TOKEN - TO DUMP TOKEN PERFORM RESET COOKIE UNDER OPTIONS MENU")
-		Log("Retrieved Saved Cookie: %s" % cookie)
-		Log("Retrieved Saved reqkey Cookie: %s" % reqkey_cookie)
-		#Log("=====================TOKEN END============================")
+		if dump or use_debug:
+			Log("=====================TOKEN START============================")
+			Log("USING SAVED COOKIE TOKEN - TO DUMP TOKEN PERFORM RESET COOKIE UNDER OPTIONS MENU")
+			Log("Retrieved Saved Cookie: %s" % cookie)
+			Log("Retrieved Saved reqkey Cookie: %s" % reqkey_cookie)
+			Log("=====================TOKEN END============================")
 	else:
 		if serverts == None:
 			serverts = str(((int(time.time())/3600)*3600))
@@ -206,7 +203,7 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False):
 		except:
 			reqkey_cookie = ''
 		
-		if dump:
+		if dump or use_debug:
 			Log("=====================TOKEN START============================")
 			Log(common.TOKEN_CODE[0])
 			Log("=====================TOKEN END============================")
@@ -218,7 +215,6 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False):
 		hash_url = hash_url + '?' + urllib.urlencode(query)
 
 		r1, headers, content, cookie2 = common.interface.request_via_proxy_as_backup(hash_url, headers=headersS, limit='0', output='extended', httpsskip=use_https_alt)
-		time.sleep(0.5)
 		
 		common.CACHE['cookie'] = {}
 		common.CACHE['cookie']['cookie1'] = cookie1
@@ -229,8 +225,10 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False):
 		
 		cookie = cookie1 + '; ' + cookie2 + '; user-info=null; ' + newmarketgidstorage
 		cookie_dict = {'ts':time.time(), 'cookie': cookie, 'UA': UA, 'reqkey':reqkey_cookie}
-		Log("Storing Cookie: %s" % cookie)
-		Log("Storing reqkey Cookie: %s" % reqkey_cookie)
+		
+		if dump or use_debug:
+			Log("Storing Cookie: %s" % cookie)
+			Log("Storing reqkey Cookie: %s" % reqkey_cookie)
 		Dict['CACHE_COOKIE'] = E(JSON.StringFromObject(cookie_dict))
 		Dict.Save()
 
@@ -278,7 +276,7 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 		
 		time.sleep(0.5)
 		
-		if USE_COOKIES:
+		if common.USE_COOKIES == True:
 			if len(common.CACHE_COOKIE) > 0:
 				pass
 			else:
@@ -361,7 +359,7 @@ def a01(t):
 
 def get_token(n, **kwargs):
 	try:
-		d = "b826ae04"
+		d = D("YjgyNmFlMDQ=")
 		s = a01(d)
 		for i in n: 
 			s += a01(r01(d + i, n[i]))

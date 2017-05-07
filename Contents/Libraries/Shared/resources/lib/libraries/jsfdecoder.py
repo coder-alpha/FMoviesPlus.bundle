@@ -4,7 +4,7 @@
 """
 	Coder Alpha
 	https://github.com/coder-alpha/FMoviesPlus.bundle
-	Modified 05-04-2017 Coder Alpha
+	Modified 05-06-2017 Coder Alpha
 	
 	SALTS XBMC Addon
 	Copyright (C) 2017 tknorris
@@ -201,9 +201,10 @@ class JSFDecoder(object):
 					d = JSFDecoder(d).decode()
 					i += 1
 				
+				d = JSFDecoder(d).decode(lastpass=True)
 				if wrapWithEvalUsed:
-					d = JSFDecoder(d).decode(lastpass=True)[1:-1]
-				
+					d = d[1:-1]
+
 				decoded.append(d)
 				
 		ret = ";".join(decoded)

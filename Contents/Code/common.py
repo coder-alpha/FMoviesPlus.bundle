@@ -5,8 +5,8 @@ import interface
 
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.18' # Release notation (x.y - where x is major and y is minor)
-TAG = 'b 0.3'
+VERSION = '0.19' # Release notation (x.y - where x is major and y is minor)
+TAG = ''
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
 ################################################################################
@@ -57,6 +57,11 @@ DEVICE_OPTION = {DEVICE_OPTIONS[0]:'The awesome Keyboard for Search impaired dev
 DEVICE_OPTION_CONSTRAINTS = {DEVICE_OPTIONS[2]:[{'Pref':'use_https_alt','Desc':'Use Alternate SSL/TLS','ReqValue':'disabled'}]}
 DEVICE_OPTION_CONSTRAINTS2 = {DEVICE_OPTIONS[5]:[{'Option':6,'ReqValue':False}], DEVICE_OPTIONS[6]:[{'Option':5,'ReqValue':False}]}
 
+# Golbal Overrides - to disable 
+USE_COOKIES = True
+NoMovieInfo = False
+USE_CUSTOM_TIMEOUT = False
+USE_SECOND_REQUEST = False
 DEV_DEBUG = False
 
 ####################################################################################################

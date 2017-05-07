@@ -81,10 +81,7 @@ CONVERT_BMS = []
 
 CUSTOM_TIMEOUT_DICT = {}
 
-USE_CUSTOM_TIMEOUT = False
 CUSTOM_TIMEOUT_CLIENTS = {'Plex Web': 15}
-
-NoMovieInfo = True
 
 ######################################################################################
 
@@ -185,15 +182,12 @@ def SleepPersistAndUpdateCookie(**kwargs):
 	while common.interface.isInitialized() == False:
 		time.sleep(1)
 
+	SLEEP_TIME = 5 * 60
 	while True:
 		SiteCookieRoutine()
-		try:
-			CACHE_EXPIRY = 60 * int(Prefs["cache_expiry_time"])
-		except:
-			CACHE_EXPIRY = common.CACHE_EXPIRY_TIME
 		if Prefs["use_debug"]:
-			Log("Thread SleepPersistAndUpdateCookie: Sleeping for %s mins." % int(CACHE_EXPIRY/60))
-		time.sleep(CACHE_EXPIRY)
+			Log("Thread SleepPersistAndUpdateCookie: Sleeping for %s mins." % int(SLEEP_TIME/60))
+		time.sleep(SLEEP_TIME)
 	
 ######################################################################################
 @route(PREFIX + "/SleepAndUpdateThread")
@@ -810,6 +804,9 @@ def ClearCache(**kwargs):
 ######################################################################################
 @route(PREFIX + "/resetcookies")
 def ResetCookies(**kwargs):
+
+	if not common.interface.isInitialized():
+		return MC.message_container("Please wait..", "Please wait a few seconds for the Interface to Load & Initialize plugins")
 	
 	del common.CACHE_COOKIE[:]
 	
@@ -833,7 +830,7 @@ def ResetExtOptions(**kwargs):
 	
 	Thread.Create(SleepAndUpdateThread,{},True,False)
 	
-	return MC.message_container('Reset Options', 'Options have been Reset !')
+	return MC.message_container('Reset Options', 'Interface Options have been Reset !')
 	
 ######################################################################################
 @route(PREFIX + "/testSite")
@@ -2064,18 +2061,19 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 	internal_extSources = extSourKey
 	
 	if Prefs["use_debug"] and common.DEV_DEBUG == True:
-		Log("---------=====------------")
+		Log("---------=== DEV DEBUG START ===------------")
 		Log("Length sources: %s" % len(internal_extSources))
 		for source in internal_extSources:
-			if True:# and source['provider'] == 'G2G':
+			if True:
 				Log('Provider---------: %s' % source['provider'])
 				Log('Source---------: %s' % source)
 				Log('Online----------: %s' % source['online'])
-				#Log('Type: %s --- Quality: %s' % (source['rip'],source['quality']))
-				#Log('%s URL---------: %s' % (source['source'], source['url']))
-				#Log('Key: %s' % source['key'])
-				#Log('urldata: %s' % json.loads(client.b64decode(source['urldata'])))
-				#Log('params: %s' % json.loads(client.b64decode(source['params'])))
+				Log('Type: %s --- Quality: %s' % (source['rip'],source['quality']))
+				Log('%s URL---------: %s' % (source['source'], source['url']))
+				Log('Key: %s' % source['key'])
+				Log('urldata: %s' % json.loads(client.b64decode(source['urldata'])))
+				Log('params: %s' % json.loads(client.b64decode(source['params'])))
+		Log("---------=== DEV DEBUG END ===------------")
 		
 	# filter sources based on enabled quality in common.INTERNAL_SOURCES_QUALS
 	#Log(common.INTERNAL_SOURCES_QUALS)
@@ -2257,7 +2255,7 @@ def isTimeoutApproaching(clientProd, item, client_id, session=None, **kwargs):
 	
 	# define custom timeouts for each client along with session & item to make it unique for multiple instances
 	
-	if USE_CUSTOM_TIMEOUT and common.UsingOption(common.DEVICE_OPTIONS[5], session=session) and Client.Product in CUSTOM_TIMEOUT_CLIENTS:
+	if common.USE_CUSTOM_TIMEOUT == True and common.UsingOption(common.DEVICE_OPTIONS[5], session=session) and Client.Product in CUSTOM_TIMEOUT_CLIENTS:
 		if client_id in CUSTOM_TIMEOUT_DICT and item in CUSTOM_TIMEOUT_DICT[client_id]:
 			t_sec = int(CUSTOM_TIMEOUT_DICT[client_id][item])
 			if t_sec < int(CUSTOM_TIMEOUT_CLIENTS[clientProd]):
@@ -2379,7 +2377,7 @@ def MoviesWithTag(tags, **kwargs):
 @route(PREFIX + "/getmovieinfo")
 def GetMovieInfo(summary, urlPath, referer=None, **kwargs):
 
-	if NoMovieInfo or urlPath == None and (summary == None or summary == '') or Prefs['use_web_proxy']:
+	if common.NoMovieInfo == True or urlPath == None and (summary == None or summary == '') or Prefs['use_web_proxy']:
 		return 'Plot Summary on Item Page'
 	elif summary != None and Prefs["dont_fetch_more_info"]:
 		return summary
@@ -2585,7 +2583,7 @@ def Bookmarks(title, **kwargs):
 			elif 'fmovies.is' in url:
 				url = url.replace('fmovies.is',fmovies_base)
 				
-			Log("BM : %s" % url)
+			#Log("BM : %s" % url)
 				
 			if url not in items_in_bm:
 				
@@ -2679,12 +2677,11 @@ def convertbookmarks(**kwargs):
 def Check(title, url, **kwargs):
 	
 	longstring = Dict[title+'-'+E(url)]
-	#Log("%s --- %s" % (longstring, url))
+	fmovies_urlhost = common.client.geturlhost(url)
+	#Log("%s --- %s --- %s" % (longstring, url, fmovies_urlhost))
 	if longstring != None and (longstring.lower()).find(SITE.lower()) != -1 and url in longstring:
 		return True
-		
-	fmovies_urlhost = common.client.geturlhost(url)
-	
+
 	surl = url.replace(fmovies_urlhost,'fmovies.to')
 	longstring = Dict[title+'-'+E(surl)]
 	if longstring != None and (longstring.lower()).find(SITE.lower()) != -1 and surl in longstring:
@@ -2820,12 +2817,28 @@ def Search(query=None, surl=None, page_count='1', mode='default', thumb=None, su
 		url = fmovies.BASE_URL + fmovies.SEARCH_PATH + '?page=%s&keyword=%s' % (str(page_count), String.Quote(query, usePlus=True))
 		page_data = common.GetPageElements(url=url)
 		
+	elems = []
+	error = False
 	try:
 		elems = page_data.xpath(".//*[@id='body-wrapper']//div[@class='row movie-list']//div[@class='item']")
 		last_page_no = int(page_count)
 		last_page_no = int(page_data.xpath(".//*[@id='body-wrapper']//ul[@class='pagination'][1]//li[last()-1]//text()")[0])
 	except:
+		error = True
 		pass
+	no_elems = len(elems)
+	
+	if error==True and no_elems == 0 and mode == 'other seasons':
+		xurl = fmovies.BASE_URL + fmovies.SEARCH_PATH + '?page=%s&keyword=%s' % (str(page_count), String.Quote(query, usePlus=True))
+		page_data = common.GetPageElements(url=xurl)
+		try:
+			elems = page_data.xpath(".//*[@id='body-wrapper']//div[@class='row movie-list']//div[@class='item']")
+			last_page_no = int(page_count)
+			last_page_no = int(page_data.xpath(".//*[@id='body-wrapper']//ul[@class='pagination'][1]//li[last()-1]//text()")[0])
+		except:
+			error = True
+			pass
+		no_elems = len(elems)
 		
 	try:
 		oc = ObjectContainer(title2 = 'Search Results for %s' % query, no_cache=isForceNoCache())
@@ -2839,7 +2852,6 @@ def Search(query=None, surl=None, page_count='1', mode='default', thumb=None, su
 		else:
 			oc = ObjectContainer(title2 = 'Other Seasons for ' + query, no_cache=isForceNoCache())
 			
-		no_elems = len(elems)
 		for elem in elems:
 			name = elem.xpath(".//a[@class='name']//text()")[0]
 			loc = fmovies.BASE_URL + elem.xpath(".//a[@class='name']//@href")[0]
@@ -2962,12 +2974,14 @@ def SearchExt(query=None, query2=None, session=None, append=False, **kwargs):
 	else:
 		oc = []
 	
-	extSearches = [(query, None)]
-	title, year = common.cleantitle.getTitleAndYear(query)
-	if query2 != None:
-		extSearches.append((query2, None))
-	extSearches.append((title, year))
-	extSearches.append((title, None))
+	extSearches = []
+	if query != None:
+		extSearches = [(query, None)]
+		title, year = common.cleantitle.getTitleAndYear(query)
+		if query2 != None:
+			extSearches.append((query2, None))
+		extSearches.append((title, year))
+		extSearches.append((title, None))
 	
 	imdbArray = []
 	showitems = []
@@ -3424,6 +3438,9 @@ def Help():
 @route(PREFIX + "/filtersetup")
 def FilterSetup(title, key1 = None, key2val = None, mode='add', update=True, session=None, **kwargs):
 
+	if not common.interface.isInitialized():
+		return MC.message_container("Please wait..", "Please wait a few seconds for the Interface to Load & Initialize plugins")
+
 	oc = ObjectContainer(title2 = title, no_cache=isForceNoCache())
 	
 	if len(Filter) == 0:
@@ -3582,11 +3599,11 @@ def ClearFilter(**kwargs):
 	return oc
 
 ######################################################################################
-@route(PREFIX + "/filtersetupdata")
+@route(PREFIX + "/filtersetupdata-%s" % time.time())
 def FilterSetupData(**kwargs):
 
 	try:
-		url = (fmovies.BASE_URL + fmovies.SEARCH_PATH + '?keyword=fmovies')
+		url = fmovies.BASE_URL + fmovies.SEARCH_PATH + '?keyword=fmovies+%s' % time.time()
 		page_data = common.GetPageElements(url=url)
 		
 		Filter['sort']={}

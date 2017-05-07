@@ -23,6 +23,7 @@ import re,urllib,urlparse,json,random,time,base64
 from resources.lib.libraries import control
 from resources.lib.libraries import cleantitle
 from resources.lib.libraries import client
+from resources.lib.libraries import jsfdecoder
 from resources.lib.libraries import testparams
 from resources.lib import resolvers
 from resources.lib import proxies
@@ -30,13 +31,17 @@ from __builtin__ import ord, format
 
 class source:
 	def __init__(self):
+		self.disabled = True
 		self.base_link = 'https://fmovies.unlockpro.top'
 		self.search_link = '/sitemap'
-		self.search_link2 = 'https://fmovies.unlockpro.top/ajax/film/search?sort=year%3Adesc&funny=1&keyword=%s'
 		self.hash_link = '/ajax/episode/info'
+		self.hash_menu_link = "/user/ajax/menu-bar"
+		self.token_link = "/token"
 		self.MainPageValidatingContent = 'FMovies'
 		self.ssl = False
 		self.name = 'FMovies'
+		self.headers = {}
+		self.cookie = None
 		self.loggertxt = []
 		self.logo = 'http://i.imgur.com/li8Skjf.jpg'
 		self.speedtest = 0
@@ -66,35 +71,53 @@ class source:
 		if disp == True:
 			logger(msg)
 			
+	def setNewCookies(self):
+		try:
+			t_base_link = self.base_link
+			self.headers = {'X-Requested-With': 'XMLHttpRequest'}
+			self.headers['Referer'] = t_base_link
+			ua = client.randomagent()
+			self.headers['User-Agent'] = ua
+			
+			#get cf cookie
+			cookie1 = proxies.request(url=t_base_link, headers=self.headers, output='cookie', use_web_proxy=self.proxyrequired)
+			self.headers['Cookie'] = cookie1
+			
+			# get reqkey cookie
+			token_url = urlparse.urljoin(t_base_link, self.token_link)
+			r1 = proxies.request(token_url, headers=self.headers, httpsskip=True)
+			reqkey = self.decodeJSFCookie(r1)
+			
+			# get session cookie
+			serverts = str(((int(time.time())/3600)*3600))
+			query = {'ts': serverts}
+			tk = self.__get_token(query)
+			query.update(tk)
+			hash_url = urlparse.urljoin(t_base_link, self.hash_menu_link)
+			hash_url = hash_url + '?' + urllib.urlencode(query)
+
+			r1, headers, content, cookie2 = proxies.request(hash_url, headers=self.headers, limit='0', output='extended', httpsskip=True)
+			
+			cookie = cookie1 + '; ' + cookie2 + '; user-info=null; reqkey=' + reqkey
+			self.headers['Cookie'] = cookie
+			self.log('SUCCESS', 'setNewCookies', 'Cookies : %s for %s' % (cookie,self.base_link), dolog=True)
+		except Exception as e:
+			self.log('ERROR','setNewCookies', '%s' % e, dolog=True)
+			
 	def testSite(self):
 		try:
+			if self.disabled:
+				self.log('INFO','testSite', 'Plugin Disabled', dolog=True)
+				return False
+			self.setNewCookies()
 			x1 = time.time()
-			http_res, content = proxies.request(url=self.base_link, output='response', use_web_proxy=False)
+			http_res, content = proxies.request(url=self.base_link, headers=self.headers, output='response', use_web_proxy=False)
 			self.speedtest = time.time() - x1
 			if content != None and content.find(self.MainPageValidatingContent) >-1:
 				self.log('SUCCESS', 'testSite', 'HTTP Resp : %s for %s' % (http_res,self.base_link), dolog=True)
 				return True
 			else:
 				self.log('ERROR', 'testSite', 'HTTP Resp : %s for %s' % (http_res,self.base_link), dolog=True)
-				x1 = time.time()
-				http_res, content = proxies.request(url=self.base_link, output='response', use_web_proxy=True)
-				self.speedtest = time.time() - x1
-				if content != None and content.find(self.MainPageValidatingContent) >-1:
-					self.proxyrequired = True
-					self.log('SUCCESS', 'testSite', 'HTTP Resp : %s via proxy for %s' % (http_res,self.base_link), dolog=True)
-					return True
-				else:
-					time.sleep(2.0)
-					x1 = time.time()
-					http_res, content = proxies.request(url=self.base_link, output='response', use_web_proxy=True)
-					self.speedtest = time.time() - x1
-					if content != None and content.find(self.MainPageValidatingContent) >-1:
-						self.proxyrequired = True
-						self.log('SUCCESS', 'testSite', 'HTTP Resp : %s via proxy for %s' % (http_res,self.base_link), dolog=True)
-						return True
-					else:
-						self.log('ERROR', 'testSite', 'HTTP Resp : %s via proxy for %s' % (http_res,self.base_link), dolog=True)
-						self.log('ERROR', 'testSite', content, dolog=True)
 			return False
 		except Exception as e:
 			self.log('ERROR','testSite', '%s' % e, dolog=True)
@@ -102,6 +125,9 @@ class source:
 		
 	def testParser(self):
 		try:
+			if self.disabled:
+				self.log('INFO','testParser', 'Plugin Disabled', dolog=True)
+				return False
 			getmovieurl = self.get_movie(title=testparams.movie, year=testparams.movieYear, imdb=testparams.movieIMDb, testing=True)
 			movielinks = self.get_sources(url=getmovieurl, testing=True)
 			
@@ -152,12 +178,12 @@ class source:
 
 		try:
 			sources = []
-			myts = str(((int(time.time())/3600)*3600))
 			
-			#self.log('GRABBER','get_sources-1', '%s' % url, dolog=False)
-
-			if url == None: return sources
-
+			if url == None or self.testparser == False: return sources
+			
+			myts = str(((int(time.time())/3600)*3600))
+			self.log('GRABBER','get_sources-1', '%s' % url, dolog=False)
+			
 			if not str(url).startswith('http'):
 				try:
 					data = urlparse.parse_qs(url)
@@ -169,12 +195,14 @@ class source:
 					try: episode = data['episode']
 					except: pass
 
-					query = {'keyword': title, 's':''}
+					query = {'keyword': title}
 					search_url = urlparse.urljoin(self.base_link, '/search')
 					search_url = search_url + '?' + urllib.urlencode(query)
-					result = proxies.request(search_url, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+					result = proxies.request(search_url, headers=self.headers, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
 					
-					#self.log('GRABBER','get_sources-2', '%s' % search_url, dolog=False)
+					self.log('GRABBER','get_sources-2', '%s' % search_url, dolog=False)
+					
+					print result
 
 					r = client.parseDOM(result, 'div', attrs = {'class': '[^"]*movie-list[^"]*'})[0]
 					r = client.parseDOM(r, 'div', attrs = {'class': 'item'})
@@ -197,34 +225,41 @@ class source:
 						url = [i for i in r if cleantitle.get(title) in cleantitle.get(i[1])]
 					#print("r1", cleantitle.get(title),url,r)
 
-
 					url = url[0][0]
 
 					url = urlparse.urljoin(self.base_link, url)
 					r2 = url.split('.')[-1]
 
-
 				except:
-					url == self.base_link
+					raise Exception()
 
 
 			try: url, episode = re.compile('(.+?)\?episode=(\d*)$').findall(url)[0]
 			except: pass
 			
-			#self.log('GRABBER','get_sources-3', '%s' % url, dolog=False)
+			self.log('GRABBER','get_sources-3', '%s' % url, dolog=False)
 
 			referer = url
 			#result = client.request(url, limit='0')
-			result, headers, content, cookie1 = proxies.request(url, limit='0', output='extended', proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+			result, headers, content, cookie1 = proxies.request(url, headers=self.headers, limit='0', output='extended', proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
 			
-			#self.log('GRABBER','get_sources-3.1', '%s' % url, dolog=False)
+			try:
+				smyts = client.parseDOM(result, 'body', attrs = {'class': 'watching'})[0]
+				myts = client.parseDOM(smyts, 'data-ts')[0]
+				print myts
+				#myts = result.xpath(".//body[@class='watching']//@data-ts")[0]
+			except:
+				print "xpath not avail."
+				pass
+			
+			self.log('GRABBER','get_sources-3.1', '%s' % url, dolog=False)
 
-			hash_url = urlparse.urljoin(self.base_link, '/user/ajax/menu-bar')
+			#hash_url = urlparse.urljoin(self.base_link, '/user/ajax/menu-bar')
 			# int(time.time())
-			query = {'ts': myts}
-			query.update(self.__get_token(query))
-			hash_url = hash_url + '?' + urllib.urlencode(query)
-			r1, headers, content, cookie2 = proxies.request(hash_url, limit='0', output='extended', cookie=cookie1, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+			#query = {'ts': myts}
+			#query.update(self.__get_token(query))
+			#hash_url = hash_url + '?' + urllib.urlencode(query)
+			#r1, headers, content, cookie2 = proxies.request(hash_url, headers=self.headers, limit='0', output='extended', cookie=cookie1, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
 			
 			#print "%s" % cookie1
 			#print "%s" % cookie2
@@ -277,7 +312,7 @@ class source:
 					query.update(self.__get_token(query))
 					hash_url = hash_url + '?' + urllib.urlencode(query)
 					headers['Referer'] = urlparse.urljoin(url, s[0])
-					headers['Cookie'] = cookie1 + '; ' + cookie2 + '; user-info=null;  MarketGidStorage=%7B%220%22%3A%7B%22svspr%22%3A%22%22%2C%22svsds%22%3A1%2C%22TejndEEDj%22%3A%22MTQ5MzIzMTk1Mzc5MzExMDAxMjk1NDE%3D%22%7D%2C%22C110012%22%3A%7B%22page%22%3A1%2C%22time%22%3A1493231954827%7D%7D'
+					headers['Cookie'] = self.headers['Cookie']
 					
 					#self.log('GRABBER','get_sources-3.9', '%s' % hash_url, dolog=False)
 					result = proxies.request(hash_url, headers=headers, limit='0', proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
@@ -355,13 +390,20 @@ class source:
 
 	def __get_token(self, n):
 		try:
-			d = base64.decodestring("bG9jYXRpb24=")
+			d = base64.decodestring("YjgyNmFlMDQ=")
 			s = self.a01(d)
 			for i in n: 
 				s += self.a01(self.r01(d + i, n[i]))
 			return {'_': str(s)}
 		except Exception as e:
 			print("fmovies.py > get_token > %s" % e)
+			
+	def decodeJSFCookie(self, token):
+		dec = jsfdecoder.JSFDecoder(token).ca_decode()
+		dec = dec.split('reqkey=')
+		dec = dec[1].split(';')
+		dec = dec[0]
+		return dec
 
 def logger(msg):
 	control.log(msg)

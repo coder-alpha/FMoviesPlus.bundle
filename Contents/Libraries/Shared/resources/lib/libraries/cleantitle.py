@@ -56,7 +56,7 @@ def removeParanthesisAndSeason(title,season):
 	return title.strip()
 		
 def tvWatchTitle(title,season,episode,etitle):
-
+	if title == None: return
 	title = removeParanthesis(title)
 	
 	if len(title) > 5:
@@ -80,6 +80,7 @@ def tvWatchTitle(title,season,episode,etitle):
 	return title
 	
 def getTitleAndYear(title):
+	if title == None: return
 	if ' ' in title:
 		xtitle = title.split(' ')
 		ntitle = ''

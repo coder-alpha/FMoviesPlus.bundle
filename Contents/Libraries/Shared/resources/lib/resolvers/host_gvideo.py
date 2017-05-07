@@ -103,7 +103,7 @@ class host:
 	
 		if 'http' not in url and 'google.com/file' in url:
 			url = 'https://drive.google.com/' + url.split('.com/')[1]
-
+				
 		#print "createMeta1 : %s %s %s %s" % (url, provider, logo, quality)
 		videoData, headers, content, cookie = getVideoMetaData(url)
 		
@@ -246,9 +246,9 @@ def check(url, videoData=None, headers=None, cookie=None, doPrint=False):
 						log('CHeck Fail', name, 'status == fail')
 						return (False, videoData)
 		else:
-			http_res, red_url = client.request(url=url, output='responsecodeext', followredirect=True, headers=headers, cookie=cookie, httpsskip=True)
+			http_res, red_url = client.request(url=url, output='responsecodeext', followredirect=True, headers=headers, cookie=cookie)
 			if http_res in client.HTTP_GOOD_RESP_CODES:
-				chunk = client.request(url=red_url, output='chunk', headers=headers, cookie=cookie, httpsskip=True) # dont use web-proxy when retrieving chunk
+				chunk = client.request(url=red_url, output='chunk', headers=headers, cookie=cookie) # dont use web-proxy when retrieving chunk
 				if doPrint:
 					print "url --- %s" % red_url
 					print "chunk --- %s" % chunk[0:20]

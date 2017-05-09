@@ -5,8 +5,8 @@ import interface
 
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.19' # Release notation (x.y - where x is major and y is minor)
-TAG = 'b0.1'
+VERSION = '0.20' # Release notation (x.y - where x is major and y is minor)
+TAG = ''
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
 ################################################################################

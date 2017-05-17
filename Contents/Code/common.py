@@ -9,13 +9,13 @@ try:
 	execjs.eval("{a:true,b:function (){}}")
 	Log('execjs loaded from v1.1.0')
 	Log('execjs using engine: %s' % execjs.get().name)
-except ImportError as e:
+except Exception as e:
 	Log.Error('Failed to import execjs >>> {}'.format(e))
 	execjs = None
 
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.22' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.23' # Release notation (x.y - where x is major and y is minor)
 TAG = ''
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
@@ -377,6 +377,38 @@ def GetPageElements(url, headers=None, referer=None):
 
 	return page_data_elems
 	
+def make_cookie_str():
+
+	try:
+		cookie_str = ''
+		error = ''
+		if len(CACHE_COOKIE) > 0:
+			pass
+		else:
+			#setTokenCookie(serverts=serverts, use_debug=use_debug)
+			error = "Cookie not set !"
+			raise Exception(error)
+			
+		user_defined_reqkey_cookie = Prefs['reqkey_cookie']
+		reqCookie = CACHE_COOKIE[0]['reqkey']
+		if user_defined_reqkey_cookie != None and user_defined_reqkey_cookie != '':
+			reqCookie = user_defined_reqkey_cookie
+
+		p_cookie = CACHE_COOKIE[0]['cookie'] + ';' + reqCookie
+		p_cookie_s = p_cookie.split(';')
+		cookie_dict = {}
+		for ps in p_cookie_s:
+			ps_s= ps.split('=')
+			k = ps_s[0].strip()
+			v = ps_s[1].strip()
+			cookie_dict[k]=v
+		
+		cookie_str = '__cfduid=%s; preqkey=%s; session=%s; reqkey=%s; user-info=%s' % (cookie_dict['__cfduid'],cookie_dict['preqkey'],cookie_dict['session'],cookie_dict['reqkey'],cookie_dict['user-info'],)
+		
+		return cookie_str, error
+	except Exception as e:
+		return cookie_str, e
+	
 ######################################################################################
 @route(PREFIX + "/GetPageAsString")
 def GetPageAsString(url, headers=None, timeout=15, referer=None):
@@ -398,17 +430,20 @@ def GetPageAsString(url, headers=None, timeout=15, referer=None):
 		pass
 	else:
 		headers['Referer'] = url
-
-	if len(CACHE_COOKIE) > 0:
-		reqkey_cookie = CACHE_COOKIE[0]['reqkey']
-		if user_defined_reqkey_cookie != None and user_defined_reqkey_cookie != '':
-			reqkey_cookie = user_defined_reqkey_cookie
-		headers['Cookie'] = CACHE_COOKIE[0]['cookie'] + reqkey_cookie
+	
+	cookies, error = make_cookie_str()
+	try:
+		if error != '':
+			raise Exception(error)
+		headers['Cookie'] = cookies
 		headers['User-Agent'] = CACHE_COOKIE[0]['UA']
 
 		if use_debug:
 			Log("Using Cookie retrieved at: %s" % CACHE_COOKIE[0]['ts'])
-			Log("Using Cookie: %s" % (CACHE_COOKIE[0]['cookie'] + reqkey_cookie))
+			Log("Using Cookie: %s" % (cookies))
+	except Exception as e:
+		Log('ERROR common.py>GetPageAsString: %s URL: %s' % (e.args,url))
+		return
 
 	try:
 		if Prefs["use_https_alt"]:

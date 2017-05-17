@@ -21,14 +21,14 @@ FILTER_PATH = "/filter"
 KEYWORD_PATH = "/tag/"
 STAR_PATH = "/star/"
 
-oldmarketgidstorage = 'MarketGidStorage=%7B%220%22%3A%7B%22svspr%22%3A%22%22%2C%22svsds%22%3A3%2C%22TejndEEDj%22%3A%22MTQ4MTM2ODE0NzM0NzQ4NTMyOTAx%22%7D%2C%22C48532%22%3A%7B%22page%22%3A1%2C%22time%22%3A1481368147359%7D%2C%22C77945%22%3A%7B%22page%22%3A1%2C%22time%22%3A1481368147998%7D%2C%22C77947%22%3A%7B%22page%22%3A1%2C%22time%22%3A1481368148109%7D%7D'
-newmarketgidstorage = 'MarketGidStorage=%7B%220%22%3A%7B%22svspr%22%3A%22%22%2C%22svsds%22%3A15%2C%22TejndEEDj%22%3A%22MTQ5MzIxMTc0OTQ0NDExMDAxNDc3NDE%3D%22%7D%2C%22C110014%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493215038742%7D%2C%22C110025%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493216772437%7D%2C%22C110023%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493216771928%7D%7D; reqkey='
+oldmarketgidstorage = 'MarketGidStorage=%7B%220%22%3A%7B%22svspr%22%3A%22%22%2C%22svsds%22%3A15%2C%22TejndEEDj%22%3A%22MTQ5MzIxMTc0OTQ0NDExMDAxNDc3NDE%3D%22%7D%2C%22C110014%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493215038742%7D%2C%22C110025%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493216772437%7D%2C%22C110023%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493216771928%7D%7D'
+newmarketgidstorage = ''
 
 ####################################################################################################
 
 # Get FMovies-API
 #@route(PREFIX + '/getapiurl')
-def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web_proxy=False, cache_expiry_time=60, reqCookie='', **kwargs):
+def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web_proxy=False, cache_expiry_time=60, **kwargs):
 
 	try:
 		use_debug = Prefs["use_debug"]
@@ -36,9 +36,6 @@ def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web
 		use_web_proxy = Prefs["use_web_proxy"]
 		cache_expiry_time = int(Prefs["cache_expiry_time"])
 		user_defined_reqkey_cookie = Prefs['reqkey_cookie']
-		reqCookie = common.CACHE_COOKIE[0]['reqkey']
-		if user_defined_reqkey_cookie != None and user_defined_reqkey_cookie != '':
-			reqCookie = user_defined_reqkey_cookie
 	except:
 		pass
 	
@@ -71,7 +68,7 @@ def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web
 		if use_debug:
 			Log("Retrieving Fresh Movie Link")
 			
-		ret, isOpenLoad, error = get_sources(url=url, key=key, use_debug=use_debug, serverts=serverts, myts=myts, use_https_alt=use_https_alt, use_web_proxy=use_web_proxy, reqCookie=reqCookie)
+		ret, isOpenLoad, error = get_sources(url=url, key=key, use_debug=use_debug, serverts=serverts, myts=myts, use_https_alt=use_https_alt, use_web_proxy=use_web_proxy)
 		if use_debug:
 			Log("get_sources url: %s, key: %s" % (url,key))
 			Log("get_sources ret: %s" % ret)
@@ -81,7 +78,7 @@ def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web
 			if use_debug:
 				Log("CACHE cleared due to null response from API - maybe cookie issue for %s" % url)
 			time.sleep(1.0)
-			ret, isOpenLoad, error = get_sources(url=url, key=key, use_debug=use_debug, serverts=serverts, myts=myts, use_https_alt=use_https_alt, use_web_proxy=use_web_proxy, reqCookie=reqCookie)
+			ret, isOpenLoad, error = get_sources(url=url, key=key, use_debug=use_debug, serverts=serverts, myts=myts, use_https_alt=use_https_alt, use_web_proxy=use_web_proxy)
 			if use_debug:
 				Log("API - attempt 2nd")
 				Log("get_sources url: %s, key: %s" % (url,key))
@@ -223,7 +220,7 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 		common.CACHE['cookie']['UA'] = UA
 		common.CACHE['cookie']['reqkey'] = reqkey_cookie
 		
-		cookie = cookie1 + '; ' + cookie2 + '; user-info=null; ' + newmarketgidstorage
+		cookie = cookie1 + '; ' + cookie2 + '; user-info=null'
 		
 		cookie_dict = {'ts':time.time(), 'cookie': cookie, 'UA': UA, 'reqkey':reqkey_cookie}
 		
@@ -257,18 +254,15 @@ def get_reqkey_cookie(token, use_debug=False, use_https_alt=False):
 			dec = common.jsfdecoder.JSFDecoder(token).ca_decode()
 			if 'function' in dec:
 				raise ValueError("JSFDecoder: No JSF code found or mixed-mode code")
-			dec = dec.split('reqkey=')
-			cookie_string = dec[1]
+			cookie_string = dec
 			success = True
 		except Exception as e:
 			try:
 				Log.Debug('JSFDecoder failed, falling back to execjs >>> {}'.format(e))
-				d = 'var jssuckit=""; var document = this; this.location = "https://fmovies.to/"; %s;'
-				token = token.replace('=/";','=/"; jssuckit = document.cookie; return jssuckit;')
+				d = 'var jssuckit="";var jssuckit1="";var jssuckit2=""; var document = this; this.location = "https://fmovies.to/"; %s; jssuckit2 = document.cookie; jssuckit = jssuckit1 + ";" + jssuckit2; return jssuckit'
+				token = token.replace('=/";','=/"; jssuckit1 = document.cookie;')
 				ctx = common.execjs.compile(d % token)
 				cookie_string = ctx.exec_('return jssuckit')
-				cookie_string = cookie_string.split('reqkey=')
-				cookie_string = cookie_string[1]
 				success = True
 			except Exception as e:
 				try:
@@ -283,8 +277,8 @@ def get_reqkey_cookie(token, use_debug=False, use_https_alt=False):
 								freeapi = False
 						if freeapi == True:		
 							code = token[1:-1]
-							code = code.replace('function(', 'function xy(').replace('=/','=/"; return document.cookie;"').replace('(document',';xy(document')
-							code = String.Base64Decode('ZXNjYWplPSJlc2NhcGUiO3VuZXNjYWplPSJ1bmVzY2FwZSI7bG9jYXRpb249Imh0dHBzOi8vZm1vdmllcy5zZSI7IHZhciBkb2N1bWVudCA9IHt9OyBkb2N1bWVudC5sb2NhdGlvbiA9ICJodHRwczovL2Ztb3ZpZXMudG8vIjs=') + code
+							code = 'var jssuckit="";var jssuckit1="";var jssuckit2=""; escaje="escape";unescaje="unescape";location="https://fmovies.to"; var document = {}; document.location = "https://fmovies.to/"; %s; jssuckit2 = document.cookie; jssuckit = jssuckit1 + ";" + jssuckit2; jssuckit;' % code
+							code = code.replace('function(', 'function xy(').replace('=/','=/"; jssuckit1 = document.cookie;"').replace('(document',';xy(document')
 							data = common.client.encodePostData({"jssuck": code})
 							cookie_string, headers, content, cookie = common.interface.request(webhook_url, post=data, output='extended', httpsskip=use_https_alt)
 							if webhook_url == String.Base64Decode(common.WBH):
@@ -296,8 +290,6 @@ def get_reqkey_cookie(token, use_debug=False, use_https_alt=False):
 								Log.Debug('You have used %s requests out of 10 so far. Please fork your own WebHook (from https://hook.io/coder-alpha/test/fork) to use this method unrestricted ! Refer forum thread.' % usage)
 							Log.Debug('webhook X-RateLimit-Remaining this month >>> %s' % (content['X-RateLimit-Remaining']))
 							if 'reqkey' in cookie_string:
-								cookie_string = cookie_string.split('reqkey=')
-								cookie_string = cookie_string[1]
 								success = True
 							else:
 								Log.Debug('webhook output >>> %s' % (cookie_string))
@@ -312,13 +304,23 @@ def get_reqkey_cookie(token, use_debug=False, use_https_alt=False):
 			Log.Debug("No method available to decode JSF code")
 			return ''
 		else:
-			return cookie_string.split(';')[0]
+			return cleanCookie(cookie_string)
 	except Exception as e:
 		#Log.Exception("%s" % dec)
 		Log.Exception("fmovies.py >> : Cannot handle token cookie >>> {}".format(e))
 	return ''
+	
+def cleanCookie(str):
+	str = str.replace('\n','')
+	str_s = str.split(';')
+	cookie_string_arr = []
+	for str in str_s:
+		if 'expires' not in str and 'path' not in str:
+			cookie_string_arr.append(str)
+	cookie_string = ('; '.join(x for x in cookie_string_arr))
+	return cookie_string
 
-def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=False, use_web_proxy=False, reqCookie='', **kwargs):
+def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=False, use_web_proxy=False, **kwargs):
 
 	if serverts == 0:
 		#serverts = ((int(time.time())/3600)*3600)
@@ -351,16 +353,7 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 		time.sleep(0.5)
 		
 		if common.USE_COOKIES == True:
-			if len(common.CACHE_COOKIE) > 0:
-				pass
-			else:
-				setTokenCookie(serverts=serverts, use_debug=use_debug)
-				user_defined_reqkey_cookie = Prefs['reqkey_cookie']
-				reqCookie = common.CACHE_COOKIE[0]['reqkey']
-				if user_defined_reqkey_cookie != None and user_defined_reqkey_cookie != '':
-					reqCookie = user_defined_reqkey_cookie
-
-			cookie = common.CACHE_COOKIE[0]['cookie'] + reqCookie
+			cookie, error = common.make_cookie_str()
 		else:
 			cookie = ''
 

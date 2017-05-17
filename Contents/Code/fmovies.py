@@ -255,7 +255,7 @@ def get_reqkey_cookie(token, use_debug=False, use_https_alt=False):
 		token = String.Base64Decode(token)
 		try:
 			dec = common.jsfdecoder.JSFDecoder(token).ca_decode()
-			if 'function' in cookie_string:
+			if 'function' in dec:
 				raise ValueError("JSFDecoder: No JSF code found or mixed-mode code")
 			dec = dec.split('reqkey=')
 			cookie_string = dec[1]
@@ -263,10 +263,8 @@ def get_reqkey_cookie(token, use_debug=False, use_https_alt=False):
 		except Exception as e:
 			try:
 				Log.Debug('JSFDecoder failed, falling back to execjs >>> {}'.format(e))
-				d = String.Base64Decode(
-				"dmFyIGRvY3VtZW50ID0gdGhpczsgdGhpcy5sb2NhdGlvbiA9ICJodHRwczovL2Ztb3ZpZXM"
-				"udG8vIjsgJXM7IHZhciBqc3N1Y2tpdCA9IGRvY3VtZW50LmNvb2tpZS50b1N0cmluZygpOw=="
-				)
+				d = 'var jssuckit=""; var document = this; this.location = "https://fmovies.to/"; %s;'
+				token = token.replace('=/";','=/"; jssuckit = document.cookie; return jssuckit;')
 				ctx = common.execjs.compile(d % token)
 				cookie_string = ctx.exec_('return jssuckit')
 				cookie_string = cookie_string.split('reqkey=')

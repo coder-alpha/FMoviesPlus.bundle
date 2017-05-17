@@ -2,7 +2,7 @@ FMoviesPlus.bundle
 ===================
 [![GitHub issues](https://img.shields.io/github/issues/coder-alpha/FMoviesPlus.bundle.svg?style=flat)](https://github.com/coder-alpha/FMoviesPlus.bundle/issues) [![](https://img.shields.io/github/release/coder-alpha/FMoviesPlus.bundle.svg?style=flat)](https://github.com/coder-alpha/FMoviesPlus.bundle/releases)
 
-This is a plugin that creates a new channel in Plex Media Server to view content indexed by the website FMovies
+This is a plugin that creates a new channel in Plex Media Server to view content indexed by the website FMovies(.se|.to|.is), G2G, FMovies.io, YesMovies, Primewire
 
 [Plex Support Thread](http://forums.plex.tv/discussion/255348/)
 
@@ -45,7 +45,8 @@ Please visit the [Plex Support Thread](http://forums.plex.tv/discussion/255348/)
 
 Acknowledgements
 ================
-- [mrknow](https://github.com/mrknow) for work on FMovies movie sources routine for Kodi
+- [mrknow](https://github.com/mrknow) for work on FMovies movie sources routine & Specto plugin for Kodi
 - [lambda](https://github.com/lambda81) for HTTP Request routine for SSL/Alternate lambdalib for Kodi
 - [youtube-dl](https://github.com/rg3/youtube-dl) for their work on OpenLoad scrapper
 - [coryo123] (https://forums.plex.tv/discussion/194503) for DumbTools-for-Plex
+- [Twoure] (https://github.com/Twoure) for valuable techinical insights and suggestions for JS routines

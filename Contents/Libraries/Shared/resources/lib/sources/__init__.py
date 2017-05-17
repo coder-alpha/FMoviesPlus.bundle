@@ -63,12 +63,16 @@ class sources:
 		hosts = resolvers.info()
 		return hosts
 		
+	def getHostsPlaybackSupport(self):
+		hostsplaybacksupport = resolvers.hostsplaybacksupport()
+		return hostsplaybacksupport
+		
 	def getProxies(self):
 		proxy = proxies.info()
 		return proxy
 		
-	def request_via_proxy(self, url, proxy_name, proxy_url, close=True, redirect=True, followredirect=False, error=False, proxy=None, post=None, headers=None, mobile=False, limit=None, referer=None, cookie=None, output='', timeout='30', httpsskip=False, use_web_proxy=False, use_web_proxy_as_backup=False, XHR=False):
-		return proxies.request(url=url, proxy_name=proxy_name, proxy_url=proxy_url, close=close, redirect=redirect, followredirect=followredirect, error=error, proxy=proxy, post=post, headers=headers, mobile=mobile, limit=limit, referer=referer, cookie=cookie, output=output, timeout=timeout, httpsskip=httpsskip, use_web_proxy=use_web_proxy, use_web_proxy_as_backup=use_web_proxy_as_backup, XHR=XHR)
+	def request_via_proxy(self, url, proxy_name, proxy_url, close=True, redirect=True, followredirect=False, error=False, proxy=None, post=None, headers=None, mobile=False, limit=None, referer=None, cookie=None, output='', timeout='30', httpsskip=False, use_web_proxy=False, use_web_proxy_as_backup=False, XHR=False, IPv4=False):
+		return proxies.request(url=url, proxy_name=proxy_name, proxy_url=proxy_url, close=close, redirect=redirect, followredirect=followredirect, error=error, proxy=proxy, post=post, headers=headers, mobile=mobile, limit=limit, referer=referer, cookie=cookie, output=output, timeout=timeout, httpsskip=httpsskip, use_web_proxy=use_web_proxy, use_web_proxy_as_backup=use_web_proxy_as_backup, XHR=XHR, IPv4=IPv4)
 		
 	def getProviders(self):
 		while self.isProvThreadRunning == True:
@@ -164,6 +168,13 @@ class sources:
 			return float(int(float((float(c)/float(len(self.threads[key])))*100.0))*100)/100.0
 		else:
 			return 0
+			
+	def checkKeyInThread(self, key=None):
+	
+		if key in self.threads.keys():
+			return True
+		else:
+			return False
 
 
 	def getMovieSource(self, title, year, imdb, proxy_options, key, source, call):

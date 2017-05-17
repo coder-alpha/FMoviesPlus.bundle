@@ -98,19 +98,20 @@ class source:
 		except Exception as e:
 			self.log('ERROR','testSite', '%s' % e, dolog=True)
 			return False
-		
+
 	def testParser(self):
 		try:
-			getmovieurl = self.get_movie(title=testparams.movie, year=testparams.movieYear, imdb=testparams.movieIMDb, testing=True)
-			movielinks = self.get_sources(url=getmovieurl, testing=True)
-			
-			if movielinks != None and len(movielinks) > 0:
-				self.log('SUCCESS', 'testParser', 'links : %s' % len(movielinks), dolog=True)
-				return True
-			else:
-				self.log('ERROR', 'testParser', 'getmovieurl : %s' % getmovieurl, dolog=True)
-				self.log('ERROR', 'testParser', 'movielinks : %s' % movielinks, dolog=True)
-				return False
+			for movie in testparams.test_movies:
+				getmovieurl = self.get_movie(title=movie['movie'], year=movie['movieYear'], imdb=movie['movieIMDb'], testing=True)
+				movielinks = self.get_sources(url=getmovieurl, testing=True)
+				
+				if movielinks != None and len(movielinks) > 0:
+					self.log('SUCCESS', 'testParser', 'links : %s' % len(movielinks), dolog=True)
+					return True
+				else:
+					self.log('ERROR', 'testParser', 'getmovieurl : %s' % getmovieurl, dolog=True)
+					self.log('ERROR', 'testParser', 'movielinks : %s' % movielinks, dolog=True)
+			return False
 		except Exception as e:
 			self.log('ERROR', 'testParser', '%s' % e, dolog=True)
 			return False
@@ -142,9 +143,6 @@ class source:
 			sources = []
 			
 			#print '%s ---------- %s' % (self.name,url)
-			
-			if self.testparser == False:
-				return sources
 
 			if url == None: return sources
 			
@@ -162,7 +160,7 @@ class source:
 			
 			#print url
 
-			r = proxies.request(url, output='geturl', proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+			r = proxies.request(url, output='geturl', proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
 			
 			#print r
 			
@@ -178,13 +176,13 @@ class source:
 				
 				#print url
 
-				r = proxies.request(url, output='geturl', proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+				r = proxies.request(url, output='geturl', proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
 				
 				#print r
 			
 			if r == None: raise Exception()
 
-			r = result = proxies.request(url, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+			r = result = proxies.request(url, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
 			#print "resp ===== %s" % r
 			
 			if r == None or '404 Not Found' in r and ':' in data['title'] and 'episode' not in data and 'season' not in data:
@@ -196,9 +194,9 @@ class source:
 				
 				url = urlparse.urljoin(self.base_link, self.watch_link % url)
 
-				r = proxies.request(url, output='geturl', proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+				r = proxies.request(url, output='geturl', proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
 				
-				r = result = proxies.request(url, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+				r = result = proxies.request(url, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
 			
 			quality = '720p'
 
@@ -244,7 +242,7 @@ class source:
 						elif 'http' not in r:
 							r = self.base_link + r
 						#print r
-						r = proxies.request(r, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+						r = proxies.request(r, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
 						r = re.sub(r'[^\x00-\x7F]+',' ', r)
 						r = client.parseDOM(r, 'iframe', ret='src')[0]
 						

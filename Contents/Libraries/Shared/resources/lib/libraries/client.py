@@ -18,7 +18,7 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
-import re,sys,urllib2,HTMLParser, urllib, urlparse
+import re,sys,urllib2,HTMLParser,urllib,urlparse
 import random, time, cookielib
 import base64
 import traceback
@@ -332,6 +332,10 @@ def setIP6():
 	#replace the IP4 socket.getaddrinfo by original
 	socket.getaddrinfo = origGetAddrInfo
 	socket.has_ipv6 = True
+	
+def encodePostData(data):
+	data = urllib.urlencode(data)
+	return data
 
 def source(url, close=True, error=False, proxy=None, post=None, headers=None, mobile=False, safe=False, referer=None, cookie=None, output='', timeout='30'):
 	return request(url, close, error, proxy, post, headers, mobile, safe, referer, cookie, output, timeout)

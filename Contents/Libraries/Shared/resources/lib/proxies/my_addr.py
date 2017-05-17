@@ -26,18 +26,25 @@ class proxy:
 		self.captcha = False
 		self.ssl = True
 		self.speedtest = 0
-		self.headers = {'Connection' : 'keep-alive'}
+		self.headers = {'Connection' : 'keep-alive', 'User-Agent' : client.randomagent()}
 		self.working = self.testSite()
 		
-	def testSite(self):
-		x1 = time.time()
-		http_res = client.request(url=self.base_link, output='responsecode')
-		self.speedtest = time.time() - x1
-		if http_res not in client.HTTP_GOOD_RESP_CODES:
+	def testSite(self, disabled=False):
+		try:
+			x1 = time.time()
+			http_res = client.request(url=self.base_link, output='responsecode')
+			self.speedtest = time.time() - x1
+			
+			if disabled == True:
+				return False
+			
+			if http_res not in client.HTTP_GOOD_RESP_CODES:
+				return False
+			return True
+		except:
 			return False
-		return True
 		
-	def request(self, url, close=True, redirect=True, followredirect=False, error=False, proxy=None, post=None, headers=None, mobile=False, limit=None, referer=None, cookie=None, output='', timeout='30', httpsskip=False, use_web_proxy=False, XHR=False):
+	def request(self, url, close=True, redirect=True, followredirect=False, error=False, proxy=None, post=None, headers=None, mobile=False, limit=None, referer=None, cookie=None, output='', timeout='30', httpsskip=False, use_web_proxy=False, XHR=False, IPv4=False):
 	
 		if self.working == False:
 			print "Proxy: %s is disabled internally" % (name)
@@ -48,9 +55,9 @@ class proxy:
 		else:
 			headers['Connection'] = self.headers['Connection']
 
-		return requestdirect(url=url, close=close, redirect=redirect, followredirect=followredirect, error=error, proxy=proxy, post=post, headers=headers, mobile=mobile, limit=limit, referer=referer, cookie=cookie, output=output, timeout=timeout, httpsskip=httpsskip, use_web_proxy=use_web_proxy, XHR=XHR)
+		return requestdirect(url=url, close=close, redirect=redirect, followredirect=followredirect, error=error, proxy=proxy, post=post, headers=headers, mobile=mobile, limit=limit, referer=referer, cookie=cookie, output=output, timeout=timeout, httpsskip=httpsskip, use_web_proxy=use_web_proxy, XHR=XHR, IPv4=IPv4)
 
-def requestdirect(url, close=True, redirect=True, followredirect=False, error=False, proxy=None, post=None, headers=None, mobile=False, limit=None, referer=None, cookie=None, output='', timeout='30', httpsskip=False, use_web_proxy=False, XHR=False):
+def requestdirect(url, close=True, redirect=True, followredirect=False, error=False, proxy=None, post=None, headers=None, mobile=False, limit=None, referer=None, cookie=None, output='', timeout='30', httpsskip=False, use_web_proxy=False, XHR=False, IPv4=False):
 	#try:
 		
 	control.log("Requesting: %s Using via: %s" % (url, PROXY_URL))
@@ -62,7 +69,7 @@ def requestdirect(url, close=True, redirect=True, followredirect=False, error=Fa
 	else:
 		headers['Connection'] = 'keep-alive'
 	
-	res = client.request(url = PROXY_URL + url, close=close, redirect=redirect, followredirect=followredirect, error=error, proxy=proxy, post=post, headers=headers, mobile=mobile, limit=limit, referer=referer, cookie=cookie, output=output, timeout=timeout, httpsskip=httpsskip, use_web_proxy=use_web_proxy, XHR=XHR)
+	res = client.request(url = PROXY_URL + url, close=close, redirect=redirect, followredirect=followredirect, error=error, proxy=proxy, post=post, headers=headers, mobile=mobile, limit=limit, referer=referer, cookie=cookie, output=output, timeout=timeout, httpsskip=httpsskip, use_web_proxy=use_web_proxy, XHR=XHR, IPv4=IPv4)
 	
 	page_data_string = client.getPageDataBasedOnOutput(res, output)
 	

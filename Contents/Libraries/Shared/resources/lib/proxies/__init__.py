@@ -28,25 +28,29 @@ def info():
 	return sourceProxies
 	
 def checkRet(ret, output):
-	if (output != 'extended' and ret != None) or (output == 'extended' and ret[0] != None):
-		return True
-	elif (output != 'response' and ret != None) or (output == 'response' and ret[0] != None):
-		return True
-	elif (output != 'responsecodeext' and ret != None) or (output == 'responsecodeext' and ret[0] != None):
-		return True
-	elif ret != None:
-		return True
+	try:
+		if (output != 'extended' and ret != None) or (output == 'extended' and ret[0] != None):
+			return True
+		elif (output != 'response' and ret != None) or (output == 'response' and ret[0] != None):
+			return True
+		elif (output != 'responsecodeext' and ret != None) or (output == 'responsecodeext' and ret[0] != None):
+			return True
+		elif ret != None:
+			return True
 
-	return False
+		return False
+	except:
+		return False
 	
-def request(url, proxy_name=None, proxy_url=None, close=True, redirect=True, followredirect=False, error=False, proxy=None, post=None, headers=None, mobile=False, limit=None, referer=None, cookie=None, output='', timeout='30', httpsskip=False, use_web_proxy=False, proxy_options=None, use_web_proxy_as_backup=False, XHR=False):
+def request(url, proxy_name=None, proxy_url=None, close=True, redirect=True, followredirect=False, error=False, proxy=None, post=None, headers=None, mobile=False, limit=None, referer=None, cookie=None, output='', timeout='30', httpsskip=False, use_web_proxy=False, proxy_options=None, use_web_proxy_as_backup=False, XHR=False, IPv4=False):
 
 # output extended = 4, response = 2, responsecodeext = 2
 	#try:
+
 	ret = None
-	if use_web_proxy != True or use_web_proxy_as_backup == True:
+	if use_web_proxy == False:
 		try:
-			ret = client.request(url=url, close=close, redirect=redirect, followredirect=followredirect, error=error, proxy=proxy, post=post, headers=headers, mobile=mobile, limit=limit, referer=referer, cookie=cookie, output=output, timeout=timeout, httpsskip=httpsskip, use_web_proxy=use_web_proxy, XHR=XHR)
+			ret = client.request(url=url, close=close, redirect=redirect, followredirect=followredirect, error=error, proxy=proxy, post=post, headers=headers, mobile=mobile, limit=limit, referer=referer, cookie=cookie, output=output, timeout=timeout, httpsskip=httpsskip, use_web_proxy=use_web_proxy, XHR=XHR, IPv4=IPv4)
 		except:
 			if output == 'extended':
 				ret = (None, None, None, None)
@@ -62,7 +66,7 @@ def request(url, proxy_name=None, proxy_url=None, close=True, redirect=True, fol
 		for proxy in sourceProxiesCaller:
 			if proxy_name == proxy['name'] and proxy_url == proxy['url']:
 				print "Trying %s for %s" % (proxy['name'], url)
-				ret = proxy['call'].request(url=url, close=close, redirect=redirect, followredirect=followredirect, error=error, proxy=proxy, post=post, headers=headers, mobile=mobile, limit=limit, referer=referer, cookie=cookie, output=output, timeout=timeout, httpsskip=httpsskip, use_web_proxy=use_web_proxy, XHR=XHR)
+				ret = proxy['call'].request(url=url, close=close, redirect=redirect, followredirect=followredirect, error=error, proxy=proxy, post=post, headers=headers, mobile=mobile, limit=limit, referer=referer, cookie=cookie, output=output, timeout=timeout, httpsskip=httpsskip, use_web_proxy=use_web_proxy, XHR=XHR, IPv4=IPv4)
 				if checkRet(ret, output):
 					return ret
 	elif use_web_proxy == True and proxy_options != None:
@@ -71,17 +75,17 @@ def request(url, proxy_name=None, proxy_url=None, close=True, redirect=True, fol
 			for proxy in sourceProxiesCaller:
 				if proxyo['name'] == proxy['name'] and proxyo['url'] == proxy['url']:
 					print "Trying %s for %s" % (proxy['name'], url)
-					ret = proxy['call'].request(url=url, close=close, redirect=redirect, followredirect=followredirect, error=error, proxy=proxy, post=post, headers=headers, mobile=mobile, limit=limit, referer=referer, cookie=cookie, output=output, timeout=timeout, httpsskip=httpsskip, use_web_proxy=use_web_proxy, XHR=XHR)
+					ret = proxy['call'].request(url=url, close=close, redirect=redirect, followredirect=followredirect, error=error, proxy=proxy, post=post, headers=headers, mobile=mobile, limit=limit, referer=referer, cookie=cookie, output=output, timeout=timeout, httpsskip=httpsskip, use_web_proxy=use_web_proxy, XHR=XHR, IPv4=IPv4)
 					if checkRet(ret, output):
 						return ret
 	elif (use_web_proxy == True and proxy_options == None and proxy_name==None and proxy_url==None) or use_web_proxy_as_backup == True:
 		print "Trying 3-proxy_options == None. len(sourceProxiesCaller) = %s" % len(sourceProxiesCaller)
 		for proxy in sourceProxiesCaller:
 			print "Trying %s for %s" % (proxy['name'], url)
-			ret = proxy['call'].request(url=url, close=close, redirect=redirect, followredirect=followredirect, error=error, proxy=proxy, post=post, headers=headers, mobile=mobile, limit=limit, referer=referer, cookie=cookie, output=output, timeout=timeout, httpsskip=httpsskip, use_web_proxy=use_web_proxy, XHR=XHR)
+			ret = proxy['call'].request(url=url, close=close, redirect=redirect, followredirect=followredirect, error=error, proxy=proxy, post=post, headers=headers, mobile=mobile, limit=limit, referer=referer, cookie=cookie, output=output, timeout=timeout, httpsskip=httpsskip, use_web_proxy=use_web_proxy, XHR=XHR, IPv4=IPv4)
 			if checkRet(ret, output):
 				return ret
-			
+
 	if output == 'extended':
 		return (None, None, None, None)
 	elif output == 'response' or output == 'responsecodeext':

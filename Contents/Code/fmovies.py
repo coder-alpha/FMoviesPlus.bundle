@@ -10,7 +10,7 @@
 	
 import urllib, urlparse, json, time, re, datetime, calendar
 import common
-from __builtin__ import ord, format
+from __builtin__ import ord, format, eval
 
 BASE_URL = "https://fmovies.to"
 HASH_PATH_MENU = "/user/ajax/menu-bar"
@@ -140,7 +140,7 @@ def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web
 
 	return res, isOpenLoad, error
 		
-def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False):
+def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quiet=False):
 
 	try:
 		CACHE_EXPIRY = 60 * int(Prefs["cache_expiry_time"])
@@ -170,7 +170,7 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False):
 		except:
 			setTokenCookie(use_debug=use_debug, reset=True)
 		
-		if dump or use_debug:
+		if dump or use_debug and quiet == False:
 			Log("=====================TOKEN START============================")
 			Log("USING SAVED COOKIE TOKEN - TO DUMP TOKEN PERFORM RESET COOKIE UNDER OPTIONS MENU")
 			Log("Retrieved Saved Cookie: %s" % cookie)
@@ -199,7 +199,7 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False):
 		common.TOKEN_CODE.append(token_enc)
 		
 		try:
-			reqkey_cookie = decodeAndParse(token_enc)
+			reqkey_cookie = decodeAndParse(token_enc,use_debug)
 		except:
 			reqkey_cookie = ''
 		
@@ -224,6 +224,7 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False):
 		common.CACHE['cookie']['reqkey'] = reqkey_cookie
 		
 		cookie = cookie1 + '; ' + cookie2 + '; user-info=null; ' + newmarketgidstorage
+		
 		cookie_dict = {'ts':time.time(), 'cookie': cookie, 'UA': UA, 'reqkey':reqkey_cookie}
 		
 		if dump or use_debug:
@@ -237,12 +238,87 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False):
 	
 	return cookie
 
-def decodeAndParse(token):
-	dec = common.jsfdecoder.JSFDecoder(common.client.b64decode(token)).ca_decode()
-	dec = dec.split('reqkey=')
-	dec = dec[1].split(';')
-	dec = dec[0]
-	return dec
+def decodeAndParse(token, use_debug=False):
+	# dec = common.jsfdecoder.JSFDecoder(common.client.b64decode(token)).ca_decode()
+	# dec = dec.split('reqkey=')
+	# dec = dec[1].split(';')
+	# dec = dec[0]
+	# return dec
+	
+	return get_reqkey_cookie(token,use_debug)
+	
+# Twoure's execjs / webhook reqkey cookie routine
+# https://github.com/Twoure/9anime.bundle/tree/dev
+def get_reqkey_cookie(token, use_debug=False, use_https_alt=False):
+	try:	
+		success=False
+		token = String.Base64Decode(token)
+		try:
+			dec = common.jsfdecoder.JSFDecoder(token).ca_decode()
+			if 'function' in cookie_string:
+				raise ValueError("JSFDecoder: No JSF code found or mixed-mode code")
+			dec = dec.split('reqkey=')
+			cookie_string = dec[1]
+			success = True
+		except Exception as e:
+			try:
+				Log.Debug('JSFDecoder failed, falling back to execjs >>> {}'.format(e))
+				d = String.Base64Decode(
+				"dmFyIGRvY3VtZW50ID0gdGhpczsgdGhpcy5sb2NhdGlvbiA9ICJodHRwczovL2Ztb3ZpZXM"
+				"udG8vIjsgJXM7IHZhciBqc3N1Y2tpdCA9IGRvY3VtZW50LmNvb2tpZS50b1N0cmluZygpOw=="
+				)
+				ctx = common.execjs.compile(d % token)
+				cookie_string = ctx.exec_('return jssuckit')
+				cookie_string = cookie_string.split('reqkey=')
+				cookie_string = cookie_string[1]
+				success = True
+			except Exception as e:
+				try:
+					Log.Debug('execjs failed, falling back to webhook if available >>> {}'.format(e))
+					webhook_url = Prefs["webhook_url"]
+					freeapi = True
+					usage = 0
+					if webhook_url != None and webhook_url != "" and "http" in webhook_url:
+						if webhook_url == String.Base64Decode(common.WBH):
+							usage = Dict[common.WBH]
+							if usage != None and int(usage) > 10:
+								freeapi = False
+						if freeapi == True:		
+							code = token[1:-1]
+							code = code.replace('function(', 'function xy(').replace('=/','=/"; return document.cookie;"').replace('(document',';xy(document')
+							code = String.Base64Decode('ZXNjYWplPSJlc2NhcGUiO3VuZXNjYWplPSJ1bmVzY2FwZSI7bG9jYXRpb249Imh0dHBzOi8vZm1vdmllcy5zZSI7IHZhciBkb2N1bWVudCA9IHt9OyBkb2N1bWVudC5sb2NhdGlvbiA9ICJodHRwczovL2Ztb3ZpZXMudG8vIjs=') + code
+							data = common.client.encodePostData({"jssuck": code})
+							cookie_string, headers, content, cookie = common.interface.request(webhook_url, post=data, output='extended', httpsskip=use_https_alt)
+							if webhook_url == String.Base64Decode(common.WBH):
+								usage = Dict[common.WBH]
+								if usage == None:
+									usage = 0
+								usage = int(usage)+1
+								Dict[common.WBH] = usage
+								Log.Debug('You have used %s requests out of 10 so far. Please fork your own WebHook (from https://hook.io/coder-alpha/test/fork) to use this method unrestricted ! Refer forum thread.' % usage)
+							Log.Debug('webhook X-RateLimit-Remaining this month >>> %s' % (content['X-RateLimit-Remaining']))
+							if 'reqkey' in cookie_string:
+								cookie_string = cookie_string.split('reqkey=')
+								cookie_string = cookie_string[1]
+								success = True
+							else:
+								Log.Debug('webhook output >>> %s' % (cookie_string))
+						else:
+							Log.Debug('You have used your free %s requests. Please fork your own WebHook (from https://hook.io/coder-alpha/test/fork) to use this method ! Refer forum thread.' % usage)
+					else:
+						Log.Debug('webhook url not defined in Channel Settings/Prefs.')
+				except Exception as e:
+					Log.Debug('webhook failed, >>> {}'.format(e))
+
+		if success == False:
+			Log.Debug("No method available to decode JSF code")
+			return ''
+		else:
+			return cookie_string.split(';')[0]
+	except Exception as e:
+		#Log.Exception("%s" % dec)
+		Log.Exception("fmovies.py >> : Cannot handle token cookie >>> {}".format(e))
+	return ''
 
 def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=False, use_web_proxy=False, reqCookie='', **kwargs):
 

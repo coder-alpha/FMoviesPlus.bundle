@@ -79,6 +79,7 @@ class host:
 		self.quality = '1080p'
 		self.captcha = False
 		self.ac = False
+		self.pluginManagedPlayback = True
 		self.speedtest = 0
 		testResults = self.test()
 		self.testResult = testResults[0]
@@ -100,6 +101,7 @@ class host:
 			'working': self.testResult,
 			'captcha': self.captcha,
 			'msg': self.msg,
+			'playbacksupport': self.pluginManagedPlayback,
 			'a/c': self.ac
 		}
 		
@@ -134,7 +136,7 @@ class host:
 		#return ['https://openload.co/f/tr6gjooZMj0/big_buck_bunny_240p_5mb.3gp.mp4']
 		return ['https://openload.co/embed/kUEfGclsU9o']
 		
-	def createMeta(self, url, provider, logo, quality, links, key):
+	def createMeta(self, url, provider, logo, quality, links, key, vidtype='Movie'):
 	
 		urldata = client.b64encode(json.dumps('', encoding='utf-8'))
 		params = client.b64encode(json.dumps('', encoding='utf-8'))
@@ -154,10 +156,10 @@ class host:
 		online, r1, r2 = check(vidurl, usePairing = False, embedpage=True)
 		files_ret = []
 		try:
-			files_ret.append({'source':self.name, 'maininfo':pair, 'titleinfo':'', 'quality':file_quality(url, quality), 'rip':rip_type(url, quality), 'provider':provider, 'url':vidurl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'key':key, 'enabled':True, 'ts':time.time()})
+			files_ret.append({'source':self.name, 'maininfo':pair, 'titleinfo':'', 'quality':file_quality(url, quality), 'vidtype':vidtype, 'rip':rip_type(url, quality), 'provider':provider, 'url':vidurl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'key':key, 'enabled':True, 'ts':time.time()})
 		except Exception as e:
 			print "ERROR host_openload.py > createMeta : %s" % e.args
-			files_ret.append({'source':urlhost, 'maininfo':pair, 'titleinfo':'', 'quality':quality, 'rip':'Unknown' ,'provider':provider, 'url':vidurl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'key':key, 'enabled':True, 'ts':time.time()})
+			files_ret.append({'source':urlhost, 'maininfo':pair, 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'url':vidurl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'key':key, 'enabled':True, 'ts':time.time()})
 			
 		for fr in files_ret:
 			links.append(fr)

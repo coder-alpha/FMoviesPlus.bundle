@@ -132,16 +132,17 @@ class source:
 		
 	def testParser(self):
 		try:
-			getmovieurl = self.get_movie(title=testparams.movie, year=testparams.movieYear, imdb=testparams.movieIMDb, testing=True)
-			movielinks = self.get_sources(url=getmovieurl, testing=True)
-			
-			if movielinks != None and len(movielinks) > 0:
-				self.log('SUCCESS', 'testParser', 'links : %s' % len(movielinks), dolog=True)
-				return True
-			else:
-				self.log('ERROR', 'testParser', 'getmovieurl : %s' % getmovieurl, dolog=True)
-				self.log('ERROR', 'testParser', 'movielinks : %s' % movielinks, dolog=True)
-				return False
+			for movie in testparams.test_movies:
+				getmovieurl = self.get_movie(title=movie['movie'], year=movie['movieYear'], imdb=movie['movieIMDb'], testing=True)
+				movielinks = self.get_sources(url=getmovieurl, testing=True)
+				
+				if movielinks != None and len(movielinks) > 0:
+					self.log('SUCCESS', 'testParser', 'links : %s' % len(movielinks), dolog=True)
+					return True
+				else:
+					self.log('ERROR', 'testParser', 'getmovieurl : %s' % getmovieurl, dolog=True)
+					self.log('ERROR', 'testParser', 'movielinks : %s' % movielinks, dolog=True)
+			return False
 		except Exception as e:
 			self.log('ERROR', 'testParser', '%s' % e, dolog=True)
 			return False
@@ -160,7 +161,7 @@ class source:
 					print q
 
 					for i in range(3):
-						r = client.request(q)
+						r = client.request(q, IPv4=True)
 						if not r == None: break
 
 					r = client.parseDOM(r, 'div', attrs = {'class': 'ml-item'})
@@ -307,7 +308,7 @@ class source:
 					q = urlparse.urljoin(self.base_link, q)
 					#print q
 					for i in range(3):
-						r = client.request(q)
+						r = client.request(q, IPv4=True)
 						if not r == None: break
 					
 					r = client.parseDOM(r, 'div', attrs = {'class': 'ml-item'})
@@ -326,7 +327,7 @@ class source:
 			u = urlparse.urljoin(self.base_link, self.info_link)
 
 			for i in range(3):
-				r = client.request(u % url)
+				r = client.request(u % url, IPv4=True)
 				if not r == None: break
 
 			q = client.parseDOM(r, 'div', attrs = {'class': 'jtip-quality'})[0]
@@ -368,12 +369,35 @@ class source:
 			#print mid
 
 			links_m = []
+			trailers = []
+			headers = {'Referer': self.base_link}
+			
+			if testing == False:
+				try:		
+					u = urlparse.urljoin(self.base_link, url[0])
+					print u
+					r = client.request(u, headers=headers, IPv4=True)
+					#regex = r"http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"
+					#matches = re.finditer(regex, r, re.MULTILINE)
+					matches = re.compile('http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+').findall(r)
+					for match in matches:
+						try:
+							#print match
+							if 'youtube.com' in match:
+								match = match.replace('embed/','watch?v=')
+								trailers.append(match)
+						except:
+							pass
+				except Exception as e:
+					pass
+					
+				for trailer in trailers:
+					links_m = resolvers.createMeta(trailer, self.name, self.logo, '720p', links_m, key, vidtype='Trailer')
 			
 			try:
-				headers = {'Referer': url}
 				u = urlparse.urljoin(self.base_link, self.server_link % mid)
 				#print u
-				r = client.request(u, headers=headers, XHR=True)
+				r = client.request(u, headers=headers, XHR=True, IPv4=True)
 				r = json.loads(r)['html']
 				r = client.parseDOM(r, 'div', attrs = {'class': 'pas-list'})
 				ids = client.parseDOM(r, 'li', ret='data-id')
@@ -392,7 +416,7 @@ class source:
 							
 							url = urlparse.urljoin(self.base_link, self.token_link % (eid[0], mid))
 							
-							script = client.request(url)
+							script = client.request(url, IPv4=True)
 							if '$_$' in script:
 								params = self.uncensored1(script)
 							elif script.startswith('[]') and script.endswith('()'):
@@ -400,13 +424,13 @@ class source:
 							else:
 								raise Exception()
 							u = urlparse.urljoin(self.base_link, self.sourcelink % (eid[0], params['x'], params['y']))
-							r = client.request(u)
+							r = client.request(u, IPv4=True)
 							url = json.loads(r)['playlist'][0]['sources']
 							url = [i['file'] for i in url if 'file' in i]
 							url = [client.googletag(i) for i in url]
 							url = [i[0] for i in url if i]
 							for s in url:
-								links_m = resolvers.createMeta(s['url'], self.name, self.logo, '720p', links_m, key)
+								links_m = resolvers.createMeta(s['url'], self.name, self.logo, '720p', links_m, key, vidtype='Movie')
 								if testing and len(links_m) > 0:
 									break
 					except:

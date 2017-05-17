@@ -62,11 +62,11 @@ class source:
 			ua = client.randomagent()
 			self.headers['User-Agent'] = ua
 			x1 = time.time()
-			http_res, content = proxies.request(url=self.base_link, headers=self.headers, output='response', use_web_proxy=False)
+			http_res, content = proxies.request(url=self.base_link, headers=self.headers, output='response', use_web_proxy=False, httpsskip=True)
 			self.speedtest = time.time() - x1
 			if content != None and content.find(self.MainPageValidatingContent) >-1:
 				x1 = time.time()
-				self.cookie = proxies.request(url=self.base_link, headers=self.headers, output='cookie', use_web_proxy=False)
+				self.cookie = proxies.request(url=self.base_link, headers=self.headers, output='cookie', use_web_proxy=False, httpsskip=True)
 				self.speedtest = time.time() - x1
 				self.headers['Cookie'] = self.cookie
 				self.log('SUCCESS', 'testSite', 'HTTP Resp : %s for %s' % (http_res,self.base_link), dolog=True)
@@ -75,12 +75,12 @@ class source:
 			else:
 				self.log('ERROR', 'testSite', 'HTTP Resp : %s for %s' % (http_res,self.base_link), dolog=True)
 				x1 = time.time()
-				http_res, content = proxies.request(url=self.base_link, headers=self.headers, output='response', use_web_proxy=True)
+				http_res, content = proxies.request(url=self.base_link, headers=self.headers, output='response', use_web_proxy=True, httpsskip=True)
 				self.speedtest = time.time() - x1
 				if content != None and content.find(self.MainPageValidatingContent) >-1:
 					self.proxyrequired = True
 					x1 = time.time()
-					self.cookie = proxies.request(url=self.base_link, headers=self.headers, output='cookie', use_web_proxy=True)
+					self.cookie = proxies.request(url=self.base_link, headers=self.headers, output='cookie', use_web_proxy=True, httpsskip=True)
 					self.speedtest = time.time() - x1
 					self.headers['Cookie'] = self.cookie
 					self.log('SUCCESS', 'testSite', 'HTTP Resp : %s via proxy for %s' % (http_res,self.base_link), dolog=True)
@@ -89,7 +89,7 @@ class source:
 				else:
 					time.sleep(2.0)
 					x1 = time.time()
-					http_res, content = proxies.request(url=self.base_link, headers=self.headers, output='response', use_web_proxy=True)
+					http_res, content = proxies.request(url=self.base_link, headers=self.headers, output='response', use_web_proxy=True, httpsskip=True)
 					self.speedtest = time.time() - x1
 					if content != None and content.find(self.MainPageValidatingContent) >-1:
 						self.proxyrequired = True
@@ -105,16 +105,17 @@ class source:
 		
 	def testParser(self):
 		try:
-			getmovieurl = self.get_movie(title=testparams.movie, year=testparams.movieYear, imdb=testparams.movieIMDb, testing=True)
-			movielinks = self.get_sources(url=getmovieurl, testing=True)
-			
-			if movielinks != None and len(movielinks) > 0:
-				self.log('SUCCESS', 'testParser', 'links : %s' % len(movielinks), dolog=True)
-				return True
-			else:
-				self.log('ERROR', 'testParser', 'getmovieurl : %s' % getmovieurl, dolog=True)
-				self.log('ERROR', 'testParser', 'movielinks : %s' % movielinks, dolog=True)
-				return False
+			for movie in testparams.test_movies:
+				getmovieurl = self.get_movie(title=movie['movie'], year=movie['movieYear'], imdb=movie['movieIMDb'], testing=True)
+				movielinks = self.get_sources(url=getmovieurl, testing=True)
+				
+				if movielinks != None and len(movielinks) > 0:
+					self.log('SUCCESS', 'testParser', 'links : %s' % len(movielinks), dolog=True)
+					return True
+				else:
+					self.log('ERROR', 'testParser', 'getmovieurl : %s' % getmovieurl, dolog=True)
+					self.log('ERROR', 'testParser', 'movielinks : %s' % movielinks, dolog=True)
+			return False
 		except Exception as e:
 			self.log('ERROR', 'testParser', '%s' % e, dolog=True)
 			return False
@@ -175,7 +176,7 @@ class source:
 					search_url = search_url + '?' + urllib.urlencode(query)
 					#print search_url
 					
-					result = proxies.request(search_url, headers=self.headers, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+					result = proxies.request(search_url, headers=self.headers, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, httpsskip=True)
 					
 					#self.log('GRABBER','get_sources-2', '%s' % search_url, dolog=False)
 					r = client.parseDOM(result, 'div', attrs = {'class': 'wrapper'})
@@ -223,7 +224,7 @@ class source:
 			
 			for url in urls:
 				try:
-					result = proxies.request(url, headers=self.headers, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+					result = proxies.request(url, headers=self.headers, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, httpsskip=True)
 					
 					quality = '480p'
 					type = 'BRRIP'
@@ -268,7 +269,7 @@ class source:
 					
 					try:
 						server_f1 = self.link_server_f1 % id
-						result = proxies.request(server_f1, headers=self.headers, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+						result = proxies.request(server_f1, headers=self.headers, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, httpsskip=True)
 
 						ss = client.parseDOM(result, 'source', ret='src')
 						for s in ss:
@@ -281,7 +282,7 @@ class source:
 					
 					try:
 						server_f2 = self.link_server_f2 % id
-						result = proxies.request(server_f2, headers=self.headers, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+						result = proxies.request(server_f2, headers=self.headers, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, httpsskip=True)
 						ss = client.parseDOM(result, 'source', ret='src')
 						for s in ss:
 							#print s

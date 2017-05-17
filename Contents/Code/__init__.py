@@ -6,9 +6,8 @@
 ######################################################################################
 
 import re, urllib, urllib2, json, sys, time, random
-import common, updater, fmovies
+import common, updater, fmovies, playback
 from DumbTools import DumbKeyboard
-from resources.lib.libraries import client
 
 SITE = "FMovies"
 TITLE = common.TITLE
@@ -59,6 +58,7 @@ ICON_HELP = "icon-help.png"
 ICON_OK = "icon-ok.png"
 ICON_NOTOK = "icon-error.png"
 ICON_SUMMARY = "icon-summary.png"
+ICON_VIDTYPE = "icon-videotype.png"
 
 MC = common.NewMessageContainer(common.PREFIX, common.TITLE)
 
@@ -107,7 +107,7 @@ def Start():
 		CACHE_EXPIRY = common.CACHE_EXPIRY_TIME
 		
 	HTTP.CacheTime = CACHE_EXPIRY
-	HTTP.Headers['User-Agent'] = client.randomagent()
+	HTTP.Headers['User-Agent'] = common.client.randomagent()
 	fmovies.BASE_URL = Prefs["base_url"]
 	HTTP.Headers['Referer'] = fmovies.BASE_URL
 	
@@ -169,12 +169,11 @@ def MainMenu(**kwargs):
 
 ######################################################################################
 @route(PREFIX + "/SiteCookieRoutine")
-def SiteCookieRoutine(session=None, reset=False, dump=False, **kwargs):
+def SiteCookieRoutine(session=None, reset=False, dump=False, quiet=False, **kwargs):
 
 	# This will get/set cookie that might be required for search before listing stage
-	if len(common.CACHE_COOKIE) == 0:
-		fmovies.setTokenCookie(use_debug=Prefs["use_debug"], reset=reset, dump=dump)
-		
+	fmovies.setTokenCookie(use_debug=Prefs["use_debug"], reset=reset, dump=dump, quiet=quiet)
+
 ######################################################################################
 @route(PREFIX + "/SleepPersistAndUpdateCookie")
 def SleepPersistAndUpdateCookie(**kwargs):
@@ -184,7 +183,7 @@ def SleepPersistAndUpdateCookie(**kwargs):
 
 	SLEEP_TIME = 5 * 60
 	while True:
-		SiteCookieRoutine()
+		SiteCookieRoutine(quiet=True)
 		if Prefs["use_debug"]:
 			Log("Thread SleepPersistAndUpdateCookie: Sleeping for %s mins." % int(SLEEP_TIME/60))
 		time.sleep(SLEEP_TIME)
@@ -198,7 +197,7 @@ def SleepAndUpdateThread(update=True, startthread=True, session=None, **kwargs):
 		ret = common.interface.init()
 		x2 = time.time()
 
-		Log("%s at %s !" % (ret, time.ctime(x2)))
+		Log("%s on %s !" % (ret, time.ctime(x2)))
 		Log("Interface Initialization took %s sec. !" % (x2-x1))
 			
 	if session == None:
@@ -235,6 +234,22 @@ def SleepAndUpdateThread(update=True, startthread=True, session=None, **kwargs):
 	except:
 		pass
 	#Log("common.INTERNAL_SOURCES_RIPTYPE %s" % INTERNAL_SOURCES_RIPTYPE)
+	
+	try:
+		LOAD_T = Dict['INTERNAL_SOURCES_FILETYPE']
+		if LOAD_T != None:
+			ARRAY_T = JSON.ObjectFromString(D(LOAD_T))
+		if LOAD_T != None and len(ARRAY_T) > 0:
+			del common.INTERNAL_SOURCES_FILETYPE[:]
+			for r in ARRAY_T:
+				common.INTERNAL_SOURCES_FILETYPE.append(r)
+		else:
+			del common.INTERNAL_SOURCES_FILETYPE[:]
+			for q in common.INTERNAL_SOURCES_FILETYPE_CONST:
+				common.INTERNAL_SOURCES_FILETYPE.append(q)
+	except:
+		pass
+	#Log("common.INTERNAL_SOURCES_FILETYPE %s" % INTERNAL_SOURCES_FILETYPE)
 
 	try:
 		LOAD_T = Dict['OPTIONS_PROVIDERS']
@@ -376,13 +391,13 @@ def InterfaceOptions(session=None, **kwargs):
 	
 	oc.add(DirectoryObject(key = Callback(ExtHostsQuals, session=session), title = "Qualities Allowed", summary='Enable/Disable External Host Qualities.', thumb = R(ICON_QUALITIES)))
 	oc.add(DirectoryObject(key = Callback(ExtHostsRipType, session=session), title = "Rip Type Allowed", summary='Enable/Disable External Host Rip Type.', thumb = R(ICON_RIPTYPE)))
-	
+	oc.add(DirectoryObject(key = Callback(ExtHostsFileType, session=session), title = "Video Type Allowed", summary='Enable/Disable External Host Video Type.', thumb = R(ICON_VIDTYPE)))
 	oc.add(DirectoryObject(key = Callback(Summarize, session=session), title = "Summarize Options", summary='Shows a quick glance of all options', thumb = R(ICON_SUMMARY)))
 	
 	return oc
 	
 ######################################################################################
-@route(PREFIX + "/Summarize-%s" % GetCacheTimeString())
+@route(PREFIX + "/Summarize")
 def Summarize(session=None, **kwargs):
 
 	oc = ObjectContainer(title2='Summary of Options')
@@ -421,6 +436,12 @@ def Summarize(session=None, **kwargs):
 		title_msg = "Enabled: %s | Rip-Type: %s" % (common.GetEmoji(type=bool, mode='simple', session=session), label)
 		oc.add(DirectoryObject(title = title_msg, key = Callback(MC.message_container, header="Summary Screen", message="Does Nothing")))
 		
+	for qual in common.INTERNAL_SOURCES_FILETYPE:
+		label = qual['label']
+		bool = qual['enabled']
+		title_msg = "Enabled: %s | File-Type: %s" % (common.GetEmoji(type=bool, mode='simple', session=session), label)
+		oc.add(DirectoryObject(title = title_msg, key = Callback(MC.message_container, header="Summary Screen", message="Does Nothing")))
+		
 	common.interface.getProvidersLoggerTxts()
 		
 	return oc
@@ -428,7 +449,7 @@ def Summarize(session=None, **kwargs):
 
 	
 ######################################################################################
-@route(PREFIX + "/ExtHostsRipType-%s" % GetCacheTimeString())
+@route(PREFIX + "/ExtHostsRipType")
 def ExtHostsRipType(item=None, setbool='True', session=None, **kwargs):
 
 	oc = ObjectContainer(title2='External Hosts RipType')
@@ -459,9 +480,9 @@ def ExtHostsRipType(item=None, setbool='True', session=None, **kwargs):
 		))
 
 	return oc
-
+	
 ######################################################################################
-@route(PREFIX + "/MakeSelectionExtHostsRipType-%s" % GetCacheTimeString())
+@route(PREFIX + "/MakeSelectionExtHostsRipType")
 def MakeSelectionExtHostsRipType(item=None, setbool='True', **kwargs):
 
 	if item != None:
@@ -482,7 +503,64 @@ def MakeSelectionExtHostsRipType(item=None, setbool='True', **kwargs):
 	Dict.Save()
 	
 ######################################################################################
-@route(PREFIX + "/ExtHostsQuals-%s" % GetCacheTimeString())
+@route(PREFIX + "/ExtHostsFileType")
+def ExtHostsFileType(item=None, setbool='True', session=None, **kwargs):
+
+	if item!=None and item in 'Movie/Show' and setbool == 'False':
+		return MC.message_container('Info', 'Movie/Show selection cannot be disabled !')
+
+	oc = ObjectContainer(title2='External Hosts Video Type')
+	
+	if session == None:
+		session = common.getSession()
+	
+	for qual in common.INTERNAL_SOURCES_FILETYPE:
+	
+		label = qual['label']
+		bool = qual['enabled']
+		if bool == 'True':
+			bool = True
+		else:
+			bool = False
+		
+		if label == item:
+			bool = not bool
+		
+		title_msg = "Enabled: %s | Video-Type: %s" % (common.GetEmoji(type=bool, mode='simple', session=session), label)
+		oc.add(DirectoryObject(key = Callback(ExtHostsFileType, item=label, setbool=not bool), title = title_msg, thumb = Resource.ContentsOfURLWithFallback(url=None, fallback=None)))
+		
+	oc.add(DirectoryObject(
+			key = Callback(MainMenu, update = MakeSelectionExtHostsFileType(item=item, setbool=setbool)),
+			title = '<< Save Selection >>',
+			summary = 'Save the Selection which is used when listing External Sources.',
+			thumb = R(ICON_SAVE)
+		))
+
+	return oc
+
+######################################################################################
+@route(PREFIX + "/MakeSelectionExtHostsFileType")
+def MakeSelectionExtHostsFileType(item=None, setbool='True', **kwargs):
+
+	if item != None:
+		ARRAY_T = []
+		ARRAY_T += [q for q in common.INTERNAL_SOURCES_FILETYPE]
+		del common.INTERNAL_SOURCES_FILETYPE[:]
+		
+		for qual in ARRAY_T:
+			bool = qual['enabled']
+			if item == qual['label']:
+				bool = setbool
+				
+			qual['enabled'] = bool
+			common.INTERNAL_SOURCES_FILETYPE.append(qual)
+		
+	#Log(common.INTERNAL_SOURCES_FILETYPE)
+	Dict['INTERNAL_SOURCES_FILETYPE'] = E(JSON.StringFromObject(common.INTERNAL_SOURCES_FILETYPE))
+	Dict.Save()
+	
+######################################################################################
+@route(PREFIX + "/ExtHostsQuals")
 def ExtHostsQuals(item=None, setbool='True', session=None, **kwargs):
 
 	oc = ObjectContainer(title2='External Hosts Qualities')
@@ -515,7 +593,7 @@ def ExtHostsQuals(item=None, setbool='True', session=None, **kwargs):
 	return oc
 
 ######################################################################################
-@route(PREFIX + "/MakeSelectionExtHostsQuals-%s" % GetCacheTimeString())
+@route(PREFIX + "/MakeSelectionExtHostsQuals")
 def MakeSelectionExtHostsQuals(item=None, setbool='True', **kwargs):
 
 	if item != None:
@@ -536,7 +614,7 @@ def MakeSelectionExtHostsQuals(item=None, setbool='True', **kwargs):
 	Dict.Save()
 
 ######################################################################################
-@route(PREFIX + "/ExtProviders-%s" % GetCacheTimeString())
+@route(PREFIX + "/ExtProviders")
 def ExtProviders(curr_provs=None, refresh=False, item=None, setbool='True', session=None, **kwargs):
 
 	oc = ObjectContainer(title2='External Providers')
@@ -612,7 +690,7 @@ def ExtProviders(curr_provs=None, refresh=False, item=None, setbool='True', sess
 	return oc
 	
 ######################################################################################
-@route(PREFIX + "/MakeSelectionProviders-%s" % GetCacheTimeString())
+@route(PREFIX + "/MakeSelectionProviders")
 def MakeSelectionProviders(item=None, setbool='True', **kwargs):
 
 	if item != None:
@@ -633,7 +711,7 @@ def MakeSelectionProviders(item=None, setbool='True', **kwargs):
 	Dict.Save()
 
 ######################################################################################
-@route(PREFIX + "/ExtHosts-%s" % GetCacheTimeString())
+@route(PREFIX + "/ExtHosts")
 def ExtHosts(refresh=False, n=None, curr_sources=None, session=None, **kwargs):
 
 	oc = ObjectContainer(title2='External Hosts')
@@ -649,31 +727,31 @@ def ExtHosts(refresh=False, n=None, curr_sources=None, session=None, **kwargs):
 	if n != None:
 		n = JSON.ObjectFromString(D(n))
 		order = JSON.ObjectFromString(D(curr_sources))
-		order.remove(n)
-		order.insert(0,n)
-		
-		new_order=[]
-		others = []
-		for o in order:
-			bool = True
-			lh = None
-			for host in exHosts:
-				lh = host
-				if host['name'] == o['name']:
-					new_order.append(o)
-					bool = False
-					break
-			if bool == True:
-				others.append(lh)
-				
-		for ot in others:
-			new_order.append(ot)
-		
-		filter = []
-		for o in new_order: filter += [i for i in exHosts if i['name'].lower() == o['name'].lower()]
-		exHosts = filter
+		if len(order) == len(exHosts):
+			order.remove(n)
+			order.insert(0,n)
+			
+			new_order=[]
+			others = []
+			for o in order:
+				bool = True
+				lh = None
+				for host in exHosts:
+					lh = host
+					if host['name'] == o['name']:
+						new_order.append(o)
+						bool = False
+						break
+				if bool == True:
+					others.append(lh)
+					
+			for ot in others:
+				new_order.append(ot)
+			
+			filter = []
+			for o in new_order: filter += [i for i in exHosts if i['name'].lower() == o['name'].lower()]
+			exHosts = filter
 
-		
 	del common.INTERNAL_SOURCES[:]
 	
 	c = 0
@@ -701,7 +779,7 @@ def ExtHosts(refresh=False, n=None, curr_sources=None, session=None, **kwargs):
 	return oc
 	
 ######################################################################################
-@route(PREFIX + "/MakeSelectionHosts-%s" % GetCacheTimeString())
+@route(PREFIX + "/MakeSelectionHosts")
 def MakeSelectionHosts(**kwargs):
 
 	#Log("INTERNAL_SOURCES %s" % common.INTERNAL_SOURCES)
@@ -709,7 +787,7 @@ def MakeSelectionHosts(**kwargs):
 	Dict.Save()
 	
 ######################################################################################
-@route(PREFIX + "/ExtProxies-%s" % GetCacheTimeString())
+@route(PREFIX + "/ExtProxies")
 def ExtProxies(refresh=False, n=None, curr_proxies=None, session=None, **kwargs):
 
 	oc = ObjectContainer(title2='Proxies')
@@ -725,30 +803,31 @@ def ExtProxies(refresh=False, n=None, curr_proxies=None, session=None, **kwargs)
 	if n != None:
 		n = JSON.ObjectFromString(D(n))
 		order = JSON.ObjectFromString(D(curr_proxies))
-		#Log("order %s" % order)
-		order.remove(n)
-		order.insert(0,n)
-		
-		new_order=[]
-		others = []
-		for o in order:
-			bool = True
-			lh = None
-			for host in proxies:
-				lh = host
-				if host['name'] == o['name']:
-					new_order.append(o)
-					bool = False
-					break
-			if bool == True:
-				others.append(lh)
-				
-		for ot in others:
-			new_order.append(ot)
-		
-		filter = []
-		for o in new_order: filter += [i for i in proxies if i['name'].lower() == o['name'].lower()]
-		proxies = filter
+		if len(order) == len(proxies):
+			#Log("order %s" % order)
+			order.remove(n)
+			order.insert(0,n)
+			
+			new_order=[]
+			others = []
+			for o in order:
+				bool = True
+				lh = None
+				for host in proxies:
+					lh = host
+					if host['name'] == o['name']:
+						new_order.append(o)
+						bool = False
+						break
+				if bool == True:
+					others.append(lh)
+					
+			for ot in others:
+				new_order.append(ot)
+			
+			filter = []
+			for o in new_order: filter += [i for i in proxies if i['name'].lower() == o['name'].lower()]
+			proxies = filter
 	
 	del common.OPTIONS_PROXY[:]
 	
@@ -776,7 +855,7 @@ def ExtProxies(refresh=False, n=None, curr_proxies=None, session=None, **kwargs)
 	return oc
 	
 ######################################################################################
-@route(PREFIX + "/MakeSelectionProxies-%s" % GetCacheTimeString())
+@route(PREFIX + "/MakeSelectionProxies")
 def MakeSelectionProxies(**kwargs):
 
 	#Log("OPTIONS_PROXY %s" % common.OPTIONS_PROXY)
@@ -808,9 +887,16 @@ def ResetCookies(**kwargs):
 	if not common.interface.isInitialized():
 		return MC.message_container("Please wait..", "Please wait a few seconds for the Interface to Load & Initialize plugins")
 	
+	if Prefs["webhook_url"] == String.Base64Decode(common.WBH):
+		c = Dict[common.WBH]
+		if c != None and int(c) >= 10:
+			return MC.message_container('Webhook', 'Please fork your own WebHook ! Refer forum thread.')
+	
 	del common.CACHE_COOKIE[:]
 	
-	SiteCookieRoutine(reset=True, dump=True)
+	Thread.Create(SiteCookieRoutine,{},None,True,True)
+	
+	time.sleep(10.0)
 	
 	return MC.message_container('Reset Cookies', 'Cookies have been reset and token text dumped to log (if required) !')
 	
@@ -826,6 +912,7 @@ def ResetExtOptions(**kwargs):
 	Dict['INTERNAL_SOURCES'] = None
 	Dict['INTERNAL_SOURCES_QUALS'] = None
 	Dict['INTERNAL_SOURCES_RIPTYPE'] = None
+	Dict['INTERNAL_SOURCES_FILETYPE'] = None
 	Dict.Save()
 	
 	Thread.Create(SleepAndUpdateThread,{},True,False)
@@ -842,10 +929,10 @@ def testSite(url, **kwargs):
 			cookies = common.CACHE_COOKIE[0]['cookie']
 		req = common.GetHttpRequest(url=url, cookies=cookies)
 		if req != None:
-			response = urllib2.urlopen(req, timeout=client.GLOBAL_TIMEOUT_FOR_HTTP_REQUEST)
+			response = urllib2.urlopen(req, timeout=common.client.GLOBAL_TIMEOUT_FOR_HTTP_REQUEST)
 			resp = str(response.getcode())
 		
-		if resp in client.HTTP_GOOD_RESP_CODES:
+		if resp in common.client.HTTP_GOOD_RESP_CODES:
 			page_data = HTML.ElementFromString(response.read())
 			return (True, None, page_data)
 		else:
@@ -862,7 +949,7 @@ def testSite(url, **kwargs):
 		return (False, MC.message_container("HTTP Error %s" % (err.args), "Error: Try Enabling SSL option in Channel Prefs."), None)
 
 ######################################################################################
-@route(PREFIX + "/showMenu-%s" % GetCacheTimeString())
+@route(PREFIX + "/showMenu")
 def ShowMenu(title, session=None, **kwargs):
 
 	if not common.interface.isInitialized():
@@ -965,7 +1052,7 @@ def ShowMenu(title, session=None, **kwargs):
 	return oc
 
 ######################################################################################
-@route(PREFIX + "/sortMenu-%s" % GetCacheTimeString())
+@route(PREFIX + "/sortMenu")
 def SortMenu(title, session=None, **kwargs):
 
 	url = fmovies.BASE_URL
@@ -1080,7 +1167,7 @@ def SortMenu(title, session=None, **kwargs):
 	return oc
 	
 ######################################################################################
-@route(PREFIX + "/showcategory-%s" % GetCacheTimeString())
+@route(PREFIX + "/showcategory")
 def ShowCategory(title, key=' ', urlpath=None, page_count='1', session=None, **kwargs):
 	
 	if urlpath != None:
@@ -1172,7 +1259,7 @@ def ShowCategory(title, key=' ', urlpath=None, page_count='1', session=None, **k
 	return oc
 
 ######################################################################################
-@route(PREFIX + "/episodedetail-%s" % GetCacheTimeString())
+@route(PREFIX + "/episodedetail")
 def EpisodeDetail(title, url, thumb, session=None, **kwargs):
 
 	page_data = common.GetPageElements(url=url)
@@ -1774,7 +1861,7 @@ def EpisodeDetail(title, url, thumb, session=None, **kwargs):
 	
 	
 ####################################################################################################
-@route(PREFIX + "/TvShowDetail-%s" % GetCacheTimeString())
+@route(PREFIX + "/TvShowDetail")
 def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thumb, art, year, rating, duration, genre, directors, roles, serverts, season=None, episode=None, treatasmovie=False, session=None, **kwargs):
 
 	oc = ObjectContainer(title2 = title, art = art, no_cache=isForceNoCache())
@@ -1908,7 +1995,7 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 	return oc
 	
 ######################################################################################
-@route(PREFIX + "/Videodetail-%s" % GetCacheTimeString())
+@route(PREFIX + "/Videodetail")
 def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary, art, year, rating, duration, genre, directors, roles, session=None, **kwargs):
 	
 	oc = ObjectContainer(title2=title)
@@ -1994,7 +2081,7 @@ def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary
 	return oc
 	
 ######################################################################################
-@route(PREFIX + "/ExtSources-%s" % GetCacheTimeString())
+@route(PREFIX + "/ExtSources")
 def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directors, roles, movtitle=None, year=None, tvshowtitle=None, season=None, episode=None, session=None, use_prog_conc=False, **kwargs):
 	
 	tvshowcleaned = tvshowtitle
@@ -2004,7 +2091,7 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 	
 	prog = common.interface.checkProgress(key)
 	if prog == 0:
-		if common.interface.getExtSourcesThreadStatus(key=key) == False:
+		if common.interface.getExtSourcesThreadStatus(key=key) == False or common.interface.checkKeyInThread(key=key) == False:
 			#common.interface.clearSources()
 			try:
 				CACHE_EXPIRY = 60 * int(Prefs["cache_expiry_time"])
@@ -2071,8 +2158,8 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 				Log('Type: %s --- Quality: %s' % (source['rip'],source['quality']))
 				Log('%s URL---------: %s' % (source['source'], source['url']))
 				Log('Key: %s' % source['key'])
-				Log('urldata: %s' % json.loads(client.b64decode(source['urldata'])))
-				Log('params: %s' % json.loads(client.b64decode(source['params'])))
+				Log('urldata: %s' % json.loads(common.client.b64decode(source['urldata'])))
+				Log('params: %s' % json.loads(common.client.b64decode(source['params'])))
 		Log("---------=== DEV DEBUG END ===------------")
 		
 	# filter sources based on enabled quality in common.INTERNAL_SOURCES_QUALS
@@ -2085,6 +2172,12 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 	#Log(common.INTERNAL_SOURCES_RIPTYPE)
 	filter_extSources = []
 	for riptype in common.INTERNAL_SOURCES_RIPTYPE: filter_extSources += [i for i in internal_extSources if i['rip'].lower() == riptype['label'].lower() and str(riptype['enabled'])=='True']
+	internal_extSources = filter_extSources
+	
+	# filter sources based on enabled rip-type in common.INTERNAL_SOURCES_FILETYPE
+	#Log(common.INTERNAL_SOURCES_FILETYPE)
+	filter_extSources = []
+	for vidtype in common.INTERNAL_SOURCES_FILETYPE: filter_extSources += [i for i in internal_extSources if i['vidtype'].lower() in vidtype['label'].lower() and str(vidtype['enabled'])=='True']
 	internal_extSources = filter_extSources
 	
 	# filter sources based on enabled provider in common.OPTIONS_PROVIDERS
@@ -2103,6 +2196,22 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 	for host in common.INTERNAL_SOURCES: filter_extSources += [i for i in internal_extSources if i['quality'] == '360p' and i['source'].lower() == host['name']]
 	internal_extSources = filter_extSources
 	
+	# order sources based on sequence of common.INTERNAL_SOURCES_FILETYPE / video type
+	#Log(common.INTERNAL_SOURCES_FILETYPE)
+	filter_extSources = []
+	filter_extSources += [i for i in internal_extSources if 'Trailer'.lower() == i['vidtype'].lower()]
+	filter_extSources += [i for i in internal_extSources if 'Movie'.lower() in i['vidtype'].lower() or 'Show'.lower() in i['vidtype'].lower()]
+	filter_extSources += [i for i in internal_extSources if 'Behind the scenes'.lower() == i['vidtype'].lower()]
+	filter_extSources += [i for i in internal_extSources if 'Music Video'.lower() == i['vidtype'].lower()]
+	filter_extSources += [i for i in internal_extSources if 'Misc.'.lower() == i['vidtype'].lower()]
+	internal_extSources = filter_extSources
+	
+	filter_extSources = []
+	for i in internal_extSources:
+		if i not in filter_extSources:
+			filter_extSources.append(i)
+	internal_extSources = filter_extSources
+	
 	for source in internal_extSources:
 		status = common.GetEmoji(type=source['online'], session=session)
 		vidUrl = source['url']
@@ -2117,19 +2226,24 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 			redirector_enabled = 'true'
 			
 		pair_required = True if source['maininfo'] == ' *Pairing required* ' else False
-		title_msg = "%s %s| %s | %s | %s | %s" % (status, source['maininfo'], source['rip'], source['quality'], source['source'], source['provider'])
-		#if Prefs["use_debug"]:
-		#	Log("%s --- %s" % (title_msg, vidUrl))
 		
-		if vidUrl != None and source['enabled']:
-			urldata = client.b64decode(source['urldata'])
+		if source['vidtype'] in 'Movie/Show':
+			title_msg = "%s %s| %s | %s | %s | %s" % (status, source['maininfo'], source['rip'], source['quality'], source['source'], source['provider'])
+		else:
+			title_msg = "%s %s| %s | %s | %s | %s | %s" % (status, source['maininfo'], source['vidtype'], source['rip'], source['quality'], source['source'], source['provider'])
+		# if Prefs["use_debug"]:
+			# Log("%s --- %s" % (title_msg, vidUrl))
+			# Log('Playback: %s' % common.interface.getHostsPlaybackSupport(encode=False)[source['source']])
+		
+		if vidUrl != None and source['enabled'] and common.interface.getHostsPlaybackSupport(encode=False)[source['source']]:
+			urldata = common.client.b64decode(source['urldata'])
 			urldata = json.loads(urldata)
 			
 			if urldata != '':
 				#Log(urldata)
 				urldata = E(JSON.StringFromObject(urldata))
 				
-			params = client.b64decode(source['params'])
+			params = common.client.b64decode(source['params'])
 			params = json.loads(params)
 			if params != '':
 				#Log(params)
@@ -2149,8 +2263,12 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 				)
 			except:
 				pass
+
+		elif vidUrl != None and source['enabled'] == False and common.ALT_PLAYBACK:
+			# ToDo
+			oc.add(playback.CreateVideoObject(title, summary, thumb, params, duration, genre, vidUrl, source['quality']))
 		
-		if vidUrl != None and 'google.com/file' in vidUrl:
+		elif vidUrl != None:
 			try:
 				url_serv = URLService.ServiceIdentifierForURL(vidUrl)
 				if url_serv != None:
@@ -2179,6 +2297,11 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 		for riptype in common.INTERNAL_SOURCES_RIPTYPE: filter_extSources += [i for i in external_extSources if i['rip'].lower() == riptype['label'].lower() and str(riptype['enabled'])=='True']
 		external_extSources = filter_extSources
 		
+		# filter sources based on enabled vid-type in common.INTERNAL_SOURCES_FILETYPE
+		filter_extSources = []
+		for vidtype in common.INTERNAL_SOURCES_FILETYPE: filter_extSources += [i for i in internal_extSources if i['vidtype'].lower() in vidtype['label'].lower() and str(vidtype['enabled'])=='True']
+		internal_extSources = filter_extSources
+		
 		# filter sources based on enabled provider in common.OPTIONS_PROVIDERS
 		filter_extSources = []
 		for provider in common.OPTIONS_PROVIDERS: filter_extSources += [i for i in external_extSources if i['provider'].lower() == provider['name'].lower() and str(provider['enabled'])=='True']
@@ -2191,6 +2314,23 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 		filter_extSources += [i for i in external_extSources if i['quality'] == '720p']
 		filter_extSources += [i for i in external_extSources if i['quality'] == '480p']
 		filter_extSources += [i for i in external_extSources if i['quality'] == '360p']
+		external_extSources = filter_extSources
+		
+		# order sources based on sequence of common.INTERNAL_SOURCES_FILETYPE / video type
+		#Log(common.INTERNAL_SOURCES_FILETYPE)
+		filter_extSources = []
+		filter_extSources = []
+		filter_extSources += [i for i in external_extSources if 'Trailer'.lower() == i['vidtype'].lower()]
+		filter_extSources += [i for i in external_extSources if 'Movie'.lower() in i['vidtype'].lower() or 'Show'.lower() in i['vidtype'].lower()]
+		filter_extSources += [i for i in external_extSources if 'Behind the scenes'.lower() == i['vidtype'].lower()]
+		filter_extSources += [i for i in external_extSources if 'Music Video'.lower() == i['vidtype'].lower()]
+		filter_extSources += [i for i in external_extSources if 'Misc.'.lower() == i['vidtype'].lower()]
+		external_extSources = filter_extSources
+		
+		filter_extSources = []
+		for i in external_extSources:
+			if i not in filter_extSources:
+				filter_extSources.append(i)
 		external_extSources = filter_extSources
 		
 		extSources_urlservice = []
@@ -2210,8 +2350,10 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 				status = common.GetEmoji(type=source['online'], session=session)
 				isOpenLoad = False
 				isVideoOnline = source['online']
-				
-				title_msg = "%s %s| %s | %s | %s | %s" % (status, source['maininfo'], source['rip'], source['quality'], source['source'], source['provider'])
+				if source['vidtype'] in 'Movie/Show':
+					title_msg = "%s %s| %s | %s | %s | %s" % (status, source['maininfo'], source['rip'], source['quality'], source['source'], source['provider'])
+				else:
+					title_msg = "%s %s| %s | %s | %s | %s | %s" % (status, source['maininfo'], source['vidtype'], source['rip'], source['quality'], source['source'], source['provider'])
 				
 				try:
 					url_serv = URLService.ServiceIdentifierForURL(vidUrl)
@@ -2234,7 +2376,10 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 	return oc
 	
 def generatemoviekey(movtitle=None, year=None, tvshowtitle=None, season=None, episode=None):
-	return client.b64encode('%s%s%s%s%s' % (movtitle, year, tvshowtitle, season, episode))
+
+	enc = {'movtitle':movtitle, 'year':year, 'tvshowtitle':tvshowtitle, 'season':season, 'episode':episode}
+	enc = common.client.urllib.urlencode(enc)
+	return common.client.b64encode(enc)
 
 ####################################################################################################
 @route(PREFIX + "/ThreadTimeoutTimer")	

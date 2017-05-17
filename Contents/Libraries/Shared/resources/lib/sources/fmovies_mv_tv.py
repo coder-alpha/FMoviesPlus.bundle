@@ -390,7 +390,7 @@ class source:
 
 	def __get_token(self, n):
 		try:
-			d = base64.decodestring("YjgyNmFlMDQ=")
+			d = base64.decodestring("YjgyNmFPNA==")
 			s = self.a01(d)
 			for i in n: 
 				s += self.a01(self.r01(d + i, n[i]))

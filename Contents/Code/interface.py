@@ -200,14 +200,31 @@ def getProxies():
 		return
 	return E(JSON.StringFromObject(initA[0].getProxies()))
 	
-def getHosts():
+def getHosts(encode=True):
 	if wait_for_init() == False:
 		return
+		
+	if encode == False:
+		return initA[0].getHosts()
+		
 	return E(JSON.StringFromObject(initA[0].getHosts()))
 	
-def getProviders():
+def getHostsPlaybackSupport(encode=True):
 	if wait_for_init() == False:
 		return
+		
+	if encode == False:
+		return initA[0].getHostsPlaybackSupport()
+		
+	return E(JSON.StringFromObject(initA[0].getHostsPlaybackSupport()))
+	
+def getProviders(encode=True):
+	if wait_for_init() == False:
+		return
+		
+	if encode == False:
+		return initA[0].getProviders()
+		
 	return E(JSON.StringFromObject(initA[0].getProviders()))
 	
 def getProvidersLoggerTxts():
@@ -237,6 +254,10 @@ def getExtSourcesThreadStatus(key=None):
 			return True
 		return InterfaceThread[key]
 	return False
+	
+def checkKeyInThread(key=None):
+	
+	return initA[0].checkKeyInThread(key=key)
 		
 def getExtSources(movtitle=None, year=None, tvshowtitle=None, season=None, episode=None, proxy_options=None, provider_options=None, key=None, maxcachetime=0):
 
@@ -283,15 +304,15 @@ def getExtSources(movtitle=None, year=None, tvshowtitle=None, season=None, episo
 	
 	return E(JSON.StringFromObject(initA[0].sourcesFilter()))
 	
-def request(url, close=True, redirect=True, followredirect=False, error=False, proxy=None, post=None, headers=None, mobile=False, limit=None, referer=None, cookie=None, output='', timeout='30', httpsskip=False, use_web_proxy=False, XHR=False):
+def request(url, close=True, redirect=True, followredirect=False, error=False, proxy=None, post=None, headers=None, mobile=False, limit=None, referer=None, cookie=None, output='', timeout='30', httpsskip=False, use_web_proxy=False, XHR=False, IPv4=False):
 
 	Log.Debug("Requesting (via Interface) : %s" % url)
 	if Prefs["use_debug"]:
 		Log("Headers: %s" % headers)
 
-	return client.request(url=url, close=close, redirect=redirect, followredirect=followredirect, error=error, proxy=proxy, post=post, headers=headers, mobile=mobile, limit=limit, referer=referer, cookie=cookie, output=output, timeout=timeout, httpsskip=httpsskip, use_web_proxy=use_web_proxy, XHR=XHR)
+	return client.request(url=url, close=close, redirect=redirect, followredirect=followredirect, error=error, proxy=proxy, post=post, headers=headers, mobile=mobile, limit=limit, referer=referer, cookie=cookie, output=output, timeout=timeout, httpsskip=httpsskip, use_web_proxy=use_web_proxy, XHR=XHR, IPv4=IPv4)
 	
-def request_via_proxy(url, proxy_name, proxy_url, close=True, redirect=True, followredirect=False, error=False, proxy=None, post=None, headers=None, mobile=False, limit=None, referer=None, cookie=None, output='', timeout='30', httpsskip=False, use_web_proxy=False, XHR=False):
+def request_via_proxy(url, proxy_name, proxy_url, close=True, redirect=True, followredirect=False, error=False, proxy=None, post=None, headers=None, mobile=False, limit=None, referer=None, cookie=None, output='', timeout='30', httpsskip=False, use_web_proxy=False, XHR=False, IPv4=False):
 	if wait_for_init() == False:
 		return
 		
@@ -299,9 +320,9 @@ def request_via_proxy(url, proxy_name, proxy_url, close=True, redirect=True, fol
 	if Prefs["use_debug"]:
 		Log("Headers: %s" % headers)
 		
-	return initA[0].request_via_proxy(url=url, proxy_name=proxy_name, proxy_url=proxy_url, close=close, redirect=redirect, followredirect=followredirect, error=error, proxy=proxy, post=post, headers=headers, mobile=mobile, limit=limit, referer=referer, cookie=cookie, output=output, timeout=timeout, httpsskip=httpsskip, use_web_proxy=use_web_proxy, XHR=XHR)
+	return initA[0].request_via_proxy(url=url, proxy_name=proxy_name, proxy_url=proxy_url, close=close, redirect=redirect, followredirect=followredirect, error=error, proxy=proxy, post=post, headers=headers, mobile=mobile, limit=limit, referer=referer, cookie=cookie, output=output, timeout=timeout, httpsskip=httpsskip, use_web_proxy=use_web_proxy, XHR=XHR, IPv4=IPv4)
 	
-def request_via_proxy_as_backup(url, close=True, redirect=True, followredirect=False, error=False, proxy=None, post=None, headers=None, mobile=False, limit=None, referer=None, cookie=None, output='', timeout='30', httpsskip=False, XHR=False):
+def request_via_proxy_as_backup(url, close=True, redirect=True, followredirect=False, error=False, proxy=None, post=None, headers=None, mobile=False, limit=None, referer=None, cookie=None, output='', timeout='30', httpsskip=False, XHR=False, IPv4=False):
 	if wait_for_init() == False:
 		return
 		
@@ -311,6 +332,6 @@ def request_via_proxy_as_backup(url, close=True, redirect=True, followredirect=F
 		
 	use_web_proxy=False
 	use_web_proxy_as_backup=True
-	return initA[0].request_via_proxy(url=url, proxy_name=None, proxy_url=None, close=close, redirect=redirect, followredirect=followredirect, error=error, proxy=proxy, post=post, headers=headers, mobile=mobile, limit=limit, referer=referer, cookie=cookie, output=output, timeout=timeout, httpsskip=httpsskip, XHR=XHR, use_web_proxy=use_web_proxy, use_web_proxy_as_backup=use_web_proxy_as_backup)
+	return initA[0].request_via_proxy(url=url, proxy_name=None, proxy_url=None, close=close, redirect=redirect, followredirect=followredirect, error=error, proxy=proxy, post=post, headers=headers, mobile=mobile, limit=limit, referer=referer, cookie=cookie, output=output, timeout=timeout, httpsskip=httpsskip, XHR=XHR, use_web_proxy=use_web_proxy, use_web_proxy_as_backup=use_web_proxy_as_backup, IPv4=IPv4)
 
 	

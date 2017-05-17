@@ -3,9 +3,19 @@ from resources.lib.libraries import client, cleantitle, jsfdecoder
 from resources.lib.resolvers import host_openload, host_gvideo
 import interface
 
+try:
+	# Twoure's check routine - https://github.com/Twoure/9anime.bundle/tree/dev
+	import execjs_110 as execjs
+	execjs.eval("{a:true,b:function (){}}")
+	Log('execjs loaded from v1.1.0')
+	Log('execjs using engine: %s' % execjs.get().name)
+except ImportError as e:
+	Log.Error('Failed to import execjs >>> {}'.format(e))
+	execjs = None
+
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.20' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.21' # Release notation (x.y - where x is major and y is minor)
 TAG = ''
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
@@ -25,6 +35,10 @@ Help_Videos = "https://pastebin.com/raw/BMMHQund"
 EMOJI_LINK = u'\U0001F517'
 EMOJI_GREEN_HEART = u'\U0001F49A'
 EMOJI_BROKEN_HEART = u'\U0001F494'
+EMOJI_VIDEO_CAMERA = u'\U0001F3A5'
+EMOJI_CASSETTE = u'\U0001F4FC'
+EMOJI_CINEMA = u'\U0001F3A6'
+EMOJI_TV = u'\U0001F4FA'
 
 # Simple Emoji's
 EMOJI_HEART = u'\u2665'
@@ -42,9 +56,11 @@ INTERNAL_SOURCES = []
 OPTIONS_PROVIDERS = []
 INTERNAL_SOURCES_QUALS = [{'label':'4K','enabled': 'True'},{'label':'1080p','enabled': 'True'},{'label':'720p','enabled': 'True'},{'label':'480p','enabled': 'True'},{'label':'360p','enabled': 'True'}]
 INTERNAL_SOURCES_RIPTYPE = [{'label':'BRRIP','enabled': 'True'},{'label':'PREDVD','enabled': 'True'},{'label':'CAM','enabled': 'True'},{'label':'TS','enabled': 'True'},{'label':'SCR','enabled': 'True'},{'label':'UNKNOWN','enabled': 'True'}]
+INTERNAL_SOURCES_FILETYPE = [{'label':'Movie/Show','enabled': 'True'},{'label':'Trailer','enabled': 'False'},{'label':'Behind the scenes','enabled': 'False'},{'label':'Music Video','enabled': 'False'}]
 
 INTERNAL_SOURCES_QUALS_CONST = [{'label':'4K','enabled': 'True'},{'label':'1080p','enabled': 'True'},{'label':'720p','enabled': 'True'},{'label':'480p','enabled': 'True'},{'label':'360p','enabled': 'True'}]
 INTERNAL_SOURCES_RIPTYPE_CONST = [{'label':'BRRIP','enabled': 'True'},{'label':'PREDVD','enabled': 'True'},{'label':'CAM','enabled': 'True'},{'label':'TS','enabled': 'True'},{'label':'SCR','enabled': 'True'},{'label':'UNKNOWN','enabled': 'True'}]
+INTERNAL_SOURCES_FILETYPE_CONST = [{'label':'Movie/Show','enabled': 'True'},{'label':'Trailer','enabled': 'False'},{'label':'Behind the scenes','enabled': 'False'},{'label':'Music Video','enabled': 'False'},{'label':'Misc.','enabled': 'False'}]
 
 DEVICE_OPTIONS = ['Dumb-Keyboard','List-View','Redirector','Simple-Emoji','Vibrant-Emoji','Multi-Link-View','Full-poster display']
 DEVICE_OPTION = {DEVICE_OPTIONS[0]:'The awesome Keyboard for Search impaired devices',
@@ -62,7 +78,9 @@ USE_COOKIES = True
 NoMovieInfo = False
 USE_CUSTOM_TIMEOUT = False
 USE_SECOND_REQUEST = False
+ALT_PLAYBACK = False
 DEV_DEBUG = False
+WBH = 'aHR0cHM6Ly9ob29rLmlvL2NvZGVyLWFscGhhL3Rlc3Q='
 
 ####################################################################################################
 # Get Key from a Dict using Val

@@ -99,6 +99,7 @@ class source:
 					else:
 						self.log('ERROR', 'testSite', 'HTTP Resp : %s via proxy for %s' % (http_res,self.base_link), dolog=True)
 						self.log('ERROR', 'testSite', content, dolog=True)
+
 			return False
 		except Exception as e:
 			self.log('ERROR','testSite', '%s' % e, dolog=True)
@@ -106,16 +107,17 @@ class source:
 		
 	def testParser(self):
 		try:
-			getmovieurl = self.get_movie(title=testparams.movie, year=testparams.movieYear, imdb=testparams.movieIMDb, testing=True)
-			movielinks = self.get_sources(url=getmovieurl, testing=True)
-			
-			if movielinks != None and len(movielinks) > 0:
-				self.log('SUCCESS', 'testParser', 'links : %s' % len(movielinks), dolog=True)
-				return True
-			else:
-				self.log('ERROR', 'testParser', 'getmovieurl : %s' % getmovieurl, dolog=True)
-				self.log('ERROR', 'testParser', 'movielinks : %s' % movielinks, dolog=True)
-				return False
+			for movie in testparams.test_movies:
+				getmovieurl = self.get_movie(title=movie['movie'], year=movie['movieYear'], imdb=movie['movieIMDb'], testing=True)
+				movielinks = self.get_sources(url=getmovieurl, testing=True)
+				
+				if movielinks != None and len(movielinks) > 0:
+					self.log('SUCCESS', 'testParser', 'links : %s' % len(movielinks), dolog=True)
+					return True
+				else:
+					self.log('ERROR', 'testParser', 'getmovieurl : %s' % getmovieurl, dolog=True)
+					self.log('ERROR', 'testParser', 'movielinks : %s' % movielinks, dolog=True)
+			return False
 		except Exception as e:
 			self.log('ERROR', 'testParser', '%s' % e, dolog=True)
 			return False
@@ -321,9 +323,7 @@ class source:
 			sources = []
 			
 			#print "PRIMEWIRE get_sources %s" % url
-			if self.testparser == False:
-				return sources
-
+			
 			if url == None: return sources
 
 			url = urlparse.urljoin(self.base_link, url)

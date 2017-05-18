@@ -196,7 +196,7 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 		common.TOKEN_CODE.append(token_enc)
 		
 		try:
-			reqkey_cookie = decodeAndParse(token_enc,use_debug)
+			reqkey_cookie = decodeAndParse(token_enc,use_debug,use_https_alt)
 		except:
 			reqkey_cookie = ''
 		
@@ -235,14 +235,14 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 	
 	return cookie
 
-def decodeAndParse(token, use_debug=False):
+def decodeAndParse(token, use_debug=False, use_https_alt=False):
 	# dec = common.jsfdecoder.JSFDecoder(common.client.b64decode(token)).ca_decode()
 	# dec = dec.split('reqkey=')
 	# dec = dec[1].split(';')
 	# dec = dec[0]
 	# return dec
 	
-	return get_reqkey_cookie(token,use_debug)
+	return get_reqkey_cookie(token=token,use_debug=use_debug,use_https_alt=use_https_alt)
 	
 # Twoure's execjs / webhook reqkey cookie routine
 # https://github.com/Twoure/9anime.bundle/tree/dev

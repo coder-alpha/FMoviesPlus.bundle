@@ -4,6 +4,13 @@ from resources.lib.resolvers import host_openload, host_gvideo
 import interface
 
 try:
+	client.setIP4(setoveride=True)
+	Log('IPv6 disabled and IPv4 set as default')
+except:
+	Log('Error disabling IPv6 and setting IPv4 as default')
+	pass
+
+try:
 	# Twoure's check routine - https://github.com/Twoure/9anime.bundle/tree/dev
 	import execjs_110 as execjs
 	execjs.eval("{a:true,b:function (){}}")
@@ -15,8 +22,8 @@ except Exception as e:
 
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.23' # Release notation (x.y - where x is major and y is minor)
-TAG = 'b0.1'
+VERSION = '0.24' # Release notation (x.y - where x is major and y is minor)
+TAG = ''
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
 ################################################################################

@@ -62,6 +62,7 @@ IOS_USER_AGENT = 'Mozilla/5.0 (iPhone; CPU iPhone OS 6_0 like Mac OS X) AppleWeb
 ANDROID_USER_AGENT = 'Mozilla/5.0 (Linux; Android 4.4.2; Nexus 4 Build/KOT49H) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.114 Mobile Safari/537.36'
 #SMU_USER_AGENT = 'URLResolver for Kodi/%s' % (addon_version)
 
+IP_OVERIDE = True
 
 def request(url, close=True, redirect=True, followredirect=False, error=False, proxy=None, post=None, headers=None, mobile=False, limit=None, referer=None, cookie=None, output='', timeout='30', httpsskip=False, use_web_proxy=False, XHR=False, IPv4=False):
 
@@ -323,12 +324,18 @@ def getResponseDataBasedOnOutput(page_data_string, res, output):
 	else:
 		return page_data_string
 
-def setIP4():
+def setIP4(setoveride=False):
+
+	if setoveride==False and IP_OVERIDE == True:
+		return
 	#replace the original socket.getaddrinfo by our version
 	socket.getaddrinfo = getAddrInfoWrapper
 	socket.has_ipv6 = False
 	
-def setIP6():
+def setIP6(setoveride=False):
+
+	if setoveride==False and IP_OVERIDE == True:
+		return
 	#replace the IP4 socket.getaddrinfo by original
 	socket.getaddrinfo = origGetAddrInfo
 	socket.has_ipv6 = True

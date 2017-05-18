@@ -112,7 +112,7 @@ def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web
 				headersS['Cookie'] = common.CACHE_COOKIE[0]['cookie']
 				try:
 					time.sleep(1.0)
-					data = common.interface.request_via_proxy_as_backup(ret, limit='0', headers=headersS, httpsskip=use_https_alt, IPv4=True)
+					data = common.interface.request_via_proxy_as_backup(ret, limit='0', headers=headersS, httpsskip=use_https_alt)
 					data = json.loads(data)
 				except Exception as e:
 					Log('ERROR fmovies.py>GetApiUrl-1: ARGS:%s, URL:%s' % (e,ret))
@@ -377,7 +377,7 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 			#print hash_url
 			if use_debug:
 				Log("get_sources Request-3: %s" % hash_url)
-			result = common.interface.request_via_proxy_as_backup(hash_url, headers=headers, httpsskip=use_https_alt, IPv4=True)
+			result = common.interface.request_via_proxy_as_backup(hash_url, headers=headers, httpsskip=use_https_alt)
 			Log("Request-3 result: %s" % result)
 			#print result
 			result = json.loads(result)

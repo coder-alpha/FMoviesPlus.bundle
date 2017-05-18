@@ -22,7 +22,7 @@ except Exception as e:
 
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.24' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.25' # Release notation (x.y - where x is major and y is minor)
 TAG = ''
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
@@ -394,14 +394,14 @@ def make_cookie_str():
 		else:
 			#setTokenCookie(serverts=serverts, use_debug=use_debug)
 			error = "Cookie not set !"
-			raise Exception(error)
-			
+
 		user_defined_reqkey_cookie = Prefs['reqkey_cookie']
 		reqCookie = CACHE_COOKIE[0]['reqkey']
 		if user_defined_reqkey_cookie != None and user_defined_reqkey_cookie != '':
 			reqCookie = user_defined_reqkey_cookie
 
 		p_cookie = CACHE_COOKIE[0]['cookie'] + ';' + reqCookie
+		p_cookie = p_cookie.replace(';;',';')
 		p_cookie_s = p_cookie.split(';')
 		cookie_dict = {}
 		for ps in p_cookie_s:
@@ -410,7 +410,10 @@ def make_cookie_str():
 			v = ps_s[1].strip()
 			cookie_dict[k]=v
 		
-		cookie_str = '__cfduid=%s; preqkey=%s; session=%s; reqkey=%s; user-info=%s' % (cookie_dict['__cfduid'],cookie_dict['preqkey'],cookie_dict['session'],cookie_dict['reqkey'],cookie_dict['user-info'],)
+		try:
+			cookie_str = '__cfduid=%s; preqkey=%s; session=%s; reqkey=%s; user-info=%s' % (cookie_dict['__cfduid'],cookie_dict['preqkey'],cookie_dict['session'],cookie_dict['reqkey'],cookie_dict['user-info'])
+		except:
+			cookie_str = p_cookie
 		
 		return cookie_str, error
 	except Exception as e:
@@ -439,18 +442,14 @@ def GetPageAsString(url, headers=None, timeout=15, referer=None):
 		headers['Referer'] = url
 	
 	cookies, error = make_cookie_str()
-	try:
-		if error != '':
-			raise Exception(error)
+
+	if error == '':
 		headers['Cookie'] = cookies
 		headers['User-Agent'] = CACHE_COOKIE[0]['UA']
 
 		if use_debug:
 			Log("Using Cookie retrieved at: %s" % CACHE_COOKIE[0]['ts'])
 			Log("Using Cookie: %s" % (cookies))
-	except Exception as e:
-		Log('ERROR common.py>GetPageAsString: %s URL: %s' % (e.args,url))
-		return
 
 	try:
 		if Prefs["use_https_alt"]:

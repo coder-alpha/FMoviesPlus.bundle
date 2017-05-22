@@ -898,7 +898,12 @@ def ResetCookies(**kwargs):
 	
 	time.sleep(10.0)
 	
-	return MC.message_container('Reset Cookies', 'Cookies have been reset and token text dumped to log (if required) !')
+	msg = ''
+	pref_cook = Prefs["reqkey_cookie"]
+	if pref_cook !=None and len(pref_cook) > 0:
+		msg = 'Please clear or update your reqkey Prefs field.'
+	
+	return MC.message_container('Reset Cookies', 'Cookies have been reset and token text dumped to log (if required) ! %s' % msg)
 	
 ######################################################################################
 @route(PREFIX + "/ResetExtOptions")

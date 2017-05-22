@@ -21,8 +21,7 @@ FILTER_PATH = "/filter"
 KEYWORD_PATH = "/tag/"
 STAR_PATH = "/star/"
 
-oldmarketgidstorage = 'MarketGidStorage=%7B%220%22%3A%7B%22svspr%22%3A%22%22%2C%22svsds%22%3A15%2C%22TejndEEDj%22%3A%22MTQ5MzIxMTc0OTQ0NDExMDAxNDc3NDE%3D%22%7D%2C%22C110014%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493215038742%7D%2C%22C110025%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493216772437%7D%2C%22C110023%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493216771928%7D%7D'
-newmarketgidstorage = ''
+newmarketgidstorage = 'MarketGidStorage=%7B%220%22%3A%7B%22svspr%22%3A%22%22%2C%22svsds%22%3A15%2C%22TejndEEDj%22%3A%22MTQ5MzIxMTc0OTQ0NDExMDAxNDc3NDE%3D%22%7D%2C%22C110014%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493215038742%7D%2C%22C110025%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493216772437%7D%2C%22C110023%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493216771928%7D%7D'
 
 ####################################################################################################
 
@@ -188,17 +187,28 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 		time.sleep(0.1)
 		
 		token_url = urlparse.urljoin(BASE_URL, TOKEN_PATH)
-		r1 = common.interface.request_via_proxy_as_backup(token_url, headers=headersS, httpsskip=use_https_alt)
-		time.sleep(0.1)
-		del common.TOKEN_CODE[:]
 		
-		token_enc = common.client.b64encode(r1)
-		common.TOKEN_CODE.append(token_enc)
+		reqkey_cookie = ''
 		
-		try:
-			reqkey_cookie = decodeAndParse(token_enc,use_debug,use_https_alt)
-		except:
-			reqkey_cookie = ''
+		counter = 0
+		while reqkey_cookie == '' and counter < 5:
+			r1 = common.interface.request_via_proxy_as_backup(token_url, headers=headersS, httpsskip=use_https_alt)
+			time.sleep(0.1)
+			del common.TOKEN_CODE[:]
+			
+			token_enc = common.client.b64encode(r1)
+			common.TOKEN_CODE.append(token_enc)
+			
+			quiet = True
+			if counter == 4:
+				quiet = False
+			
+			try:
+				reqkey_cookie = decodeAndParse(token_enc,use_debug,use_https_alt, quiet=quiet)
+			except:
+				reqkey_cookie = ''
+			time.sleep(2.0)
+			counter += 1
 		
 		if dump or use_debug:
 			Log("=====================TOKEN START============================")
@@ -220,7 +230,7 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 		common.CACHE['cookie']['UA'] = UA
 		common.CACHE['cookie']['reqkey'] = reqkey_cookie
 		
-		cookie = cookie1 + '; ' + cookie2 + '; user-info=null'
+		cookie = cookie1 + '; ' + cookie2 + '; user-info=null; ' + newmarketgidstorage
 		
 		cookie_dict = {'ts':time.time(), 'cookie': cookie, 'UA': UA, 'reqkey':reqkey_cookie}
 		
@@ -235,90 +245,107 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 	
 	return cookie
 
-def decodeAndParse(token, use_debug=False, use_https_alt=False):
+def decodeAndParse(token, use_debug=False, use_https_alt=False, quiet=True):
 	# dec = common.jsfdecoder.JSFDecoder(common.client.b64decode(token)).ca_decode()
 	# dec = dec.split('reqkey=')
 	# dec = dec[1].split(';')
 	# dec = dec[0]
 	# return dec
 	
-	return get_reqkey_cookie(token=token,use_debug=use_debug,use_https_alt=use_https_alt)
+	return get_reqkey_cookie(token=token,use_debug=use_debug,use_https_alt=use_https_alt, quiet=quiet)
 	
 # Twoure's execjs / webhook reqkey cookie routine
 # https://github.com/Twoure/9anime.bundle/tree/dev
-def get_reqkey_cookie(token, use_debug=False, use_https_alt=False):
+def get_reqkey_cookie(token, use_debug=False, use_https_alt=False, quiet=True):
 	try:	
 		success=False
 		token = String.Base64Decode(token)
+		
 		try:
-			dec = common.jsfdecoder.JSFDecoder(token).ca_decode()
-			if 'function' in dec:
-				raise ValueError("JSFDecoder: No JSF code found or mixed-mode code")
-			cookie_string = dec
-			success = True
-		except Exception as e:
-			try:
-				Log.Debug('JSFDecoder failed, falling back to execjs >>> {}'.format(e))
-				d = 'var jssuckit="";var jssuckit1="";var jssuckit2=""; var document = this; this.location = "https://fmovies.to/"; %s; jssuckit2 = document.cookie; jssuckit = jssuckit1 + ";" + jssuckit2; return jssuckit'
-				token = token.replace('=/";','=/"; jssuckit1 = document.cookie;')
-				ctx = common.execjs.compile(d % token)
-				cookie_string = ctx.exec_('return jssuckit')
+			if common.USE_JSFDECODER:
+				dec = common.jsfdecoder.JSFDecoder(token).ca_decode()
+				if 'function' in dec:
+					raise ValueError("JSFDecoder: No JSF code or mixed-mode code")
+				if 'reqkey' not in dec:
+					raise ValueError("JSFDecoder: reqkey not found. No JSF code or mixed-mode code")
+				cookie_string = dec
 				success = True
+			else:
+				raise ValueError("JSFDecoder: Disabled via Global overide")
+		except Exception as e:
+			token, replaced = common.cleanJSS2(token)
+			use_webhook_when_no_engine_flag = False
+			
+			if common.execjs == None or common.USE_JSENGINE == False:
+				use_webhook_when_no_engine_flag = True
+			
+			try:
+				if quiet == False:
+					Log.Debug('JSFDecoder failed, falling back to execjs >>> {}'.format(e))
+				if common.USE_JSENGINE:
+					ctx = common.execjs.compile(token)
+					cookie_string = ctx.exec_('return jssuckit')
+					for k in replaced.keys():
+						cookie_string = cookie_string.replace(k, replaced[k])
+					success = True
+				else:
+					raise ValueError("JSEngine: Disabled via Global overide")
 			except Exception as e:
 				try:
-					Log.Debug('execjs failed, falling back to webhook if available >>> {}'.format(e))
-					webhook_url = Prefs["webhook_url"]
-					freeapi = True
-					usage = 0
-					if webhook_url != None and webhook_url != "" and "http" in webhook_url:
-						if webhook_url == String.Base64Decode(common.WBH):
-							usage = Dict[common.WBH]
-							if usage != None and int(usage) > 10:
-								freeapi = False
-						if freeapi == True:		
-							code = token[1:-1]
-							code = 'var jssuckit="";var jssuckit1="";var jssuckit2=""; escaje="escape";unescaje="unescape";location="https://fmovies.to"; var document = {}; document.location = "https://fmovies.to/"; %s; jssuckit2 = document.cookie; jssuckit = jssuckit1 + ";" + jssuckit2; jssuckit;' % code
-							code = code.replace('function(', 'function xy(').replace('=/','=/"; jssuckit1 = document.cookie;"').replace('(document',';xy(document')
-							data = common.client.encodePostData({"jssuck": code})
-							cookie_string, headers, content, cookie = common.interface.request(webhook_url, post=data, output='extended', httpsskip=use_https_alt)
+					if quiet == False:
+						Log.Debug('execjs failed, falling back to webhook if available >>> {}'.format(e))
+					if common.USE_JSWEBHOOK and use_webhook_when_no_engine_flag:
+						webhook_url = Prefs["webhook_url"]
+						freeapi = True
+						usage = 0
+						if webhook_url != None and webhook_url != "" and "http" in webhook_url:
 							if webhook_url == String.Base64Decode(common.WBH):
 								usage = Dict[common.WBH]
-								if usage == None:
-									usage = 0
-								usage = int(usage)+1
-								Dict[common.WBH] = usage
-								Log.Debug('You have used %s requests out of 10 so far. Please fork your own WebHook (from https://hook.io/coder-alpha/test/fork) to use this method unrestricted ! Refer forum thread.' % usage)
-							Log.Debug('webhook X-RateLimit-Remaining this month >>> %s' % (content['X-RateLimit-Remaining']))
-							if 'reqkey' in cookie_string:
-								success = True
+								if usage != None and int(usage) > 10:
+									freeapi = False
+							if freeapi == True:
+								token = re.sub(r"new(.*?|$\[\?\])\(\)", "new Date()", token)
+								data = common.client.encodePostData({"jssuck": (token.replace('return jssuckit','jssuckit').replace('global','this'))})
+								cookie_string, headers, content, cookie = common.interface.request(webhook_url, post=data, output='extended', httpsskip=use_https_alt)
+								if webhook_url == String.Base64Decode(common.WBH) and quiet == False:
+									usage = Dict[common.WBH]
+									if usage == None:
+										usage = 0
+									usage = int(usage)+1
+									Dict[common.WBH] = usage
+									Log.Debug('You have used %s requests out of 10 so far. Please fork your own WebHook (from https://hook.io/coder-alpha/test/fork) to use this method unrestricted ! Refer forum thread.' % usage)
+								if quiet == False:
+									Log.Debug('webhook X-RateLimit-Remaining this month >>> %s' % (content['X-RateLimit-Remaining']))
+								if 'reqkey' in cookie_string:
+									for k in replaced.keys():
+										cookie_string = cookie_string.replace(k, replaced[k])
+									success = True
+								else:
+									if quiet == False:
+										Log.Debug('webhook output >>> %s' % (cookie_string))
 							else:
-								Log.Debug('webhook output >>> %s' % (cookie_string))
+								if quiet == False:
+									Log.Debug('You have used your free %s requests. Please fork your own WebHook (from https://hook.io/coder-alpha/test/fork) to use this method ! Refer forum thread.' % usage)
 						else:
-							Log.Debug('You have used your free %s requests. Please fork your own WebHook (from https://hook.io/coder-alpha/test/fork) to use this method ! Refer forum thread.' % usage)
+							if quiet == False:
+								Log.Debug('webhook url not defined in Channel Settings/Prefs.')
 					else:
-						Log.Debug('webhook url not defined in Channel Settings/Prefs.')
+						raise ValueError("JSWebHook: Disabled via Global overide")
 				except Exception as e:
-					Log.Debug('webhook failed, >>> {}'.format(e))
+					if quiet == False:
+						Log.Debug('webhook failed, >>> {}'.format(e))
 
 		if success == False:
-			Log.Debug("No method available to decode JSF code")
+			if quiet == False:
+				Log.Debug("No method available to decode JSF code - use manual method".upper())
 			return ''
 		else:
-			return cleanCookie(cookie_string)
+			return common.cleanCookie(cookie_string)
 	except Exception as e:
-		#Log.Exception("%s" % dec)
-		Log.Exception("fmovies.py >> : Cannot handle token cookie >>> {}".format(e))
+		if quiet == False:
+			Log.Exception("fmovies.py >> : Cannot handle token cookie >>> {}".format(e))
+			Log.Debug("No method available to decode JSF code - use manual method")
 	return ''
-	
-def cleanCookie(str):
-	str = str.replace('\n','')
-	str_s = str.split(';')
-	cookie_string_arr = []
-	for str in str_s:
-		if 'expires' not in str and 'path' not in str:
-			cookie_string_arr.append(str)
-	cookie_string = ('; '.join(x for x in cookie_string_arr))
-	return cookie_string
 
 def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=False, use_web_proxy=False, **kwargs):
 

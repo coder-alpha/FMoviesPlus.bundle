@@ -1,7 +1,8 @@
-import time, base64, unicodedata, re
+import time, base64, unicodedata, re, random, string
 from resources.lib.libraries import client, cleantitle, jsfdecoder
 from resources.lib.resolvers import host_openload, host_gvideo
 import interface
+from __builtin__ import ord, format, eval
 
 try:
 	client.setIP4(setoveride=True)
@@ -10,19 +11,31 @@ except:
 	Log('Error disabling IPv6 and setting IPv4 as default')
 	pass
 
+	
+JSEngines_ALLowed = ['Node']
 try:
 	# Twoure's check routine - https://github.com/Twoure/9anime.bundle/tree/dev
 	import execjs_110 as execjs
 	execjs.eval("{a:true,b:function (){}}")
-	Log('execjs loaded from v1.1.0')
-	Log('execjs using engine: %s' % execjs.get().name)
+	
+	Engine_OK = False
+	for engine in JSEngines_ALLowed:
+		if engine.lower() in execjs.get().name.lower():
+			Engine_OK = True
+			break
+	if Engine_OK:
+		Log('execjs loaded from v1.1.0')
+		Log('execjs using engine: %s' % execjs.get().name)
+	else:
+		Log.Error('execjs Unsupported engine: %s' % execjs.get().name)
+		execjs = None
 except Exception as e:
 	Log.Error('Failed to import execjs >>> {}'.format(e))
 	execjs = None
 
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.25' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.26' # Release notation (x.y - where x is major and y is minor)
 TAG = ''
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
@@ -86,6 +99,9 @@ NoMovieInfo = False
 USE_CUSTOM_TIMEOUT = False
 USE_SECOND_REQUEST = False
 ALT_PLAYBACK = False
+USE_JSFDECODER = True
+USE_JSENGINE = True
+USE_JSWEBHOOK = True
 DEV_DEBUG = False
 WBH = 'aHR0cHM6Ly9ob29rLmlvL2NvZGVyLWFscGhhL3Rlc3Q='
 
@@ -403,21 +419,45 @@ def make_cookie_str():
 		p_cookie = CACHE_COOKIE[0]['cookie'] + ';' + reqCookie
 		p_cookie = p_cookie.replace(';;',';')
 		p_cookie_s = p_cookie.split(';')
-		cookie_dict = {}
+		cookie_string_arr = []
+		
 		for ps in p_cookie_s:
-			ps_s= ps.split('=')
-			k = ps_s[0].strip()
-			v = ps_s[1].strip()
-			cookie_dict[k]=v
+			if '=' in ps:
+				ps_s = ps.split('=')
+				k = ps_s[0].strip()
+				v = ps_s[1].strip()
+				if k == 'reqkey':
+					if len(v) > 5:
+						cookie_string_arr.append(k+'='+v)
+				else:
+					cookie_string_arr.append(k+'='+v)
 		
 		try:
-			cookie_str = '__cfduid=%s; preqkey=%s; session=%s; reqkey=%s; user-info=%s' % (cookie_dict['__cfduid'],cookie_dict['preqkey'],cookie_dict['session'],cookie_dict['reqkey'],cookie_dict['user-info'])
+			cookie_str = ('; '.join(x for x in sorted(cookie_string_arr)))
 		except:
 			cookie_str = p_cookie
 		
 		return cookie_str, error
 	except Exception as e:
 		return cookie_str, e
+		
+def cleanCookie(str):
+	str = str.replace('\n','')
+	str_s = str.split(';')
+	cookie_string_arr = []
+	for str in str_s:
+		if 'expires' not in str and 'path' not in str and 'Date' not in str and '=' in str:
+			ps_s= str.split('=')
+			k = ps_s[0].strip()
+			v = ps_s[1].strip()
+			if k == 'reqkey':
+				if len(v) > 3:
+					cookie_string_arr.append(k + '=' + v)
+			else:
+				cookie_string_arr.append(k + '=' + v)
+			
+	cookie_string = ('; '.join(x for x in cookie_string_arr))
+	return cookie_string
 	
 ######################################################################################
 @route(PREFIX + "/GetPageAsString")
@@ -511,6 +551,101 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 		pass
 		
 	return page_data_string
+	
+def makeid(N,arr):
+
+	r = ''
+	while r == '':
+		rt = ''.join(random.choice(string.ascii_uppercase) for _ in range(N))
+		rt += ''.join(random.choice(string.digits) for _ in range(N))
+		if rt not in arr:
+			r = rt
+	return r
+	
+def cleanJSS1(str):
+	if str == None: raise ValueError("cleanJSS: Token is None type")
+	
+	txt = str
+
+	for i in range(0,len(str)):
+		c = str[i]
+		if (ord(c) <= 127 and c != '_'):
+			pass
+		else:
+			txt = txt.replace(c, makeid(1))
+
+	return txt
+	
+def cleanJSS2(str):
+	if str == None: raise ValueError("cleanJSS: Token is None type")
+	
+	token = str.replace(D('KCEhW10rW10pWyshIVtdXSsoW11bW11dK1tdKVshK1tdKyEhW10rISFbXV0rW11bKCFbXStbXSlbIStbXSshIVtdKyEhW11dKyhbXSt7fSlbKyEhW11dKyghIVtdK1tdKVsrISFbXV0rKCEhW10rW10pWytbXV1dWyhbXSt7fSlbIStbXSshIVtdKyEhW10rISFbXSshIVtdXSsoW10re30pWyshIVtdXSsoW11bW11dK1tdKVsrISFbXV0rKCFbXStbXSlbIStbXSshIVtdKyEhW11dKyghIVtdK1tdKVsrW11dKyghIVtdK1tdKVsrISFbXV0rKFtdW1tdXStbXSlbK1tdXSsoW10re30pWyErW10rISFbXSshIVtdKyEhW10rISFbXV0rKCEhW10rW10pWytbXV0rKFtdK3t9KVsrISFbXV0rKCEhW10rW10pWyshIVtdXV0oKCEhW10rW10pWyshIVtdXSsoW11bW11dK1tdKVshK1tdKyEhW10rISFbXV0rKCEhW10rW10pWytbXV0rKFtdW1tdXStbXSlbK1tdXSsoISFbXStbXSlbKyEhW11dKyhbXVtbXV0rW10pWyshIVtdXSsoW10re30pWyErW10rISFbXSshIVtdKyEhW10rISFbXSshIVtdKyEhW11dKyhbXVtbXV0rW10pWytbXV0rKFtdW1tdXStbXSlbKyEhW11dKyhbXVtbXV0rW10pWyErW10rISFbXSshIVtdXSsoIVtdK1tdKVshK1tdKyEhW10rISFbXV0rKFtdK3t9KVshK1tdKyEhW10rISFbXSshIVtdKyEhW11dKygre30rW10pWyshIVtdXSsoW10rW11bKCFbXStbXSlbIStbXSshIVtdKyEhW11dKyhbXSt7fSlbKyEhW11dKyghIVtdK1tdKVsrISFbXV0rKCEhW10rW10pWytbXV1dWyhbXSt7fSlbIStbXSshIVtdKyEhW10rISFbXSshIVtdXSsoW10re30pWyshIVtdXSsoW11bW11dK1tdKVsrISFbXV0rKCFbXStbXSlbIStbXSshIVtdKyEhW11dKyghIVtdK1tdKVsrW11dKyghIVtdK1tdKVsrISFbXV0rKFtdW1tdXStbXSlbK1tdXSsoW10re30pWyErW10rISFbXSshIVtdKyEhW10rISFbXV0rKCEhW10rW10pWytbXV0rKFtdK3t9KVsrISFbXV0rKCEhW10rW10pWyshIVtdXV0oKCEhW10rW10pWyshIVtdXSsoW11bW11dK1tdKVshK1tdKyEhW10rISFbXV0rKCEhW10rW10pWytbXV0rKFtdW1tdXStbXSlbK1tdXSsoISFbXStbXSlbKyEhW11dKyhbXVtbXV0rW10pWyshIVtdXSsoW10re30pWyErW10rISFbXSshIVtdKyEhW10rISFbXSshIVtdKyEhW11dKyghW10rW10pWyErW10rISFbXV0rKFtdK3t9KVsrISFbXV0rKFtdK3t9KVshK1tdKyEhW10rISFbXSshIVtdKyEhW11dKygre30rW10pWyshIVtdXSsoISFbXStbXSlbK1tdXSsoW11bW11dK1tdKVshK1tdKyEhW10rISFbXSshIVtdKyEhW11dKyhbXSt7fSlbKyEhW11dKyhbXVtbXV0rW10pWyshIVtdXSkoKSlbIStbXSshIVtdKyEhW11dKyhbXVtbXV0rW10pWyErW10rISFbXSshIVtdXSkoKShbXVsoIVtdK1tdKVshK1tdKyEhW10rISFbXV0rKFtdK3t9KVsrISFbXV0rKCEhW10rW10pWyshIVtdXSsoISFbXStbXSlbK1tdXV1bKFtdK3t9KVshK1tdKyEhW10rISFbXSshIVtdKyEhW11dKyhbXSt7fSlbKyEhW11dKyhbXVtbXV0rW10pWyshIVtdXSsoIVtdK1tdKVshK1tdKyEhW10rISFbXV0rKCEhW10rW10pWytbXV0rKCEhW10rW10pWyshIVtdXSsoW11bW11dK1tdKVsrW11dKyhbXSt7fSlbIStbXSshIVtdKyEhW10rISFbXSshIVtdXSsoISFbXStbXSlbK1tdXSsoW10re30pWyshIVtdXSsoISFbXStbXSlbKyEhW11dXSgoISFbXStbXSlbKyEhW11dKyhbXVtbXV0rW10pWyErW10rISFbXSshIVtdXSsoISFbXStbXSlbK1tdXSsoW11bW11dK1tdKVsrW11dKyghIVtdK1tdKVsrISFbXV0rKFtdW1tdXStbXSlbKyEhW11dKyhbXSt7fSlbIStbXSshIVtdKyEhW10rISFbXSshIVtdKyEhW10rISFbXV0rKFtdW1tdXStbXSlbIStbXSshIVtdKyEhW11dKyghW10rW10pWyErW10rISFbXSshIVtdXSsoW10re30pWyErW10rISFbXSshIVtdKyEhW10rISFbXV0rKCt7fStbXSlbKyEhW11dKyhbXStbXVsoIVtdK1tdKVshK1tdKyEhW10rISFbXV0rKFtdK3t9KVsrISFbXV0rKCEhW10rW10pWyshIVtdXSsoISFbXStbXSlbK1tdXV1bKFtdK3t9KVshK1tdKyEhW10rISFbXSshIVtdKyEhW11dKyhbXSt7fSlbKyEhW11dKyhbXVtbXV0rW10pWyshIVtdXSsoIVtdK1tdKVshK1tdKyEhW10rISFbXV0rKCEhW10rW10pWytbXV0rKCEhW10rW10pWyshIVtdXSsoW11bW11dK1tdKVsrW11dKyhbXSt7fSlbIStbXSshIVtdKyEhW10rISFbXSshIVtdXSsoISFbXStbXSlbK1tdXSsoW10re30pWyshIVtdXSsoISFbXStbXSlbKyEhW11dXSgoISFbXStbXSlbKyEhW11dKyhbXVtbXV0rW10pWyErW10rISFbXSshIVtdXSsoISFbXStbXSlbK1tdXSsoW11bW11dK1tdKVsrW11dKyghIVtdK1tdKVsrISFbXV0rKFtdW1tdXStbXSlbKyEhW11dKyhbXSt7fSlbIStbXSshIVtdKyEhW10rISFbXSshIVtdKyEhW10rISFbXV0rKCFbXStbXSlbIStbXSshIVtdXSsoW10re30pWyshIVtdXSsoW10re30pWyErW10rISFbXSshIVtdKyEhW10rISFbXV0rKCt7fStbXSlbKyEhW11dKyghIVtdK1tdKVsrW11dKyhbXVtbXV0rW10pWyErW10rISFbXSshIVtdKyEhW10rISFbXV0rKFtdK3t9KVsrISFbXV0rKFtdW1tdXStbXSlbKyEhW11dKSgpKVshK1tdKyEhW10rISFbXV0rKFtdW1tdXStbXSlbIStbXSshIVtdKyEhW11dKSgpKChbXSt7fSlbK1tdXSlbK1tdXSsoIStbXSshIVtdKyEhW10rISFbXSshIVtdKyEhW10rISFbXStbXSkrKCshIVtdK1tdKSkrW11bKCFbXStbXSlbIStbXSshIVtdKyEhW11dKyhbXSt7fSlbKyEhW11dKyghIVtdK1tdKVsrISFbXV0rKCEhW10rW10pWytbXV1dWyhbXSt7fSlbIStbXSshIVtdKyEhW10rISFbXSshIVtdXSsoW10re30pWyshIVtdXSsoW11bW11dK1tdKVsrISFbXV0rKCFbXStbXSlbIStbXSshIVtdKyEhW11dKyghIVtdK1tdKVsrW11dKyghIVtdK1tdKVsrISFbXV0rKFtdW1tdXStbXSlbK1tdXSsoW10re30pWyErW10rISFbXSshIVtdKyEhW10rISFbXV0rKCEhW10rW10pWytbXV0rKFtdK3t9KVsrISFbXV0rKCEhW10rW10pWyshIVtdXV0oKCEhW10rW10pWyshIVtdXSsoW11bW11dK1tdKVshK1tdKyEhW10rISFbXV0rKCEhW10rW10pWytbXV0rKFtdW1tdXStbXSlbK1tdXSsoISFbXStbXSlbKyEhW11dKyhbXVtbXV0rW10pWyshIVtdXSsoW10re30pWyErW10rISFbXSshIVtdKyEhW10rISFbXSshIVtdKyEhW11dKyhbXVtbXV0rW10pWytbXV0rKFtdW1tdXStbXSlbKyEhW11dKyhbXVtbXV0rW10pWyErW10rISFbXSshIVtdXSsoIVtdK1tdKVshK1tdKyEhW10rISFbXV0rKFtdK3t9KVshK1tdKyEhW10rISFbXSshIVtdKyEhW11dKygre30rW10pWyshIVtdXSsoW10rW11bKCFbXStbXSlbIStbXSshIVtdKyEhW11dKyhbXSt7fSlbKyEhW11dKyghIVtdK1tdKVsrISFbXV0rKCEhW10rW10pWytbXV1dWyhbXSt7fSlbIStbXSshIVtdKyEhW10rISFbXSshIVtdXSsoW10re30pWyshIVtdXSsoW11bW11dK1tdKVsrISFbXV0rKCFbXStbXSlbIStbXSshIVtdKyEhW11dKyghIVtdK1tdKVsrW11dKyghIVtdK1tdKVsrISFbXV0rKFtdW1tdXStbXSlbK1tdXSsoW10re30pWyErW10rISFbXSshIVtdKyEhW10rISFbXV0rKCEhW10rW10pWytbXV0rKFtdK3t9KVsrISFbXV0rKCEhW10rW10pWyshIVtdXV0oKCEhW10rW10pWyshIVtdXSsoW11bW11dK1tdKVshK1tdKyEhW10rISFbXV0rKCEhW10rW10pWytbXV0rKFtdW1tdXStbXSlbK1tdXSsoISFbXStbXSlbKyEhW11dKyhbXVtbXV0rW10pWyshIVtdXSsoW10re30pWyErW10rISFbXSshIVtdKyEhW10rISFbXSshIVtdKyEhW11dKyghW10rW10pWyErW10rISFbXV0rKFtdK3t9KVsrISFbXV0rKFtdK3t9KVshK1tdKyEhW10rISFbXSshIVtdKyEhW11dKygre30rW10pWyshIVtdXSsoISFbXStbXSlbK1tdXSsoW11bW11dK1tdKVshK1tdKyEhW10rISFbXSshIVtdKyEhW11dKyhbXSt7fSlbKyEhW11dKyhbXVtbXV0rW10pWyshIVtdXSkoKSlbIStbXSshIVtdKyEhW11dKyhbXVtbXV0rW10pWyErW10rISFbXSshIVtdXSkoKShbXVsoIVtdK1tdKVshK1tdKyEhW10rISFbXV0rKFtdK3t9KVsrISFbXV0rKCEhW10rW10pWyshIVtdXSsoISFbXStbXSlbK1tdXV1bKFtdK3t9KVshK1tdKyEhW10rISFbXSshIVtdKyEhW11dKyhbXSt7fSlbKyEhW11dKyhbXVtbXV0rW10pWyshIVtdXSsoIVtdK1tdKVshK1tdKyEhW10rISFbXV0rKCEhW10rW10pWytbXV0rKCEhW10rW10pWyshIVtdXSsoW11bW11dK1tdKVsrW11dKyhbXSt7fSlbIStbXSshIVtdKyEhW10rISFbXSshIVtdXSsoISFbXStbXSlbK1tdXSsoW10re30pWyshIVtdXSsoISFbXStbXSlbKyEhW11dXSgoISFbXStbXSlbKyEhW11dKyhbXVtbXV0rW10pWyErW10rISFbXSshIVtdXSsoISFbXStbXSlbK1tdXSsoW11bW11dK1tdKVsrW11dKyghIVtdK1tdKVsrISFbXV0rKFtdW1tdXStbXSlbKyEhW11dKyhbXSt7fSlbIStbXSshIVtdKyEhW10rISFbXSshIVtdKyEhW10rISFbXV0rKFtdW1tdXStbXSlbIStbXSshIVtdKyEhW11dKyghW10rW10pWyErW10rISFbXSshIVtdXSsoW10re30pWyErW10rISFbXSshIVtdKyEhW10rISFbXV0rKCt7fStbXSlbKyEhW11dKyhbXStbXVsoIVtdK1tdKVshK1tdKyEhW10rISFbXV0rKFtdK3t9KVsrISFbXV0rKCEhW10rW10pWyshIVtdXSsoISFbXStbXSlbK1tdXV1bKFtdK3t9KVshK1tdKyEhW10rISFbXSshIVtdKyEhW11dKyhbXSt7fSlbKyEhW11dKyhbXVtbXV0rW10pWyshIVtdXSsoIVtdK1tdKVshK1tdKyEhW10rISFbXV0rKCEhW10rW10pWytbXV0rKCEhW10rW10pWyshIVtdXSsoW11bW11dK1tdKVsrW11dKyhbXSt7fSlbIStbXSshIVtdKyEhW10rISFbXSshIVtdXSsoISFbXStbXSlbK1tdXSsoW10re30pWyshIVtdXSsoISFbXStbXSlbKyEhW11dXSgoISFbXStbXSlbKyEhW11dKyhbXVtbXV0rW10pWyErW10rISFbXSshIVtdXSsoISFbXStbXSlbK1tdXSsoW11bW11dK1tdKVsrW11dKyghIVtdK1tdKVsrISFbXV0rKFtdW1tdXStbXSlbKyEhW11dKyhbXSt7fSlbIStbXSshIVtdKyEhW10rISFbXSshIVtdKyEhW10rISFbXV0rKCFbXStbXSlbIStbXSshIVtdXSsoW10re30pWyshIVtdXSsoW10re30pWyErW10rISFbXSshIVtdKyEhW10rISFbXV0rKCt7fStbXSlbKyEhW11dKyghIVtdK1tdKVsrW11dKyhbXVtbXV0rW10pWyErW10rISFbXSshIVtdKyEhW10rISFbXV0rKFtdK3t9KVsrISFbXV0rKFtdW1tdXStbXSlbKyEhW11dKSgpKVshK1tdKyEhW10rISFbXV0rKFtdW1tdXStbXSlbIStbXSshIVtdKyEhW11dKSgpKChbXSt7fSlbK1tdXSlbK1tdXSsoIStbXSshIVtdKyEhW10rISFbXSshIVtdKyEhW10rW10pKyhbXSt7fSlbIStbXSshIVtdXSkrKFtdW1tdXStbXSlbIStbXSshIVtdKyEhW11dKygrKCshIVtdKyhbXVtbXV0rW10pWyErW10rISFbXSshIVtdXSsoKyEhW10rW10pKygrW10rW10pKygrW10rW10pKygrW10rW10pKStbXSlbIStbXSshIVtdKyEhW10rISFbXSshIVtdKyEhW10rISFbXV0='),'"reqkey"')
+	token = token.decode('utf-8')
+	use_rep = True
+	txt = token
+	replaced = {}
+	if use_rep:
+		str = txt
+		safe = '[]{}><!,()=+-;/\" $_'
+		notsafe = '_'
+		for i in range(0,len(str)):
+			c = str[i]
+			if re.search('[0-9a-zA-Z]', c) or c in safe:
+				pass
+			else:
+				new_c = makeid(3,replaced.keys())
+				replaced[new_c] = c
+				txt = txt.replace(c, new_c)
+	code = txt
+	code = code.replace('(function(', '(function xy(').replace('}(','}; xy(')
+	codes = re.findall(r"if.+$", code)[0].replace('),','), jssuckit = "; " + document.cookie,')
+	code = re.sub(r"if.+$", codes, code)
+	fn = re.findall(r"\(function.+?\)", code)[0]
+	fncode1 = re.findall(r"{.*return", code)[0]
+	fncode2 = re.findall(r"return.*}", code)[0]
+	fnvars = re.findall(r"; xy\(.*", code)[0]
+	occurances = [m.start() for m in re.finditer('_', fn)]
+	if len(occurances) >= 2:
+		new_c = makeid(2,replaced.keys())
+		replaced[new_c] = '_'
+		fn = fn.replace('_',new_c,1)
+		code = fn + fncode1 + fncode2 + fnvars
+		new_c2 = makeid(3,replaced.keys())
+		replaced[new_c2] = '_'
+		code = code.replace('_', new_c2)
+		code = code.replace('){var','){var %s=%s; var' % (new_c,new_c2))
+		code = code.replace('returnreturn','return')
+		code = code[1:-1]
+		code = 'var R1,R2; var jssuckit="";var window = global; var document = this; location = "https://fmovies.to/"; %s; jssuckit = document.cookie; return jssuckit' % (code)
+	elif len(occurances) == 1:
+		if '_=' in fncode1:
+			new_c = makeid(2,replaced.keys())
+			replaced[new_c] = '_'
+			fn = fn.replace('_',new_c)
+			new_c2 = makeid(2,replaced.keys())
+			replaced[new_c2] = '_'
+			fncode1 = fncode1.replace('_',new_c2)
+			fncode2 = fncode2.replace('_',new_c2)
+			code = fn + fncode1 + fncode2 + fnvars
+			code = code.replace('){var','){var %s=%s; var' % (new_c,new_c2))
+			code = code[1:-1]
+			d = 'var R1,R2; var jssuckit="";var window = global; var document = this; location = "https://fmovies.to/"; %s; jssuckit = document.cookie; jssuckit=jssuckit.replace(R1,R2); return jssuckit' % (code)
+			code = d.replace('}; xy(',';R1=%s; R2=%s}; xy(')
+			code = code % (new_c2,new_c)
+		else:
+			new_c = makeid(3,replaced.keys())
+			replaced[new_c] = '_'
+			code = code.replace('_', new_c)
+			code = code[1:-1]
+			d = 'var jssuckit="";var window = global; var document = this; location = "https://fmovies.to/"; %s; jssuckit = document.cookie; return jssuckit'
+			code = (d % code)
+	else:
+		code = code[1:-1]
+		d = 'var jssuckit="";var window = global; var document = this; location = "https://fmovies.to/"; %s; jssuckit = document.cookie; return jssuckit'
+		code = (d % code)
+	code = code.replace('returnreturn','return')
+	code = code.encode('utf-8')
+	return code, replaced
 		
 ####################################################################################################
 @route(PREFIX + "/removeAccents")

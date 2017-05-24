@@ -417,7 +417,11 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 				isOpenLoad = True
 			else:
 				query = {'id':result['params']['id'], 'token':result['params']['token']}
-				grabber = result['grabber'] + '?' + urllib.urlencode(query)
+				grabber = result['grabber'] 
+				if '?' in grabber:
+					grabber += '&' + urllib.urlencode(query)
+				else:
+					grabber += '?' + urllib.urlencode(query)
 				
 			if grabber!=None and not grabber.startswith('http'):
 				grabber = 'http:'+grabber
@@ -453,7 +457,7 @@ def a01(t):
 
 def get_token(n, **kwargs):
 	try:
-		d = D("YjgyNmFPNA==")
+		d = D("T29DRVFMbWtJbQ==")
 		s = a01(d)
 		for i in n: 
 			s += a01(r01(d + i, n[i]))

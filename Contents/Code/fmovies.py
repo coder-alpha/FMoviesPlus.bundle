@@ -21,6 +21,9 @@ FILTER_PATH = "/filter"
 KEYWORD_PATH = "/tag/"
 STAR_PATH = "/star/"
 
+TOKEN_KEY_PASTEBIN_URL = "https://pastebin.com/raw/VNn1454k"
+TOKEN_KEY = []
+
 newmarketgidstorage = 'MarketGidStorage=%7B%220%22%3A%7B%22svspr%22%3A%22%22%2C%22svsds%22%3A15%2C%22TejndEEDj%22%3A%22MTQ5MzIxMTc0OTQ0NDExMDAxNDc3NDE%3D%22%7D%2C%22C110014%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493215038742%7D%2C%22C110025%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493216772437%7D%2C%22C110023%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493216771928%7D%7D'
 
 ####################################################################################################
@@ -163,6 +166,9 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 		try:
 			cookie = cookie_dict['cookie']
 			reqkey_cookie = cookie_dict['reqkey']
+			token_key = cookie_dict['token_key']
+			del TOKEN_KEY[:]
+			TOKEN_KEY.append(token_key)
 		except:
 			setTokenCookie(use_debug=use_debug, reset=True)
 		
@@ -171,6 +177,7 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 			Log("USING SAVED COOKIE TOKEN - TO DUMP TOKEN PERFORM RESET COOKIE UNDER OPTIONS MENU")
 			Log("Retrieved Saved Cookie: %s" % cookie)
 			Log("Retrieved Saved reqkey Cookie: %s" % reqkey_cookie)
+			Log("Retrieved Saved Video-Token-Key: %s" % token_key)
 			Log("=====================TOKEN END============================")
 	else:
 		if serverts == None:
@@ -215,6 +222,16 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 			Log(common.TOKEN_CODE[0])
 			Log("=====================TOKEN END============================")
 
+		cookie_dict = {}
+		
+		del TOKEN_KEY[:]
+		counter = 0
+		while len(TOKEN_KEY) == 0 and counter < 5:
+			token_key = common.interface.request_via_proxy_as_backup(TOKEN_KEY_PASTEBIN_URL, httpsskip=use_https_alt)
+			if token_key !=None and token_key != '':
+				cookie_dict.update({'token_key':token_key})
+				TOKEN_KEY.append(token_key)
+			
 		query = {'ts': serverts}
 		tk = get_token(query)
 		query.update(tk)
@@ -232,11 +249,12 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 		
 		cookie = cookie1 + '; ' + cookie2 + '; user-info=null; ' + newmarketgidstorage
 		
-		cookie_dict = {'ts':time.time(), 'cookie': cookie, 'UA': UA, 'reqkey':reqkey_cookie}
+		cookie_dict.update({'ts':time.time(), 'cookie': cookie, 'UA': UA, 'reqkey':reqkey_cookie})
 		
 		if dump or use_debug:
 			Log("Storing Cookie: %s" % cookie)
 			Log("Storing reqkey Cookie: %s" % reqkey_cookie)
+			Log("Storing Video-Token-Key: %s" % TOKEN_KEY[0])
 		Dict['CACHE_COOKIE'] = E(JSON.StringFromObject(cookie_dict))
 		Dict.Save()
 
@@ -457,7 +475,7 @@ def a01(t):
 
 def get_token(n, **kwargs):
 	try:
-		d = D("T29DRVFMbWtJbQ==")
+		d = TOKEN_KEY[0]
 		s = a01(d)
 		for i in n: 
 			s += a01(r01(d + i, n[i]))

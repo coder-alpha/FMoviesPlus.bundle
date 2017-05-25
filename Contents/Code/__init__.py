@@ -2985,6 +2985,7 @@ def Search(query=None, surl=None, page_count='1', mode='default', thumb=None, su
 			elems = page_data.xpath(".//*[@id='body-wrapper']//div[@class='row movie-list']//div[@class='item']")
 			last_page_no = int(page_count)
 			last_page_no = int(page_data.xpath(".//*[@id='body-wrapper']//ul[@class='pagination'][1]//li[last()-1]//text()")[0])
+			error = False
 		except:
 			error = True
 			pass
@@ -3002,56 +3003,57 @@ def Search(query=None, surl=None, page_count='1', mode='default', thumb=None, su
 		else:
 			oc = ObjectContainer(title2 = 'Other Seasons for ' + query, no_cache=isForceNoCache())
 			
-		for elem in elems:
-			name = elem.xpath(".//a[@class='name']//text()")[0]
-			loc = fmovies.BASE_URL + elem.xpath(".//a[@class='name']//@href")[0]
-			thumb = elem.xpath(".//a[@class='poster']//@src")[0].split('url=')[1]
-			summary = 'Plot Summary on Item Page.'
-			if query2 == None:
+		if error == False:
+			for elem in elems:
+				name = elem.xpath(".//a[@class='name']//text()")[0]
+				loc = fmovies.BASE_URL + elem.xpath(".//a[@class='name']//@href")[0]
+				thumb = elem.xpath(".//a[@class='poster']//@src")[0].split('url=')[1]
+				summary = 'Plot Summary on Item Page.'
+				if query2 == None:
+					try:
+						query2 = common.cleantitle.onlytitle(name)
+						query2 = common.cleantitle.get(query2)
+					except:
+						query2 = None
+				
+				eps_nos = ''
+				title_eps_no = ''
 				try:
-					query2 = common.cleantitle.onlytitle(name)
-					query2 = common.cleantitle.get(query2)
-				except:
-					query2 = None
-			
-			eps_nos = ''
-			title_eps_no = ''
-			try:
-				eps_nos = elem.xpath(".//div[@class='status']//span//text()")[0]
-				eps_no_i = str(int(eps_nos.strip()))
-				title_eps_no = ' (Eps:'+eps_no_i+')'
-				eps_nos = ' Episodes: ' + eps_no_i
-			except:
-				pass
-			try:
-				more_info_link = elem.xpath(".//@data-tip")[0]
-			except:
-				more_info_link = None
-			
-			do = DirectoryObject(
-				key = Callback(EpisodeDetail, title = name, url = loc, thumb = thumb),
-				title = name + title_eps_no,
-				summary = GetMovieInfo(summary=summary, urlPath=more_info_link, referer=url) + eps_nos,
-				thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback=ICON_UNAV)
-				)
-			if mode == 'default' or mode == 'people' or mode == 'tag':
-				oc.add(do)
-			elif mode == 'other seasons' and query.lower() in name.lower() and len(common.cleantitle.removeParanthesis(name).lower().replace(query.lower(), '').strip()) < 3:
-				fixname_SN = name.lower().replace(query.lower(),'').replace(' ','').strip()
-				# when we clean name we expect the season no. only to be present - if not then maybe its not a related season i.e. skip item
-				try:
-					if len(fixname_SN) > 0:
-						fixname_SN_i = int(fixname_SN)
-						newname = query + " " + ("%02d" % fixname_SN_i)
-					else:
-						newname = query
-					do.title = newname + title_eps_no
+					eps_nos = elem.xpath(".//div[@class='status']//span//text()")[0]
+					eps_no_i = str(int(eps_nos.strip()))
+					title_eps_no = ' (Eps:'+eps_no_i+')'
+					eps_nos = ' Episodes: ' + eps_no_i
 				except:
 					pass
-				oc.add(do)
+				try:
+					more_info_link = elem.xpath(".//@data-tip")[0]
+				except:
+					more_info_link = None
 				
-		if mode == 'other seasons' or mode == 'tag':
-			oc.objects.sort(key=lambda obj: obj.title, reverse=False)
+				do = DirectoryObject(
+					key = Callback(EpisodeDetail, title = name, url = loc, thumb = thumb),
+					title = name + title_eps_no,
+					summary = GetMovieInfo(summary=summary, urlPath=more_info_link, referer=url) + eps_nos,
+					thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback=ICON_UNAV)
+					)
+				if mode == 'default' or mode == 'people' or mode == 'tag':
+					oc.add(do)
+				elif mode == 'other seasons' and query.lower() in name.lower() and len(common.cleantitle.removeParanthesis(name).lower().replace(query.lower(), '').strip()) < 3:
+					fixname_SN = name.lower().replace(query.lower(),'').replace(' ','').strip()
+					# when we clean name we expect the season no. only to be present - if not then maybe its not a related season i.e. skip item
+					try:
+						if len(fixname_SN) > 0:
+							fixname_SN_i = int(fixname_SN)
+							newname = query + " " + ("%02d" % fixname_SN_i)
+						else:
+							newname = query
+						do.title = newname + title_eps_no
+					except:
+						pass
+					oc.add(do)
+					
+			if mode == 'other seasons' or mode == 'tag':
+				oc.objects.sort(key=lambda obj: obj.title, reverse=False)
 	except Exception as e:
 		Log('__init.py__ > Search Error: %s URL: %s' % (e, url))
 		pass

@@ -132,6 +132,10 @@ class source:
 		
 	def testParser(self):
 		try:
+			if self.siteonline == False:
+				self.log('ERROR', 'testParser', 'testSite returned False', dolog=True)
+				return False
+		
 			for movie in testparams.test_movies:
 				getmovieurl = self.get_movie(title=movie['movie'], year=movie['movieYear'], imdb=movie['movieIMDb'], testing=True)
 				movielinks = self.get_sources(url=getmovieurl, testing=True)
@@ -184,7 +188,7 @@ class source:
 			return
 
 
-	def get_show(self, imdb, tvdb, tvshowtitle, year, proxy_options=None, key=None):
+	def get_show(self, imdb, tvdb, tvshowtitle, year, season, proxy_options=None, key=None):
 		try:
 			url = {'imdb': imdb, 'tvdb': tvdb, 'tvshowtitle': tvshowtitle, 'year': year}
 			url = urllib.urlencode(url)
@@ -406,6 +410,7 @@ class source:
 				r = zip(ids, servers, labels)
 				
 				for eid in r:
+					#print r
 					try:
 						try:
 							ep = re.findall('episode.*?(\d+):.*?',eid[2].lower())[0]
@@ -417,10 +422,14 @@ class source:
 							url = urlparse.urljoin(self.base_link, self.token_link % (eid[0], mid))
 							
 							script = client.request(url, IPv4=True)
+							#print script
+							
 							if '$_$' in script:
 								params = self.uncensored1(script)
 							elif script.startswith('[]') and script.endswith('()'):
 								params = self.uncensored2(script)
+							elif '_x=' in script and '_y=' in script:
+								params = self.uncensored3(script)
 							else:
 								raise Exception()
 							u = urlparse.urljoin(self.base_link, self.sourcelink % (eid[0], params['x'], params['y']))
@@ -475,6 +484,16 @@ class source:
 	def uncensored2(self, script):
 		try:
 			js = jsunfuck.JSUnfuck(script).decode()
+			x = re.search('''_x=['"]([^"']+)''', js).group(1)
+			y = re.search('''_y=['"]([^"']+)''', js).group(1)
+			return {'x': x, 'y': y}
+		except Exception as e:
+			print "Exception in uncensored2 > %s" % e
+			pass
+			
+	def uncensored3(self, script):
+		try:
+			js = script
 			x = re.search('''_x=['"]([^"']+)''', js).group(1)
 			y = re.search('''_y=['"]([^"']+)''', js).group(1)
 			return {'x': x, 'y': y}

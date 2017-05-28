@@ -1273,7 +1273,7 @@ def EpisodeDetail(title, url, thumb, session=None, **kwargs):
 		
 	session = common.getSession()
 	client_id = '%s-%s' % (Client.Product, session)
-	if client_id not in CUSTOM_TIMEOUT_DICT:
+	if client_id not in CUSTOM_TIMEOUT_DICT.keys():
 		CUSTOM_TIMEOUT_DICT[client_id] = {}
 		
 	try:
@@ -1653,7 +1653,7 @@ def EpisodeDetail(title, url, thumb, session=None, **kwargs):
 				CACHE_EXPIRY = 60 * int(Prefs["cache_expiry_time"])
 			except:
 				CACHE_EXPIRY = common.CACHE_EXPIRY_TIME
-			Thread.Create(common.interface.getExtSources, {}, movtitle=title, year=year, tvshowtitle=None, season=None, episode=None, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY)
+			Thread.Create(common.interface.getExtSources, {}, movtitle=title, year=year, tvshowtitle=None, season=None, episode=None, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY, ver=common.VERSION)
 		
 		SeasonN = 0
 		oc.title2 = title
@@ -1697,7 +1697,7 @@ def EpisodeDetail(title, url, thumb, session=None, **kwargs):
 					CACHE_EXPIRY = 60 * int(Prefs["cache_expiry_time"])
 				except:
 					CACHE_EXPIRY = common.CACHE_EXPIRY_TIME
-				Thread.Create(common.interface.getExtSources, {}, movtitle=title, year=year, tvshowtitle=None, season=None, episode=None, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY)
+				Thread.Create(common.interface.getExtSources, {}, movtitle=title, year=year, tvshowtitle=None, season=None, episode=None, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY, ver=common.VERSION)
 		
 		# create timeout thread
 		Thread.Create(ThreadTimeoutTimer, {}, Client.Product, E(url), client_id)
@@ -1896,7 +1896,7 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 				CACHE_EXPIRY = 60 * int(Prefs["cache_expiry_time"])
 			except:
 				CACHE_EXPIRY = common.CACHE_EXPIRY_TIME
-			Thread.Create(common.interface.getExtSources, {}, movtitle=None, year=year, tvshowtitle=tvshowcleaned, season=season, episode=episode, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY)
+			Thread.Create(common.interface.getExtSources, {}, movtitle=None, year=year, tvshowtitle=tvshowcleaned, season=season, episode=episode, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY, ver=common.VERSION)
 	
 	# create timeout thread
 	Thread.Create(ThreadTimeoutTimer, {}, Client.Product, E(url), client_id)
@@ -2102,7 +2102,7 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 				CACHE_EXPIRY = 60 * int(Prefs["cache_expiry_time"])
 			except:
 				CACHE_EXPIRY = common.CACHE_EXPIRY_TIME
-			Thread.Create(common.interface.getExtSources, {}, movtitle=movtitle, year=year, tvshowtitle=tvshowtitle, season=season, episode=episode, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY)
+			Thread.Create(common.interface.getExtSources, {}, movtitle=movtitle, year=year, tvshowtitle=tvshowtitle, season=season, episode=episode, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY, ver=common.VERSION)
 		time.sleep(7)
 		prog = common.interface.checkProgress(key)
 	if prog < 100:
@@ -2397,7 +2397,7 @@ def ThreadTimeoutTimer(clientProd, item, client_id, **kwargs):
 			time.sleep(1.0)
 			c += 1
 			
-		del CUSTOM_TIMEOUT_DICT[client_id][item]
+		CUSTOM_TIMEOUT_DICT[client_id]={}
 	
 ####################################################################################################
 @route(PREFIX + "/isTimeoutApproaching")	
@@ -2406,7 +2406,7 @@ def isTimeoutApproaching(clientProd, item, client_id, session=None, **kwargs):
 	# define custom timeouts for each client along with session & item to make it unique for multiple instances
 	
 	if common.USE_CUSTOM_TIMEOUT == True and common.UsingOption(common.DEVICE_OPTIONS[5], session=session) and Client.Product in CUSTOM_TIMEOUT_CLIENTS:
-		if client_id in CUSTOM_TIMEOUT_DICT and item in CUSTOM_TIMEOUT_DICT[client_id]:
+		if client_id in CUSTOM_TIMEOUT_DICT.keys() and item in CUSTOM_TIMEOUT_DICT[client_id].keys():
 			t_sec = int(CUSTOM_TIMEOUT_DICT[client_id][item])
 			if t_sec < int(CUSTOM_TIMEOUT_CLIENTS[clientProd]):
 				if Prefs["use_debug"]:
@@ -2420,8 +2420,8 @@ def isTimeoutApproaching(clientProd, item, client_id, session=None, **kwargs):
 	if Prefs["use_debug"]:
 		Log("Custom Timout was reached for %s on %s" % (D(item), client_id))
 		
-	if client_id in CUSTOM_TIMEOUT_DICT and item in CUSTOM_TIMEOUT_DICT[client_id]:
-		del CUSTOM_TIMEOUT_DICT[client_id][item]
+	if client_id in CUSTOM_TIMEOUT_DICT.keys() and item in CUSTOM_TIMEOUT_DICT[client_id].keys():
+		CUSTOM_TIMEOUT_DICT[client_id]={}
 	return True
 	
 ####################################################################################################
@@ -3003,7 +3003,7 @@ def Search(query=None, surl=None, page_count='1', mode='default', thumb=None, su
 		else:
 			oc = ObjectContainer(title2 = 'Other Seasons for ' + query, no_cache=isForceNoCache())
 			
-		if error == False:
+		if no_elems > 0:
 			for elem in elems:
 				name = elem.xpath(".//a[@class='name']//text()")[0]
 				loc = fmovies.BASE_URL + elem.xpath(".//a[@class='name']//@href")[0]
@@ -3060,9 +3060,12 @@ def Search(query=None, surl=None, page_count='1', mode='default', thumb=None, su
 			
 	if Prefs['disable_extsources'] == False and common.interface.isInitialized() and page_count=='1' and mode == 'default':
 		if True:
-			oc_ext = SearchExt(query=query, query2=query2, append=True)
-			for o in oc_ext:
-				oc.add(o)
+			try:
+				oc_ext = SearchExt(query=query, query2=query2, append=True)
+				for o in oc_ext:
+					oc.add(o)
+			except:
+				pass
 		else:
 			oc.add(DirectoryObject(
 					key = Callback(SearchExt, query=query),
@@ -3126,134 +3129,140 @@ def SearchExt(query=None, query2=None, session=None, append=False, **kwargs):
 	else:
 		oc = []
 	
-	extSearches = []
-	if query != None:
-		extSearches = [(query, None)]
-		title, year = common.cleantitle.getTitleAndYear(query)
-		if query2 != None:
-			extSearches.append((query2, None))
-		extSearches.append((title, year))
-		extSearches.append((title, None))
-	
-	imdbArray = []
-	showitems = []
-	
-	for extS in extSearches:
-		title, year = extS
-		res = common.interface.searchOMDB(title, year)
-		try:
-			item = json.loads(res.content)
-		except:
-			item = None
-		
-		try:
-			if item != None and item['imdbID'] not in imdbArray:
-				item['doSearch'] = False
-				imdbArray.append(item['imdbID'])
-				showitems.append(item)
-		except:
-			pass
-			
-	for extS in extSearches:
-		title, year = extS
-		items = common.interface.searchOMDB(title, year, doSearch=True)
-		try:
-			if items != None:
-				for item in items:
-					if item.imdb_id not in imdbArray:
-						new_item = {}
-						new_item['doSearch'] = True
-						imdbArray.append(item.imdb_id)
-						
-						new_item['imdbID'] = item.imdb_id
-						new_item['Title'] = item.title
-						new_item['Year'] = item.year
-						new_item['Poster'] = item.poster
-						new_item['Type'] = item.type
-						
-						new_item['Plot'] = 'Plot Summary Not Available'
-						new_item['Runtime'] = 'Not Available'
-						new_item['imdbRating'] = 'Not Available'
-						new_item['Actors'] = 'Not Available'
-						new_item['Director'] = 'Not Available'
-						new_item['Genre'] = 'Not Available'
-						
-						showitems.append(new_item)
-		except:
-			pass
-
 	try:
-		CACHE_EXPIRY = 60 * int(Prefs["cache_expiry_time"])
-	except:
-		CACHE_EXPIRY = common.CACHE_EXPIRY_TIME
-
-	for item in showitems:
-	
-		imdbid = unicode(item['imdbID'])
-		title = unicode(item['Title'])
-		year = unicode(item['Year'])
-		thumb = unicode(item['Poster'])
-		summary = unicode(item['Plot'])
-		duration = unicode(item['Runtime']).replace('min','').strip()
-		rating = unicode(item['imdbRating'])
-		roles = unicode(item['Actors'])
-		directors = unicode(item['Director'])
-		genre = unicode(item['Genre'])
-		type = unicode(item['Type'])
+		extSearches = []
+		if query != None:
+			extSearches = [(query, None)]
+			title, year = common.cleantitle.getTitleAndYear(query)
+			if query2 != None:
+				extSearches.append((query2, None))
+			extSearches.append((title, year))
+			extSearches.append((title, None))
 		
-		if str(directors) == 'N/A':
-			directors = 'Not Available'
-		if str(roles) == 'N/A':
-			roles = 'Not Available'
+		imdbArray = []
+		showitems = []
 		
-		if type == 'movie':
-			mtitle = title
-			tvtitle = None
-			season = None
-			episode = None
-		else:
-			mtitle = None
-			tvtitle = title
-			episode = None
-			season = None
+		extSearches = list(set(extSearches))
 		
-		watch_title = '%s (%s)' % (title,year)
-				
-		summary += '\n '
-		summary += 'Actors: ' + roles + '\n '
-		summary += 'Directors: ' + directors + '\n '
-		
-		if str(duration) == 'Not Available':
-			summary += 'Runtime: ' + str(duration) + '\n '
-		else:
-			summary += 'Runtime: ' + str(duration) + ' min.' + '\n '
-		
-		summary += 'Year: ' + year + '\n '
-		summary += 'Genre: ' + genre + '\n '
-		summary += 'IMDB rating: ' + rating + '\n '
-		
-		summary = unicode(summary.replace('–','-'))
-		
-		if '–' in year:
-			y = year.split('–')
-			year = str(y[0]).strip()
-		
-		if type == 'movie':
-			key = generatemoviekey(movtitle=mtitle, year=year, tvshowtitle=tvtitle, season=season, episode=episode)
-			if common.interface.getExtSourcesThreadStatus(key=key) == False:
-				Thread.Create(common.interface.getExtSources, {}, movtitle=mtitle, year=year, tvshowtitle=tvtitle, season=season, episode=episode, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY)
-		
-		thumb = GetThumb(thumb)
-		dobj = DirectoryObject(
-			key = Callback(DoIMDBExtSources, title=title, year=year, type=type, imdbid=imdbid, summary=summary, thumb=thumb, session=session), 
-			title = '*'+watch_title,
-			summary = summary,
-			thumb = thumb)
+		for extS in extSearches:
+			title, year = extS
+			res = common.interface.searchOMDB(title, year, ver=common.VERSION)
+			try:
+				item = json.loads(res.content)
+			except:
+				item = None
 			
-		if append == True:
-			oc.append(dobj)
-		else:
-			oc.add(dobj)
+			try:
+				if item != None and item['imdbID'] not in imdbArray:
+					item['doSearch'] = False
+					imdbArray.append(item['imdbID'])
+					showitems.append(item)
+			except:
+				pass
+				
+		for extS in extSearches:
+			title, year = extS
+			items = common.interface.searchOMDB(title, year, doSearch=True, ver=common.VERSION)
+			try:
+				if items != None:
+					for item in items:
+						if item.imdb_id not in imdbArray:
+							new_item = {}
+							new_item['doSearch'] = True
+							imdbArray.append(item.imdb_id)
+							
+							new_item['imdbID'] = item.imdb_id
+							new_item['Title'] = item.title
+							new_item['Year'] = item.year
+							new_item['Poster'] = item.poster
+							new_item['Type'] = item.type
+							
+							new_item['Plot'] = 'Plot Summary Not Available'
+							new_item['Runtime'] = 'Not Available'
+							new_item['imdbRating'] = 'Not Available'
+							new_item['Actors'] = 'Not Available'
+							new_item['Director'] = 'Not Available'
+							new_item['Genre'] = 'Not Available'
+							
+							showitems.append(new_item)
+			except:
+				pass
+
+		try:
+			CACHE_EXPIRY = 60 * int(Prefs["cache_expiry_time"])
+		except:
+			CACHE_EXPIRY = common.CACHE_EXPIRY_TIME
+
+		for item in showitems:
+		
+			imdbid = unicode(item['imdbID'])
+			title = unicode(item['Title'])
+			year = unicode(item['Year'])
+			thumb = unicode(item['Poster'])
+			summary = unicode(item['Plot'])
+			duration = unicode(item['Runtime']).replace('min','').strip()
+			rating = unicode(item['imdbRating'])
+			roles = unicode(item['Actors'])
+			directors = unicode(item['Director'])
+			genre = unicode(item['Genre'])
+			type = unicode(item['Type'])
+			
+			if str(directors) == 'N/A':
+				directors = 'Not Available'
+			if str(roles) == 'N/A':
+				roles = 'Not Available'
+			
+			if type == 'movie':
+				mtitle = title
+				tvtitle = None
+				season = None
+				episode = None
+			else:
+				mtitle = None
+				tvtitle = title
+				episode = None
+				season = None
+			
+			watch_title = '%s (%s)' % (title,year)
+					
+			summary += '\n '
+			summary += 'Actors: ' + roles + '\n '
+			summary += 'Directors: ' + directors + '\n '
+			
+			if str(duration) == 'Not Available':
+				summary += 'Runtime: ' + str(duration) + '\n '
+			else:
+				summary += 'Runtime: ' + str(duration) + ' min.' + '\n '
+			
+			summary += 'Year: ' + year + '\n '
+			summary += 'Genre: ' + genre + '\n '
+			summary += 'IMDB rating: ' + rating + '\n '
+			
+			summary = unicode(summary.replace('–','-'))
+			
+			if '–' in year:
+				y = year.split('–')
+				year = str(y[0]).strip()
+			
+			if type == 'movie':
+				key = generatemoviekey(movtitle=mtitle, year=year, tvshowtitle=tvtitle, season=season, episode=episode)
+				if common.interface.getExtSourcesThreadStatus(key=key) == False:
+					Thread.Create(common.interface.getExtSources, {}, movtitle=mtitle, year=year, tvshowtitle=tvtitle, season=season, episode=episode, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY, ver=common.VERSION)
+			
+			thumb = GetThumb(thumb)
+			dobj = DirectoryObject(
+				key = Callback(DoIMDBExtSources, title=title, year=year, type=type, imdbid=imdbid, summary=summary, thumb=thumb, session=session), 
+				title = '*'+watch_title,
+				summary = summary,
+				thumb = thumb)
+				
+			if append == True:
+				oc.append(dobj)
+			else:
+				oc.add(dobj)
+				
+	except Exception as e:
+		Log.Exception("init.py>SearchExt() >> : >>> %s" % (e))
 	
 	if len(oc) == 0 and append == False:
 		return MC.message_container('Search Results', 'No Videos Available in External Sources - Please refine your Search term')
@@ -3265,7 +3274,7 @@ def SearchExt(query=None, query2=None, session=None, append=False, **kwargs):
 def DoIMDBExtSources(title, year, type, imdbid, season=None, episode=None, episodeNr='1', summary=None, simpleSummary=False, thumb=None, item=None, session=None, **kwargs):
 
 	if type == 'movie':
-		res = common.interface.searchOMDB(title, year)
+		res = common.interface.searchOMDB(title, year, ver=common.VERSION)
 		try:
 			item = json.loads(res.content)
 		except:
@@ -3317,7 +3326,7 @@ def DoIMDBExtSources(title, year, type, imdbid, season=None, episode=None, episo
 		if season == None:
 			oc = ObjectContainer(title2='%s (%s)' % (title, year), no_cache=isForceNoCache())
 			try:
-				res = common.interface.omdb.request(t=title, y=year, Season=str(1), i=imdbid)
+				res = common.interface.requestOMDB(t=title, y=year, Season=str(1), i=imdbid, ver=common.VERSION)
 				SeasonNR = int(json.loads(res.content)['totalSeasons'])
 				for i in range(1,SeasonNR+1):
 					oc.add(DirectoryObject(key = Callback(DoIMDBExtSources, title=title, year=year, type=type, imdbid=imdbid, thumb=thumb, summary=summary, season=str(i), episode=None, session=session), 
@@ -3344,8 +3353,16 @@ def DoIMDBExtSources(title, year, type, imdbid, season=None, episode=None, episo
 			DumbKeyboard(PREFIX, oc, DoIMDBExtSourcesEpisode, dktitle = 'Input Episode No.', dkthumb=R(ICON_DK_ENABLE), dkNumOnly=True, dkHistory=False, title=title, year=year, type=type, imdbid=imdbid, thumb=thumb, season=season, summary=summary, session=session)
 			
 			for e in range(int(episodeNr),1000):
-				item = common.interface.omdb.get(title=x_title, year=x_year, season=x_season, episode=str(e), imdbid=x_imdbid)
-				if len(item) == 0:
+				time.sleep(1.0)
+				res = common.interface.getOMDB(title=x_title, year=x_year, season=x_season, episode=str(e), imdbid=x_imdbid, ver=common.VERSION)
+				
+				try:
+					item = json.loads(json.dumps(res))
+				except Exception as e:
+					Log("init.py>DoIMDBExtSources() >> episode: >>> %s" % (e))
+					item = None
+				
+				if item==None or len(item) == 0:
 					break
 					
 				title = item['title']
@@ -3405,7 +3422,7 @@ def DoIMDBExtSources(title, year, type, imdbid, season=None, episode=None, episo
 				
 				key = generatemoviekey(movtitle=None, year=x_year, tvshowtitle=x_title, season=season, episode=str(e))
 				if common.interface.getExtSourcesThreadStatus(key=key) == False:
-					Thread.Create(common.interface.getExtSources, {}, movtitle=None, year=x_year, tvshowtitle=x_title, season=season, episode=str(e), proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY)
+					Thread.Create(common.interface.getExtSources, {}, movtitle=None, year=x_year, tvshowtitle=x_title, season=season, episode=str(e), proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY, ver=common.VERSION)
 				
 				time.sleep(0.1)
 				
@@ -3497,7 +3514,7 @@ def DoIMDBExtSourcesEpisode(query, title, year, type, imdbid, season, summary, t
 	
 	key = generatemoviekey(movtitle=None, year=year, tvshowtitle=title, season=season, episode=episode)
 	if common.interface.getExtSourcesThreadStatus(key=key) == False:
-		Thread.Create(common.interface.getExtSources, {}, movtitle=None, year=year, tvshowtitle=title, season=season, episode=episode, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY)
+		Thread.Create(common.interface.getExtSources, {}, movtitle=None, year=year, tvshowtitle=title, season=season, episode=episode, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY, ver=common.VERSION)
 		
 	item = {}
 	item['poster'] = thumb

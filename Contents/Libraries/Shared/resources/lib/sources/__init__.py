@@ -108,6 +108,7 @@ class sources:
 		self.isProvThreadRunning = False
 
 	def getSources(self, name, title, year, imdb, tmdb, tvdb, tvrage, season, episode, tvshowtitle, alter, date, proxy_options, provider_options, key):
+		#try:
 		sourceDict = []
 		self.getSourcesAlive = True
 		
@@ -134,8 +135,14 @@ class sources:
 					pass
 		else:
 			print 'Searching Episode'
-			tvshowtitle = cleantitle.normalize(tvshowtitle)
-			season, episode = alterepisode.alterepisode().get(imdb, tmdb, tvdb, tvrage, season, episode, alter, title, date)
+			try:
+				tvshowtitle = cleantitle.normalize(tvshowtitle)
+			except:
+				pass
+			try:
+				season, episode = alterepisode.alterepisode().get(imdb, tmdb, tvdb, tvrage, season, episode, alter, title, date)
+			except:
+				pass
 			for source in myProviders:
 				try:
 					thread_i = workers.Thread(self.getEpisodeSource, title, year, imdb, tvdb, season, episode, tvshowtitle, date, proxy_options, key, re.sub('_mv_tv$|_mv$|_tv$', '', source['name']), source['call'])
@@ -153,6 +160,9 @@ class sources:
 		#time.sleep(0.5)
 		self.getSourcesAlive = False
 		return self.sources
+		#except Exception as e:
+		#	self.purgeSourcesKey(key=key)
+		#	return self.sources
 
 	def checkProgress(self, key=None):
 	
@@ -197,7 +207,7 @@ class sources:
 	def getEpisodeSource(self, title, year, imdb, tvdb, season, episode, tvshowtitle, date, proxy_options, key, source, call):
 		
 		try:
-			url = call.get_show(imdb, tvdb, tvshowtitle, year, proxy_options, key)
+			url = call.get_show(imdb, tvdb, tvshowtitle, year, season, proxy_options, key)
 			if url == None: raise Exception()
 		except:
 			pass
@@ -232,6 +242,13 @@ class sources:
 		filtered = []
 		curr_time = time.time()
 		filtered += [i for i in self.sources if (i['ts'] + maxcachetimeallowed) >= curr_time]
+		del self.sources[:]
+		for i in filtered:
+			self.sources.append(i)
+			
+	def purgeSourcesKey(self, key=None):
+		filtered = []
+		filtered += [i for i in self.sources if i['key'] != key]
 		del self.sources[:]
 		for i in filtered:
 			self.sources.append(i)

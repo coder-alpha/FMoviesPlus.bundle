@@ -151,7 +151,7 @@ class source:
 		except:
 			return
 
-	def get_show(self, imdb, tvdb, tvshowtitle, year, proxy_options=None, key=None, testing=False):
+	def get_show(self, imdb, tvdb, tvshowtitle, year, season, proxy_options=None, key=None, testing=False):
 
 		try:
 			url = {'imdb': imdb, 'tvdb': tvdb, 'tvshowtitle': tvshowtitle, 'year': year}

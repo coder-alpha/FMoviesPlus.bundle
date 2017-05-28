@@ -305,7 +305,11 @@ def get_reqkey_cookie(token, use_debug=False, use_https_alt=False, quiet=True):
 					cookie_string = ctx.exec_('return jssuckit')
 					for k in replaced.keys():
 						cookie_string = cookie_string.replace(k, replaced[k])
-					success = True
+					if 'reqkey=' in cookie_string and 'preqkey=' in cookie_string:
+						success = True
+					else:
+						if quiet == False:
+							Log.Debug('execjs output >>> %s' % (cookie_string))
 				else:
 					raise ValueError("JSEngine: Disabled via Global overide")
 			except Exception as e:
@@ -324,7 +328,7 @@ def get_reqkey_cookie(token, use_debug=False, use_https_alt=False, quiet=True):
 							if freeapi == True:
 								token = re.sub(r"new(.*?|$\[\?\])\(\)", "new Date()", token)
 								data = common.client.encodePostData({"jssuck": (token.replace('return jssuckit','jssuckit').replace('global','this'))})
-								cookie_string, headers, content, cookie = common.interface.request(webhook_url, post=data, output='extended', httpsskip=use_https_alt)
+								cookie_string, headers, content, cookie = common.interface.request(webhook_url, post=data, output='extended', httpsskip=use_https_alt, hideurl=True)
 								if webhook_url == String.Base64Decode(common.WBH) and quiet == False:
 									usage = Dict[common.WBH]
 									if usage == None:
@@ -334,9 +338,9 @@ def get_reqkey_cookie(token, use_debug=False, use_https_alt=False, quiet=True):
 									Log.Debug('You have used %s requests out of 10 so far. Please fork your own WebHook (from https://hook.io/coder-alpha/test/fork) to use this method unrestricted ! Refer forum thread.' % usage)
 								if quiet == False:
 									Log.Debug('webhook X-RateLimit-Remaining this month >>> %s' % (content['X-RateLimit-Remaining']))
-								if 'reqkey' in cookie_string:
-									for k in replaced.keys():
-										cookie_string = cookie_string.replace(k, replaced[k])
+								for k in replaced.keys():
+									cookie_string = cookie_string.replace(k, replaced[k])
+								if 'reqkey=' in cookie_string and 'preqkey=' in cookie_string:
 									success = True
 								else:
 									if quiet == False:

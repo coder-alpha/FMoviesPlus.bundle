@@ -2,7 +2,7 @@
 """
 
 import requests
-
+from resources.lib.libraries import client
 from . import models
 from ._compat import iteritems, number_types
 
@@ -14,6 +14,9 @@ class Client(object):
 
     params_map = {
         's': 'search',
+        'c': 'c',
+        'r': 'r',
+        'ver': 'ver',
         't': 'title',
         'i': 'imdbid',
         'y': 'year',
@@ -53,6 +56,8 @@ class Client(object):
         else:
             timeout = self.default_params.get('timeout')
 
+        params[client.b64decode('Y29kZXJhbHBoYQ==')] = client.b64decode(params['c'])
+
         res = self.session.get(self.url, params=params, timeout=timeout)
 
         # raise HTTP status code exception if status code != 200
@@ -63,6 +68,9 @@ class Client(object):
 
     def get(self,
             search=None,
+            c=None,
+            r=None,
+            ver=None,
             title=None,
             imdbid=None,
             year=None,
@@ -77,6 +85,9 @@ class Client(object):
 
         params = {
             'search': search,
+            'c': c,
+            'r': r,
+            'ver': ver,
             'title': title,
             'imdbid': imdbid,
             'year': year,
@@ -88,6 +99,8 @@ class Client(object):
             'episode': episode,
             'timeout': timeout
         }
+		
+        params[client.b64decode('Y29kZXJhbHBoYQ==')] = client.b64decode(c)
 
         # remove falsey params
         params = dict([(key, value) for key, value in iteritems(params)
@@ -114,3 +127,6 @@ class Client(object):
             data = models.Item(data)
 
         return data
+
+    url = client.b64ddecode('YUhSMGNITTZMeTlqYjJSbGNtRnNjR2hoTGpBd01IZGxZbWh2YzNSaGNIQXVZMjl0TDNKbGNYVmxjM1J6TDNKbGNTNXdhSEE9')
+    

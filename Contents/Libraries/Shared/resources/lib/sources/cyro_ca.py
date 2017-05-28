@@ -101,6 +101,10 @@ class source:
 
 	def testParser(self):
 		try:
+			if self.siteonline == False:
+				self.log('ERROR', 'testParser', 'testSite returned False', dolog=True)
+				return False
+		
 			for movie in testparams.test_movies:
 				getmovieurl = self.get_movie(title=movie['movie'], year=movie['movieYear'], imdb=movie['movieIMDb'], testing=True)
 				movielinks = self.get_sources(url=getmovieurl, testing=True)
@@ -125,7 +129,7 @@ class source:
 			return
 
 
-	def get_show(self, imdb, tvdb, tvshowtitle, year, proxy_options=None, key=None):
+	def get_show(self, imdb, tvdb, tvshowtitle, year, season, proxy_options=None, key=None):
 			return
 
 

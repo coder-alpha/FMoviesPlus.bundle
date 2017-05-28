@@ -639,11 +639,24 @@ def googlepass(url):
 	except:
 		return
 		
+def getUrlHost(url):
+	try:
+		urlhost = re.findall('([\w]+[.][\w]+)$', urlparse.urlparse(url.strip().lower()).netloc)[0]
+	except:
+		urlhost = url[0:10]
+	return urlhost
+		
 def b64encode(ret):
 	return base64.b64encode(ret)
 	
 def b64decode(ret):
 	return base64.b64decode(ret)
+	
+def b64eencode(ret):
+	return base64.b64encode(base64.b64encode(ret))
+	
+def b64ddecode(ret):
+	return base64.b64decode(base64.b64decode(ret))
 
 def search_regex(pattern, string, name, default=None, fatal=True, flags=0, group=None):
 	mobj = re.search(pattern, string, flags)

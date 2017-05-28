@@ -107,6 +107,10 @@ class source:
 		
 	def testParser(self):
 		try:
+			if self.siteonline == False:
+				self.log('ERROR', 'testParser', 'testSite returned False', dolog=True)
+				return False
+		
 			for movie in testparams.test_movies:
 				getmovieurl = self.get_movie(title=movie['movie'], year=movie['movieYear'], imdb=movie['movieIMDb'], testing=True)
 				movielinks = self.get_sources(url=getmovieurl, testing=True)
@@ -225,7 +229,7 @@ class source:
 			self.log('ERROR', 'get_movie','%s' % result, dolog=testing)
 			return
 
-	def get_show(self, imdb, tvdb, tvshowtitle, year, proxy_options=None, key=None):
+	def get_show(self, imdb, tvdb, tvshowtitle, year, season, proxy_options=None, key=None):
 		try:
 			#print "PRIMEWIRE get_show %s" % tvshowtitle
 			
@@ -237,6 +241,8 @@ class source:
 			query = self.tvsearch_link % (urllib.quote_plus(cleantitle.query(tvshowtitle)), key)
 			query = urlparse.urljoin(self.base_link, query)
 
+			print query
+			
 			#result = str(proxies.request(query, 'index_item', proxy_options=proxy_options, use_web_proxy=self.proxyrequired))
 			result = str(proxies.request(query, proxy_options=proxy_options, use_web_proxy=self.proxyrequired))
 			#if 'page=2' in result or 'page%3D2' in result: result += str(proxies.request(query + '&page=2', 'index_item', proxy_options=proxy_options, use_web_proxy=self.proxyrequired))
@@ -245,11 +251,19 @@ class source:
 			result = client.parseDOM(result, 'div', attrs = {'class': 'index_item.+?'})
 
 			tvshowtitle = 'watch' + cleantitle.get(tvshowtitle)
-			years = ['(%s)' % str(year), '(%s)' % str(int(year)+1), '(%s)' % str(int(year)-1)]
+			years = ['%s' % str(year)]
+			for iy in range(0,int(season)):
+				years.append('%s' % str(int(year)-int(iy)))
+				years.append('%s' % str(int(year)+int(iy)))
 
+			years = list(set(years))
+			#print years
+				
 			result = [(client.parseDOM(i, 'a', ret='href'), client.parseDOM(i, 'a', ret='title')) for i in result]
 			result = [(i[0][0], i[1][0]) for i in result if len(i[0]) > 0 and len(i[1]) > 0]
 			result = [i for i in result if any(x in i[1] for x in years)]
+			
+			#print result
 
 			r = []
 			for i in result:
@@ -259,8 +273,15 @@ class source:
 				try: u = urlparse.parse_qs(urlparse.urlparse(u).query)['q'][0]
 				except: pass
 				r += [(u, i[1])]
+				
+			print r
 
-			match = [i[0] for i in r if tvshowtitle == cleantitle.get(i[1]) and '(%s)' % str(year) in i[1]]
+			for year in years:
+				match = [i[0] for i in r if tvshowtitle == cleantitle.get(i[1]) and '(%s)' % str(year) in i[1]]
+				if len(match) > 0:
+					break
+				
+			print match
 
 			match2 = [i[0] for i in r]
 			match2 = [x for y,x in enumerate(match2) if x not in match2[:y]]
@@ -279,7 +300,8 @@ class source:
 			url = client.replaceHTMLCodes(url)
 			url = url.encode('utf-8')
 			return url
-		except:
+		except Exception as e:
+			print(e)
 			return
 
 

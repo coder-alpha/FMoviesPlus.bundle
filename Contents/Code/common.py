@@ -35,7 +35,7 @@ except Exception as e:
 
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.29' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.30' # Release notation (x.y - where x is major and y is minor)
 TAG = ''
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
@@ -401,7 +401,6 @@ def GetPageElements(url, headers=None, referer=None):
 	return page_data_elems
 	
 def make_cookie_str():
-
 	try:
 		cookie_str = ''
 		error = ''
@@ -464,7 +463,6 @@ def cleanCookie(str):
 def GetPageAsString(url, headers=None, timeout=15, referer=None):
 
 	use_debug = Prefs["use_debug"]
-	user_defined_reqkey_cookie = Prefs['reqkey_cookie']
 	
 	try:
 		CACHE_EXPIRY = 60 * int(Prefs["cache_expiry_time"])
@@ -510,6 +508,8 @@ def GetPageAsString(url, headers=None, timeout=15, referer=None):
 					if page_data_string != None:
 						break
 		else:
+			if Prefs["use_debug"]:
+				Log("Headers: %s" % headers)
 			page_data_string = HTTP.Request(url, headers=headers, timeout=timeout).content
 	except Exception as e:
 		Log('ERROR common.py>GetPageAsString: %s URL: %s' % (e.args,url))

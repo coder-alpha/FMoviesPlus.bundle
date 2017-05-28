@@ -46,6 +46,7 @@ def runGetSources(
 	name = None,
 	title = None,
 	year = None,
+	ver = None,
 	imdb = None,
 	tmdb = None,
 	tvdb = None,
@@ -88,7 +89,8 @@ def runGetSources(
 	
 	if imdb == None:
 		try:
-			res = omdb.request(t=title, y=int(year), r='json', timeout=10)
+			#res = omdb.request(t=title, y=int(year), c=Prefs['ca_api_key'], ver=ver, r='json', timeout=10)
+			res = searchOMDB(title=title, year=year, doSearch=False, ver=ver)
 			imdb_t = json.loads(res.content)['imdbID']
 			imdb = imdb_t
 		except:
@@ -121,23 +123,77 @@ def runGetSources(
 				# #Log('urldata: %s' % json.loads(client.b64decode(source['urldata'])))
 				# #Log('params: %s' % json.loads(client.b64decode(source['params'])))
 				
-def searchOMDB(title, year=None, doSearch=False):
+def searchOMDB(title, year=None, doSearch=False, ver=None):
 	try:
+		c=0
+		res = None
 		if doSearch:
-			print "OMDB Search"
-			if year == None:
-				res = omdb.search(title)
-			else:
-				res = omdb.search('%s %s' % (title, year))
+			if Prefs["use_debug"]:
+				Log("OMDB Search: Title:%s Year:%s" % (title,year))
+			while res == None and c < 3:
+				try:
+					if year == None:
+						res = omdb.search(title, c=Prefs['ca_api_key'], ver=ver)
+					else:
+						res = omdb.search('%s %s' % (title, year), c=Prefs['ca_api_key'], ver=ver)
+				except:
+					c += 1
+					time.sleep(1.0)
 		else:
-			print "OMDB Request"
-			if year == None:
-				res = omdb.request(t=title, r='json', timeout=10)
-			else:
-				res = omdb.request(t=title, y=int(year), r='json', timeout=10)
+			if Prefs["use_debug"]:
+				Log("OMDB Request: Title:%s Year:%s" % (title,year))
+			while res == None and c < 3:
+				try:
+					if year == None:
+						res = omdb.request(t=title, r='json', c=Prefs['ca_api_key'], ver=ver, timeout=10)
+					else:
+						res = omdb.request(t=title, y=int(year), c=Prefs['ca_api_key'], ver=ver, r='json', timeout=10)
+				except:
+					c += 1
+					time.sleep(1.0)
+
+		return res
+	except Exception as e:
+		Log("interface.py>searchOMDB() >> : >>> %s" % (e))
+		return None
+		
+def requestOMDB(t, y, Season, i, ver=None):
+	try:
+		if Prefs["use_debug"]:
+			Log("OMDB Request: Title:%s Year:%s Season:%s imdb:%s" % (t,y,Season,i))
+		
+		c = 0
+		res = None
+		while res == None and c < 3:
+			try:
+				res = omdb.request(t=t, y=int(y), Season=str(Season), i=i, c=Prefs['ca_api_key'], ver=ver, r='json', timeout=10)
+			except Exception as e:
+				c += 1
+				time.sleep(1.0)
 		
 		return res
-	except:
+	except Exception as e:
+		Log("interface.py>requestOMDB() >> : >>> %s" % (e))
+		return None
+		
+def getOMDB(title, year, season, episode, imdbid, ver=None):
+	try:
+		if Prefs["use_debug"]:
+			Log("OMDB Request: Title:%s Year:%s Season:%s Episode:%s imdb:%s" % (title, year, season, episode, imdbid))
+			
+		c = 0
+		res = None
+		while res == None and c < 3:
+			try:
+				res = omdb.get(title=title, year=int(year), season=str(season), episode=str(episode), imdbid=imdbid, c=Prefs['ca_api_key'], ver=ver, timeout=10)
+			except Exception as e:
+				Log("interface.py>requestOMDB() >> : >>> %s" % (e))
+				c += 1
+				time.sleep(1.0)
+		
+		return res
+	except Exception as e:
+		Log("interface.py>requestOMDB() >> : >>> %s" % (e))
 		return None
 
 def clearSources():
@@ -259,7 +315,7 @@ def checkKeyInThread(key=None):
 	
 	return initA[0].checkKeyInThread(key=key)
 		
-def getExtSources(movtitle=None, year=None, tvshowtitle=None, season=None, episode=None, proxy_options=None, provider_options=None, key=None, maxcachetime=0):
+def getExtSources(movtitle=None, year=None, tvshowtitle=None, season=None, episode=None, proxy_options=None, provider_options=None, key=None, maxcachetime=0, ver=None):
 
 	InterfaceThread[key] = True
 	
@@ -282,6 +338,7 @@ def getExtSources(movtitle=None, year=None, tvshowtitle=None, season=None, episo
 	name = name,
 	title = name,
 	year = year,
+	ver = ver,
 	tvshowtitle = tvshowtitle,
 	season = season,
 	episode = episode,
@@ -304,29 +361,39 @@ def getExtSources(movtitle=None, year=None, tvshowtitle=None, season=None, episo
 	
 	return E(JSON.StringFromObject(initA[0].sourcesFilter()))
 	
-def request(url, close=True, redirect=True, followredirect=False, error=False, proxy=None, post=None, headers=None, mobile=False, limit=None, referer=None, cookie=None, output='', timeout='30', httpsskip=False, use_web_proxy=False, XHR=False, IPv4=False):
+def request(url, close=True, redirect=True, followredirect=False, error=False, proxy=None, post=None, headers=None, mobile=False, limit=None, referer=None, cookie=None, output='', timeout='30', httpsskip=False, use_web_proxy=False, XHR=False, IPv4=False, hideurl=False):
 
-	Log.Debug("Requesting (via Interface) : %s" % url)
+	if hideurl == True:
+		Log.Debug("Requesting (via Interface) : %s" % client.getUrlHost(url))
+	else:
+		Log.Debug("Requesting (via Interface) : %s" % url)
 	if Prefs["use_debug"]:
 		Log("Headers: %s" % headers)
 
 	return client.request(url=url, close=close, redirect=redirect, followredirect=followredirect, error=error, proxy=proxy, post=post, headers=headers, mobile=mobile, limit=limit, referer=referer, cookie=cookie, output=output, timeout=timeout, httpsskip=httpsskip, use_web_proxy=use_web_proxy, XHR=XHR, IPv4=IPv4)
 	
-def request_via_proxy(url, proxy_name, proxy_url, close=True, redirect=True, followredirect=False, error=False, proxy=None, post=None, headers=None, mobile=False, limit=None, referer=None, cookie=None, output='', timeout='30', httpsskip=False, use_web_proxy=False, XHR=False, IPv4=False):
+def request_via_proxy(url, proxy_name, proxy_url, close=True, redirect=True, followredirect=False, error=False, proxy=None, post=None, headers=None, mobile=False, limit=None, referer=None, cookie=None, output='', timeout='30', httpsskip=False, use_web_proxy=False, XHR=False, IPv4=False, hideurl=False):
 	if wait_for_init() == False:
 		return
 		
-	Log.Debug("Requesting (via Interface) : %s" % url)
+	if hideurl == True:
+		Log.Debug("Requesting (via Interface) : %s" % client.getUrlHost(url))
+	else:
+		Log.Debug("Requesting (via Interface) : %s" % url)
 	if Prefs["use_debug"]:
 		Log("Headers: %s" % headers)
 		
 	return initA[0].request_via_proxy(url=url, proxy_name=proxy_name, proxy_url=proxy_url, close=close, redirect=redirect, followredirect=followredirect, error=error, proxy=proxy, post=post, headers=headers, mobile=mobile, limit=limit, referer=referer, cookie=cookie, output=output, timeout=timeout, httpsskip=httpsskip, use_web_proxy=use_web_proxy, XHR=XHR, IPv4=IPv4)
 	
-def request_via_proxy_as_backup(url, close=True, redirect=True, followredirect=False, error=False, proxy=None, post=None, headers=None, mobile=False, limit=None, referer=None, cookie=None, output='', timeout='30', httpsskip=False, XHR=False, IPv4=False):
+def request_via_proxy_as_backup(url, close=True, redirect=True, followredirect=False, error=False, proxy=None, post=None, headers=None, mobile=False, limit=None, referer=None, cookie=None, output='', timeout='30', httpsskip=False, XHR=False, IPv4=False, hideurl=False):
 	if wait_for_init() == False:
 		return
 		
-	Log.Debug("Requesting (via Interface) : %s" % url)
+	if hideurl == True:
+		Log.Debug("Requesting (via Interface) : %s" % client.getUrlHost(url))
+	else:
+		Log.Debug("Requesting (via Interface) : %s" % url)
+		
 	if Prefs["use_debug"]:
 		Log("Headers: %s" % headers)
 		

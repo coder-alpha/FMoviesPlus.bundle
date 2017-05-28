@@ -187,7 +187,6 @@ def getOMDB(title, year, season, episode, imdbid, ver=None):
 			try:
 				res = omdb.get(title=title, year=int(year), season=str(season), episode=str(episode), imdbid=imdbid, c=Prefs['ca_api_key'], ver=ver, timeout=10)
 			except Exception as e:
-				Log("interface.py>requestOMDB() >> : >>> %s" % (e))
 				c += 1
 				time.sleep(1.0)
 		

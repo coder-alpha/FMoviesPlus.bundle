@@ -28,6 +28,8 @@ from resources.lib.libraries import control
 from resources.lib import resolvers
 from resources.lib import proxies
 
+AVOID_DOMAINS = ['9c40a04e9732e6a6.com']
+
 class source:
 	def __init__(self):
 		self.base_link = 'http://www.primewire.ag'
@@ -352,6 +354,25 @@ class source:
 
 			#result = proxies.request(url, 'choose_tabs', proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
 			result = proxies.request(url, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+			
+			links_m = []
+			trailers = []
+			if testing == False:
+				try:
+					matches = re.findall(r'\"(http[s]?://www.youtube.*?)\"',result)
+					for match in matches:
+						try:
+							#print match
+							if 'youtube.com' in match and '"' not in match:
+								match = match.replace('embed/','watch?v=')
+								trailers.append(match)
+						except:
+							pass
+				except Exception as e:
+					pass
+					
+				for trailer in trailers:
+					links_m = resolvers.createMeta(trailer, self.name, self.logo, '720p', links_m, key, vidtype='Trailer')
 
 			links = client.parseDOM(result, 'tbody')
 
@@ -370,6 +391,9 @@ class source:
 					
 					if 'http' not in url:
 						raise Exception()
+					for u in AVOID_DOMAINS:
+						if u in url:
+							raise Exception()
 					
 					quality = client.parseDOM(i, 'span', ret='class')[0]
 					
@@ -377,8 +401,7 @@ class source:
 					elif quality == 'quality_dvd': quality = 'SD'
 					else:  raise Exception()
 					
-					links_m = []
-					print "%s --- %s" % (self.name,url)
+					#print "%s --- %s" % (self.name,url)
 					links_m = resolvers.createMeta(url, self.name, self.logo, quality, links_m, key)
 
 					sources += [l for l in links_m]

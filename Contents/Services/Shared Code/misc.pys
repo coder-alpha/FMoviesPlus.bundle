@@ -1,0 +1,25 @@
+# -*- coding: utf-8 -*-
+
+#########################################################################################################
+#
+# Misc scrapper
+#
+# Coder Alpha
+# https://github.com/coder-alpha
+#
+#
+#########################################################################################################
+
+import re, json
+
+def resolve(url):
+	page_data_string = HTTP.Request(url).content
+	video_url = None
+	if 'mycloud' in url:
+		json_data_str = re.findall(r'({\".*(.*m3u8|.mp4|.flv).*\"})', page_data_string)[0][0]
+		json_data = json.loads(json_data_str)
+		video_url = json_data['file']
+		if 'https:' not in video_url and 'http:' not in video_url:
+			video_url = 'http:' + video_url
+		
+	return video_url

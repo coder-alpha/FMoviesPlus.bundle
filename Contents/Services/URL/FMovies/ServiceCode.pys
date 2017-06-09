@@ -3,6 +3,7 @@
 import urllib2, re, urlparse, base64
 # import Shared ServiceCode
 import openload as Openload
+import misc as Misc
 
 USER_AGENT = "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:48.0) Gecko/20100101 Firefox/48.0"
 
@@ -15,7 +16,6 @@ def NormalizeURL(url):
 def MetadataObjectForURL(url):
 
 	data = get_data(url)
-	isOpenLoad = data['isOpenLoad']
 	title = data['title']
 	isVideoOnline = data['isVideoOnline'].lower()
 	
@@ -116,7 +116,8 @@ def MetadataObjectForURL(url):
 def MediaObjectsForURL(url, **kwargs):
 
 	data = get_data(url)
-	isOpenLoad = data['isOpenLoad']
+	isTargetPlay = data['isTargetPlay']
+	host = data['host']
 	title = data['title']
 	isVideoOnline = data['isVideoOnline'].lower()
 	media_obj = []
@@ -131,13 +132,13 @@ def MediaObjectsForURL(url, **kwargs):
 			# direct_play = False
 	except:
 		pass
-	
+		
 	# Plex does not throw a dialog for Ex.MediaNotAvailable ???
 	#if isVideoOnline != 'unknown' and isVideoOnline != 'true':
 	#	raise Ex.MediaNotAvailable
 	
 	try:
-		if isOpenLoad.lower() == 'true':
+		if isTargetPlay.lower() == 'true':
 		
 			ourl = data['server']
 			#Log("ourl -------- %s" % ourl)
@@ -151,15 +152,30 @@ def MediaObjectsForURL(url, **kwargs):
 			except:
 				res = 480
 				
-			mo = MediaObject(
-				container = Container.MP4,
-				video_codec = VideoCodec.H264,
-				audio_codec = AudioCodec.AAC,
-				video_resolution = res,
-				audio_channels = 2,
-				optimized_for_streaming = direct_play,
-				parts = [PartObject(key=Callback(PlayVideo, url=ourl, isOpenLoad=True, pairrequired=pairrequired))]
-			)
+			furl = ourl
+			if 'openload' not in host:
+				furl = Misc.resolve(ourl)
+				
+			if '.m3u8' in furl:
+				mo = MediaObject(
+					protocol = 'hls',
+					container = 'mpegts',
+					audio_codec = AudioCodec.AAC,
+					video_resolution = res,
+					audio_channels = 2,
+					optimized_for_streaming = direct_play,
+					parts = [PartObject(key=Callback(PlayVideo, url=ourl, isTargetPlay=True, pairrequired=pairrequired, host=host))]
+				)
+			else:
+				mo = MediaObject(
+					container = Container.MP4,
+					video_codec = VideoCodec.H264,
+					audio_codec = AudioCodec.AAC,
+					video_resolution = res,
+					audio_channels = 2,
+					optimized_for_streaming = direct_play,
+					parts = [PartObject(key=Callback(PlayVideo, url=ourl, isTargetPlay=True, pairrequired=pairrequired, host=host))]
+				)
 			media_obj.append(mo)
 			
 		else:
@@ -251,14 +267,16 @@ def MediaObjectsForURL(url, **kwargs):
 
 ####################################################################################################
 @indirect
-def PlayVideo(url, isOpenLoad=False, useRedirect=False, refUrl=None, params=None, pairrequired=False):
+def PlayVideo(url, isTargetPlay=False, useRedirect=False, refUrl=None, params=None, pairrequired=False, host=None):
 
 	try:
-		if isOpenLoad:
+		if isTargetPlay and 'openload' in host:
 			if pairrequired == True:
-				url = Openload.openloadS(url)
-			if url == None:
-				raise Ex.MediaNotAvailable
+				url = Openload.resolve(url)
+		else:
+			url = Misc.resolve(url)
+		if url == None:
+			raise Ex.MediaNotAvailable
 	except:
 		raise Ex.MediaNotAvailable
 
@@ -267,16 +285,18 @@ def PlayVideo(url, isOpenLoad=False, useRedirect=False, refUrl=None, params=None
 	
 	if params != None:
 		params = JSON.ObjectFromString(D(params))
-		headers = params['headers']
-		if headers != None and headers != '':
-			for key in headers.keys():
-				http_headers[key] = headers[key]
-				
-		cookie = params['cookie']
-		if cookie != None and cookie != '':
-			headers['Cookie'] = cookie
-			http_cookies = cookie
-			http_headers['Cookie'] = cookie
+		if params != '':
+			if 'headers' in params.keys():
+				headers = params['headers']
+				if headers != None and headers != '':
+					for key in headers.keys():
+						http_headers[key] = headers[key]
+			if 'cookie' in params.keys():
+				cookie = params['cookie']
+				if cookie != None and cookie != '':
+					headers['Cookie'] = cookie
+					http_cookies = cookie
+					http_headers['Cookie'] = cookie
 			
 	if useRedirect and refUrl != None:
 		url = GetRedirect(url, 10, ref=refUrl, headers=http_headers, cookie=http_cookies)

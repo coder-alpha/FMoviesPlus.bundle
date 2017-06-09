@@ -96,7 +96,7 @@ def testLink(url):
 	except:
 		return 'Unknown'
 		
-def createMeta(url, provider, logo, quality, links, key, vidtype='Movie'):
+def createMeta(url, provider, logo, quality, links, key, vidtype='Movie', lang='en'):
 
 	if url == None or url == '':
 		print "resolvers > __init__.py > createMeta : url:%s prov:%s" % (url, provider)
@@ -115,14 +115,14 @@ def createMeta(url, provider, logo, quality, links, key, vidtype='Movie'):
 			print "Searching %s in %s" % (urlhost, host['host'])
 			if urlhost in host['host']:
 				print "Found %s in %s" % (urlhost, host['host'])
-				return host['call'].createMeta(url, provider, logo, quality, links, key, vidtype=vidtype)
+				return host['call'].createMeta(url, provider, logo, quality, links, key, vidtype=vidtype, lang=lang)
 
 				
 		print "urlhost '%s' not found in host/resolver plugins" % urlhost
 				
 		quality = file_quality(url, quality)
 		type = rip_type(url, quality)
-		links_m.append({'source':urlhost, 'maininfo':'', 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':type, 'provider':provider, 'url':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':'Unknown', 'key':key, 'enabled':True, 'ts':time.time()})
+		links_m.append({'source':urlhost, 'maininfo':'', 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':type, 'provider':provider, 'url':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':'Unknown', 'key':key, 'enabled':True, 'ts':time.time(), 'lang':lang})
 	except Exception as e:
 		print "ERROR resolvers > __init__.py > createMeta : %s url: %s" % (e.args, url)
 		#quality = file_quality(url, quality)

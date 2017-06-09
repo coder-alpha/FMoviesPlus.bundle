@@ -1,5 +1,5 @@
 import time, base64, unicodedata, re, random, string
-from resources.lib.libraries import client, cleantitle, jsfdecoder
+from resources.lib.libraries import control, client, cleantitle, jsfdecoder, jsunpack
 from resources.lib.resolvers import host_openload, host_gvideo
 import interface
 from __builtin__ import ord, format, eval
@@ -35,7 +35,7 @@ except Exception as e:
 
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.30' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.31' # Release notation (x.y - where x is major and y is minor)
 TAG = ''
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
@@ -150,6 +150,16 @@ def GetKeyFromVal(list, val_look):
 	for key, val in list.iteritems():
 		if val == val_look:
 			return key
+
+def set_control_settings():
+	try:
+		key = 'control_all_uc_api_key'
+		control.set_setting(key, Prefs[key])
+		
+		if Prefs["use_debug"]:
+			Log("User Preferences have been set to Control")
+	except Exception as e:
+		Log('ERROR common.py>set_control_settings: %s' % e)
 			
 ####################################################################################################
 # Gets a client specific identifier
@@ -292,7 +302,7 @@ def GetHttpRequest(url, cookies=None):
 	return req
 	
 ######################################################################################
-def ResolveFinalUrl(isOpenLoad, data, pair_required=False, params=None, **kwargs):
+def ResolveFinalUrl(isTargetPlay, data, pair_required=False, params=None, host=None, **kwargs):
 	# responses - true, false, unknown
 	vidurl = data
 	err = ''
@@ -303,7 +313,7 @@ def ResolveFinalUrl(isOpenLoad, data, pair_required=False, params=None, **kwargs
 		cookie = params['cookie']
 		
 	if vidurl != None:
-		if isOpenLoad and pair_required == False:
+		if isTargetPlay and 'openload' in host and pair_required == False:
 			vidurl, err = host_openload.resolve(vidurl)
 		else:
 			pass
@@ -316,13 +326,13 @@ def ResolveFinalUrl(isOpenLoad, data, pair_required=False, params=None, **kwargs
 	
 ######################################################################################
 @route(PREFIX + "/isItemVidAvailable")
-def isItemVidAvailable(isOpenLoad, data, params=None, **kwargs):
+def isItemVidAvailable(isTargetPlay, data, params=None, host=None, **kwargs):
 	# responses - true, false, unknown
 	vidurl = None
 	httpsskip = Prefs["use_https_alt"]
 	use_web_proxy = Prefs["use_web_proxy"]
 	
-	if isOpenLoad:
+	if isTargetPlay:
 		vidurl = data
 	else:
 		data = D(data)
@@ -352,9 +362,11 @@ def isItemVidAvailable(isOpenLoad, data, params=None, **kwargs):
 		
 	if vidurl != None:
 		try:
-			if isOpenLoad:
+			if isTargetPlay and 'openload' in host:
 				if host_openload.check(vidurl, embedpage=True, headers=headers, cookie=cookie)[0] == True:
 						isVideoOnline = 'true'
+			elif isTargetPlay:
+				isVideoOnline = 'unknown'
 			else:
 				if host_gvideo.check(vidurl, headers=headers, cookie=cookie)[0] == True:
 						isVideoOnline = 'true'
@@ -372,7 +384,7 @@ def isItemVidAvailable(isOpenLoad, data, params=None, **kwargs):
 	
 ######################################################################################
 @route(PREFIX + "/GetPageElements")
-def GetPageElements(url, headers=None, referer=None):
+def GetPageElements(url, headers=None, referer=None, timeout=15):
 
 	page_data_string = None
 	page_data_elems = None
@@ -386,7 +398,10 @@ def GetPageElements(url, headers=None, referer=None):
 				page_data_string = D(CACHE_META[url]['data'])
 				
 		if page_data_string == None:
-			page_data_string = GetPageAsString(url=url, headers=headers, referer=referer)
+			page_data_string = GetPageAsString(url=url, headers=headers, referer=referer, timeout=timeout)
+			
+		if page_data_string == None:
+			raise PageError('Request returned None')
 
 		page_data_elems = HTML.ElementFromString(page_data_string)
 		
@@ -445,7 +460,7 @@ def cleanCookie(str):
 	str_s = str.split(';')
 	cookie_string_arr = []
 	for str in str_s:
-		if 'expires' not in str and 'path' not in str and 'Date' not in str and '=' in str:
+		if 'expires' not in str and 'path' not in str and 'Date' not in str and 'undefined' not in str and 'function' not in str and '=' in str:
 			ps_s= str.split('=')
 			k = ps_s[0].strip()
 			v = ps_s[1].strip()
@@ -703,6 +718,10 @@ def ArrayItemsInString(arr, mystr):
 			return True
 			
 	return False
+	
+####################################################################################################
+class PageError(Exception):
+    pass
 	
 ####################################################################################################
 # author: Twoure

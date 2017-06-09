@@ -20,7 +20,7 @@ SEARCH_PATH = "/search"
 FILTER_PATH = "/filter"
 KEYWORD_PATH = "/tag/"
 STAR_PATH = "/star/"
-
+ALL_JS = "/assets/min/public/all.js"
 TOKEN_KEY_PASTEBIN_URL = "https://pastebin.com/raw/VNn1454k"
 TOKEN_KEY = []
 
@@ -54,23 +54,24 @@ def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web
 		if use_debug:
 			Log("Using Movie Link from Cache")
 		res = common.CACHE[key]['res']
-		isOpenLoad = common.CACHE[key]['isOpenLoad']
-		if isOpenLoad == 'True':
-			isOpenLoad = True
+		isTargetPlay = common.CACHE[key]['isTargetPlay']
+		host = common.CACHE[key]['host']
+		if isTargetPlay == 'True':
+			isTargetPlay = True
 			#surl = common.host_openload.resolve(url=res, embedpage=True)
 			surl = res
 			if use_debug:
-				Log("Openload Stream URL %s from %s" % (surl,res))
+				Log("Target-Play Stream URL %s from %s" % (surl,res))
 			res = surl
 		else:
 			if res == 'Unavailable':
 				res = None
-			isOpenLoad = False
+			isTargetPlay = False
 	else:
 		if use_debug:
 			Log("Retrieving Fresh Movie Link")
 			
-		ret, isOpenLoad, error = get_sources(url=url, key=key, use_debug=use_debug, serverts=serverts, myts=myts, use_https_alt=use_https_alt, use_web_proxy=use_web_proxy)
+		ret, isTargetPlay, error, host = get_sources(url=url, key=key, use_debug=use_debug, serverts=serverts, myts=myts, use_https_alt=use_https_alt, use_web_proxy=use_web_proxy)
 		if use_debug:
 			Log("get_sources url: %s, key: %s" % (url,key))
 			Log("get_sources ret: %s" % ret)
@@ -80,7 +81,7 @@ def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web
 			if use_debug:
 				Log("CACHE cleared due to null response from API - maybe cookie issue for %s" % url)
 			time.sleep(1.0)
-			ret, isOpenLoad, error = get_sources(url=url, key=key, use_debug=use_debug, serverts=serverts, myts=myts, use_https_alt=use_https_alt, use_web_proxy=use_web_proxy)
+			ret, isTargetPlay, error, host = get_sources(url=url, key=key, use_debug=use_debug, serverts=serverts, myts=myts, use_https_alt=use_https_alt, use_web_proxy=use_web_proxy)
 			if use_debug:
 				Log("API - attempt 2nd")
 				Log("get_sources url: %s, key: %s" % (url,key))
@@ -89,15 +90,16 @@ def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web
 		if ret == None:
 			if use_debug:
 				Log("null response from API (possible file deleted) - for %s" % url)
-			return res, isOpenLoad, error
+			return res, isTargetPlay, error, host
 		else:
-			if isOpenLoad:
+			if isTargetPlay:
 				res = ret
 				common.CACHE[key] = {}
 				common.CACHE[key]['res'] = res
+				common.CACHE[key]['host'] = host
 				common.CACHE[key]['serverts'] = serverts
 				common.CACHE[key]['myts'] = myts
-				common.CACHE[key]['isOpenLoad'] = str(isOpenLoad)
+				common.CACHE[key]['isTargetPlay'] = str(isTargetPlay)
 				if use_debug:
 					Log("Added " + key + " to CACHE")
 				#surl = common.host_openload.resolve(url=res, embedpage=True)
@@ -121,14 +123,15 @@ def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web
 					pass
 
 				if data == None:
-					return None, isOpenLoad, error
+					return None, isTargetPlay, error, host
 				if data['error'] == None:
 					res = JSON.StringFromObject(data['data'])
 					common.CACHE[key] = {}
 					common.CACHE[key]['res'] = res
+					common.CACHE[key]['host'] = host
 					common.CACHE[key]['serverts'] = serverts
 					common.CACHE[key]['myts'] = myts
-					common.CACHE[key]['isOpenLoad'] = str(isOpenLoad)
+					common.CACHE[key]['isTargetPlay'] = str(isTargetPlay)
 					if use_debug:
 						Log("Added " + key + " to CACHE")
 						Log("Added " + res + " to " + key)
@@ -137,7 +140,7 @@ def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web
 				else:
 					error = 'Unknown error'
 
-	return res, isOpenLoad, error
+	return res, isTargetPlay, error, host
 		
 def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quiet=False):
 
@@ -190,12 +193,16 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 		headersS['User-Agent'] = UA
 		
 		result, headers, content, cookie1 = common.interface.request_via_proxy_as_backup(BASE_URL, headers=headersS, limit='0', output='extended', httpsskip=use_https_alt)
+		page_data_elems = HTML.ElementFromString(result)
+		ALL_JS =  page_data_elems.xpath(".//script[@src[contains(.,'all.js')]]//@src")[0]
+		
 		headersS['Cookie'] = cookie1
 		time.sleep(0.1)
 		
 		token_url = urlparse.urljoin(BASE_URL, TOKEN_PATH)
 		
 		reqkey_cookie = ''
+		del TOKEN_KEY[:]
 		
 		counter = 0
 		while reqkey_cookie == '' and counter < 5:
@@ -224,13 +231,29 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 
 		cookie_dict = {}
 		
-		del TOKEN_KEY[:]
-		counter = 0
-		while len(TOKEN_KEY) == 0 and counter < 5:
-			token_key = common.interface.request_via_proxy_as_backup(TOKEN_KEY_PASTEBIN_URL, httpsskip=use_https_alt)
-			if token_key !=None and token_key != '':
-				cookie_dict.update({'token_key':token_key})
-				TOKEN_KEY.append(token_key)
+		try:
+			all_js_url = urlparse.urljoin(BASE_URL, ALL_JS)
+			if len(TOKEN_KEY) == 0:
+				all_js_pack_code = common.interface.request_via_proxy_as_backup(all_js_url, httpsskip=use_https_alt)
+				unpacked_code = common.jsunpack.unpack(all_js_pack_code)
+				token_key = re.findall(r'Uk="(.*?)",', unpacked_code)[0]
+				if token_key !=None and token_key != '':
+					#cookie_dict.update({'token_key':token_key})
+					TOKEN_KEY.append(token_key)
+		except Exception as e:
+			Log('ERROR fmovies.py>Token-fetch-1: %s' % e)
+
+		try:
+			if len(TOKEN_KEY) == 0:
+				token_key = common.interface.request_via_proxy_as_backup(TOKEN_KEY_PASTEBIN_URL, httpsskip=use_https_alt)
+				if token_key !=None and token_key != '':
+					#cookie_dict.update({'token_key':token_key})
+					TOKEN_KEY.append(token_key)
+		except Exception as e:
+			Log('ERROR fmovies.py>Token-fetch-2: %s' % e)
+			
+		if len(TOKEN_KEY) > 0:
+			cookie_dict.update({'token_key':token_key})
 			
 		query = {'ts': serverts}
 		tk = get_token(query)
@@ -288,6 +311,7 @@ def get_reqkey_cookie(token, use_debug=False, use_https_alt=False, quiet=True):
 					raise ValueError("JSFDecoder: reqkey not found. No JSF code or mixed-mode code")
 				cookie_string = dec
 				success = True
+				Log.Debug("*** Using JSFDecoder for regkey cookie ***")
 			else:
 				raise ValueError("JSFDecoder: Disabled via Global overide")
 		except Exception as e:
@@ -307,6 +331,7 @@ def get_reqkey_cookie(token, use_debug=False, use_https_alt=False, quiet=True):
 						cookie_string = cookie_string.replace(k, replaced[k])
 					if 'reqkey=' in cookie_string and 'preqkey=' in cookie_string:
 						success = True
+						Log.Debug("*** Using JS-Engine for regkey cookie ***")
 					else:
 						if quiet == False:
 							Log.Debug('execjs output >>> %s' % (cookie_string))
@@ -342,6 +367,7 @@ def get_reqkey_cookie(token, use_debug=False, use_https_alt=False, quiet=True):
 									cookie_string = cookie_string.replace(k, replaced[k])
 								if 'reqkey=' in cookie_string and 'preqkey=' in cookie_string:
 									success = True
+									Log.Debug("*** Using WebHook for regkey cookie ***")
 								else:
 									if quiet == False:
 										Log.Debug('webhook output >>> %s' % (cookie_string))
@@ -391,9 +417,12 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 	
 	try:
 		error = None
+		host_type = None
 		magic_url = None
-		isOpenLoad = False
-		if url == None: return magic_url
+		isTargetPlay = False
+		if url == None:
+			error = 'No url'
+			return magic_url, isTargetPlay, error, host_type
 		referer = url
 		serverts = str(serverts)
 		T_BASE_URL = BASE_URL
@@ -436,7 +465,7 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 				error = result['error']
 			elif result['target'] != "":
 				grabber = result['target']
-				isOpenLoad = True
+				isTargetPlay = True
 			else:
 				query = {'id':result['params']['id'], 'token':result['params']['token']}
 				grabber = result['grabber'] 
@@ -448,16 +477,19 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 			if grabber!=None and not grabber.startswith('http'):
 				grabber = 'http:'+grabber
 				
+			if grabber != None:
+				host_type = common.client.geturlhost(grabber)
+				
 			magic_url = grabber
 		except Exception as e:
 			Log('ERROR fmovies.py>get_sources-1 %s, %s' % (e.args,url))
 			pass
 
-		return magic_url, isOpenLoad, error
+		return magic_url, isTargetPlay, error, host_type
 	except Exception as e:
 		error = e
 		Log('ERROR fmovies.py>get_sources-2 %s, %s' % (e.args,url))
-		return magic_url, isOpenLoad, error
+		return magic_url, isTargetPlay, error, host_type
 		
 def r01(t, e):
 	i = 0
@@ -473,7 +505,7 @@ def r01(t, e):
 def a01(t):
 	i = 0
 	for e in range(0, len(t)): 
-		i += ord(t[e]) * e
+		i += ord(t[e]) * e + e
 	return i
 
 

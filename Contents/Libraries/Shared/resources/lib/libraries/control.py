@@ -28,9 +28,21 @@ trakt_key = base64.urlsafe_b64decode('NDFjYzI1NjY5Y2Y2OTc0NTg4ZjA0MTMxYjcyZjc4Mj
 trakt_secret = base64.urlsafe_b64decode('Y2I4OWExYTViN2ZlYmJiMDM2NmQ3Y2EyNzJjZDc4YTU5MWQ1ODI2Y2UyMTQ1NWVmYzE1ZDliYzQ1ZWNjY2QyZQ==')
 
 loggertxt = []
+setting_dict = {}
+
+def setting(key):
+	if key in setting_dict.keys():
+		return setting_dict[key]
+	else:
+		return None
+
+def set_setting(key, value):
+	if key == base64.b64decode('Y29udHJvbF9hbGxfdWNfYXBpX2tleQ==') and value == None or value == '':
+		value = base64.b64decode(base64.b64decode('WmpGak5XUTNPVGRsWVdNM1lUSTJPR0l5TURGbU16QXlNalEzTm1RMFpqTT0='))
+
+	setting_dict[key] = value
 
 def log(msg):
-
 	try:
 		if isinstance(msg, unicode):
 			msg = msg.encode('utf-8')

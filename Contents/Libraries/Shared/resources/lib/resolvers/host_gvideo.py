@@ -127,9 +127,9 @@ class host:
 			print "Error: %s" % e
 		
 	def testUrl(self):
-		return ['https://drive.google.com/file/d/0B6VYU2mjTdy0WVRjb1BJUU1hYXM/view']
+		return ['https://drive.google.com/file/d/0B0JMGMGgxp9WMEdWb1hyQUhlOWs/view']
 		
-	def createMeta(self, url, provider, logo, quality, links, key, showsplit=True, useGetlinkAPI=True, vidtype='Movie'):
+	def createMeta(self, url, provider, logo, quality, links, key, showsplit=True, useGetlinkAPI=True, vidtype='Movie', lang='en'):
 	
 		if 'http' not in url and 'google.com/file' in url:
 			url = 'https://drive.google.com/' + url.split('.com/')[1]
@@ -138,14 +138,19 @@ class host:
 		videoData, headers, content, cookie = getVideoMetaData(url)
 		try:
 			cookie += '; %s' % content['Set-Cookie']
+			# cookie_s = cookie.split(';')
+			# cookie_n = []
+			# for cook in cookie_s:
+				# cook = cook.strip()
+				# if '=' in cook and cook not in cookie_n:
+					# cookie_n.append(cook)
+			# cookie = ('; '.join(x for x in sorted(cookie_n)))
+			cookie_value = client.search_regex(r"DRIVE_STREAM=([^;]+);", cookie, 'cookie val',group=1)
+			domain = client.search_regex(r"https?://([^\/]+)", url, 'host val', group=1)
+			cookie = 'DRIVE_STREAM=%s; path=/; domain=.%s;' % (cookie_value, domain)
 		except:
 			pass
 		#print cookie
-		
-		#cookie_value = cookie
-		#cookie_value = client.search_regex(r"DRIVE_STREAM=([^;]+);", cookie, 'cookie val',group=1)
-		#domain = client.search_regex(r"https?://([^\/]+)", url, 'host val', group=1)
-		#cookie = 'DRIVE_STREAM=%s' % (cookie_value)
 		
 		#cookie = urllib.quote_plus(cookie).replace('+','%20').replace('%2F','/')
 		# DRIVE_STREAM%3Dva1wsBbVn3A%3B%20path%3D/%3B%20domain%3D.docs.google.com%3B
@@ -170,7 +175,7 @@ class host:
 			#udata = urldata(url, videoData=videoData, usevideoData=True)			
 			if 'google.com/file' in url:
 				enabled = False
-			files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':titleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':type, 'provider':provider, 'url':url, 'urldata':urldata('',''), 'params':params, 'logo':logo, 'online':isOnline, 'key':key, 'enabled':enabled, 'ts':time.time()})
+			files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':titleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':type, 'provider':provider, 'url':url, 'urldata':urldata('',''), 'params':params, 'logo':logo, 'online':isOnline, 'key':key, 'enabled':enabled, 'ts':time.time(), 'lang':lang})
 		except Exception as e:
 			print '%s > createMeta-1 ERROR: %s for URL: %s' % (self.name, e, url)
 			
@@ -201,7 +206,7 @@ class host:
 						p = json.dumps(p, encoding='utf-8')
 						p = client.b64encode(p)
 						
-						files_ret.append({'source': self.name, 'maininfo':'', 'titleinfo':titleinfo, 'quality': quality, 'vidtype':vidtype, 'rip':type, 'provider': provider, 'url': furl, 'urldata':urldata('',''), 'params':p, 'logo': logo, 'online': isOnlineT, 'key':key, 'enabled':True, 'ts':time.time()})
+						files_ret.append({'source': self.name, 'maininfo':'', 'titleinfo':titleinfo, 'quality': quality, 'vidtype':vidtype, 'rip':type, 'provider': provider, 'url': furl, 'urldata':urldata('',''), 'params':p, 'logo': logo, 'online': isOnlineT, 'key':key, 'enabled':True, 'ts':time.time(), 'lang':lang})
 						isGetlinkWork = True
 				client.setIP6()
 		except Exception as e:
@@ -221,7 +226,7 @@ class host:
 					
 					isOnlineT = check(furl, videoData, headers=headers, cookie=cookie)[0]
 					
-					files_ret.append({'source': self.name, 'maininfo':'', 'titleinfo':'', 'quality': quality, 'vidtype':vidtype, 'rip':type, 'provider': provider, 'url': furl, 'urldata':urldata('',''), 'params':params, 'logo': logo, 'online': isOnlineT, 'key':key, 'enabled':enabled, 'ts':time.time()})
+					files_ret.append({'source': self.name, 'maininfo':'', 'titleinfo':'', 'quality': quality, 'vidtype':vidtype, 'rip':type, 'provider': provider, 'url': furl, 'urldata':urldata('',''), 'params':params, 'logo': logo, 'online': isOnlineT, 'key':key, 'enabled':enabled, 'ts':time.time(), 'lang':lang})
 		except Exception as e:
 			print '%s > createMeta-3 ERROR: %s for URL: %s' % (self.name, e, url)
 

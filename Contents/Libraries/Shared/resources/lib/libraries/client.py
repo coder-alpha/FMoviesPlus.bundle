@@ -305,12 +305,16 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 		return
 		
 def getPageDataBasedOnOutput(res, output):
-	if output == 'extended':
-		page_data_string, headers, content, cookie = res
-	elif output == 'response' or output == 'responsecodeext':
-		resp_code, page_data_string = res
+
+	if res == None:
+		page_data_string = None
 	else:
-		page_data_string = res
+		if output == 'extended':
+			page_data_string, headers, content, cookie = res
+		elif output == 'response' or output == 'responsecodeext':
+			resp_code, page_data_string = res
+		else:
+			page_data_string = res
 		
 	return page_data_string
 	

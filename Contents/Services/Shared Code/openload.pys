@@ -21,7 +21,7 @@ PAIR_INFO_URL = API_URL + '/streaming/info'
 GET_VIDEO_URL = API_URL + '/streaming/get?file=%s'
 VALID_URL = r'https?://(?:openload\.(?:co|io)|oload\.tv)/(?:f|embed)/(?P<id>[a-zA-Z0-9-_]+)'
 
-def openloadS(url):
+def resolve(url):
 	video_id = match_id(url)
 	video_url = pairing_method(video_id)
 	return video_url

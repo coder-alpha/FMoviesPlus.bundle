@@ -273,7 +273,7 @@ def PlayVideo(url, isTargetPlay=False, useRedirect=False, refUrl=None, params=No
 		if isTargetPlay and 'openload' in host:
 			if pairrequired == True:
 				url = Openload.resolve(url)
-		else:
+		elif isTargetPlay:
 			url = Misc.resolve(url)
 		if url == None:
 			raise Ex.MediaNotAvailable

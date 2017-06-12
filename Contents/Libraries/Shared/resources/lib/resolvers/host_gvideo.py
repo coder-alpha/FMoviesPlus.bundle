@@ -175,7 +175,7 @@ class host:
 			#udata = urldata(url, videoData=videoData, usevideoData=True)			
 			if 'google.com/file' in url:
 				enabled = False
-			files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':titleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':type, 'provider':provider, 'url':url, 'urldata':urldata('',''), 'params':params, 'logo':logo, 'online':isOnline, 'key':key, 'enabled':enabled, 'ts':time.time(), 'lang':lang})
+			files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':titleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':type, 'provider':provider, 'url':url, 'urldata':urldata('',''), 'params':params, 'logo':logo, 'online':isOnline, 'key':key, 'enabled':enabled, 'ts':time.time(), 'lang':lang, 'misc':{}})
 		except Exception as e:
 			print '%s > createMeta-1 ERROR: %s for URL: %s' % (self.name, e, url)
 			
@@ -206,7 +206,7 @@ class host:
 						p = json.dumps(p, encoding='utf-8')
 						p = client.b64encode(p)
 						
-						files_ret.append({'source': self.name, 'maininfo':'', 'titleinfo':titleinfo, 'quality': quality, 'vidtype':vidtype, 'rip':type, 'provider': provider, 'url': furl, 'urldata':urldata('',''), 'params':p, 'logo': logo, 'online': isOnlineT, 'key':key, 'enabled':True, 'ts':time.time(), 'lang':lang})
+						files_ret.append({'source': self.name, 'maininfo':'', 'titleinfo':titleinfo, 'quality': quality, 'vidtype':vidtype, 'rip':type, 'provider': provider, 'url': furl, 'urldata':urldata('',''), 'params':p, 'logo': logo, 'online': isOnlineT, 'key':key, 'enabled':True, 'ts':time.time(), 'lang':lang, 'misc':{}})
 						isGetlinkWork = True
 				client.setIP6()
 		except Exception as e:
@@ -226,7 +226,7 @@ class host:
 					
 					isOnlineT = check(furl, videoData, headers=headers, cookie=cookie)[0]
 					
-					files_ret.append({'source': self.name, 'maininfo':'', 'titleinfo':'', 'quality': quality, 'vidtype':vidtype, 'rip':type, 'provider': provider, 'url': furl, 'urldata':urldata('',''), 'params':params, 'logo': logo, 'online': isOnlineT, 'key':key, 'enabled':enabled, 'ts':time.time(), 'lang':lang})
+					files_ret.append({'source': self.name, 'maininfo':'', 'titleinfo':'', 'quality': quality, 'vidtype':vidtype, 'rip':type, 'provider': provider, 'url': furl, 'urldata':urldata('',''), 'params':params, 'logo': logo, 'online': isOnlineT, 'key':key, 'enabled':enabled, 'ts':time.time(), 'lang':lang, 'misc':{}})
 		except Exception as e:
 			print '%s > createMeta-3 ERROR: %s for URL: %s' % (self.name, e, url)
 

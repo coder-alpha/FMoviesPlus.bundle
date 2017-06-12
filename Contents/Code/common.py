@@ -35,7 +35,7 @@ except Exception as e:
 
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.31' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.32' # Release notation (x.y - where x is major and y is minor)
 TAG = ''
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"

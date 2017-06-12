@@ -109,10 +109,10 @@ class host:
 		online = check(url)
 		files_ret = []
 		try:
-			files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':'BRRIP', 'provider':provider, 'url':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'key':key, 'enabled':True, 'ts':time.time(), 'lang':lang})
+			files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':'BRRIP', 'provider':provider, 'url':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'key':key, 'enabled':True, 'ts':time.time(), 'lang':lang, 'misc':{}})
 		except Exception as e:
 			print "ERROR host_youtube.py > createMeta : %s" % e.args
-			files_ret.append({'source':urlhost, 'maininfo':'', 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'url':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'key':key, 'enabled':True, 'ts':time.time(), 'lang':lang})
+			files_ret.append({'source':urlhost, 'maininfo':'', 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'url':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'key':key, 'enabled':True, 'ts':time.time(), 'lang':lang, 'misc':{}})
 			
 		for fr in files_ret:
 			links.append(fr)

@@ -149,6 +149,8 @@ class host:
 		pair = ''
 		if isPairRequired == True:
 			pair = ' *Pairing required* '
+			if isPairingDone(url):
+				pair = ''
 
 		if vidurl == None:
 			vidurl = url
@@ -156,10 +158,10 @@ class host:
 		online, r1, r2 = check(vidurl, usePairing = False, embedpage=True)
 		files_ret = []
 		try:
-			files_ret.append({'source':self.name, 'maininfo':pair, 'titleinfo':'', 'quality':file_quality(url, quality), 'vidtype':vidtype, 'rip':rip_type(url, quality), 'provider':provider, 'url':vidurl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'key':key, 'enabled':True, 'ts':time.time(), 'lang':lang})
+			files_ret.append({'source':self.name, 'maininfo':pair, 'titleinfo':'', 'quality':file_quality(url, quality), 'vidtype':vidtype, 'rip':rip_type(url, quality), 'provider':provider, 'url':vidurl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'key':key, 'enabled':True, 'ts':time.time(), 'lang':lang, 'misc':{'pair':isPairRequired}})
 		except Exception as e:
 			print "ERROR host_openload.py > createMeta : %s" % e.args
-			files_ret.append({'source':urlhost, 'maininfo':pair, 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'url':vidurl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'key':key, 'enabled':True, 'ts':time.time(), 'lang':lang})
+			files_ret.append({'source':urlhost, 'maininfo':pair, 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'url':vidurl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'key':key, 'enabled':True, 'ts':time.time(), 'lang':lang, 'misc':{'pair':isPairRequired}})
 			
 		for fr in files_ret:
 			links.append(fr)
@@ -231,11 +233,11 @@ def check(url, videoData=None, skipPageCheck=False, usePairing=True, embedpage=F
 				if videoData == None:
 					print '%s : File not found' % url
 					log('ERROR', name, 'We can\'t find the file you are looking for. It maybe got deleted by the owner or was removed due a copyright violation. : %s' % url)
-					return (False, videoData, retmsg)
+					return (False, videoData, 'File not found')
 				if 'File not found' in videoData or 'deleted by the owner' in videoData or 'Sorry!' in videoData: 
 					print '%s : File not found' % url
 					log('ERROR', name, 'We can\'t find the file you are looking for. It maybe got deleted by the owner or was removed due a copyright violation. : %s' % url)
-					return (False, videoData, retmsg)
+					return (False, videoData, 'File not found')
 					
 				if embedpage == True:
 					return (True, videoData, retmsg)
@@ -536,6 +538,10 @@ def isPairingRequired(url):
 	if resolved_url != None:
 		return False
 	
+	return True
+	
+def isPairingDone(url):
+	
 	pairurl = 'https://openload.co/pair'
 	echourl = 'https://v4speed.oloadcdn.net/echoip'
 	checkpairurl = 'https://openload.co/checkpair/%s'
@@ -549,9 +555,9 @@ def isPairingRequired(url):
 	#print r
 
 	if r != None and '1' in r:
-		return False
+		return True
 		
-	return True
+	return False
 
 		
 def persistPairing(runIndefinite=False):

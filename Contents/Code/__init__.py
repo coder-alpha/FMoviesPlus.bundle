@@ -1739,9 +1739,10 @@ def EpisodeDetail(title, url, thumb, session=None, **kwargs):
 							if isTargetPlay == True and 'openload' in host:
 								pair_required = common.host_openload.isPairingRequired(url=server_info)
 								if pair_required == True:
-									pair = ' *Pairing required* '
+									if common.host_openload.isPairingDone(url=server_info) == False:
+										pair = ' *Pairing required* '
 								if Prefs["use_debug"]:
-									Log("%s --- %s : %s" % (server_info, pair, pair_required))
+									Log("%s --- %s : Pairing required: %s" % (server_info, pair, pair_required))
 								
 							if isVideoOnline != str(False):
 								status = common.GetEmoji(type=isVideoOnline, session=session) + ' ' + pair
@@ -1755,7 +1756,7 @@ def EpisodeDetail(title, url, thumb, session=None, **kwargs):
 									redirector_stat = ' (via Redirector)'
 									redirector_enabled = 'true'
 									
-								durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":common.ResolveFinalUrl(isTargetPlay, data=server_info, pair_required=pair_required, host=host), "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "roles":roles, "directors":directors, "roles":roles, "isTargetPlay":str(isTargetPlay), "useSSL":str(Prefs["use_https_alt"]), "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled, 'urldata':'','quality':qual, 'pairrequired':pair_required, "host":host}))
+								durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":server_info, "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "roles":roles, "directors":directors, "roles":roles, "isTargetPlay":str(isTargetPlay), "useSSL":str(Prefs["use_https_alt"]), "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled, 'urldata':'','quality':qual, 'pairrequired':pair_required, "host":host}))
 									
 								oc.add(VideoClipObject(
 									url = durl,
@@ -1932,9 +1933,10 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 				if isTargetPlay == True and 'openload' in host:
 					pair_required = common.host_openload.isPairingRequired(url=server_info)
 					if pair_required == True:
-						pair = ' *Pairing required* '
+						if common.host_openload.isPairingDone(url=server_info) == False:
+							pair = ' *Pairing required* '
 					if Prefs["use_debug"]:
-						Log("%s --- %s : %s" % (server_info, pair, pair_required))
+						Log("%s --- %s : Pairing required: %s" % (server_info, pair, pair_required))
 					
 				if isVideoOnline != str(False):
 					status = common.GetEmoji(type=isVideoOnline, session=session) + ' ' + pair
@@ -1947,7 +1949,7 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 					redirector_stat = ' (via Redirector)'
 					redirector_enabled = 'true'
 				
-				durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":common.ResolveFinalUrl(isTargetPlay, data=server_info, pair_required=pair_required, host=host), "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "directors":directors, "roles":roles, "isTargetPlay":str(isTargetPlay), "useSSL":str(Prefs["use_https_alt"]), "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled, 'urldata':'', 'pairrequired':pair_required, "host":host}))
+				durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":server_info, "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "directors":directors, "roles":roles, "isTargetPlay":str(isTargetPlay), "useSSL":str(Prefs["use_https_alt"]), "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled, 'urldata':'', 'pairrequired':pair_required, "host":host}))
 				
 				try:
 					oc.add(VideoClipObject(
@@ -2044,9 +2046,10 @@ def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary
 			if isTargetPlay == True and 'openload' in host:
 				pair_required = common.host_openload.isPairingRequired(url=server_info)
 				if pair_required == True:
-					pair = ' *Pairing required* '
+					if common.host_openload.isPairingDone(url=server_info) == False:
+						pair = ' *Pairing required* '
 				if Prefs["use_debug"]:
-					Log("%s --- %s : %s" % (server_info, pair, pair_required))
+					Log("%s --- %s : Pairing required: %s" % (server_info, pair, pair_required))
 				
 			if isVideoOnline != str(False):
 				status = common.GetEmoji(type=isVideoOnline, session=session) + ' ' + pair
@@ -2060,7 +2063,7 @@ def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary
 					redirector_stat = ' (via Redirector)'
 					redirector_enabled = 'true'
 					
-				durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":common.ResolveFinalUrl(isTargetPlay, data=server_info, pair_required=pair_required, host=host), "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "roles":roles, "directors":directors, "roles":roles, "isTargetPlay":str(isTargetPlay), "useSSL":str(Prefs["use_https_alt"]), "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled, 'urldata':'','quality':qual, 'pairrequired':pair_required, "host":host}))
+				durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":server_info, "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "roles":roles, "directors":directors, "roles":roles, "isTargetPlay":str(isTargetPlay), "useSSL":str(Prefs["use_https_alt"]), "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled, 'urldata':'','quality':qual, 'pairrequired':pair_required, "host":host}))
 					
 				oc.add(VideoClipObject(
 					url = durl,
@@ -2239,7 +2242,9 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 			redirector_stat = '| (via Redirector)'
 			redirector_enabled = 'true'
 			
-		pair_required = True if source['maininfo'] == ' *Pairing required* ' else False
+		pair_required = False
+		if source['source'] == 'openload':
+			pair_required = source['misc']['pair']
 		
 		if source['vidtype'] in 'Movie/Show':
 			title_msg = "%s %s| %s | %s | %s | %s" % (status, source['maininfo'], source['rip'], source['quality'], source['source'], source['provider'])
@@ -2300,7 +2305,7 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 		for gen_play in generic_playback_links:
 			#Log(gen_play)
 			title, summary, thumb, params, duration, genres, videoUrl, videoRes = gen_play
-			oc.add(CreateVideoObject(title, summary, thumb, params, duration, genres, videoUrl, videoRes)) # ToDo
+			oc.add(CreateVideoObject(url, title, summary, thumb, params, duration, genres, videoUrl, videoRes)) # ToDo
 	
 	if Prefs['use_ext_urlservices']:
 		external_extSources = extSourKey
@@ -2407,7 +2412,7 @@ def PSExtSources(extSources_urlservice, session, watch_title, summary, thumb, ar
 		for gen_play in generic_playback_links:
 			#Log(gen_play)
 			title, summary, thumb, params, duration, genres, videoUrl, videoRes = gen_play
-			oc.add(CreateVideoObject(title, summary, thumb, params, duration, genres, videoUrl, videoRes)) # ToDo
+			oc.add(CreateVideoObject(url, title, summary, thumb, params, duration, genres, videoUrl, videoRes)) # ToDo
 			
 	return oc
 	
@@ -3991,42 +3996,27 @@ def DisplayMsgs(**kwargs):
 # ToDo
 ####################################################################################################
 @route(PREFIX+'/videoplayback')
-def CreateVideoObject(title, summary, thumb, params, duration, genres, videoUrl, videoRes, include_container=False, **kwargs):
+def CreateVideoObject(url, title, summary, thumb, params, duration, genres, videoUrl, videoRes, include_container=False, **kwargs):
 
-	if include_container:
-		video = MovieObject(
-			key = Callback(CreateVideoObject, title=title, summary=summary, thumb=thumb, params=params, duration=duration, genres=genres, videoUrl=videoUrl, videoRes=videoRes, include_container=True),
-			rating_key = videoUrl,
-			title = title,
-			summary = summary,
-			thumb = thumb,
-			items = [
-				MediaObject(
-						container = Container.MP4,     # MP4, MKV, MOV, AVI
-						video_codec = VideoCodec.H264, # H264
-						audio_codec = AudioCodec.AAC,  # ACC, MP3
-						audio_channels = 2,            # 2, 6
-						parts = [PartObject(key=PlayVideo(videoUrl=videoUrl, params=params))]
-					)
-				]
-		)
-	else:
-		video = VideoClipObject(
-			key = Callback(CreateVideoObject, title=title, summary=summary, thumb=thumb, params=params, duration=duration, genres=genres, videoUrl=videoUrl, videoRes=videoRes, include_container=True),
-			rating_key = videoUrl,
-			title = title,
-			summary = summary,
-			thumb = thumb,
-			items = [
-				MediaObject(
-						container = Container.MP4,     # MP4, MKV, MOV, AVI
-						video_codec = VideoCodec.H264, # H264
-						audio_codec = AudioCodec.AAC,  # ACC, MP3
-						audio_channels = 2,            # 2, 6
-						parts = [PartObject(key=Callback(PlayVideo,videoUrl=videoUrl, params=params))]
-					)
-				]
-		)
+	videoUrl = videoUrl.decode('unicode_escape')
+	video = VideoClipObject(
+		key = Callback(CreateVideoObject, url=url, title=title, summary=summary, thumb=thumb, params=params, duration=duration, genres=genres, videoUrl=videoUrl, videoRes=videoRes, include_container=True),
+		rating_key = url + title,
+		title = title,
+		summary = summary,
+		thumb = thumb,
+		items = [
+			MediaObject(
+					#container = Container.MP4,     # MP4, MKV, MOV, AVI
+					#video_codec = VideoCodec.H264, # H264
+					#audio_codec = AudioCodec.AAC,  # ACC, MP3
+					audio_channels = 2,            # 2, 6
+					video_resolution = int(videoRes.replace('p','')),
+					parts = [PartObject(key=Callback(PlayVideo,videoUrl=videoUrl, params=params, retResponse=include_container))],
+					optimized_for_streaming = False
+			)
+		]
+	)
   
 	if include_container:
 		return ObjectContainer(objects=[video])
@@ -4036,9 +4026,9 @@ def CreateVideoObject(title, summary, thumb, params, duration, genres, videoUrl,
 ####################################################################################################
 @route(common.PREFIX+'/PlayVideo.mp4')
 @indirect
-def PlayVideo(videoUrl, params, **kwargs):
+def PlayVideo(videoUrl, params, retResponse, **kwargs):
 
-	if '.mp4' not in videoUrl and 'mime=video/mp4' not in videoUrl:
+	if retResponse == False and '.mp4' not in videoUrl and 'mime=video/mp4' not in videoUrl:
 		page_data = common.GetPageAsString(url=videoUrl)
 		reg_exs = [[r'\[{.*mp4.*}]',0],[r'{.*mp4.*}',0],[r'\({.*mp4.*?}\)',0]]
 		for regex in reg_exs:	
@@ -4097,7 +4087,7 @@ def PlayVideo(videoUrl, params, **kwargs):
 	
 	if params != None:
 		params = JSON.ObjectFromString(D(params))
-		Log("params : %s" %params)
+		
 		if params != '':
 			if 'headers' in params.keys():
 				headers = params['headers']
@@ -4113,7 +4103,9 @@ def PlayVideo(videoUrl, params, **kwargs):
 					http_headers['Cookie'] = cookie
 
 	Log.Debug("Playback via Generic for URL: %s" % videoUrl)
-	#return videoUrl
-	return IndirectResponse(VideoClipObject, key=videoUrl, http_headers=http_headers)
+	Log("http_headers : %s" % http_headers)
+	Log("http_cookies : %s" % http_cookies)
+	
+	return IndirectResponse(VideoClipObject, key=videoUrl, http_headers=http_headers, http_cookies=http_cookies)
 	
 	

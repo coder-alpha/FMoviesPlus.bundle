@@ -122,7 +122,7 @@ def createMeta(url, provider, logo, quality, links, key, vidtype='Movie', lang='
 				
 		quality = file_quality(url, quality)
 		type = rip_type(url, quality)
-		links_m.append({'source':urlhost, 'maininfo':'', 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':type, 'provider':provider, 'url':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':'Unknown', 'key':key, 'enabled':True, 'ts':time.time(), 'lang':lang})
+		links_m.append({'source':urlhost, 'maininfo':'', 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':type, 'provider':provider, 'url':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':'Unknown', 'key':key, 'enabled':True, 'ts':time.time(), 'lang':lang, 'misc':{}})
 	except Exception as e:
 		print "ERROR resolvers > __init__.py > createMeta : %s url: %s" % (e.args, url)
 		#quality = file_quality(url, quality)

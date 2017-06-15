@@ -35,7 +35,7 @@ except Exception as e:
 
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.32' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.33' # Release notation (x.y - where x is major and y is minor)
 TAG = ''
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
@@ -98,10 +98,10 @@ USE_COOKIES = True
 NoMovieInfo = False
 USE_CUSTOM_TIMEOUT = False
 USE_SECOND_REQUEST = False
-ALT_PLAYBACK = False
 USE_JSFDECODER = True
 USE_JSENGINE = True
 USE_JSWEBHOOK = True
+ALT_PLAYBACK = True
 DEV_DEBUG = False
 WBH = 'aHR0cHM6Ly9ob29rLmlvL2NvZGVyLWFscGhhL3Rlc3Q='
 
@@ -251,6 +251,69 @@ def UsingOption(key, session=None):
 	else:
 		return True
 
+####################################################################################################
+def OrderBasedOn(srcs, use_host=True):
+	# order sources based on sequence of INTERNAL_SOURCES / quality
+	#Log(INTERNAL_SOURCES)
+	filter_extSources = []
+	if use_host == True:
+		for host in INTERNAL_SOURCES: filter_extSources += [i for i in srcs if i['quality'] == '4K' and i['source'].lower() == host['name']]
+		for host in INTERNAL_SOURCES: filter_extSources += [i for i in srcs if i['quality'] == '1080p' and i['source'].lower() == host['name']]
+		for host in INTERNAL_SOURCES: filter_extSources += [i for i in srcs if i['quality'] == '720p' and i['source'].lower() == host['name']]
+		for host in INTERNAL_SOURCES: filter_extSources += [i for i in srcs if i['quality'] == '480p' and i['source'].lower() == host['name']]
+		for host in INTERNAL_SOURCES: filter_extSources += [i for i in srcs if i['quality'] == '360p' and i['source'].lower() == host['name']]
+	else:
+		filter_extSources += [i for i in srcs if i['quality'] == '4K']
+		filter_extSources += [i for i in srcs if i['quality'] == '1080p']
+		filter_extSources += [i for i in srcs if i['quality'] == '720p']
+		filter_extSources += [i for i in srcs if i['quality'] == '480p']
+		filter_extSources += [i for i in srcs if i['quality'] == '360p']
+	srcs = filter_extSources
+	
+	# order sources based on sequence of INTERNAL_SOURCES_FILETYPE / video type
+	#Log(INTERNAL_SOURCES_FILETYPE)
+	filter_extSources = []
+	filter_extSources += [i for i in srcs if 'Trailer'.lower() == i['vidtype'].lower()]
+	filter_extSources += [i for i in srcs if 'Movie'.lower() in i['vidtype'].lower() or 'Show'.lower() in i['vidtype'].lower()]
+	filter_extSources += [i for i in srcs if 'Behind the scenes'.lower() == i['vidtype'].lower()]
+	filter_extSources += [i for i in srcs if 'Music Video'.lower() == i['vidtype'].lower()]
+	filter_extSources += [i for i in srcs if 'Misc.'.lower() == i['vidtype'].lower()]
+	srcs = filter_extSources
+	
+	return srcs
+	
+####################################################################################################
+def FilterBasedOn(srcs, use_quality=True, use_riptype=True, use_vidtype=True, use_provider=True):
+	# filter sources based on enabled quality in INTERNAL_SOURCES_QUALS
+	#Log(INTERNAL_SOURCES_QUALS)
+	if use_quality == True:
+		filter_extSources = []
+		for qual in INTERNAL_SOURCES_QUALS: filter_extSources += [i for i in srcs if i['quality'].lower() == qual['label'].lower() and str(qual['enabled'])=='True']
+		srcs = filter_extSources
+	
+	# filter sources based on enabled rip-type in INTERNAL_SOURCES_RIPTYPE
+	#Log(INTERNAL_SOURCES_RIPTYPE)
+	if use_riptype == True:
+		filter_extSources = []
+		for riptype in INTERNAL_SOURCES_RIPTYPE: filter_extSources += [i for i in srcs if i['rip'].lower() == riptype['label'].lower() and str(riptype['enabled'])=='True']
+		srcs = filter_extSources
+	
+	# filter sources based on enabled rip-type in INTERNAL_SOURCES_FILETYPE
+	#Log(INTERNAL_SOURCES_FILETYPE)
+	if use_vidtype == True:
+		filter_extSources = []
+		for vidtype in INTERNAL_SOURCES_FILETYPE: filter_extSources += [i for i in srcs if i['vidtype'].lower() in vidtype['label'].lower() and str(vidtype['enabled'])=='True']
+		srcs = filter_extSources
+	
+	# filter sources based on enabled provider in OPTIONS_PROVIDERS
+	#Log(OPTIONS_PROVIDERS)
+	if use_provider == True:
+		filter_extSources = []
+		for provider in OPTIONS_PROVIDERS: filter_extSources += [i for i in srcs if i['provider'].lower() == provider['name'].lower() and str(provider['enabled'])=='True']
+		srcs = filter_extSources
+	
+	return srcs
+		
 ####################################################################################################
 # Get HTTP response code (200 == good)
 @route(PREFIX + '/gethttpstatus')

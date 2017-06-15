@@ -74,8 +74,8 @@ class host:
 	def __init__(self):
 		self.logo = 'http://i.imgur.com/OM7VzQs.png'
 		self.name = 'openload'
-		self.host = ['openload.io','openload.co']
-		self.netloc = ['openload.io', 'openload.co']
+		self.host = ['openload.io','openload.co','oload.tv']
+		self.netloc = ['openload.io', 'openload.co', 'oload.tv']
 		self.quality = '1080p'
 		self.captcha = False
 		self.ac = False
@@ -138,6 +138,8 @@ class host:
 		
 	def createMeta(self, url, provider, logo, quality, links, key, vidtype='Movie', lang='en'):
 	
+		url = url.replace('oload.tv','openload.co')
+	
 		urldata = client.b64encode(json.dumps('', encoding='utf-8'))
 		params = client.b64encode(json.dumps('', encoding='utf-8'))
 		
@@ -158,10 +160,10 @@ class host:
 		online, r1, r2 = check(vidurl, usePairing = False, embedpage=True)
 		files_ret = []
 		try:
-			files_ret.append({'source':self.name, 'maininfo':pair, 'titleinfo':'', 'quality':file_quality(url, quality), 'vidtype':vidtype, 'rip':rip_type(url, quality), 'provider':provider, 'url':vidurl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'key':key, 'enabled':True, 'ts':time.time(), 'lang':lang, 'misc':{'pair':isPairRequired}})
+			files_ret.append({'source':self.name, 'maininfo':pair, 'titleinfo':'', 'quality':file_quality(url, quality), 'vidtype':vidtype, 'rip':rip_type(url, quality), 'provider':provider, 'url':vidurl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'key':key, 'enabled':True, 'ts':time.time(), 'lang':lang, 'misc':{'pair':isPairRequired, 'player':'iplayer'}})
 		except Exception as e:
 			print "ERROR host_openload.py > createMeta : %s" % e.args
-			files_ret.append({'source':urlhost, 'maininfo':pair, 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'url':vidurl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'key':key, 'enabled':True, 'ts':time.time(), 'lang':lang, 'misc':{'pair':isPairRequired}})
+			files_ret.append({'source':urlhost, 'maininfo':pair, 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'url':vidurl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'key':key, 'enabled':True, 'ts':time.time(), 'lang':lang, 'misc':{'pair':isPairRequired, 'player':'eplayer'}})
 			
 		for fr in files_ret:
 			links.append(fr)

@@ -74,7 +74,7 @@ class host:
 		self.testResult = self.test()[0]
 		self.msg = ''
 		self.useGetLinkAPI = False
-		self.checkGetLinkAPI()
+		#self.checkGetLinkAPI()
 		self.UA = client.USER_AGENT
 
 	def info(self):
@@ -129,7 +129,7 @@ class host:
 	def testUrl(self):
 		return ['https://drive.google.com/file/d/0B0JMGMGgxp9WMEdWb1hyQUhlOWs/view']
 		
-	def createMeta(self, url, provider, logo, quality, links, key, showsplit=True, useGetlinkAPI=True, vidtype='Movie', lang='en'):
+	def createMeta(self, url, provider, logo, quality, links, key, showsplit=False, useGetlinkAPI=True, vidtype='Movie', lang='en'):
 	
 		if 'http' not in url and 'google.com/file' in url:
 			url = 'https://drive.google.com/' + url.split('.com/')[1]
@@ -174,8 +174,25 @@ class host:
 		try:
 			#udata = urldata(url, videoData=videoData, usevideoData=True)			
 			if 'google.com/file' in url:
-				enabled = False
-			files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':titleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':type, 'provider':provider, 'url':url, 'urldata':urldata('',''), 'params':params, 'logo':logo, 'online':isOnline, 'key':key, 'enabled':enabled, 'ts':time.time(), 'lang':lang, 'misc':{}})
+				idstr = '%s' % (url.split('/preview')[0].split('/edit')[0].split('/view')[0])
+				idstr = idstr.split('/')
+				id = idstr[len(idstr)-1]
+				durl = 'https://drive.google.com/uc?export=view&id=%s' % id			
+				#durl = 'https://drive.google.com/uc?export=view&id=0BxHDtiw8Swq7X0E5WUgzZTg2aE0'
+				respD, headersD, contentD, cookieD = client.request(durl, output='extended')
+				#print headers
+				#print content
+				#print cookie
+				confirm = re.findall(r'confirm.*?&', respD)[0]
+				durl = 'https://drive.google.com/uc?export=download&%sid=%s' % (confirm,id)
+				#print durl
+				durl = client.request(durl, headers=headersD, cookie=cookieD, followredirect=True, output='geturl', limit='0')
+				
+				files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':type, 'provider':provider, 'url':durl, 'urldata':createurldata(durl,quality), 'params':params, 'logo':logo, 'online':isOnline, 'key':key, 'enabled':enabled, 'ts':time.time(), 'lang':lang, 'misc':{'player':'iplayer'}})
+				
+				files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':titleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':type, 'provider':provider, 'url':url, 'urldata':urldata('',''), 'params':params, 'logo':logo, 'online':isOnline, 'key':key, 'enabled':enabled, 'ts':time.time(), 'lang':lang, 'misc':{'player':'eplayer'}})
+			else:
+				files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':titleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':type, 'provider':provider, 'url':url, 'urldata':urldata('',''), 'params':params, 'logo':logo, 'online':isOnline, 'key':key, 'enabled':enabled, 'ts':time.time(), 'lang':lang, 'misc':{'player':'iplayer'}})
 		except Exception as e:
 			print '%s > createMeta-1 ERROR: %s for URL: %s' % (self.name, e, url)
 			
@@ -206,7 +223,7 @@ class host:
 						p = json.dumps(p, encoding='utf-8')
 						p = client.b64encode(p)
 						
-						files_ret.append({'source': self.name, 'maininfo':'', 'titleinfo':titleinfo, 'quality': quality, 'vidtype':vidtype, 'rip':type, 'provider': provider, 'url': furl, 'urldata':urldata('',''), 'params':p, 'logo': logo, 'online': isOnlineT, 'key':key, 'enabled':True, 'ts':time.time(), 'lang':lang, 'misc':{}})
+						files_ret.append({'source': self.name, 'maininfo':'', 'titleinfo':titleinfo, 'quality': quality, 'vidtype':vidtype, 'rip':type, 'provider': provider, 'url': furl, 'urldata':urldata('',''), 'params':p, 'logo': logo, 'online': isOnlineT, 'key':key, 'enabled':enabled, 'ts':time.time(), 'lang':lang, 'misc':{'player':'iplayer'}})
 						isGetlinkWork = True
 				client.setIP6()
 		except Exception as e:
@@ -226,7 +243,7 @@ class host:
 					
 					isOnlineT = check(furl, videoData, headers=headers, cookie=cookie)[0]
 					
-					files_ret.append({'source': self.name, 'maininfo':'', 'titleinfo':'', 'quality': quality, 'vidtype':vidtype, 'rip':type, 'provider': provider, 'url': furl, 'urldata':urldata('',''), 'params':params, 'logo': logo, 'online': isOnlineT, 'key':key, 'enabled':enabled, 'ts':time.time(), 'lang':lang, 'misc':{}})
+					files_ret.append({'source': self.name, 'maininfo':'', 'titleinfo':' | *limited support* ', 'quality': quality, 'vidtype':vidtype, 'rip':type, 'provider': provider, 'url': furl, 'urldata':createurldata(furl,quality), 'params':params, 'logo': logo, 'online': isOnlineT, 'key':key, 'enabled':enabled, 'ts':time.time(), 'lang':lang, 'misc':{'player':'iplayer'}})
 		except Exception as e:
 			print '%s > createMeta-3 ERROR: %s for URL: %s' % (self.name, e, url)
 
@@ -354,6 +371,28 @@ def urldata(url, videoData=None, usevideoData=False):
 				c += 1
 			if len(files) > 0:
 				ret = files
+	except:
+		print "Error in urldata"
+		pass
+		
+	#print ret
+	ret = json.dumps(ret, encoding='utf-8')
+	#print "urldata ------ %s" % ret
+	return client.b64encode(ret)
+	
+def createurldata(mfile, qual):
+	ret = ''
+	
+	try:
+		files = []
+		jsondata = {"label": qual,
+				"type": "video/mp4",
+				"src": mfile,
+				"file": mfile,
+				"res": qual}
+		files.append(json.loads(jsondata))
+		if len(files) > 0:
+			ret = files
 	except:
 		print "Error in urldata"
 		pass

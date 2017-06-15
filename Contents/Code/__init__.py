@@ -1485,7 +1485,7 @@ def EpisodeDetail(title, url, thumb, session=None, **kwargs):
 			if url_serv!= None:
 				oc.add(VideoClipObject(
 					url = trailer,
-					title = title + ' (Trailer)',
+					title = 'Trailer',
 					thumb = GetThumb(thumb),
 					art = art,
 					summary = summary)
@@ -2178,50 +2178,12 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 				Log('params: %s' % json.loads(common.client.b64decode(source['params'])))
 		Log("---------=== DEV DEBUG END ===------------")
 		
-	# filter sources based on enabled quality in common.INTERNAL_SOURCES_QUALS
-	#Log(common.INTERNAL_SOURCES_QUALS)
-	filter_extSources = []
-	for qual in common.INTERNAL_SOURCES_QUALS: filter_extSources += [i for i in internal_extSources if i['quality'].lower() == qual['label'].lower() and str(qual['enabled'])=='True']
-	internal_extSources = filter_extSources
+	internal_extSources = common.FilterBasedOn(internal_extSources)
 	
-	# filter sources based on enabled rip-type in common.INTERNAL_SOURCES_RIPTYPE
-	#Log(common.INTERNAL_SOURCES_RIPTYPE)
-	filter_extSources = []
-	for riptype in common.INTERNAL_SOURCES_RIPTYPE: filter_extSources += [i for i in internal_extSources if i['rip'].lower() == riptype['label'].lower() and str(riptype['enabled'])=='True']
-	internal_extSources = filter_extSources
+	internal_extSources = common.OrderBasedOn(internal_extSources)
 	
-	# filter sources based on enabled rip-type in common.INTERNAL_SOURCES_FILETYPE
-	#Log(common.INTERNAL_SOURCES_FILETYPE)
-	filter_extSources = []
-	for vidtype in common.INTERNAL_SOURCES_FILETYPE: filter_extSources += [i for i in internal_extSources if i['vidtype'].lower() in vidtype['label'].lower() and str(vidtype['enabled'])=='True']
-	internal_extSources = filter_extSources
-	
-	# filter sources based on enabled provider in common.OPTIONS_PROVIDERS
-	#Log(common.OPTIONS_PROVIDERS)
-	filter_extSources = []
-	for provider in common.OPTIONS_PROVIDERS: filter_extSources += [i for i in internal_extSources if i['provider'].lower() == provider['name'].lower() and str(provider['enabled'])=='True']
-	internal_extSources = filter_extSources
-	
-	# order sources based on sequence of common.INTERNAL_SOURCES / quality
-	#Log(common.INTERNAL_SOURCES)
-	filter_extSources = []
-	for host in common.INTERNAL_SOURCES: filter_extSources += [i for i in internal_extSources if i['quality'] == '4K' and i['source'].lower() == host['name']]
-	for host in common.INTERNAL_SOURCES: filter_extSources += [i for i in internal_extSources if i['quality'] == '1080p' and i['source'].lower() == host['name']]
-	for host in common.INTERNAL_SOURCES: filter_extSources += [i for i in internal_extSources if i['quality'] == '720p' and i['source'].lower() == host['name']]
-	for host in common.INTERNAL_SOURCES: filter_extSources += [i for i in internal_extSources if i['quality'] == '480p' and i['source'].lower() == host['name']]
-	for host in common.INTERNAL_SOURCES: filter_extSources += [i for i in internal_extSources if i['quality'] == '360p' and i['source'].lower() == host['name']]
-	internal_extSources = filter_extSources
-	
-	# order sources based on sequence of common.INTERNAL_SOURCES_FILETYPE / video type
-	#Log(common.INTERNAL_SOURCES_FILETYPE)
-	filter_extSources = []
-	filter_extSources += [i for i in internal_extSources if 'Trailer'.lower() == i['vidtype'].lower()]
-	filter_extSources += [i for i in internal_extSources if 'Movie'.lower() in i['vidtype'].lower() or 'Show'.lower() in i['vidtype'].lower()]
-	filter_extSources += [i for i in internal_extSources if 'Behind the scenes'.lower() == i['vidtype'].lower()]
-	filter_extSources += [i for i in internal_extSources if 'Music Video'.lower() == i['vidtype'].lower()]
-	filter_extSources += [i for i in internal_extSources if 'Misc.'.lower() == i['vidtype'].lower()]
-	internal_extSources = filter_extSources
-	
+	plexservice_playback_links = []
+	plexservice_extras_playback_links = []
 	generic_playback_links = []
 	filter_extSources = []
 	for i in internal_extSources:
@@ -2254,7 +2216,8 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 			# Log("%s --- %s" % (title_msg, vidUrl))
 			# Log('Playback: %s' % common.interface.getHostsPlaybackSupport(encode=False)[source['source']])
 		
-		if vidUrl != None and source['enabled'] and common.interface.getHostsPlaybackSupport(encode=False)[source['source']]:
+		# all source links (not extras) that can be played via the code service
+		if vidUrl != None and source['enabled'] and source['misc']['player'] == 'iplayer' and common.interface.getHostsPlaybackSupport(encode=False)[source['source']]:
 			urldata = common.client.b64decode(source['urldata'])
 			urldata = json.loads(urldata)
 			
@@ -2283,82 +2246,35 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 			except:
 				pass
 		
-		elif vidUrl != None:
+		# all source links (extra) that can be played via the code and plex service
+		elif source['vidtype'] not in 'Movie/Show' and vidUrl != None and source['enabled']:
+			plexservice_extras_playback_links.append(source)
+			
+		# all source links that can be played via the plex service
+		elif vidUrl != None and source['enabled'] and source['misc']['player'] == 'eplayer':
+			plexservice_playback_links.append(source)
+			
+		# all source links that can be attempted via the Generic Playback
+		elif vidUrl != None and source['enabled']:
 			try:
-				url_serv = URLService.ServiceIdentifierForURL(vidUrl)
-				if url_serv != None:
-					oc.add(VideoClipObject(
-						url = vidUrl,
-						title = title_msg + ' | (via Plex Service %s)' % url_serv,
-						thumb = GetThumb(thumb),
-						art = art,
-						summary = summary,
-						key = AddRecentWatchList(title = watch_title, url=url, summary=summary, thumb=thumb)
-						)
-					)
-				else:
-					generic_playback_links.append((title_msg + source['titleinfo'] + ' | (via Generic Playback)', summary, GetThumb(thumb), source['params'], duration, genre, vidUrl, source['quality']))
+				generic_playback_links.append((title_msg + source['titleinfo'] + ' | (via Generic Playback)', summary, GetThumb(thumb), source['params'], duration, genre, vidUrl, source['quality'], watch_title))
 			except:
 				pass
 
 	if  common.ALT_PLAYBACK:
 		for gen_play in generic_playback_links:
 			#Log(gen_play)
-			title, summary, thumb, params, duration, genres, videoUrl, videoRes = gen_play
-			oc.add(CreateVideoObject(url, title, summary, thumb, params, duration, genres, videoUrl, videoRes)) # ToDo
+			title, summary, thumb, params, duration, genres, videoUrl, videoRes, watch_title = gen_play
+			oc.add(CreateVideoObject(url, title, summary, thumb, params, duration, genres, videoUrl, videoRes, watch_title)) # ToDo
 	
 	if Prefs['use_ext_urlservices']:
 		external_extSources = extSourKey
 		
-		# filter sources based on enabled quality in common.INTERNAL_SOURCES_QUALS
-		filter_extSources = []
-		for qual in common.INTERNAL_SOURCES_QUALS: filter_extSources += [i for i in external_extSources if i['quality'].lower() == qual['label'].lower() and str(qual['enabled'])=='True']
-		external_extSources = filter_extSources
-		
-		# filter sources based on enabled rip-type in common.INTERNAL_SOURCES_RIPTYPE
-		filter_extSources = []
-		for riptype in common.INTERNAL_SOURCES_RIPTYPE: filter_extSources += [i for i in external_extSources if i['rip'].lower() == riptype['label'].lower() and str(riptype['enabled'])=='True']
-		external_extSources = filter_extSources
-		
-		# filter sources based on enabled vid-type in common.INTERNAL_SOURCES_FILETYPE
-		filter_extSources = []
-		for vidtype in common.INTERNAL_SOURCES_FILETYPE: filter_extSources += [i for i in internal_extSources if i['vidtype'].lower() in vidtype['label'].lower() and str(vidtype['enabled'])=='True']
-		internal_extSources = filter_extSources
-		
-		# filter sources based on enabled provider in common.OPTIONS_PROVIDERS
-		filter_extSources = []
-		for provider in common.OPTIONS_PROVIDERS: filter_extSources += [i for i in external_extSources if i['provider'].lower() == provider['name'].lower() and str(provider['enabled'])=='True']
-		external_extSources = filter_extSources
-		
-		# order sources based on quality
-		filter_extSources = []
-		filter_extSources += [i for i in external_extSources if i['quality'] == '4K']
-		filter_extSources += [i for i in external_extSources if i['quality'] == '1080p']
-		filter_extSources += [i for i in external_extSources if i['quality'] == '720p']
-		filter_extSources += [i for i in external_extSources if i['quality'] == '480p']
-		filter_extSources += [i for i in external_extSources if i['quality'] == '360p']
-		external_extSources = filter_extSources
-		
-		# order sources based on sequence of common.INTERNAL_SOURCES_FILETYPE / video type
-		#Log(common.INTERNAL_SOURCES_FILETYPE)
-		filter_extSources = []
-		filter_extSources = []
-		filter_extSources += [i for i in external_extSources if 'Trailer'.lower() == i['vidtype'].lower()]
-		filter_extSources += [i for i in external_extSources if 'Movie'.lower() in i['vidtype'].lower() or 'Show'.lower() in i['vidtype'].lower()]
-		filter_extSources += [i for i in external_extSources if 'Behind the scenes'.lower() == i['vidtype'].lower()]
-		filter_extSources += [i for i in external_extSources if 'Music Video'.lower() == i['vidtype'].lower()]
-		filter_extSources += [i for i in external_extSources if 'Misc.'.lower() == i['vidtype'].lower()]
-		external_extSources = filter_extSources
-		
-		filter_extSources = []
-		for i in external_extSources:
-			if i not in filter_extSources:
-				filter_extSources.append(i)
-		external_extSources = filter_extSources
+		external_extSources = common.FilterBasedOn(external_extSources)
 		
 		extSources_urlservice = []
+		extExtrasSources_urlservice = []
 		for source in external_extSources:
-			ls = source
 			bool = True
 			for i in common.INTERNAL_SOURCES:
 				if i['name'] == source['source']:
@@ -2366,10 +2282,31 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 					break
 			if bool == True:
 				extSources_urlservice.append(source)
+				
+		for source in plexservice_extras_playback_links:
+			extExtrasSources_urlservice.append(source)
+		extExtrasSources_urlservice = common.OrderBasedOn(extExtrasSources_urlservice, use_host=False)
+		cx = len(extExtrasSources_urlservice)
 		
+		for source in plexservice_playback_links:
+			extSources_urlservice.append(source)
+			
+		filter_extSources = []
+		dups = []
+		for i in extSources_urlservice:
+			if i['url'] not in dups:
+				filter_extSources.append(i)
+				dups.append(i['url'])
+		extSources_urlservice = filter_extSources
+			
+		extSources_urlservice = common.OrderBasedOn(extSources_urlservice, use_host=False)
 		c = len(extSources_urlservice)
+		
+		if cx > 0:
+			ocp = DirectoryObject(title = 'Extras (%s items)' % str(cx), key = Callback(PSExtSources, con_title='Extras (%s items)' % str(cx), extSources_play=E(JSON.StringFromObject(extExtrasSources_urlservice)), session=session, watch_title=watch_title, summary=summary, thumb=thumb, art=art, url=url, duration=duration, genre=genre), thumb=R(ICON_PLEX))
+			oc.add(ocp)
 		if c > 0:
-			ocp = DirectoryObject(title = 'External Sources (via Plex-Service) %s links' % str(c), key = Callback(PSExtSources, extSources_urlservice=E(JSON.StringFromObject(extSources_urlservice)), session=session, watch_title=watch_title, summary=summary, thumb=thumb, art=art, url=url, duration=duration, genre=genre), thumb=R(ICON_PLEX))
+			ocp = DirectoryObject(title = 'External Sources (via Plex-Service) %s links' % str(c), key = Callback(PSExtSources, con_title='External Sources (via Plex-Service) %s links' % str(c), extSources_play=E(JSON.StringFromObject(extSources_urlservice)), session=session, watch_title=watch_title, summary=summary, thumb=thumb, art=art, url=url, duration=duration, genre=genre), thumb=R(ICON_PLEX))
 			oc.add(ocp)
 	if len(oc) == 0:
 		return MC.message_container('External Sources', 'No videos based on Filter Selection')
@@ -2377,13 +2314,13 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 	return oc
 	
 @route(PREFIX + "/PSExtSources")
-def PSExtSources(extSources_urlservice, session, watch_title, summary, thumb, art, url, duration, genre):
-	oc = ObjectContainer(title2 = 'External Sources (via Plex-Service)', no_cache=isForceNoCache())
+def PSExtSources(extSources_play, con_title, session, watch_title, summary, thumb, art, url, duration, genre):
+	oc = ObjectContainer(title2 = unicode(con_title), no_cache=isForceNoCache())
 	
 	generic_playback_links = []
-	for source in JSON.ObjectFromString(D(extSources_urlservice)):
+	for source in JSON.ObjectFromString(D(extSources_play)):
 		vidUrl = source['url']
-		#Log(vidUrl)
+
 		if vidUrl != None:
 			status = common.GetEmoji(type=source['online'], session=session)
 			if source['vidtype'] in 'Movie/Show':
@@ -2403,16 +2340,20 @@ def PSExtSources(extSources_urlservice, session, watch_title, summary, thumb, ar
 						key = AddRecentWatchList(title = watch_title, url=url, summary=summary, thumb=thumb)
 						)
 					)
-				elif vidUrl != None:
-					generic_playback_links.append((title_msg + source['titleinfo'] + ' | (via Generic Playback)', summary, GetThumb(thumb), source['params'], duration, genre, vidUrl, source['quality']))
+				else:
+					generic_playback_links.append((title_msg + source['titleinfo'] + ' | (via Generic Playback)', summary, GetThumb(thumb), source['params'], duration, genre, vidUrl, source['quality'], watch_title))
 			except:
-				pass
+				try:
+					generic_playback_links.append((title_msg + source['titleinfo'] + ' | (via Generic Playback)', summary, GetThumb(thumb), source['params'], duration, genre, vidUrl, source['quality'], watch_title))
+				except:
+					Log('Error in Adding --- %s : %s' % (vidUrl, title_msg))
+					pass
 				
 	if  common.ALT_PLAYBACK:
 		for gen_play in generic_playback_links:
 			#Log(gen_play)
-			title, summary, thumb, params, duration, genres, videoUrl, videoRes = gen_play
-			oc.add(CreateVideoObject(url, title, summary, thumb, params, duration, genres, videoUrl, videoRes)) # ToDo
+			title, summary, thumb, params, duration, genres, videoUrl, videoRes, watch_title = gen_play
+			oc.add(CreateVideoObject(url, title, summary, thumb, params, duration, genres, videoUrl, videoRes, watch_title)) # ToDo
 			
 	return oc
 	
@@ -2681,6 +2622,7 @@ def RecentWatchList(title, session=None, **kwargs):
 		elif url.replace('fmovies.is',fmovies_base) in items_in_recent or c > NO_OF_ITEMS_IN_RECENT_LIST:
 			items_to_del.append(each['key'])
 		else:
+			url = url.replace(common.client.geturlhost(url),fmovies_base)
 			items_in_recent.append(url)
 				
 			oc.add(DirectoryObject(
@@ -3996,23 +3938,24 @@ def DisplayMsgs(**kwargs):
 # ToDo
 ####################################################################################################
 @route(PREFIX+'/videoplayback')
-def CreateVideoObject(url, title, summary, thumb, params, duration, genres, videoUrl, videoRes, include_container=False, **kwargs):
+def CreateVideoObject(url, title, summary, thumb, params, duration, genres, videoUrl, videoRes, watch_title, include_container=False, **kwargs):
 
 	videoUrl = videoUrl.decode('unicode_escape')
+	
 	video = VideoClipObject(
-		key = Callback(CreateVideoObject, url=url, title=title, summary=summary, thumb=thumb, params=params, duration=duration, genres=genres, videoUrl=videoUrl, videoRes=videoRes, include_container=True),
+		key = Callback(CreateVideoObject, url=url, title=title, summary=summary, thumb=thumb, params=params, duration=duration, genres=genres, videoUrl=videoUrl, videoRes=videoRes, watch_title=watch_title, include_container=True),
 		rating_key = url + title,
 		title = title,
 		summary = summary,
 		thumb = thumb,
 		items = [
 			MediaObject(
-					#container = Container.MP4,     # MP4, MKV, MOV, AVI
-					#video_codec = VideoCodec.H264, # H264
-					#audio_codec = AudioCodec.AAC,  # ACC, MP3
+					container = Container.MP4,     # MP4, MKV, MOV, AVI
+					video_codec = VideoCodec.H264, # H264
+					audio_codec = AudioCodec.AAC,  # ACC, MP3
 					audio_channels = 2,            # 2, 6
 					video_resolution = int(videoRes.replace('p','')),
-					parts = [PartObject(key=Callback(PlayVideo,videoUrl=videoUrl, params=params, retResponse=include_container))],
+					parts = [PartObject(key=Callback(PlayVideo,videoUrl=videoUrl, params=params, retResponse=include_container, url=url, title=title, summary=summary, thumb=thumb, watch_title=watch_title))],
 					optimized_for_streaming = False
 			)
 		]
@@ -4026,9 +3969,11 @@ def CreateVideoObject(url, title, summary, thumb, params, duration, genres, vide
 ####################################################################################################
 @route(common.PREFIX+'/PlayVideo.mp4')
 @indirect
-def PlayVideo(videoUrl, params, retResponse, **kwargs):
+def PlayVideo(videoUrl, params, retResponse, url, title, summary, thumb, watch_title, **kwargs):
 
-	if retResponse == False and '.mp4' not in videoUrl and 'mime=video/mp4' not in videoUrl:
+	if 'googleusercontent.com' in videoUrl:
+		pass
+	elif '.mp4' not in videoUrl and 'mime=video/mp4' not in videoUrl:
 		page_data = common.GetPageAsString(url=videoUrl)
 		reg_exs = [[r'\[{.*mp4.*}]',0],[r'{.*mp4.*}',0],[r'\({.*mp4.*?}\)',0]]
 		for regex in reg_exs:	
@@ -4102,10 +4047,17 @@ def PlayVideo(videoUrl, params, retResponse, **kwargs):
 					http_cookies = cookie
 					http_headers['Cookie'] = cookie
 
-	Log.Debug("Playback via Generic for URL: %s" % videoUrl)
-	Log("http_headers : %s" % http_headers)
-	Log("http_cookies : %s" % http_cookies)
+	#Log.Debug("Playback via Generic for URL: %s" % videoUrl)
+	#Log("http_headers : %s" % http_headers)
+	#Log("http_cookies : %s" % http_cookies)
+	#Log(common.client.request(videoUrl, headers=http_headers, output='chunk')[0:20])
 	
-	return IndirectResponse(VideoClipObject, key=videoUrl, http_headers=http_headers, http_cookies=http_cookies)
+	return IndirectResponse(VideoClipObject, key=PlayAndAdd(url=url, title=title, summary=summary, thumb=thumb, videoUrl=videoUrl, watch_title=watch_title), http_headers=http_headers, http_cookies=http_cookies)
 	
+####################################################################################################
+@route(common.PREFIX+'/PlayAndAdd')
+def PlayAndAdd(url, title, summary, thumb, videoUrl, watch_title, **kwargs):
+
+	addfile = AddRecentWatchList(title=watch_title, url=url, summary=summary, thumb=thumb)
 	
+	return videoUrl

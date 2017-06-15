@@ -236,7 +236,7 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 			if len(TOKEN_KEY) == 0:
 				all_js_pack_code = common.interface.request_via_proxy_as_backup(all_js_url, httpsskip=use_https_alt)
 				unpacked_code = common.jsunpack.unpack(all_js_pack_code)
-				token_key = re.findall(r'Vk="(.*?)",', unpacked_code)[0]
+				token_key = re.findall(String.Base64Decode('cidWaz0iKC4qPykiLCc='), unpacked_code)[0]
 				if token_key !=None and token_key != '':
 					#cookie_dict.update({'token_key':token_key})
 					TOKEN_KEY.append(token_key)

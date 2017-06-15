@@ -255,6 +255,14 @@ class sources:
 
 	def sourcesFilter(self):
 	
+		filter_extSources = []
+		dups = []
+		for i in self.sources:
+			if i['url'] not in dups:
+				filter_extSources.append(i)
+				dups.append(i['url'])
+		self.sources = filter_extSources
+	
 		return self.sources
 	
 

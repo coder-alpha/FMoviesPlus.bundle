@@ -133,8 +133,8 @@ class source:
 				url = self.moviesearch_link % (control.setting('control_all_uc_api_key'),cleantitle.geturl(title), year)
 				r = urlparse.urljoin(self.base_link, url)
 				r = r + "+%23newlinks"
-				r = proxies.request(r, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
-				r1 = json.loads(r)
+				rr = proxies.request(r, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
+				r1 = json.loads(rr)
 
 				for item in r1['result']:
 					if len(item['hosterurls']) == 1:
@@ -144,6 +144,20 @@ class source:
 						tmp = tmp.encode('utf-8')
 						title = item['title'].encode('utf-8')
 						stream_url.append({'url': tmp, 'hoster': item['hostername'], 'title': title, 'lang':lang})
+						
+				r = r + "&host%3Agoogle.com"
+				rr = proxies.request(r, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
+				r1 = json.loads(rr)
+
+				for item in r1['result']:
+					if len(item['hosterurls']) == 1:
+						lang = item['lang'].encode('utf-8')
+						tmp = item['hosterurls'][0]['url']
+						tmp = client.replaceHTMLCodes(tmp)
+						tmp = tmp.encode('utf-8')
+						title = item['title'].encode('utf-8')
+						stream_url.append({'url': tmp, 'hoster': item['hostername'], 'title': title, 'lang':lang})
+						
 			return stream_url
 		except Exception as e: 
 			control.log(e)
@@ -175,6 +189,19 @@ class source:
 			r = urlparse.urljoin(self.base_link, query)
 			r = r + "+%23newlinks"
 			#r = requests.get(r).json()
+			rr = proxies.request(r, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
+			rr = json.loads(rr)
+
+			for item in rr['result']:   
+				if len(item['hosterurls']) == 1:
+					lang = item['lang'].encode('utf-8')
+					tmp = item['hosterurls'][0]['url']
+					tmp = client.replaceHTMLCodes(tmp)
+					tmp = tmp.encode('utf-8')
+					title = item['title'].encode('utf-8')
+					stream_url.append({'url': tmp, 'hoster': item['hostername'], 'title': title, 'lang':lang})
+			
+			r = r + "&host%3Agoogle.com"
 			r = proxies.request(r, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
 			r = json.loads(r)
 
@@ -186,6 +213,7 @@ class source:
 					tmp = tmp.encode('utf-8')
 					title = item['title'].encode('utf-8')
 					stream_url.append({'url': tmp, 'hoster': item['hostername'], 'title': title, 'lang':lang})
+					
 			return stream_url
 		except Exception as e: 
 			control.log('alluc error tv')

@@ -136,7 +136,7 @@ class host:
 		#return ['https://openload.co/f/tr6gjooZMj0/big_buck_bunny_240p_5mb.3gp.mp4']
 		return ['https://openload.co/embed/kUEfGclsU9o']
 		
-	def createMeta(self, url, provider, logo, quality, links, key, vidtype='Movie', lang='en'):
+	def createMeta(self, url, provider, logo, quality, links, key, vidtype='Movie', lang='en', txt=''):
 	
 		url = url.replace('oload.tv','openload.co')
 	
@@ -160,10 +160,10 @@ class host:
 		online, r1, r2 = check(vidurl, usePairing = False, embedpage=True)
 		files_ret = []
 		try:
-			files_ret.append({'source':self.name, 'maininfo':pair, 'titleinfo':'', 'quality':file_quality(url, quality), 'vidtype':vidtype, 'rip':rip_type(url, quality), 'provider':provider, 'url':vidurl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'key':key, 'enabled':True, 'ts':time.time(), 'lang':lang, 'misc':{'pair':isPairRequired, 'player':'iplayer'}})
+			files_ret.append({'source':self.name, 'maininfo':pair, 'titleinfo':'', 'quality':file_quality(url, quality), 'vidtype':vidtype, 'rip':rip_type(url, quality), 'provider':provider, 'url':vidurl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'key':key, 'enabled':True, 'ts':time.time(), 'lang':lang, 'misc':{'pair':isPairRequired, 'player':'iplayer', 'gp':False}})
 		except Exception as e:
 			print "ERROR host_openload.py > createMeta : %s" % e.args
-			files_ret.append({'source':urlhost, 'maininfo':pair, 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'url':vidurl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'key':key, 'enabled':True, 'ts':time.time(), 'lang':lang, 'misc':{'pair':isPairRequired, 'player':'eplayer'}})
+			files_ret.append({'source':urlhost, 'maininfo':pair, 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'url':vidurl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'key':key, 'enabled':True, 'ts':time.time(), 'lang':lang, 'misc':{'pair':isPairRequired, 'player':'eplayer', 'gp':False}})
 			
 		for fr in files_ret:
 			links.append(fr)

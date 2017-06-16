@@ -90,11 +90,11 @@ class sources:
 					print "Adding Provider %s : %s to Interface" % (c.info()['name'], c.info()['url'])
 					self.providersCaller.append({'name':c.info()['name'], 'url':c.info()['url'], 'call':c})
 					self.providers.append(c.info())
-				except:
+				except Exception as e:
 					control.log('Error: Loading File %s' % name)
 					error_info = {
 						'url': 'Unknown',
-						'name': "%s.py - Loading Error" % name,
+						'name': "%s.py - Loading Error: %s" % (name, e),
 						'speed': 0.0,
 						'logo': 'Unknown',
 						'ssl': 'Unknown',

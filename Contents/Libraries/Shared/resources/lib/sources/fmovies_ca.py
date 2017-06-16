@@ -52,10 +52,14 @@ class source:
 			logger(msg)
 			
 	def setNewCookies(self):
-		ua = client.randomagent()
-		self.headers['User-Agent'] = ua
-		self.cookie = proxies.request(url=self.base_link, headers=self.headers, output='cookie', use_web_proxy=self.proxyrequired)
-		self.headers['Cookie'] = self.cookie
+		try:
+			ua = client.randomagent()
+			self.headers['User-Agent'] = ua
+			self.cookie = proxies.request(url=self.base_link, headers=self.headers, output='cookie', use_web_proxy=self.proxyrequired)
+			self.headers['Cookie'] = self.cookie
+		except Exception as e:
+			self.log('ERROR','setNewCookies', '%s' % e, dolog=True)
+		
 			
 	def testSite(self):
 		try:

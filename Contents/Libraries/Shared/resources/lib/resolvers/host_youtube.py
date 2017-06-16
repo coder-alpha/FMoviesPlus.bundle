@@ -101,7 +101,7 @@ class host:
 	def testUrl(self):
 		return ['https://www.youtube.com/watch?v=HcRvwVwD1Sc']
 		
-	def createMeta(self, url, provider, logo, quality, links, key, vidtype='Movie', lang='en'):
+	def createMeta(self, url, provider, logo, quality, links, key, vidtype='Movie', lang='en', txt=''):
 	
 		urldata = client.b64encode(json.dumps('', encoding='utf-8'))
 		params = client.b64encode(json.dumps('', encoding='utf-8'))
@@ -109,10 +109,10 @@ class host:
 		online = check(url)
 		files_ret = []
 		try:
-			files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':'BRRIP', 'provider':provider, 'url':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'key':key, 'enabled':True, 'ts':time.time(), 'lang':lang, 'misc':{'player':'eplayer'}})
+			files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':'BRRIP', 'provider':provider, 'url':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'key':key, 'enabled':True, 'ts':time.time(), 'lang':lang, 'misc':{'player':'eplayer', 'gp':False}})
 		except Exception as e:
 			print "ERROR host_youtube.py > createMeta : %s" % e.args
-			files_ret.append({'source':urlhost, 'maininfo':'', 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'url':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'key':key, 'enabled':True, 'ts':time.time(), 'lang':lang, 'misc':{'player':'eplayer'}})
+			files_ret.append({'source':urlhost, 'maininfo':'', 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'url':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'key':key, 'enabled':True, 'ts':time.time(), 'lang':lang, 'misc':{'player':'eplayer', 'gp':False}})
 			
 		for fr in files_ret:
 			links.append(fr)

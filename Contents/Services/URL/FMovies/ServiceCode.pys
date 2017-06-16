@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import urllib2, re, urlparse, base64
+import urllib2, re, urlparse, base64, json
 # import Shared ServiceCode
 import openload as Openload
 import misc as Misc
@@ -181,16 +181,17 @@ def MediaObjectsForURL(url, **kwargs):
 		else:
 			files = data['server']
 			try:
-				filesJ = JSON.ObjectFromString(files)
+				filesJ = json.loads(files)
 				files = filesJ
 			except:
 				try:
 					urldata = data['urldata']
+					urldata = json.loads(base64.b64decode(urldata))
 					#Log("urldata -------- %s" % urldata)
 					if urldata != '':
-						filesJ = JSON.ObjectFromString(D(urldata))
-						#Log("filesJ -------- %s" % filesJ)
-						files = JSON.ObjectFromString(filesJ)
+						files = urldata
+						#Log("files -------- %s" % files)
+						#files = json.loads(filesJ)
 					else:
 						quality = data['quality']
 						if quality == '1080p' or quality == '720p':
@@ -284,7 +285,7 @@ def PlayVideo(url, isTargetPlay=False, useRedirect=False, refUrl=None, params=No
 	http_cookies = None
 	
 	if params != None:
-		params = JSON.ObjectFromString(D(params))
+		params = json.loads(base64.b64decode(params))
 		if params != '':
 			if 'headers' in params.keys():
 				headers = params['headers']

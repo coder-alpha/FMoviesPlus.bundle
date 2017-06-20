@@ -75,12 +75,12 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 		if IPv4 == True:
 			setIP4()
 		
-		if not proxy == None:
+		if error==False and not proxy == None:
 			handlers += [urllib2.ProxyHandler({'http':'%s' % (proxy)}), urllib2.HTTPHandler]
 			opener = urllib2.build_opener(*handlers)
 			opener = urllib2.install_opener(opener)
 
-		if output == 'cookie2' or output == 'cookie' or output == 'extended' or not close == True:
+		if error==False and output == 'cookie2' or output == 'cookie' or output == 'extended' or not close == True:
 			cookies = cookielib.LWPCookieJar()
 			if httpsskip or use_web_proxy:
 				handlers += [urllib2.HTTPHandler(), urllib2.HTTPCookieProcessor(cookies)]
@@ -90,13 +90,14 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 			opener = urllib2.install_opener(opener)
 			
 		try:
-			if sys.version_info < (2, 7, 9): raise Exception()
-			import ssl; ssl_context = ssl.create_default_context()
-			ssl_context.check_hostname = False
-			ssl_context.verify_mode = ssl.CERT_NONE
-			handlers += [urllib2.HTTPSHandler(context=ssl_context)]
-			opener = urllib2.build_opener(*handlers)
-			opener = urllib2.install_opener(opener)
+			if error==False:
+				if sys.version_info < (2, 7, 9): raise Exception()
+				import ssl; ssl_context = ssl.create_default_context()
+				ssl_context.check_hostname = False
+				ssl_context.verify_mode = ssl.CERT_NONE
+				handlers += [urllib2.HTTPSHandler(context=ssl_context)]
+				opener = urllib2.build_opener(*handlers)
+				opener = urllib2.install_opener(opener)
 		except:
 			pass
 
@@ -127,7 +128,7 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 		elif not cookie == None:
 			headers['Cookie'] = cookie
 
-		if redirect == False:
+		if error==False and redirect == False:
 			class NoRedirection(urllib2.HTTPErrorProcessor):
 				def http_response(self, request, response): 
 					if IPv4 == True:
@@ -142,7 +143,7 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 			
 		redirectHandler = None
 		urlList = []
-		if followredirect:
+		if error==False and followredirect:
 			class HTTPRedirectHandler(urllib2.HTTPRedirectHandler):
 				def redirect_request(self, req, fp, code, msg, headers, newurl):
 					newreq = urllib2.HTTPRedirectHandler.redirect_request(self,
@@ -177,10 +178,15 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 			except:
 				resp_code = None
 			
+			try:
+				content = response.read()
+			except:
+				content = ''
+				
 			if response.code == 503:
 				#Log("AAAA- CODE %s|%s " % (url, response.code))
-				if 'cf-browser-verification' in response.read(5242880):
-					#Log("CF-OK")
+				if 'cf-browser-verification' in content:
+					print("CF-OK")
 
 					netloc = '%s://%s' % (urlparse.urlparse(url).scheme, urlparse.urlparse(url).netloc)
 					#cf = cache.get(cfcookie, 168, netloc, headers['User-Agent'], timeout)
@@ -194,6 +200,8 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 					if IPv4 == True:
 						setIP6()
 					return
+				elif error == True:
+					return '%s: %s' % (response.code, response.reason), content
 			elif response.code == 307:
 				#Log("AAAA- Response read: %s" % response.read(5242880))
 				#Log("AAAA- Location: %s" % (response.headers['Location'].rstrip()))

@@ -20,6 +20,7 @@ SEARCH_PATH = "/search"
 FILTER_PATH = "/filter"
 KEYWORD_PATH = "/tag/"
 STAR_PATH = "/star/"
+SITE_MAP = "/sitemap"
 ALL_JS = "/assets/min/public/all.js"
 TOKEN_KEY_PASTEBIN_URL = "https://pastebin.com/raw/VNn1454k"
 TOKEN_KEY = []

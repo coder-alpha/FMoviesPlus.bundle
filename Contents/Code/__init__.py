@@ -67,7 +67,7 @@ MC = common.NewMessageContainer(common.PREFIX, common.TITLE)
 # Set global variables
 
 CAT_WHATS_HOT = ['Sizzlers','Most Favourited','Recommended','Most Watched This Week','Most Watched This Month','Latest Movies','Latest TV-Series','Requested Movies']
-CAT_REGULAR = ['Movies','TV-Series','Top-IMDb','Most Watched']
+CAT_REGULAR = ['Movies','TV-Series','Top-IMDb','Most Watched','Sitemap Listing']
 CAT_FILTERS = ['Release','Genre','Country','Filter Setup >>>']
 CAT_GROUPS = ['What\'s Hot ?', 'Movies & TV-Series', 'Sort using...','Site News']
 
@@ -325,7 +325,7 @@ def Options(session, **kwargs):
 	
 	if common.interface.isInitialized():
 		oc.add(DirectoryObject(key = Callback(InterfaceOptions, session=session), title = 'Interface Options', thumb = R(ICON_PREFS), summary='Interface for Proxies, Hosts, Providers and Playback Quality'))
-		oc.add(DirectoryObject(key = Callback(ResetExtOptions), title = "Reset Interface Options", summary='Resets Interface Options', thumb = R(ICON_REFRESH)))
+		oc.add(DirectoryObject(key = Callback(ResetExtOptions, session=session), title = "Reset Interface Options", summary='Resets Interface Options', thumb = R(ICON_REFRESH)))
 	else:
 		oc.add(DirectoryObject(key = Callback(Options, session=session), title = 'Interface Initializing.. Please wait & retry', thumb = R(ICON_ALERT)))
 		
@@ -464,7 +464,7 @@ def ExtHostsRipType(session, item=None, setbool='True', **kwargs):
 			bool = not bool
 		
 		title_msg = "Enabled: %s | Rip-Type: %s" % (common.GetEmoji(type=bool, mode='simple', session=session), label)
-		oc.add(DirectoryObject(key = Callback(ExtHostsRipType, item=label, setbool=not bool), title = title_msg, thumb = Resource.ContentsOfURLWithFallback(url=None, fallback=None)))
+		oc.add(DirectoryObject(key = Callback(ExtHostsRipType, session=session, item=label, setbool=not bool), title = title_msg, thumb = Resource.ContentsOfURLWithFallback(url=None, fallback=None)))
 		
 	oc.add(DirectoryObject(
 			key = Callback(MainMenu, update = MakeSelectionExtHostsRipType(item=item, setbool=setbool)),
@@ -518,7 +518,7 @@ def ExtHostsFileType(session, item=None, setbool='True', **kwargs):
 			bool = not bool
 		
 		title_msg = "Enabled: %s | Video-Type: %s" % (common.GetEmoji(type=bool, mode='simple', session=session), label)
-		oc.add(DirectoryObject(key = Callback(ExtHostsFileType, item=label, setbool=not bool), title = title_msg, thumb = Resource.ContentsOfURLWithFallback(url=None, fallback=None)))
+		oc.add(DirectoryObject(key = Callback(ExtHostsFileType, session=session, item=label, setbool=not bool), title = title_msg, thumb = Resource.ContentsOfURLWithFallback(url=None, fallback=None)))
 		
 	oc.add(DirectoryObject(
 			key = Callback(MainMenu, update = MakeSelectionExtHostsFileType(item=item, setbool=setbool)),
@@ -569,7 +569,7 @@ def ExtHostsQuals(session, item=None, setbool='True', **kwargs):
 			bool = not bool
 		
 		title_msg = "Enabled: %s | Quality: %s" % (common.GetEmoji(type=bool, mode='simple', session=session), label)
-		oc.add(DirectoryObject(key = Callback(ExtHostsQuals, item=label, setbool=not bool), title = title_msg, thumb = Resource.ContentsOfURLWithFallback(url=None, fallback=None)))
+		oc.add(DirectoryObject(key = Callback(ExtHostsQuals, session=session, item=label, setbool=not bool), title = title_msg, thumb = Resource.ContentsOfURLWithFallback(url=None, fallback=None)))
 		
 	oc.add(DirectoryObject(
 			key = Callback(MainMenu, update = MakeSelectionExtHostsQuals(item=item, setbool=setbool)),
@@ -661,7 +661,7 @@ def ExtProviders(session, curr_provs=None, refresh=False, item=None, setbool='Tr
 			bool = False
 
 		title_msg = "%02d | Enabled: %s | Provider: %s | Url: %s | Online: %s | Proxy Req.: %s | Parser: %s | Speed: %s sec." % (c, common.GetEmoji(type=bool, mode='simple', session=session), label, website, common.GetEmoji(type=str(provider['online']), mode='simple', session=session),common.GetEmoji(type=str(provider['online_via_proxy']), mode='simple', session=session), common.GetEmoji(type=str(provider['parser']), mode='simple', session=session), provider['speed'])
-		oc.add(DirectoryObject(key = Callback(ExtProviders, curr_provs=None, item=label, setbool=not bool), title = title_msg, thumb = Resource.ContentsOfURLWithFallback(url = provider['logo'], fallback=ICON_QUESTION)))
+		oc.add(DirectoryObject(key = Callback(ExtProviders, session=session, curr_provs=None, item=label, setbool=not bool), title = title_msg, thumb = Resource.ContentsOfURLWithFallback(url = provider['logo'], fallback=ICON_QUESTION)))
 		
 	#oc.add(DirectoryObject(key = Callback(ExtProviders, refresh=True), title = "Refresh External Providers", summary='Reload newly installed External Host Providers.', thumb = R(ICON_REFRESH)))
 		
@@ -746,7 +746,7 @@ def ExtHosts(session, refresh=False, n=None, curr_sources=None, **kwargs):
 		summary = "%s%s" % ('' if host['msg'] == '' else '%s%s%s' % ('**', host['msg'], '** | '), title_msg)
 		try:
 			common.INTERNAL_SOURCES.append(host)
-			oc.add(DirectoryObject(key = Callback(ExtHosts, n=E(JSON.StringFromObject(host)), curr_sources=E(JSON.StringFromObject(exHosts))), title = title_msg, summary = summary, thumb = Resource.ContentsOfURLWithFallback(url = host['logo'], fallback=ICON_QUESTION)))
+			oc.add(DirectoryObject(key = Callback(ExtHosts, session=session, n=E(JSON.StringFromObject(host)), curr_sources=E(JSON.StringFromObject(exHosts))), title = title_msg, summary = summary, thumb = Resource.ContentsOfURLWithFallback(url = host['logo'], fallback=ICON_QUESTION)))
 		except:
 			pass
 				
@@ -819,7 +819,7 @@ def ExtProxies(session, refresh=False, n=None, curr_proxies=None, **kwargs):
 		
 		try:
 			common.OPTIONS_PROXY.append(proxy)
-			oc.add(DirectoryObject(key = Callback(ExtProxies, n=E(JSON.StringFromObject(proxy)), curr_proxies=E(JSON.StringFromObject(proxies))), title = title_msg, summary = title_msg, thumb = R(ICON_PROXY_DEFAULT)))
+			oc.add(DirectoryObject(key = Callback(ExtProxies, session=session, n=E(JSON.StringFromObject(proxy)), curr_proxies=E(JSON.StringFromObject(proxies))), title = title_msg, summary = title_msg, thumb = R(ICON_PROXY_DEFAULT)))
 		except:
 			pass
 				
@@ -887,7 +887,7 @@ def ResetCookies(**kwargs):
 	
 ######################################################################################
 @route(PREFIX + "/ResetExtOptions")
-def ResetExtOptions(**kwargs):
+def ResetExtOptions(session, **kwargs):
 	
 	del common.OPTIONS_PROVIDERS[:]
 	del common.OPTIONS_PROXY[:]
@@ -900,7 +900,7 @@ def ResetExtOptions(**kwargs):
 	Dict['INTERNAL_SOURCES_FILETYPE'] = None
 	Dict.Save()
 	
-	Thread.Create(SleepAndUpdateThread,{},True,False)
+	Thread.Create(SleepAndUpdateThread,{},True,False,session)
 	
 	return MC.message_container('Reset Options', 'Interface Options have been Reset !')
 	
@@ -958,7 +958,7 @@ def ShowMenu(title, session=None, **kwargs):
 			)
 	elif title == CAT_GROUPS[3]:
 		
-		page_data = common.GetPageElements(url=fmovies.BASE_URL)
+		page_data, error = common.GetPageElements(url=fmovies.BASE_URL)
 		if page_data == None:
 			bool, noc, page_data = testSite(url=fmovies.BASE_URL)
 			if bool == False:
@@ -976,6 +976,19 @@ def ShowMenu(title, session=None, **kwargs):
 					notices_all.append(notice_txt.strip())
 			except:
 				pass
+				
+			# Listing page
+			try:
+				page_data_listing, error = common.GetPageElements(url=fmovies.BASE_URL + '/movies')
+				if error != '':
+					notices_all.append("%s for %s" % (error.strip(), fmovies.BASE_URL + '/movies'))
+				error = page_data_listing.xpath(".//*[@id='body-wrapper']//div[@class='alert alert-danger']//p[1]//text()")[0]
+				error_msg = page_data_listing.xpath(".//*[@id='body-wrapper']//div[@class='alert alert-danger']//p[3]//text()")[0]
+				error = "Site Error: %s %s" % (error, error_msg)
+				notices_all.append(error.strip())
+			except:
+				pass
+				
 			if len(SITE_NEWS_LOCS) == 0:
 				try:
 					elems = page_data.xpath(".//*[@id='body-wrapper']//div[@class='row movie-list']//div[@class='item']")
@@ -984,19 +997,27 @@ def ShowMenu(title, session=None, **kwargs):
 						SITE_NEWS_LOCS.append(loc)
 				except:
 					pass
-			
 			if len(SITE_NEWS_LOCS) > 0:
-				LOC = random.choice(SITE_NEWS_LOCS)
 				try:
-					page_data = common.GetPageElements(url=LOC)
+					LOC = random.choice(SITE_NEWS_LOCS)
+					page_data, error = common.GetPageElements(url=LOC)
 					SITE_NEWS_LOCS.remove(LOC)
+					
+					try:
+						error = page_data.xpath(".//*[@id='body-wrapper']//div[@class='alert alert-danger']//p[1]//text()")[0]
+						error_msg = page_data.xpath(".//*[@id='body-wrapper']//div[@class='alert alert-danger']//p[3]//text()")[0]
+						error = "Site Error: %s %s" % (error, error_msg)
+						notices_all.append(error.strip())
+					except:
+						pass
+					
 					notices = page_data.xpath(".//*[@id='movie']//div[@class='alert alert-warning']//b//text()")
 					if notices[0] == '':
-						notices = ['No site news Available.']
+						notices = ['No other site news Available.']
 				except:
-					notices = ['No site news Available.']
+					notices = ['No other site news Available.']
 			else:
-				notices = ['No site news Available.']
+				notices = ['Could not connect to site.']
 		except:
 			notices = ['Could not connect to site.']
 			
@@ -1007,7 +1028,7 @@ def ShowMenu(title, session=None, **kwargs):
 			notice = unicode(notice)
 			oc.add(DirectoryObject(
 				title = notice,
-				key = Callback(MC.message_container, 'Site News', 'No site news Available.'),
+				key = Callback(MC.message_container, header='Site News', message=notice[0:60]+'...'),
 				summary = notice,
 				thumb = R(ICON_INFO)
 				)
@@ -1044,12 +1065,22 @@ def SortMenu(title, session=None, **kwargs):
 	oc = ObjectContainer(title2 = title, no_cache=isForceNoCache())
 	
 	# Test for the site url initially to report a logical error
-	page_data = common.GetPageElements(url = url)
+	page_data, error = common.GetPageElements(url = url)
 	if page_data == None:
 		bool, noc, page_data = testSite(url=url)
 		if bool == False:
 			return noc
-
+			
+	try:
+		error = page_data.xpath(".//*[@id='body-wrapper']//div[@class='alert alert-danger']//p[1]//text()")[0]
+		error_msg = page_data.xpath(".//*[@id='body-wrapper']//div[@class='alert alert-danger']//p[3]//text()")[0]
+		error = "Site Error: %s %s" % (error, error_msg)
+	except:
+		pass
+		
+	if error != '':
+		return MC.message_container(title, error[0:60]+'...')
+	
 	if title in CAT_FILTERS:
 		if title == CAT_FILTERS[0]:
 			elems = page_data.xpath(".//*[@id='menu']//li[@class='has-children'][3]//li//a")
@@ -1172,15 +1203,36 @@ def ShowCategory(title, key=' ', urlpath=None, page_count='1', session=None, **k
 			newurl = (fmovies.BASE_URL + '/top-imdb' + '?page=%s' % page_count)
 		elif title == CAT_REGULAR[3]:
 			newurl = (fmovies.BASE_URL + '/most-watched' + '?page=%s' % page_count)
+		elif title == CAT_REGULAR[4]:
+			newurl = (fmovies.BASE_URL + fmovies.SITE_MAP)
 		
-	page_data = common.GetPageElements(url=newurl)
+	page_data, error = common.GetPageElements(url=newurl)
 	
-	elems = page_data.xpath(".//*[@id='body-wrapper']//div[@class='row movie-list']//div[@class='item']")
-	last_page_no = int(page_count)
 	try:
-		last_page_no = int(page_data.xpath(".//*[@id='body-wrapper']//ul[@class='pagination'][1]//li[last()-1]//text()")[0])
+		error = page_data.xpath(".//*[@id='body-wrapper']//div[@class='alert alert-danger']//p[1]//text()")[0]
+		error_msg = page_data.xpath(".//*[@id='body-wrapper']//div[@class='alert alert-danger']//p[3]//text()")[0]
+		error = "Site Error: %s %s" % (error, error_msg)
 	except:
 		pass
+		
+	if error != '':
+		return MC.message_container(title, error[0:60]+'...')
+	
+	elems = []
+	if title == CAT_REGULAR[4]:
+		elems_all = page_data.xpath(".//*[@id='body-wrapper']/div/div/div[2]/ul/li[9]/ul/li")
+		last_page_no = int(len(elems_all)/50)
+		limit_x = (int(page_count)-1) * 50
+		limit_y = int(page_count) * 50
+		for i in range(limit_x, limit_y):
+			elems.append(elems_all[i])
+	else:
+		elems = page_data.xpath(".//*[@id='body-wrapper']//div[@class='row movie-list']//div[@class='item']")
+		last_page_no = int(page_count)
+		try:
+			last_page_no = int(page_data.xpath(".//*[@id='body-wrapper']//ul[@class='pagination'][1]//li[last()-1]//text()")[0])
+		except:
+			pass
 		
 	if key != ' ':
 		oc = ObjectContainer(title2 = title + '|' + key.title() + '|Page ' + str(page_count) + ' of ' + str(last_page_no), no_cache=isForceNoCache())
@@ -1188,24 +1240,35 @@ def ShowCategory(title, key=' ', urlpath=None, page_count='1', session=None, **k
 		oc = ObjectContainer(title2 = title + '|Page ' + str(page_count) + ' of ' + str(last_page_no), no_cache=isForceNoCache())
 		
 	for elem in elems:
-		name = elem.xpath(".//a[@class='name']//text()")[0]
-		loc = fmovies.BASE_URL + elem.xpath(".//a[@class='name']//@href")[0]
-		thumb = elem.xpath(".//a[@class='poster']//@src")[0].split('url=')[1]
-		summary = 'Plot Summary on Item Page.'
-		
-		eps_nos = ''
-		title_eps_no = ''
-		try:
-			eps_nos = elem.xpath(".//div[@class='status']//span//text()")[0]
-			eps_no_i = str(int(eps_nos.strip()))
-			title_eps_no = ' (Eps:'+eps_no_i+')'
-			eps_nos = ' Episodes: ' + eps_no_i
-		except:
-			pass
-		try:
-			more_info_link = elem.xpath(".//@data-tip")[0]
-		except:
+		if title == CAT_REGULAR[4]:
+			name = elem.xpath(".//a//text()")[0]
+			if '...' in name:
+				name = elem.xpath(".//a//@title")[0]
+			loc = fmovies.BASE_URL + elem.xpath(".//a//@href")[0]
+			thumb = None
+			summary = ''
+			eps_nos = ''
+			title_eps_no = ''
 			more_info_link = None
+		else:
+			name = elem.xpath(".//a[@class='name']//text()")[0]
+			loc = fmovies.BASE_URL + elem.xpath(".//a[@class='name']//@href")[0]
+			thumb = elem.xpath(".//a[@class='poster']//@src")[0].split('url=')[1]
+			summary = 'Plot Summary on Item Page.'
+			
+			eps_nos = ''
+			title_eps_no = ''
+			try:
+				eps_nos = elem.xpath(".//div[@class='status']//span//text()")[0]
+				eps_no_i = str(int(eps_nos.strip()))
+				title_eps_no = ' (Eps:'+eps_no_i+')'
+				eps_nos = ' Episodes: ' + eps_no_i
+			except:
+				pass
+			try:
+				more_info_link = elem.xpath(".//@data-tip")[0]
+			except:
+				more_info_link = None
 
 		oc.add(DirectoryObject(
 			key = Callback(EpisodeDetail, title = name, url = loc, thumb = thumb, session = session),
@@ -1247,7 +1310,7 @@ def ShowCategory(title, key=' ', urlpath=None, page_count='1', session=None, **k
 @route(PREFIX + "/episodedetail")
 def EpisodeDetail(title, url, thumb, session, **kwargs):
 
-	page_data = common.GetPageElements(url=url)
+	page_data, error = common.GetPageElements(url=url)
 	if page_data == None:
 		return MC.message_container("Unknown Error", "Error: The page was not received.")
 		
@@ -1274,7 +1337,11 @@ def EpisodeDetail(title, url, thumb, session, **kwargs):
 		if thumb == None:
 			thumb = page_data.xpath(".//*[@id='info']//div//img")[0].split('url=')[1]
 	except:
-		thumb = R(ICON_UNAV)
+		try:
+			if thumb == None:
+				thumb = page_data.xpath(".//*[@id='info']//div//img//@src")[0].split('url=')[1]
+		except:
+			thumb = R(ICON_UNAV)
 		
 	try:
 		serverts = page_data.xpath(".//body[@class='watching']//@data-ts")[0]
@@ -1811,7 +1878,7 @@ def EpisodeDetail(title, url, thumb, session, **kwargs):
 	
 	if roles != 'Not Available':
 		oc.add(DirectoryObject(
-			key = Callback(MoviesWithPeople, stars = roles),
+			key = Callback(MoviesWithPeople, stars = roles, session = session),
 			title = "People Search",
 			summary = 'Search for movies/shows based on a person from the current %s' % (itemtype),
 			art = art,
@@ -1821,7 +1888,7 @@ def EpisodeDetail(title, url, thumb, session, **kwargs):
 	
 	if tags != 'Not Available':
 		oc.add(DirectoryObject(
-			key = Callback(MoviesWithTag, tags = tags),
+			key = Callback(MoviesWithTag, tags = tags, session = session),
 			title = "Tag Search",
 			summary = 'Search for movies/shows based on a Tag from the current %s' % (itemtype),
 			art = art,
@@ -2422,7 +2489,7 @@ def SimilarRecommendations(title, similar_reccos, referer=None, session = None, 
 	
 ####################################################################################################
 @route(PREFIX + "/MoviesWithPeople")
-def MoviesWithPeople(stars, **kwargs):
+def MoviesWithPeople(stars, session, **kwargs):
 
 	oc = ObjectContainer(title2 = 'People Search', no_cache=isForceNoCache())
 	
@@ -2450,7 +2517,7 @@ def MoviesWithPeople(stars, **kwargs):
 	
 ####################################################################################################
 @route(PREFIX + "/MoviesWithTag")	
-def MoviesWithTag(tags, **kwargs):
+def MoviesWithTag(tags, session, **kwargs):
 
 	oc = ObjectContainer(title2 = 'Tag Search', no_cache=isForceNoCache())
 	
@@ -2491,7 +2558,7 @@ def GetMovieInfo(summary, urlPath, referer=None, **kwargs):
 		
 	try:
 		url = fmovies.BASE_URL + '/' + urlPath
-		page_data = common.GetPageElements(url=url, referer=referer)
+		page_data, error = common.GetPageElements(url=url, referer=referer)
 		
 		summary = ''
 		
@@ -2916,32 +2983,32 @@ def Search(query=None, surl=None, page_count='1', mode='default', thumb=None, su
 		else:
 			url = fmovies.BASE_URL + fmovies.SEARCH_PATH + '?page=%s&keyword=%s' % (str(page_count), String.Quote(query, usePlus=True))
 
-	page_data = common.GetPageElements(url=url, timeout=7)
+	page_data, error = common.GetPageElements(url=url, timeout=7)
 	if page_data == None and mode == 'other seasons':
 		url = fmovies.BASE_URL + fmovies.SEARCH_PATH + '?page=%s&keyword=%s' % (str(page_count), String.Quote(query, usePlus=True))
-		page_data = common.GetPageElements(url=url, timeout=7)
+		page_data, error = common.GetPageElements(url=url, timeout=7)
 		
 	elems = []
-	error = False
+	errorB = False
 	try:
 		elems = page_data.xpath(".//*[@id='body-wrapper']//div[@class='row movie-list']//div[@class='item']")
 		last_page_no = int(page_count)
 		last_page_no = int(page_data.xpath(".//*[@id='body-wrapper']//ul[@class='pagination'][1]//li[last()-1]//text()")[0])
 	except:
-		error = True
+		errorB = True
 		pass
 	no_elems = len(elems)
 	
-	if error==True and no_elems == 0 and mode == 'other seasons':
+	if errorB==True and no_elems == 0 and mode == 'other seasons':
 		xurl = fmovies.BASE_URL + fmovies.SEARCH_PATH + '?page=%s&keyword=%s' % (str(page_count), String.Quote(query, usePlus=True))
-		page_data = common.GetPageElements(url=xurl, timeout=7)
+		page_data, error = common.GetPageElements(url=xurl, timeout=7)
 		try:
 			elems = page_data.xpath(".//*[@id='body-wrapper']//div[@class='row movie-list']//div[@class='item']")
 			last_page_no = int(page_count)
 			last_page_no = int(page_data.xpath(".//*[@id='body-wrapper']//ul[@class='pagination'][1]//li[last()-1]//text()")[0])
-			error = False
+			errorB = False
 		except:
-			error = True
+			errorB = True
 			pass
 		no_elems = len(elems)
 		
@@ -3030,6 +3097,17 @@ def Search(query=None, surl=None, page_count='1', mode='default', thumb=None, su
 				)
 	
 	if len(oc) == 0:
+	
+		try:
+			error = page_data.xpath(".//*[@id='body-wrapper']//div[@class='alert alert-danger']//p[1]//text()")[0]
+			error_msg = page_data.xpath(".//*[@id='body-wrapper']//div[@class='alert alert-danger']//p[3]//text()")[0]
+			error = "Site Error: %s %s" % (error, error_msg)
+		except:
+			pass
+			
+		if error != '':
+			return MC.message_container('Search Error', error[0:60]+'...')
+	
 		if mode == 'other seasons':
 			return MC.message_container('Other Seasons', 'No Other Seasons Available currently')
 		else:
@@ -3540,7 +3618,7 @@ def Help():
 		return MC.message_container("Please wait..", "Please wait a few seconds for the Interface to Load & Initialize plugins")
 
 	oc = ObjectContainer(title2 = 'Help', no_cache=isForceNoCache())
-	help_page_links = common.GetPageAsString(url=common.Help_Videos)
+	help_page_links, error = common.GetPageAsString(url=common.Help_Videos)
 	help_page_items = help_page_links.split('||')
 	for item in help_page_items:
 		if '|' in item:
@@ -3724,7 +3802,7 @@ def FilterSetupData(**kwargs):
 
 	try:
 		url = fmovies.BASE_URL + fmovies.SEARCH_PATH + '?keyword=fmovies+%s' % time.time()
-		page_data = common.GetPageElements(url=url)
+		page_data, error = common.GetPageElements(url=url)
 		
 		Filter['sort']={}
 		Filter['order']={'Ascending':'asc', 'Descending':'desc'}
@@ -3966,7 +4044,7 @@ def PlayVideo(videoUrl, params, retResponse, url, title, summary, thumb, watch_t
 	if 'googleusercontent.com' in videoUrl:
 		pass
 	elif '.mp4' not in videoUrl and 'mime=video/mp4' not in videoUrl:
-		page_data = common.GetPageAsString(url=videoUrl)
+		page_data, error = common.GetPageAsString(url=videoUrl)
 		reg_exs = [[r'\[{.*mp4.*}]',0],[r'{.*mp4.*}',0],[r'\({.*mp4.*?}\)',0]]
 		for regex in reg_exs:	
 			try:

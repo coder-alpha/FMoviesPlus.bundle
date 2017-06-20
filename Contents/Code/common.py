@@ -4,6 +4,8 @@ from resources.lib.resolvers import host_openload, host_gvideo
 import interface
 from __builtin__ import ord, format, eval
 
+host_misc_resolvers = SharedCodeService.misc
+
 try:
 	client.setIP4(setoveride=True)
 	Log('IPv6 disabled and IPv4 set as default')
@@ -35,7 +37,7 @@ except Exception as e:
 
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.34' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.35' # Release notation (x.y - where x is major and y is minor)
 TAG = ''
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
@@ -428,6 +430,12 @@ def isItemVidAvailable(isTargetPlay, data, params=None, host=None, **kwargs):
 			if isTargetPlay and 'openload' in host:
 				if host_openload.check(vidurl, embedpage=True, headers=headers, cookie=cookie)[0] == True:
 						isVideoOnline = 'true'
+			elif isTargetPlay and host in host_misc_resolvers.supported_hosts:
+				resolved_url = host_misc_resolvers.resolve(vidurl)
+				if resolved_url != None:
+					http_res = client.request(url=resolved_url, output='responsecode', headers=headers, cookie=cookie, IPv4=True)
+					if http_res in client.HTTP_GOOD_RESP_CODES:
+						isVideoOnline = 'true'
 			elif isTargetPlay:
 				isVideoOnline = 'unknown'
 			else:
@@ -451,6 +459,7 @@ def GetPageElements(url, headers=None, referer=None, timeout=15):
 
 	page_data_string = None
 	page_data_elems = None
+	error = ''
 	try:
 		if url in CACHE_META.keys():
 			try:
@@ -461,22 +470,21 @@ def GetPageElements(url, headers=None, referer=None, timeout=15):
 				page_data_string = D(CACHE_META[url]['data'])
 				
 		if page_data_string == None:
-			page_data_string = GetPageAsString(url=url, headers=headers, referer=referer, timeout=timeout)
+			page_data_string, error = GetPageAsString(url=url, headers=headers, referer=referer, timeout=timeout)
 			
 		if page_data_string == None:
-			raise PageError('Request returned None')
+			raise PageError('Request returned None.')
 
 		page_data_elems = HTML.ElementFromString(page_data_string)
 		
 		CACHE_META[url] = {}
 		CACHE_META[url]['ts'] = time.time()
 		CACHE_META[url]['data'] = E(page_data_string)
-		
+	
 	except Exception as e:
-		Log('ERROR common.py>GetPageElements: %s URL: %s DATA: %s' % (e.args,url,page_data_string))
-		pass
+		Log('ERROR common.py>GetPageElements: %s URL: %s DATA: %s' % (error,url,page_data_string))
 
-	return page_data_elems
+	return page_data_elems, error
 	
 def make_cookie_str():
 	try:
@@ -573,6 +581,8 @@ def GetPageAsString(url, headers=None, timeout=15, referer=None):
 				Log("Using SSL Alternate Option")
 				Log("Url: " + url)
 			page_data_string = interface.request(url = url, headers=headers, timeout=str(timeout))
+			if page_data_string == None:
+				error, page_data_string = interface.request(url = url, headers=headers, timeout=str(timeout), error=True)
 		elif Prefs["use_web_proxy"]:
 			page_data_string = None
 			if use_debug:
@@ -588,12 +598,17 @@ def GetPageAsString(url, headers=None, timeout=15, referer=None):
 		else:
 			if Prefs["use_debug"]:
 				Log("Headers: %s" % headers)
-			page_data_string = HTTP.Request(url, headers=headers, timeout=timeout).content
+			try:
+				page_data_string = HTTP.Request(url, headers=headers, timeout=timeout).content
+			except:
+				pass
+			if page_data_string == None:
+				error, page_data_string = interface.request(url = url, headers=headers, timeout=str(timeout), error=True)
 	except Exception as e:
 		Log('ERROR common.py>GetPageAsString: %s URL: %s' % (e.args,url))
 		pass
 		
-	return page_data_string
+	return page_data_string, error
 	
 @route(PREFIX + "/request")
 def request(url, close=True, redirect=True, followredirect=False, error=False, proxy=None, post=None, headers=None, mobile=False, limit=None, referer=None, cookie=None, output='', timeout=15, httpsskip=False, use_web_proxy=False):

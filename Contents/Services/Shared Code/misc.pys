@@ -12,14 +12,21 @@
 
 import re, json
 
+supported_hosts = ['mycloud.to']
+
 def resolve(url):
-	page_data_string = HTTP.Request(url).content
 	video_url = None
-	if 'mycloud' in url:
-		json_data_str = re.findall(r'({\".*(.*m3u8|.mp4|.flv).*\"})', page_data_string)[0][0]
-		json_data = json.loads(json_data_str)
-		video_url = json_data['file']
-		if 'https:' not in video_url and 'http:' not in video_url:
-			video_url = 'http:' + video_url
+	try:
+		page_data_string = HTTP.Request(url).content
+		
+		if page_data_string != None:
+			if 'mycloud' in url and 'Sorry, the page you are looking for could not be found.' not in page_data_string:
+				json_data_str = re.findall(r'({\".*(.*m3u8|.mp4|.flv).*\"})', page_data_string)[0][0]
+				json_data = json.loads(json_data_str)
+				video_url = json_data['file']
+				if 'https:' not in video_url and 'http:' not in video_url:
+					video_url = 'http:' + video_url
+	except:
+		pass
 		
 	return video_url

@@ -276,9 +276,10 @@ def PlayVideo(url, isTargetPlay=False, useRedirect=False, refUrl=None, params=No
 				url = Openload.resolve(url)
 		elif isTargetPlay:
 			url = Misc.resolve(url)
-		if url == None:
-			raise Ex.MediaNotAvailable
 	except:
+		raise Ex.MediaNotAvailable
+		
+	if url == None:
 		raise Ex.MediaNotAvailable
 
 	http_headers = {'User-Agent': USER_AGENT}

@@ -21,6 +21,7 @@ FILTER_PATH = "/filter"
 KEYWORD_PATH = "/tag/"
 STAR_PATH = "/star/"
 SITE_MAP = "/sitemap"
+SITE_MAP_HTML_ELEMS = []
 ALL_JS = "/assets/min/public/all.js"
 TOKEN_KEY_PASTEBIN_URL = "https://pastebin.com/raw/VNn1454k"
 TOKEN_KEY = []
@@ -237,7 +238,8 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 			if len(TOKEN_KEY) == 0:
 				all_js_pack_code = common.interface.request_via_proxy_as_backup(all_js_url, httpsskip=use_https_alt)
 				unpacked_code = common.jsunpack.unpack(all_js_pack_code)
-				token_key = re.findall(String.Base64Decode('cidWaz0iKC4qPykiLCc='), unpacked_code)[0]
+				cch = re.findall(r'%s' % common.client.b64decode('ZnVuY3Rpb25cKHQsZSxpXCl7XCJ1c2Ugc3RyaWN0XCI7ZnVuY3Rpb24gblwoXCl7cmV0dXJuICguKj8pfWZ1bmN0aW9uIHJcKHRcKQ=='), unpacked_code)[0]
+				token_key = re.findall(r'%s=.*?\"(.*?)\"' % cch, unpacked_code)[0]
 				if token_key !=None and token_key != '':
 					#cookie_dict.update({'token_key':token_key})
 					TOKEN_KEY.append(token_key)
@@ -330,7 +332,7 @@ def get_reqkey_cookie(token, use_debug=False, use_https_alt=False, quiet=True):
 					cookie_string = ctx.exec_('return jssuckit')
 					for k in replaced.keys():
 						cookie_string = cookie_string.replace(k, replaced[k])
-					if 'reqkey=' in cookie_string and 'preqkey=' in cookie_string:
+					if 'reqkey=' in cookie_string:
 						success = True
 						Log.Debug("*** Using JS-Engine for regkey cookie ***")
 					else:

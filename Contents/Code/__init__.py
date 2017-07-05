@@ -74,6 +74,9 @@ CAT_GROUPS = ['What\'s Hot ?', 'Movies & TV-Series', 'Sort using...','Site News'
 Filter = {}
 Filter_Search = {}
 
+FilterExt = {}
+FilterExt_Search = {}
+
 SITE_NEWS_LOCS = []
 
 VALID_PREFS_MSGS = []
@@ -141,6 +144,8 @@ def MainMenu(**kwargs):
 	oc.add(DirectoryObject(key = Callback(ShowMenu, title = CAT_GROUPS[2], session=session), title = CAT_GROUPS[2], thumb = R(ICON_FILTER)))
 	oc.add(DirectoryObject(key = Callback(ShowMenu, title = CAT_GROUPS[3], session=session), title = CAT_GROUPS[3], thumb = R(ICON_INFO)))
 	
+	oc.add(DirectoryObject(key = Callback(FilterExtSetup, title = 'External Listing', session=session), title = 'External Listing', thumb = R(ICON_OTHERSOURCES)))
+	
 	# ToDo: Not quite sure how to read back what was actually played from ServiceCode and not just show a viewed item
 	oc.add(DirectoryObject(key = Callback(RecentWatchList, title="Recent WatchList", session=session), title = "Recent WatchList", thumb = R(ICON_LATEST)))
 	oc.add(DirectoryObject(key = Callback(Bookmarks, title="Bookmarks", session = session), title = "Bookmarks", thumb = R(ICON_QUEUE)))
@@ -152,7 +157,7 @@ def MainMenu(**kwargs):
 				dkthumb = R(ICON_SEARCH)
 		)
 	else:
-		oc.add(InputDirectoryObject(key = Callback(Search, session = session), thumb = R(ICON_SEARCH), title='Search', summary='Search Channel', prompt='Search for...'))
+		oc.add(InputDirectoryObject(key = Callback(Search, session = session), thumb = R(ICON_SEARCH), title='Search', summary='Search', prompt='Search for...'))
 	
 	oc.add(DirectoryObject(key = Callback(Options, session=session), title = 'Options', thumb = R(ICON_OPTIONS), summary='Options that can be accessed from a Client, includes Enabling DumbKeyboard & Clearing Cache'))
 	#oc.add(PrefsObject(title = 'Preferences', thumb = R(ICON_PREFS)))
@@ -1054,7 +1059,7 @@ def ShowMenu(title, session=None, **kwargs):
 				dkthumb = R(ICON_SEARCH)
 		)
 	else:
-		oc.add(InputDirectoryObject(key = Callback(Search, session = session), thumb = R(ICON_SEARCH), title='Search', summary='Search Channel', prompt='Search for...'))
+		oc.add(InputDirectoryObject(key = Callback(Search, session = session), thumb = R(ICON_SEARCH), title='Search', summary='Search', prompt='Search for...'))
 	return oc
 
 ######################################################################################
@@ -1177,7 +1182,7 @@ def SortMenu(title, session=None, **kwargs):
 				dkthumb = R(ICON_SEARCH)
 		)
 	else:
-		oc.add(InputDirectoryObject(key = Callback(Search, session = session), thumb = R(ICON_SEARCH), title='Search', summary='Search Channel', prompt='Search for...'))
+		oc.add(InputDirectoryObject(key = Callback(Search, session = session), thumb = R(ICON_SEARCH), title='Search', summary='Search', prompt='Search for...'))
 	if len(oc) == 1:
 		return MC.message_container(title, 'No Videos Available')
 	return oc
@@ -1220,7 +1225,11 @@ def ShowCategory(title, key=' ', urlpath=None, page_count='1', session=None, **k
 	
 	elems = []
 	if title == CAT_REGULAR[4]:
-		elems_all = page_data.xpath(".//*[@id='body-wrapper']/div/div/div[2]/ul/li[9]/ul/li")
+		if len(fmovies.SITE_MAP_HTML_ELEMS) == 0:
+			elems_all = page_data.xpath(".//*[@id='body-wrapper']/div/div/div[2]/ul/li[9]/ul/li")
+			fmovies.SITE_MAP_HTML_ELEMS = elems_all
+		else:
+			elems_all = fmovies.SITE_MAP_HTML_ELEMS
 		last_page_no = int(len(elems_all)/50)
 		limit_x = (int(page_count)-1) * 50
 		limit_y = int(page_count) * 50
@@ -1280,7 +1289,7 @@ def ShowCategory(title, key=' ', urlpath=None, page_count='1', session=None, **k
 		
 	if int(page_count) < last_page_no:
 		oc.add(NextPageObject(
-			key = Callback(ShowCategory, title = title, key = key, urlpath = urlpath, page_count = str(int(page_count) + 1)),
+			key = Callback(ShowCategory, title=title, key=key, urlpath=urlpath, page_count=str(int(page_count) + 1), session=session),
 			title = "Next Page (" + str(int(page_count) + 1) +'/'+ str(last_page_no) + ") >>",
 			thumb = R(ICON_NEXT)
 			)
@@ -1292,7 +1301,7 @@ def ShowCategory(title, key=' ', urlpath=None, page_count='1', session=None, **k
 				dkthumb = R(ICON_SEARCH)
 		)
 	else:
-		oc.add(InputDirectoryObject(key = Callback(Search, session = session), thumb = R(ICON_SEARCH), title='Search', summary='Search Channel', prompt='Search for...'))
+		oc.add(InputDirectoryObject(key = Callback(Search, session = session), thumb = R(ICON_SEARCH), title='Search', summary='Search', prompt='Search for...'))
 
 	if len(oc) == 1:
 		return MC.message_container(title, 'No More Videos Available')
@@ -1308,9 +1317,11 @@ def ShowCategory(title, key=' ', urlpath=None, page_count='1', session=None, **k
 
 ######################################################################################
 @route(PREFIX + "/episodedetail")
-def EpisodeDetail(title, url, thumb, session, **kwargs):
+def EpisodeDetail(title, url, thumb, session, dataEXS=None, **kwargs):
 
 	page_data, error = common.GetPageElements(url=url)
+	if error != '':
+		return MC.message_container("Error", "Error: %s." % error)
 	if page_data == None:
 		return MC.message_container("Unknown Error", "Error: The page was not received.")
 		
@@ -1516,6 +1527,46 @@ def EpisodeDetail(title, url, thumb, session, **kwargs):
 					else:
 						servers_list_new[c][label] = {'quality':"%02d" % (c+1), 'loc':''}
 			c += 1
+			
+	############################# Data ############################
+	episodes_XS = []
+	imdb_id = None
+	if dataEXS != None:
+		dataEXS = JSON.ObjectFromString(D(dataEXS))
+		title = dataEXS['title']
+		imdb_id = dataEXS['id']
+		thumb = dataEXS['thumb']
+		art = dataEXS['art']
+		banner = dataEXS['banner']
+		rating = dataEXS['rating']
+		year = dataEXS['year']
+		summary = dataEXS['summary']
+		genre0 = dataEXS['genres']
+		type = dataEXS['type']
+		trailer = dataEXS['trailer']
+		duration = dataEXS['runtime']
+		num_seasons = dataEXS['num_seasons']
+		cert = dataEXS['certification']
+		
+		if type == 'show':
+			isTvSeries = True
+			item_data, error = common.GetPageAsString(url=dataEXS['itemurl'])
+			if error != '':
+				return MC.message_container(title, error[0:60]+'...')
+			item_data = json.loads(item_data)
+			summary = item_data['synopsis']
+			duration = item_data['runtime']
+			genres0 = item_data['genres']
+			episodes_XS = item_data['episodes']
+
+		try:
+			genre = (','.join(str(x) for x in genre0))
+			if genre == '':
+				genre = 'Not Available'
+		except:
+			genre = 'Not Available'
+		
+			
 		
 	# trailer
 	try:
@@ -1532,7 +1583,12 @@ def EpisodeDetail(title, url, thumb, session, **kwargs):
 	except:
 		pass
 		
-	if len(episodes) > 0 and isTvSeries:
+	if isTvSeries and len(episodes_XS) > 0:
+		# case for presenting tv-series with synopsis via external listing
+		if Prefs["use_debug"]:
+			Log("case for presenting tv-series with synopsis via external listing")
+		
+	elif len(episodes) > 0 and isTvSeries:
 		# case for presenting tv-series with synopsis
 		if Prefs["use_debug"]:
 			Log("case for presenting tv-series with synopsis")
@@ -1628,7 +1684,7 @@ def EpisodeDetail(title, url, thumb, session, **kwargs):
 				
 			try:
 				oc.add(DirectoryObject(
-					key = Callback(TvShowDetail, tvshow=title, title=title_s, url=url, servers_list_new=servers_list_new[c], server_lab=(','.join(str(x) for x in server_lab)), summary=desc+'\n '+summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, serverts=serverts, session=session, season=SeasonN, episode=episode),
+					key = Callback(TvShowDetail, tvshow=title, title=title_s, url=url, servers_list_new=servers_list_new[c], server_lab=(','.join(str(x) for x in server_lab)), summary=desc+'\n '+summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, serverts=serverts, session=session, season=SeasonN, episode=episode, imdb_id=imdb_id),
 					title = title_s,
 					summary = desc+ '\n ' +summary,
 					art = art,
@@ -1650,7 +1706,7 @@ def EpisodeDetail(title, url, thumb, session, **kwargs):
 			thumb = R(ICON_OTHERSEASONS)
 			))
 
-	elif isTvSeries:
+	elif isTvSeries and len(episodes_XS)==0:
 		# case for presenting tv-series without synopsis
 		if Prefs["use_debug"]:
 			Log("case for presenting tv-series without synopsis")
@@ -1668,7 +1724,7 @@ def EpisodeDetail(title, url, thumb, session, **kwargs):
 				episode = eps[server_lab[0]]['quality']
 				title_s = 'Ep:' + episode
 				oc.add(DirectoryObject(
-					key = Callback(TvShowDetail, tvshow=title, title=title_s, url=url, servers_list_new=servers_list_new[c], server_lab=(','.join(str(x) for x in server_lab)), summary='Episode Summary Not Available.\n ' + summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, serverts=serverts, session=session, season=SeasonN, episode=episode),
+					key = Callback(TvShowDetail, tvshow=title, title=title_s, url=url, servers_list_new=servers_list_new[c], server_lab=(','.join(str(x) for x in server_lab)), summary='Episode Summary Not Available.\n ' + summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, serverts=serverts, session=session, season=SeasonN, episode=episode, imdb_id=imdb_id),
 					title = title_s,
 					summary = 'Episode Summary Not Available.\n ' + summary,
 					art = art,
@@ -1700,7 +1756,7 @@ def EpisodeDetail(title, url, thumb, session, **kwargs):
 				CACHE_EXPIRY = 60 * int(Prefs["cache_expiry_time"])
 			except:
 				CACHE_EXPIRY = common.CACHE_EXPIRY_TIME
-			Thread.Create(common.interface.getExtSources, {}, movtitle=title, year=year, tvshowtitle=None, season=None, episode=None, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY, ver=common.VERSION)
+			Thread.Create(common.interface.getExtSources, {}, movtitle=title, year=year, tvshowtitle=None, season=None, episode=None, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY, ver=common.VERSION, imdb_id=imdb_id)
 		
 		SeasonN = 0
 		oc.title2 = title
@@ -1711,7 +1767,7 @@ def EpisodeDetail(title, url, thumb, session, **kwargs):
 				episode = eps[server_lab[0]]['quality']
 				title_s = episode
 				oc.add(VideoClipObject(
-					key = Callback(TvShowDetail, tvshow=title, title=title_s, url=url, servers_list_new=servers_list_new[c], server_lab=(','.join(str(x) for x in server_lab)), summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, serverts=serverts, session=session, season=SeasonN, episode=episode, treatasmovie=True),
+					key = Callback(TvShowDetail, tvshow=title, title=title_s, url=url, servers_list_new=servers_list_new[c], server_lab=(','.join(str(x) for x in server_lab)), summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, serverts=serverts, session=session, season=SeasonN, episode=episode, treatasmovie=True, imdb_id=imdb_id),
 					title = title_s,
 					summary = summary,
 					art = art,
@@ -1746,7 +1802,7 @@ def EpisodeDetail(title, url, thumb, session, **kwargs):
 					CACHE_EXPIRY = 60 * int(Prefs["cache_expiry_time"])
 				except:
 					CACHE_EXPIRY = common.CACHE_EXPIRY_TIME
-				Thread.Create(common.interface.getExtSources, {}, movtitle=title, year=year, tvshowtitle=None, season=None, episode=None, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY, ver=common.VERSION)
+				Thread.Create(common.interface.getExtSources, {}, movtitle=title, year=year, tvshowtitle=None, season=None, episode=None, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY, ver=common.VERSION, imdb_id=imdb_id)
 		
 		# create timeout thread
 		Thread.Create(ThreadTimeoutTimer, {}, Client.Product, E(url), client_id)
@@ -1920,7 +1976,7 @@ def EpisodeDetail(title, url, thumb, session, **kwargs):
 	
 ####################################################################################################
 @route(PREFIX + "/TvShowDetail")
-def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thumb, art, year, rating, duration, genre, directors, roles, serverts, session, season=None, episode=None, treatasmovie=False, **kwargs):
+def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thumb, art, year, rating, duration, genre, directors, roles, serverts, session, season=None, episode=None, treatasmovie=False, imdb_id=None, **kwargs):
 
 	oc = ObjectContainer(title2 = title, art = art, no_cache=isForceNoCache())
 
@@ -1948,7 +2004,7 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 				CACHE_EXPIRY = 60 * int(Prefs["cache_expiry_time"])
 			except:
 				CACHE_EXPIRY = common.CACHE_EXPIRY_TIME
-			Thread.Create(common.interface.getExtSources, {}, movtitle=None, year=year, tvshowtitle=tvshowcleaned, season=season, episode=episode, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY, ver=common.VERSION)
+			Thread.Create(common.interface.getExtSources, {}, movtitle=None, year=year, tvshowtitle=tvshowcleaned, season=season, episode=episode, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY, ver=common.VERSION, imdb_id=imdb_id)
 	
 	# create timeout thread
 	Thread.Create(ThreadTimeoutTimer, {}, Client.Product, E(url), client_id)
@@ -2096,6 +2152,10 @@ def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary
 						pair = ' *Pairing required* '
 				if Prefs["use_debug"]:
 					Log("%s --- %s : Pairing required: %s" % (server_info, pair, pair_required))
+			elif isTargetPlay == True:
+				error = common.host_misc_resolvers.error(server_info)
+				if error != '':
+					raise Exception(error)
 				
 			if isVideoOnline != str(False):
 				status = common.GetEmoji(type=isVideoOnline, session=session) + ' ' + pair
@@ -2138,13 +2198,13 @@ def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary
 		Log("ERROR init.py>VideoDetail>Movie3 %s" % (server_info))
 		Log('ERROR init.py>VideoDetail>Movie3 %s, %s' % (e.args, (title + ' - ' + title_s)))
 		
-		return MC.message_container('Video Unavailable', 'Video Unavailable. Error in Code.')
+		return MC.message_container('Video Unavailable', 'Video Unavailable. Error: %s' % e.args)
 
 	return oc
 	
 ######################################################################################
 @route(PREFIX + "/ExtSources")
-def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directors, roles, movtitle=None, year=None, tvshowtitle=None, season=None, episode=None, session=None, **kwargs):
+def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directors, roles, movtitle=None, year=None, tvshowtitle=None, season=None, episode=None, session=None, imdb_id=None, **kwargs):
 	
 	tvshowcleaned = tvshowtitle
 	if tvshowtitle != None:
@@ -2162,7 +2222,7 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 				CACHE_EXPIRY = 60 * int(Prefs["cache_expiry_time"])
 			except:
 				CACHE_EXPIRY = common.CACHE_EXPIRY_TIME
-			Thread.Create(common.interface.getExtSources, {}, movtitle=movtitle, year=year, tvshowtitle=tvshowtitle, season=season, episode=episode, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY, ver=common.VERSION)
+			Thread.Create(common.interface.getExtSources, {}, movtitle=movtitle, year=year, tvshowtitle=tvshowtitle, season=season, episode=episode, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY, ver=common.VERSION, imdb_id=imdb_id)
 		if doSleepForProgress:
 			time.sleep(7)
 			doSleepForProgress = False
@@ -3660,7 +3720,7 @@ def FilterSetup(title, session, key1 = None, key2val = None, mode='add', update=
 	if key1 == None:
 		for f_key in sorted(Filter):
 			oc.add(DirectoryObject(
-				key = Callback(FilterSetup, title = title, key1 = f_key),
+				key = Callback(FilterSetup, title = title, session = session, key1 = f_key),
 				title = f_key.title()
 				)
 			)
@@ -3689,25 +3749,25 @@ def FilterSetup(title, session, key1 = None, key2val = None, mode='add', update=
 			
 			if mode == 'rem' and selected != '':
 				oc.add(DirectoryObject(
-					key = Callback(FilterSetup, title = title, key1 = key1, key2val = Filter[key1][f2_key], update = MakeSelections(key1=key1, key2val=key2val, mode='rem', k2v= Filter[key1][f2_key]), mode='rem'),
+					key = Callback(FilterSetup, title = title, session = session, key1 = key1, key2val = Filter[key1][f2_key], update = MakeSelections(key1=key1, key2val=key2val, mode='rem', k2v= Filter[key1][f2_key]), mode='rem'),
 					title = key_title
 					)
 				)
 			elif selected != '':
 				oc.add(DirectoryObject(
-					key = Callback(FilterSetup, title = title, key1 = key1, key2val = Filter[key1][f2_key], update = MakeSelections(key1=key1, key2val=key2val, mode='rem', k2v= Filter[key1][f2_key]), mode='rem'),
+					key = Callback(FilterSetup, title = title, session = session, key1 = key1, key2val = Filter[key1][f2_key], update = MakeSelections(key1=key1, key2val=key2val, mode='rem', k2v= Filter[key1][f2_key]), mode='rem'),
 					title = key_title
 					)
 				)
 			else:
 				oc.add(DirectoryObject(
-					key = Callback(FilterSetup, title = title, key1 = key1, key2val = Filter[key1][f2_key], update = MakeSelections(key1=key1, key2val=key2val, mode=mode, k2v=Filter[key1][f2_key])),
+					key = Callback(FilterSetup, title = title, session = session, key1 = key1, key2val = Filter[key1][f2_key], update = MakeSelections(key1=key1, key2val=key2val, mode=mode, k2v=Filter[key1][f2_key])),
 					title = key_title
 					)
 				)
 		
 		oc.add(DirectoryObject(
-			key = Callback(FilterSetup, title = title, key1 = None, key2val = None, update = MakeSelections(key1=key1, key2val=key2val, mode=mode, k2v=key2val)),
+			key = Callback(FilterSetup, title = title, session = session, key1 = None, key2val = None, update = MakeSelections(key1=key1, key2val=key2val, mode=mode, k2v=key2val)),
 			title = 'Continue Filter Setup >>'
 			)
 		)
@@ -3737,14 +3797,14 @@ def FilterSetup(title, session, key1 = None, key2val = None, mode='add', update=
 	searchUrl = fmovies.BASE_URL + fmovies.FILTER_PATH + '?' + urllib2.quote(searchString, safe='_+=&')
 	
 	oc.add(DirectoryObject(
-		key = Callback(Search, surl=searchUrl),
+		key = Callback(Search, surl=searchUrl, session = session),
 		title = '<<< Submit Search >>>',
 		summary = searchStringDesc
 		)
 	)
 	
 	oc.add(DirectoryObject(
-		key = Callback(ClearFilter),
+		key = Callback(ClearFilter, session = session),
 		title = 'Reset Search Filter'
 		)
 	)
@@ -3785,12 +3845,12 @@ def MakeSelections(key1, key2val, mode, k2v, **kwargs):
 
 ######################################################################################
 @route(PREFIX + "/clearfilter")
-def ClearFilter(**kwargs):
+def ClearFilter(session, **kwargs):
 	Filter_Search.clear()
 	
 	oc = ObjectContainer(title2 = "Filter Reset", no_cache=isForceNoCache())
 	oc.add(DirectoryObject(
-		key = Callback(FilterSetup, title=CAT_FILTERS[3]),
+		key = Callback(FilterSetup, title=CAT_FILTERS[3], session=session),
 		title = CAT_FILTERS[3]
 		)
 	)
@@ -3859,7 +3919,316 @@ def FilterSetupData(**kwargs):
 	except:
 		# Empty partial Filter if failed - error will be reported when using Filter
 		Filter.clear()
+	
+######################################################################################
+@route(PREFIX + "/filterextsetup")
+def FilterExtSetup(title, session, key1 = None, key2val = None, mode='add', update=True, **kwargs):
 
+	if not common.interface.isInitialized():
+		return MC.message_container("Please wait..", "Please wait a few seconds for the Interface to Load & Initialize plugins")
+
+	oc = ObjectContainer(title2 = title, no_cache=isForceNoCache())
+	
+	if len(FilterExt_Search) == 0:
+		# Set defaults for 'Sort' & 'Order'
+		FilterExt_Search['sort'] = 'trending'
+		FilterExt_Search['order'] = '-1'
+		FilterExt_Search['type'] = 'movies'
+		
+	if (key1==None and len(FilterExt.keys()) == 0) or key1=='type':
+		FilterExtSetupData(seltype=FilterExt_Search['type'])
+		
+	if len(FilterExt) == 0:
+		return MC.message_container("Filter Setup Error", "Sorry but the Filter could not be created !")
+	#Log(FilterExt)
+		
+	
+	if key1 == None:
+		for f_key in sorted(FilterExt):
+			oc.add(DirectoryObject(
+				key = Callback(FilterExtSetup, title = title, key1 = f_key, session = session),
+				title = f_key.title()
+				)
+			)
+	else:
+		oc = ObjectContainer(title2 = title + ' (' + key1.title() + ')', no_cache=isForceNoCache())
+		
+		for f2_key in sorted(FilterExt[key1]):
+		
+			selected = ''
+			# This indicates selected item
+	
+			if (key2val != None and key2val == FilterExt[key1][f2_key]):
+				if (mode == 'add' or key1 == 'sort' or key1 == 'order' or key1 == 'type' or key1 == 'genre'):
+					selected = ' ' + common.GetEmoji(type='pos', mode='simple', session=session)
+			
+			elif (key1 != 'sort' and key1 != 'order'  and key1 != 'type' and key1 != 'genre' and key1 in FilterExt_Search and FilterExt[key1][f2_key] in FilterExt_Search[key1]):
+				selected = ' ' + common.GetEmoji(type='pos', mode='simple', session=session)
+			
+			elif (key2val == None and key1 in FilterExt_Search and FilterExt[key1][f2_key] in FilterExt_Search[key1]):
+				selected = ' ' + common.GetEmoji(type='pos', mode='simple', session=session)
+				
+				
+			key_title = f2_key.title() + selected
+			if key1 == 'quality' or 'mode: and' in f2_key.lower(): # dont Camelcase quality values and Mode in Genre
+				key_title = f2_key + selected
+			
+			if mode == 'rem' and selected != '':
+				oc.add(DirectoryObject(
+					key = Callback(FilterExtSetup, title = title, session = session, key1 = key1, key2val = FilterExt[key1][f2_key], update = MakeSelectionsExt(key1=key1, key2val=key2val, mode='rem', k2v= FilterExt[key1][f2_key]), mode='rem'),
+					title = key_title
+					)
+				)
+			elif selected != '':
+				oc.add(DirectoryObject(
+					key = Callback(FilterExtSetup, title = title, session = session, key1 = key1, key2val = FilterExt[key1][f2_key], update = MakeSelectionsExt(key1=key1, key2val=key2val, mode='rem', k2v= FilterExt[key1][f2_key]), mode='rem'),
+					title = key_title
+					)
+				)
+			else:
+				oc.add(DirectoryObject(
+					key = Callback(FilterExtSetup, title = title, session = session, key1 = key1, key2val = FilterExt[key1][f2_key], update = MakeSelectionsExt(key1=key1, key2val=key2val, mode=mode, k2v=FilterExt[key1][f2_key])),
+					title = key_title
+					)
+				)
+		
+		oc.add(DirectoryObject(
+			key = Callback(FilterExtSetup, title = title, session = session, key1 = None, key2val = None, update = MakeSelectionsExt(key1=key1, key2val=key2val, mode=mode, k2v=key2val)),
+			title = 'Continue Filter Setup >>'
+			)
+		)
+		
+	# Build search string
+	searchStringDesc = ('Listing %s using ' + common.GetKeyFromVal(FilterExt['sort'],FilterExt_Search['sort']) + ' in ' + common.GetKeyFromVal(FilterExt['order'],FilterExt_Search['order']) + ' order.') % FilterExt_Search['type'].title()
+	
+	for k1 in FilterExt_Search:
+		if k1 != 'sort' and k1 != 'order' and k1 != 'type':
+			if k1 == 'genre':
+				if 'genre' in FilterExt_Search:
+					searchStringDesc += (' Filter ' + k1.title() + ' has %s.') % FilterExt_Search['genre'].title()
+				else:
+					searchStringDesc += ' Filter ' + k1.title() + ' has ALL genres.'
+					
+	filter_genre = 'All'
+	if 'genre' in FilterExt_Search.keys():
+		filter_genre = common.GetKeyFromVal(FilterExt['genre'],FilterExt_Search['genre'])
+
+	oc.add(DirectoryObject(
+		key = Callback(ShowCategoryES, title='External Listing', filter=E(JSON.StringFromObject(FilterExt_Search)), session = session),
+		title = '%s > %s > %s > %s >' % (common.GetKeyFromVal(FilterExt['type'],FilterExt_Search['type']), common.GetKeyFromVal(FilterExt['sort'],FilterExt_Search['sort']), filter_genre, common.GetKeyFromVal(FilterExt['order'],FilterExt_Search['order'])),
+		summary = searchStringDesc
+		)
+	)
+	
+	oc.add(DirectoryObject(
+		key = Callback(ClearFilterExt, session = session),
+		title = 'Reset Listing Filter'
+		)
+	)
+	oc.add(DirectoryObject(
+		key = Callback(MainMenu),
+		title = '<< Main Menu'
+		)
+	)
+	
+	return oc
+	
+######################################################################################
+@route(PREFIX + "/makeselectionsext")
+def MakeSelectionsExt(key1, key2val, mode, k2v, **kwargs):
+	
+	if k2v != key2val or key1 == None or key2val == None:
+		return False
+	
+	# Update FilterExt_Search based on previous selection
+	# ToDo: This will deselect
+	if (key1 != 'genre' and key1 != 'type' and key1 != 'sort' and key1 != 'order' and key1 != None and key2val != None and key1 in FilterExt_Search and key2val in FilterExt_Search[key1] and mode == 'rem'):
+		FilterExt_Search[key1].remove(key2val)
+		if len(FilterExt_Search[key1]) == 0:
+			del FilterExt_Search[key1]
+	
+	# This indicates selected item
+	elif (key1 != None and key2val != None and (key1 not in FilterExt_Search or key2val not in FilterExt_Search[key1]) and mode == 'add'):
+		if key1 != None and key2val != None:
+			if key1 == 'type' or key1 == 'sort' or key1 == 'order' or key1 == 'genre':
+				FilterExt_Search[key1] = key2val
+			else:
+				if key1 not in FilterExt_Search:
+					FilterExt_Search[key1] = []
+				if key2val not in FilterExt_Search[key1]:
+					FilterExt_Search[key1].append(key2val)
+		
+	return True
+
+######################################################################################
+@route(PREFIX + "/clearfilterext")
+def ClearFilterExt(session, **kwargs):
+	FilterExt_Search.clear()
+	
+	oc = ObjectContainer(title2 = "Filter Reset", no_cache=isForceNoCache())
+	oc.add(DirectoryObject(
+		key = Callback(FilterExtSetup, title=CAT_FILTERS[3], session = session),
+		title = CAT_FILTERS[3]
+		)
+	)
+	return oc
+
+######################################################################################
+@route(PREFIX + "/filterextsetupdata-%s" % time.time())
+def FilterExtSetupData(seltype, **kwargs):
+
+	try:
+		FilterExt['sort']={'Trending':'trending', 'Last Added':'last added'}
+		FilterExt['order']={'Ascending':'+1', 'Descending':'-1'}
+		FilterExt['genre']={}
+		Filter_genre={'movies': ['action','adventure','animation','comedy','crime','disaster','documentary','drama','eastern','family','fan-film','fantasy','film-noir','history','holiday','horror','indie','music','mystery','none','road','romance','science-fiction','short','sports','sporting-event','suspense','thriller','tv-movie','war','western'],
+			'shows': ['action','adventure','animation','comedy','crime','disaster','documentary','drama','eastern','family','fan-film','fantasy','film-noir','history','holiday','horror','indie','music','mystery','none','road','romance','science-fiction','short','sports','sporting-event','suspense','thriller','tv-movie','war','western'],
+			'animes': ['Action','Ecchi','Harem','Romance','School','Supernatural','Drama','Comedy','Mystery','Police','Sports','Mecha','Sci-Fi','Slice of Life','Fantasy','Adventure','Gore','Music','Psychological','Shoujo Ai','Yuri','Magic','Horror','Thriller','Gender Bender','Parody','Historical','Racing','Demons','Samurai','Super Power','Military','Dementia','Mahou Shounen','Game','Martial Arts','Vampire','Kids','Mahou Shoujo','Space','Shounen Ai']
+		}
+		#FilterExt['country']={}
+		FilterExt['type']={'Movies':'movies', 'Shows':'shows', 'Animes':'animes'}
+		#FilterExt['release']={}
+			
+		# Get Genre info
+		FilterExt['genre'] = {}
+		if 'genre' in FilterExt_Search.keys():
+			del FilterExt_Search['genre']
+		for i in range(0, len(Filter_genre[seltype])):
+			genre = Filter_genre[seltype][i]
+			FilterExt['genre'][genre.title()] = genre
+			
+	except Exception as e:
+		Log.Exception("init.py>FilterExtSetupData() >> : >>> %s" % (e))
+		# Empty partial Filter if failed - error will be reported when using Filter
+		FilterExt.clear()
+
+######################################################################################
+@route(PREFIX + "/showcategoryes")
+def ShowCategoryES(title, filter=None, page_count='1', last_page_no=None, session=None, **kwargs):
+	
+	if filter != None:
+		filter = JSON.ObjectFromString(D(filter))
+		if 'genre' in filter.keys():
+			genre = filter['genre']
+		else:
+			genre = 'ALL'
+		searchString = '%s/%s?sort=%s&order=%s&genre=%s' % (filter['type'], page_count, filter['sort'], filter['order'], genre)
+		searchString = searchString.replace(' ','%20')
+
+		# Build Filter-Search Url
+		#http://movies-v2.api-fetch.website/movies/1?sort=trending&limit=50&year=2017&genre=Comedy&order=-1
+		apiUrl = 'http://movies-v2.api-fetch.website/%s' % urllib2.quote(searchString, safe='/_-+=&?')
+		
+		if last_page_no == None:
+			pagesUrl = 'http://movies-v2.api-fetch.website/%s' % filter['type']
+			pages_data, error = common.GetPageAsString(url=pagesUrl)
+			
+			if error != '':
+				return MC.message_container(title, error[0:60]+'...')
+			
+			last_page_no = len(json.loads(pages_data))
+	else:
+		return MC.message_container(title, 'Filter error')
+		
+	Log(apiUrl)
+		
+	page_data, error = common.GetPageAsString(url=apiUrl)
+	
+	if error != '':
+		return MC.message_container(title, error[0:60]+'...')
+		
+	page_data_json = json.loads(page_data)
+	oc = ObjectContainer(title2 = title + '|Page %s of %s' % (str(page_count), str(last_page_no)) , no_cache=isForceNoCache())
+		
+	for elem in page_data_json:
+		
+		name = elem['title']
+		thumb = elem['images']['poster']
+		art = elem['images']['fanart']
+		banner = elem['images']['banner']
+		rating = elem['rating']['percentage']
+		year = elem['year']
+		genres = []
+		summary = 'Plot Summary on Item Page'
+		trailer = None
+		runtime = None
+		num_seasons = None
+		cert = None
+		
+		if filter['type'] == 'animes':
+			type = elem['type']
+			num_seasons = elem['num_seasons']
+			id = elem['_id']
+			genres = elem['genres']
+		elif filter['type'] == 'shows':
+			type = filter['type'][0:-1]
+			num_seasons = elem['num_seasons']
+			id = elem['imdb_id']
+		elif filter['type'] == 'movies':
+			summary = elem['synopsis']
+			genres = elem['genres']
+			id = elem['imdb_id']
+			runtime = elem['runtime']
+			trailer = elem['trailer']
+			cert = elem['certification']
+			type = filter['type'][0:-1]
+			
+		loc = 'http://movies-v2.api-fetch.website/%s/%s' % (filter['type'][0:-1],id)
+		
+		data = {}
+		data['title'] = name
+		data['id'] = id
+		data['thumb'] = thumb
+		data['art'] = art
+		data['banner'] = banner
+		data['rating'] = float(rating)/10.0
+		data['year'] = year
+		data['summary'] = summary
+		data['genres'] = genres
+		data['type'] = type
+		data['trailer'] = trailer
+		data['runtime'] = runtime
+		data['num_seasons'] = num_seasons
+		data['certification'] = cert
+		data['itemurl'] = loc
+		
+		oc.add(DirectoryObject(
+			key = Callback(EpisodeDetail, title = name, url = loc, thumb = thumb, dataEXS=E(JSON.StringFromObject(data)), session = session),
+			title = "%s (%s)" % (name,year),
+			summary = summary,
+			art = art,
+			thumb = Resource.ContentsOfURLWithFallback(url=thumb, fallback=ICON_UNAV)
+			)
+		)
+		
+	if int(page_count) < int(last_page_no):
+		oc.add(NextPageObject(
+			key = Callback(ShowCategoryES, title=title, filter=E(JSON.StringFromObject(filter)), page_count=str(int(page_count) + 1), last_page_no=last_page_no, session=session),
+			title = "Next Page (" + str(int(page_count) + 1) +'/'+ str(last_page_no) + ") >>",
+			thumb = R(ICON_NEXT)
+			)
+		)
+		
+	if common.UsingOption(key=common.DEVICE_OPTIONS[0], session=session):
+		DumbKeyboard(PREFIX, oc, Search,
+				dktitle = 'Search',
+				dkthumb = R(ICON_SEARCH)
+		)
+	else:
+		oc.add(InputDirectoryObject(key = Callback(Search, session = session), thumb = R(ICON_SEARCH), title='Search', summary='Search', prompt='Search for...'))
+
+	if len(oc) == 1:
+		return MC.message_container(title, 'No More Videos Available')
+		
+	oc.add(DirectoryObject(
+		key = Callback(MainMenu),
+		title = '<< Main Menu',
+		thumb = R(ICON)
+		)
+	)
+	
+	return oc
+		
 ######################################################################################
 @route(PREFIX + "/isForceNoCache")
 def isForceNoCache(**kwargs):

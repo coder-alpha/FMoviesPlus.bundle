@@ -314,7 +314,7 @@ def checkKeyInThread(key=None):
 	
 	return initA[0].checkKeyInThread(key=key)
 		
-def getExtSources(movtitle=None, year=None, tvshowtitle=None, season=None, episode=None, proxy_options=None, provider_options=None, key=None, maxcachetime=0, ver=None):
+def getExtSources(movtitle=None, year=None, tvshowtitle=None, season=None, episode=None, proxy_options=None, provider_options=None, key=None, maxcachetime=0, ver=None, imdb_id=None):
 
 	InterfaceThread[key] = True
 	
@@ -343,7 +343,8 @@ def getExtSources(movtitle=None, year=None, tvshowtitle=None, season=None, episo
 	episode = episode,
 	proxy_options = proxy_options,
 	provider_options = provider_options,
-	key = key)
+	key = key,
+	imdb=imdb_id)
 	
 	# if Prefs['use_debug']:
 		# Log("Movie: %s" % movtitle)

@@ -146,6 +146,10 @@ def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web
 		
 def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quiet=False):
 
+	if common.USE_COOKIES == False:
+		if use_debug or dump:
+			Log("Cookie Usage has been disabled from options !")
+
 	try:
 		CACHE_EXPIRY = 60 * int(Prefs["cache_expiry_time"])
 	except:
@@ -201,35 +205,41 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 		headersS['Cookie'] = cookie1
 		time.sleep(0.1)
 		
-		token_url = urlparse.urljoin(BASE_URL, TOKEN_PATH)
-		
-		reqkey_cookie = ''
-		del TOKEN_KEY[:]
-		
-		counter = 0
-		while reqkey_cookie == '' and counter < 5:
-			r1 = common.interface.request_via_proxy_as_backup(token_url, headers=headersS, httpsskip=use_https_alt)
-			time.sleep(0.1)
-			del common.TOKEN_CODE[:]
+		try:
+			token_url = urlparse.urljoin(BASE_URL, TOKEN_PATH)
 			
-			token_enc = common.client.b64encode(r1)
-			common.TOKEN_CODE.append(token_enc)
+			reqkey_cookie = ''
+			del TOKEN_KEY[:]
 			
-			quiet = True
-			if counter == 4:
-				quiet = False
+			counter = 0
+			while reqkey_cookie == '' and counter < 5:
+				r1 = common.interface.request_via_proxy_as_backup(token_url, headers=headersS, httpsskip=use_https_alt)
+				time.sleep(0.1)
+				del common.TOKEN_CODE[:]
+				
+				token_enc = common.client.b64encode(r1)
+				common.TOKEN_CODE.append(token_enc)
+				
+				quiet = True
+				if counter == 4:
+					quiet = False
+				
+				try:
+					reqkey_cookie = decodeAndParse(token_enc,use_debug,use_https_alt, quiet=quiet)
+				except:
+					reqkey_cookie = ''
+				time.sleep(2.0)
+				counter += 1
 			
-			try:
-				reqkey_cookie = decodeAndParse(token_enc,use_debug,use_https_alt, quiet=quiet)
-			except:
-				reqkey_cookie = ''
-			time.sleep(2.0)
-			counter += 1
-		
-		if dump or use_debug:
-			Log("=====================TOKEN START============================")
-			Log(common.TOKEN_CODE[0])
-			Log("=====================TOKEN END============================")
+			if dump or use_debug:
+				Log("=====================TOKEN START============================")
+				Log(common.TOKEN_CODE[0])
+				Log("=====================TOKEN END============================")
+		except:
+			if dump or use_debug:
+				Log("=====================TOKEN START============================")
+				Log("Token URL %s is not reachable !" % token_url)
+				Log("=====================TOKEN END============================")
 
 		cookie_dict = {}
 		
@@ -440,7 +450,11 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 
 		try:
 			headers = {'X-Requested-With': 'XMLHttpRequest'}
-			headers['User-Agent'] = common.CACHE_COOKIE[0]['UA']
+			
+			if common.USE_COOKIES == True:
+				headers['User-Agent'] = common.CACHE_COOKIE[0]['UA']
+			else:
+				headers['User-Agent'] = common.client.randomagent()
 			
 			hash_url = urlparse.urljoin(T_BASE_URL, HASH_PATH_INFO)
 			query = {'ts': serverts, 'id': key, 'update':'0'}
@@ -485,6 +499,7 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 				
 			magic_url = grabber
 		except Exception as e:
+			error = e
 			Log('ERROR fmovies.py>get_sources-1 %s, %s' % (e.args,url))
 			pass
 

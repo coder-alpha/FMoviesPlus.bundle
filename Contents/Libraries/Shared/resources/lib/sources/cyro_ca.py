@@ -29,13 +29,13 @@ from resources.lib import proxies
 
 class source:
 	def __init__(self):
-		self.base_link = 'https://cyro.se'
-		self.MainPageValidatingContent = 'Cyro.se - The Many-Named Site.'
-		self.urlhost = 'cyro.se'
+		self.base_link = 'http://xpau.se'
+		self.MainPageValidatingContent = 'movies'
+		self.urlhost = 'xpau.se'
 		self.name = 'G2G'
 		self.loggertxt = []
 		self.ssl = False
-		self.logo = 'http://i.imgur.com/3VRoX2c.png'
+		self.logo = 'http://i.imgur.com/coVgHWS.png'
 		self.watch_link = '/watch/%s'
 		self.headers = {}
 		self.speedtest = 0

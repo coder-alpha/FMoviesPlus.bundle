@@ -63,6 +63,8 @@ ICON_PLEX = "icon-plex.png"
 
 MC = common.NewMessageContainer(common.PREFIX, common.TITLE)
 
+ES_API_URL = 'http://movies-v2.api-fetch.website'
+
 ######################################################################################
 # Set global variables
 
@@ -1033,7 +1035,7 @@ def ShowMenu(title, session=None, **kwargs):
 			notice = unicode(notice)
 			oc.add(DirectoryObject(
 				title = notice,
-				key = Callback(MC.message_container, header='Site News', message=notice[0:60]+'...'),
+				key = Callback(MC.message_container, header='Site News', message=notice),
 				summary = notice,
 				thumb = R(ICON_INFO)
 				)
@@ -1084,7 +1086,7 @@ def SortMenu(title, session=None, **kwargs):
 		pass
 		
 	if error != '':
-		return MC.message_container(title, error[0:60]+'...')
+		return MC.message_container(title, error)
 	
 	if title in CAT_FILTERS:
 		if title == CAT_FILTERS[0]:
@@ -1221,7 +1223,7 @@ def ShowCategory(title, key=' ', urlpath=None, page_count='1', session=None, **k
 		pass
 		
 	if error != '':
-		return MC.message_container(title, error[0:60]+'...')
+		return MC.message_container(title, error)
 	
 	elems = []
 	if title == CAT_REGULAR[4]:
@@ -1426,15 +1428,19 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, **kwargs):
 	
 	if str(duration) == 'Not Available':
 		summary += 'Runtime: ' + str(duration) + '\n '
+		duration = 0
 	else:
 		summary += 'Runtime: ' + str(duration) + ' min.' + '\n '
 	
 	summary += 'Year: ' + year + '\n '
 	summary += 'Genre: ' + genre + '\n '
 	summary += 'IMDB rating: ' + rating + '\n '
-	
-	summary = unicode(summary)
-	
+
+	try:
+		summary = unicode(str(summary))
+	except:
+		summary = 'Not Available'
+		
 	try:
 		similar_reccos = []
 		similar_reccos_elems = page_data.xpath(".//*[@id='movie']//div[@class='row movie-list']//div[@class='item']")
@@ -1532,32 +1538,34 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, **kwargs):
 	episodes_XS = []
 	imdb_id = None
 	if dataEXS != None:
-		dataEXS = JSON.ObjectFromString(D(dataEXS))
-		title = dataEXS['title']
-		imdb_id = dataEXS['id']
-		thumb = dataEXS['thumb']
-		art = dataEXS['art']
-		banner = dataEXS['banner']
-		rating = dataEXS['rating']
-		year = dataEXS['year']
-		summary = dataEXS['summary']
-		genre0 = dataEXS['genres']
-		type = dataEXS['type']
-		trailer = dataEXS['trailer']
-		duration = dataEXS['runtime']
-		num_seasons = dataEXS['num_seasons']
-		cert = dataEXS['certification']
+		dataEXS_d = JSON.ObjectFromString(D(dataEXS))
 		
-		if type == 'show':
+		title = dataEXS_d['title']
+		imdb_id = dataEXS_d['id']
+		thumb = dataEXS_d['thumb']
+		art = dataEXS_d['art']
+		banner = dataEXS_d['banner']
+		rating = dataEXS_d['rating']
+		year = dataEXS_d['year']
+		summary = dataEXS_d['summary']
+		genre0 = dataEXS_d['genres']
+		type = dataEXS_d['type']
+		subtype = dataEXS_d['subtype']
+		trailer = dataEXS_d['trailer']
+		duration = dataEXS_d['runtime']
+		num_seasons = dataEXS_d['num_seasons']
+		cert = dataEXS_d['certification']
+		
+		if type == 'show' or (type == 'anime' and subtype == 'show'):
 			isTvSeries = True
-			item_data, error = common.GetPageAsString(url=dataEXS['itemurl'])
+			json_data, error = common.GetPageAsString(url=dataEXS_d['itemurl'])
 			if error != '':
-				return MC.message_container(title, error[0:60]+'...')
-			item_data = json.loads(item_data)
-			summary = item_data['synopsis']
-			duration = item_data['runtime']
-			genres0 = item_data['genres']
-			episodes_XS = item_data['episodes']
+				return MC.message_container(title, error)
+			json_data = json.loads(json_data)
+			summary = json_data['synopsis']
+			duration = json_data['runtime']
+			genres0 = json_data['genres']
+			episodes_XS = json_data['episodes']
 
 		try:
 			genre = (','.join(str(x) for x in genre0))
@@ -1587,6 +1595,47 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, **kwargs):
 		# case for presenting tv-series with synopsis via external listing
 		if Prefs["use_debug"]:
 			Log("case for presenting tv-series with synopsis via external listing")
+		
+		if json_data:
+			seasons = []
+			
+			try:
+				thumb = json_data['images']['poster']
+			except:
+				thumb = None
+			try:
+				art = json_data['images']['fanart']
+			except:
+				art = None
+				
+			for json_item in json_data['episodes']:
+				if int(json_item['season']) not in seasons:
+					seasons.append(int(json_item['season']))
+					season_object            = SeasonObject()
+					season_object.title      = 'Season {0}'.format(json_item['season'])
+					season_object.index      = int(json_item['season'])
+					season_object.show       = title
+					season_object.thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback = ICON_UNAV)
+					season_object.art = Resource.ContentsOfURLWithFallback(url = art, fallback = ART)
+					season_object.rating_key = '%s-%s' % (imdb_id, season_object.index)
+					season_object.key        = Callback(season_menuES, title=season_object.title, show_title=season_object.show, season_index=season_object.index, dataEXSJsonUrl=url, session=session)
+					oc.add(season_object)
+					
+			if len(seasons)-1 != max(seasons):
+				for i in range(1,max(seasons)):
+					if i not in seasons:
+						seasons.append(i)
+						season_object            = SeasonObject()
+						season_object.title      = 'Season {0}'.format(i)
+						season_object.index      = i
+						season_object.show       = title
+						season_object.thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback = ICON_UNAV)
+						season_object.art = Resource.ContentsOfURLWithFallback(url = art, fallback = ART)
+						season_object.rating_key = '%s-%s' % (imdb_id, season_object.index)
+						season_object.key        = Callback(season_menuES, title=season_object.title, show_title=season_object.show, season_index=season_object.index, dataEXSJsonUrl=url, session=session)
+						oc.add(season_object)
+
+		oc.objects.sort(key=lambda season_object: season_object.index)
 		
 	elif len(episodes) > 0 and isTvSeries:
 		# case for presenting tv-series with synopsis
@@ -2367,7 +2416,10 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 		for gen_play in generic_playback_links:
 			#Log(gen_play)
 			title, summary, thumb, params, duration, genres, videoUrl, videoRes, watch_title = gen_play
-			oc.add(CreateVideoObject(url, title, summary, thumb, params, duration, genres, videoUrl, videoRes, watch_title)) # ToDo
+			try:
+				oc.add(CreateVideoObject(url, title, summary, thumb, params, duration, genres, videoUrl, videoRes, watch_title)) # ToDo
+			except:
+				pass
 	
 	if Prefs['use_ext_urlservices']:
 		external_extSources = extSourKey
@@ -2456,8 +2508,10 @@ def PSExtSources(extSources_play, con_title, session, watch_title, summary, thum
 		for gen_play in generic_playback_links:
 			#Log(gen_play)
 			title, summary, thumb, params, duration, genres, videoUrl, videoRes, watch_title = gen_play
-			oc.add(CreateVideoObject(url, title, summary, thumb, params, duration, genres, videoUrl, videoRes, watch_title)) # ToDo
-			
+			try:
+				oc.add(CreateVideoObject(url, title, summary, thumb, params, duration, genres, videoUrl, videoRes, watch_title)) # ToDo
+			except:
+				pass
 	return oc
 	
 def generatemoviekey(movtitle=None, year=None, tvshowtitle=None, season=None, episode=None):
@@ -2927,6 +2981,9 @@ def Check(title, url, **kwargs):
 	longstring = Dict[title+'-'+E(surl)]
 	if longstring != None and (longstring.lower()).find(SITE.lower()) != -1 and surl in longstring:
 		return True
+		
+	if longstring != None and (longstring.lower()).find(ES_API_URL.lower()) != -1:
+		return True
 
 	return False
 
@@ -2981,6 +3038,8 @@ def ClearBookmarks(**kwargs):
 			url = Dict[each]
 			if url.find(SITE.lower()) != -1 and 'http' in url and 'RR44SS' not in url:
 				remove_list.append(each)
+			elif url.find(ES_API_URL.lower()) != -1 and 'http' in url and 'RR44SS' not in url:
+				remove_list.append(each)
 		except:
 			continue
 
@@ -3003,6 +3062,8 @@ def ClearSearches(**kwargs):
 	for each in Dict:
 		try:
 			if each.find(SITE.lower()) != -1 and 'MyCustomSearch' in each:
+				remove_list.append(each)
+			elif each.find(ES_API_URL.lower()) != -1 and 'MyCustomSearch' in each:
 				remove_list.append(each)
 		except:
 			continue
@@ -3166,7 +3227,7 @@ def Search(query=None, surl=None, page_count='1', mode='default', thumb=None, su
 			pass
 			
 		if error != '':
-			return MC.message_container('Search Error', error[0:60]+'...')
+			return MC.message_container('Search Error', error)
 	
 		if mode == 'other seasons':
 			return MC.message_container('Other Seasons', 'No Other Seasons Available currently')
@@ -3622,7 +3683,7 @@ def DoIMDBExtSourcesEpisode(query, title, year, type, imdbid, season, summary, t
 	oc.add(DirectoryObject(
 		key = Callback(DoIMDBExtSources, title=title, year=year, type=type, imdbid=imdbid, item=E(JSON.StringFromObject(item)), simpleSummary=True, season=season, episode=episode, session=session), 
 		title = '*'+watch_title,
-		summary = watch_title + ' : ' + summary,
+		summary =  '%s : %s' % (watch_title,summary),
 		thumb = thumb))
 		
 	return oc
@@ -4078,7 +4139,7 @@ def ClearFilterExt(session, **kwargs):
 def FilterExtSetupData(seltype, **kwargs):
 
 	try:
-		FilterExt['sort']={'Trending':'trending', 'Last Added':'last added'}
+		FilterExt['sort']={'Trending':'trending', 'Last Added':'last added', 'Popular':'popular'}
 		FilterExt['order']={'Ascending':'+1', 'Descending':'-1'}
 		FilterExt['genre']={}
 		Filter_genre={'movies': ['action','adventure','animation','comedy','crime','disaster','documentary','drama','eastern','family','fan-film','fantasy','film-noir','history','holiday','horror','indie','music','mystery','none','road','romance','science-fiction','short','sports','sporting-event','suspense','thriller','tv-movie','war','western'],
@@ -4117,35 +4178,45 @@ def ShowCategoryES(title, filter=None, page_count='1', last_page_no=None, sessio
 
 		# Build Filter-Search Url
 		#http://movies-v2.api-fetch.website/movies/1?sort=trending&limit=50&year=2017&genre=Comedy&order=-1
-		apiUrl = 'http://movies-v2.api-fetch.website/%s' % urllib2.quote(searchString, safe='/_-+=&?')
+		apiUrl = ES_API_URL + '/%s' % urllib2.quote(searchString, safe='%/_-+=&?')
 		
 		if last_page_no == None:
-			pagesUrl = 'http://movies-v2.api-fetch.website/%s' % filter['type']
+			pagesUrl = ES_API_URL + '/%s' % filter['type']
 			pages_data, error = common.GetPageAsString(url=pagesUrl)
-			
+			#Log(pages_data)
+			#Log(error)
 			if error != '':
-				return MC.message_container(title, error[0:60]+'...')
+				return MC.message_container(title, error)
 			
 			last_page_no = len(json.loads(pages_data))
 	else:
 		return MC.message_container(title, 'Filter error')
 		
-	Log(apiUrl)
-		
+	oc = ObjectContainer(title2 = title + '|Page %s of %s' % (str(page_count), str(last_page_no)) , no_cache=isForceNoCache())
+	
 	page_data, error = common.GetPageAsString(url=apiUrl)
 	
 	if error != '':
-		return MC.message_container(title, error[0:60]+'...')
+		return MC.message_container(title, error)
 		
 	page_data_json = json.loads(page_data)
-	oc = ObjectContainer(title2 = title + '|Page %s of %s' % (str(page_count), str(last_page_no)) , no_cache=isForceNoCache())
+		
 		
 	for elem in page_data_json:
 		
 		name = elem['title']
-		thumb = elem['images']['poster']
-		art = elem['images']['fanart']
-		banner = elem['images']['banner']
+		try:
+			thumb = elem['images']['poster']
+		except:
+			thumb = None
+		try:
+			art = elem['images']['fanart']
+		except:
+			art = None
+		try:
+			banner = elem['images']['banner']
+		except:
+			banner = None
 		rating = elem['rating']['percentage']
 		year = elem['year']
 		genres = []
@@ -4157,11 +4228,14 @@ def ShowCategoryES(title, filter=None, page_count='1', last_page_no=None, sessio
 		
 		if filter['type'] == 'animes':
 			type = elem['type']
+			type = 'anime'
+			subtype = elem['type']
 			num_seasons = elem['num_seasons']
 			id = elem['_id']
 			genres = elem['genres']
 		elif filter['type'] == 'shows':
 			type = filter['type'][0:-1]
+			subtype = 'show'
 			num_seasons = elem['num_seasons']
 			id = elem['imdb_id']
 		elif filter['type'] == 'movies':
@@ -4172,8 +4246,9 @@ def ShowCategoryES(title, filter=None, page_count='1', last_page_no=None, sessio
 			trailer = elem['trailer']
 			cert = elem['certification']
 			type = filter['type'][0:-1]
+			subtype = 'movie'
 			
-		loc = 'http://movies-v2.api-fetch.website/%s/%s' % (filter['type'][0:-1],id)
+		loc = ES_API_URL + '/%s/%s' % (type,id)
 		
 		data = {}
 		data['title'] = name
@@ -4186,6 +4261,7 @@ def ShowCategoryES(title, filter=None, page_count='1', last_page_no=None, sessio
 		data['summary'] = summary
 		data['genres'] = genres
 		data['type'] = type
+		data['subtype'] = subtype
 		data['trailer'] = trailer
 		data['runtime'] = runtime
 		data['num_seasons'] = num_seasons
@@ -4228,6 +4304,91 @@ def ShowCategoryES(title, filter=None, page_count='1', last_page_no=None, sessio
 	)
 	
 	return oc
+
+################################################################################
+@route(PREFIX + "/season_menuES")
+def season_menuES(title, show_title, season_index, dataEXSJsonUrl, session):
+	object_container = ObjectContainer(title2=title)
+
+	json_data, error = common.GetPageAsString(url=dataEXSJsonUrl)
+	if error != '':
+		return MC.message_container(title, error)
+	json_data = json.loads(json_data)
+	
+	#Log(json_data)
+	#Log(json_data['episodes'])
+
+	if json_data and 'episodes' in json_data:
+		episodes = []
+
+		try:
+			thumb = json_data['images']['poster']
+		except:
+			thumb = None
+		try:
+			art = json_data['images']['fanart']
+		except:
+			art = None
+
+		eps = []
+		for json_item in json_data['episodes']:
+			if int(json_item['season']) == int(season_index):
+				episode				= {}
+				episode['title']	= u'{0}. {1}'.format(json_item['episode'], json_item['title'] if json_item['title'] != None else 'Title Unavailable')
+				episode['summary']	= json_item['overview'] if json_item['overview'] != None else 'Summary Unavailable'
+				episode['index']	= int(json_item['episode'])
+				episodes.append(episode)
+				eps.append(episode['index'])
+				#Log(episode['title'])
+		
+		if len(eps) == 0:
+			eps.append(20)
+		
+		if len(eps)-1 != max(eps):
+			for i in range(1,max(eps)):
+				if i not in eps:
+					episode				= {}
+					episode['title']	= u'{0}. {1}'.format(i, 'Title Unavailable')
+					episode['summary']	= 'Summary Unavailable'
+					episode['index']	= i
+					episodes.append(episode)
+					eps.append(episode['index'])
+
+		episodes.sort(key=lambda episode: episode['index'])
+
+		for episode in episodes:
+			directory_object 			= DirectoryObject()
+			directory_object.title		= unicode(episode['title'])
+			directory_object.summary	= unicode(episode['summary'])
+			directory_object.thumb		= Resource.ContentsOfURLWithFallback(url=thumb, fallback=ICON_UNAV)
+			directory_object.art		= Resource.ContentsOfURLWithFallback(url=art, fallback=ART)
+			#directory_object.key		= Callback(episode_menuES, show_title=show_title, season_index=season_index, episode_index=episode['index'], dataEXSJsonUrl=dataEXSJsonUrl, session=session)
+			directory_object.key		= Callback(DoIMDBExtSourcesEpisode, query=episode['index'], title=json_data['title'], year=json_data['year'], type='show', imdbid=json_data['_id'], season=season_index, summary=episode['summary'], thumb=thumb, session=session)
+			object_container.add(directory_object)
+
+	return object_container
+
+################################################################################
+@route(PREFIX + "/episode_menuES")
+def episode_menuES(show_title, season_index, episode_index, dataEXSJsonUrl, session):
+	object_container = ObjectContainer()
+
+	json_data, error = common.GetPageAsString(url=dataEXSJsonUrl)
+	if error != '':
+		return MC.message_container(title, error)
+	json_data = json.loads(json_data)
+
+	if json_data and 'episodes' in json_data:
+		for json_item in json_data['episodes']:
+			if int(json_item['season']) == int(season_index) and int(json_item['episode']) == int(episode_index):
+				
+				episode_object = EpisodeObject()
+				episode_object.title   = json_item['title']
+				episode_object.summary = json_item['overview']
+				tvdb_id = json_item['tvdb_id']
+				object_container.add(episode_object)
+
+	return object_container
 		
 ######################################################################################
 @route(PREFIX + "/isForceNoCache")
@@ -4370,10 +4531,10 @@ def CreateVideoObject(url, title, summary, thumb, params, duration, genres, vide
 			thumb = thumb,
 			items = [
 				MediaObject(
-						container = Container.MP4,     # MP4, MKV, MOV, AVI
+						container = Container.MP4,	 # MP4, MKV, MOV, AVI
 						video_codec = VideoCodec.H264, # H264
 						audio_codec = AudioCodec.AAC,  # ACC, MP3
-						audio_channels = 2,            # 2, 6
+						audio_channels = 2,			# 2, 6
 						video_resolution = int(videoRes.replace('p','')),
 						parts = [PartObject(key=Callback(PlayVideo,videoUrl=videoUrl, params=params, retResponse=include_container, url=url, title=title, summary=summary, thumb=thumb, watch_title=watch_title))],
 						optimized_for_streaming = True
@@ -4389,10 +4550,10 @@ def CreateVideoObject(url, title, summary, thumb, params, duration, genres, vide
 			thumb = thumb,
 			items = [
 				MediaObject(
-						container = Container.MP4,     # MP4, MKV, MOV, AVI
+						container = Container.MP4,	 # MP4, MKV, MOV, AVI
 						video_codec = VideoCodec.H264, # H264
 						audio_codec = AudioCodec.AAC,  # ACC, MP3
-						audio_channels = 2,            # 2, 6
+						audio_channels = 2,			# 2, 6
 						video_resolution = int(videoRes.replace('p','')),
 						parts = [PartObject(key=Callback(PlayVideo,videoUrl=videoUrl, params=params, retResponse=include_container, url=url, title=title, summary=summary, thumb=thumb, watch_title=watch_title))],
 						optimized_for_streaming = True

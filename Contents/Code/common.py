@@ -37,7 +37,7 @@ except Exception as e:
 
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.36' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.37' # Release notation (x.y - where x is major and y is minor)
 TAG = ''
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
@@ -489,34 +489,37 @@ def GetPageElements(url, headers=None, referer=None, timeout=15):
 def make_cookie_str():
 	try:
 		cookie_str = ''
+		p_cookie = ''
 		error = ''
 		if len(CACHE_COOKIE) > 0:
-			pass
+		
+			user_defined_reqkey_cookie = Prefs['reqkey_cookie']
+			reqCookie = CACHE_COOKIE[0]['reqkey']
+			if user_defined_reqkey_cookie != None and user_defined_reqkey_cookie != '':
+				reqCookie = user_defined_reqkey_cookie
+
+			p_cookie = CACHE_COOKIE[0]['cookie'] + ';' + reqCookie
+			p_cookie = p_cookie.replace(';;',';')
+			p_cookie_s = p_cookie.split(';')
+			cookie_string_arr = []
 		else:
 			#setTokenCookie(serverts=serverts, use_debug=use_debug)
 			error = "Cookie not set !"
-
-		user_defined_reqkey_cookie = Prefs['reqkey_cookie']
-		reqCookie = CACHE_COOKIE[0]['reqkey']
-		if user_defined_reqkey_cookie != None and user_defined_reqkey_cookie != '':
-			reqCookie = user_defined_reqkey_cookie
-
-		p_cookie = CACHE_COOKIE[0]['cookie'] + ';' + reqCookie
-		p_cookie = p_cookie.replace(';;',';')
-		p_cookie_s = p_cookie.split(';')
-		cookie_string_arr = []
+			p_cookie_s = []
 		
 		for ps in p_cookie_s:
 			if '=' in ps:
-				ps_s = ps.split('=')
-				k = ps_s[0].strip()
-				v = ps_s[1].strip()
-				if k == 'reqkey':
-					if len(v) > 5:
+				try:
+					ps_s = ps.split('=')
+					k = ps_s[0].strip()
+					v = ps_s[1].strip()
+					if k == 'reqkey':
+						if len(v) > 5:
+							cookie_string_arr.append(k+'='+v)
+					else:
 						cookie_string_arr.append(k+'='+v)
-				else:
-					cookie_string_arr.append(k+'='+v)
-		
+				except:
+					pass
 		try:
 			cookie_str = ('; '.join(x for x in sorted(cookie_string_arr)))
 		except:
@@ -524,6 +527,7 @@ def make_cookie_str():
 		
 		return cookie_str, error
 	except Exception as e:
+		Log("common.py > make_cookie_str : %s" % e)
 		return cookie_str, e
 		
 def cleanCookie(str):
@@ -556,6 +560,8 @@ def GetPageAsString(url, headers=None, timeout=15, referer=None):
 		CACHE_EXPIRY = CACHE_EXPIRY_TIME
 
 	page_data_string = None
+	error = ''
+	
 	if headers == None:
 		headers = {}
 	if referer != None:
@@ -565,15 +571,15 @@ def GetPageAsString(url, headers=None, timeout=15, referer=None):
 	else:
 		headers['Referer'] = url
 	
-	cookies, error = make_cookie_str()
+	if USE_COOKIES and 'fmovies' in url:
+		cookies, error = make_cookie_str()
+		if error == '':
+			headers['Cookie'] = cookies
+			headers['User-Agent'] = CACHE_COOKIE[0]['UA']
 
-	if error == '':
-		headers['Cookie'] = cookies
-		headers['User-Agent'] = CACHE_COOKIE[0]['UA']
-
-		if use_debug:
-			Log("Using Cookie retrieved at: %s" % CACHE_COOKIE[0]['ts'])
-			Log("Using Cookie: %s" % (cookies))
+			if use_debug:
+				Log("Using Cookie retrieved at: %s" % CACHE_COOKIE[0]['ts'])
+				Log("Using Cookie: %s" % (cookies))
 
 	try:
 		if Prefs["use_https_alt"]:

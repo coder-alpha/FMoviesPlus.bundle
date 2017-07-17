@@ -523,7 +523,7 @@ def r01(t, e):
 def a01(t):
 	i = 0
 	for e in range(0, len(t)): 
-		i += ord(t[e]) * e + e
+		i += ord(t[e]) * e
 	return i
 
 

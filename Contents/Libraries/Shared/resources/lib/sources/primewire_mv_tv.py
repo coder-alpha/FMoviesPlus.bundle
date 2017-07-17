@@ -34,6 +34,7 @@ class source:
 	def __init__(self):
 		self.base_link = 'http://www.primewire.ag'
 		self.MainPageValidatingContent = '1Channel | PrimeWire.ag - Watch Movies Online'
+		self.type_filter = ['movie', 'show', 'anime']
 		self.name = 'Primewire'
 		self.loggertxt = []
 		self.ssl = False

@@ -31,6 +31,7 @@ class source:
 	def __init__(self):
 		self.base_link = 'http://xpau.se'
 		self.MainPageValidatingContent = 'movies'
+		self.type_filter = ['movie', 'show']
 		self.urlhost = 'xpau.se'
 		self.name = 'G2G'
 		self.loggertxt = []

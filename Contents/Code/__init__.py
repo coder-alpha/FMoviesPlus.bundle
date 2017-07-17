@@ -26,6 +26,7 @@ ICON_LATEST = "icon-latest.png"
 ICON_SIMILAR = "icon-similar.png"
 ICON_OTHERSEASONS = "icon-otherseasons.png"
 ICON_HOT = "icon-hot.png"
+ICON_UPARROW = "icon-uparrow.png"
 ICON_ENTER = "icon-enter.png"
 ICON_QUEUE = "icon-bookmark.png"
 ICON_UNAV = "MoviePosterUnavailable.jpg"
@@ -336,6 +337,10 @@ def Options(session, **kwargs):
 	else:
 		oc.add(DirectoryObject(key = Callback(Options, session=session), title = 'Interface Initializing.. Please wait & retry', thumb = R(ICON_ALERT)))
 		
+	oc.add(DirectoryObject(key = Callback(ResetAllOptions, session=session), title = "Factory Reset", summary='Factory Reset. Sets everything as a clean new installation. Channel Pref/Setting options are not affected !', thumb = R(ICON_REFRESH)))
+	
+	oc.add(DirectoryObject(key = Callback(MainMenu),title = '<< Main Menu',thumb = R(ICON)))
+		
 	return oc
 	
 ######################################################################################
@@ -397,6 +402,8 @@ def InterfaceOptions(session, **kwargs):
 	oc.add(DirectoryObject(key = Callback(ExtHostsRipType, session=session), title = "Rip Type Allowed", summary='Enable/Disable External Host Rip Type.', thumb = R(ICON_RIPTYPE)))
 	oc.add(DirectoryObject(key = Callback(ExtHostsFileType, session=session), title = "Video Type Allowed", summary='Enable/Disable External Host Video Type.', thumb = R(ICON_VIDTYPE)))
 	oc.add(DirectoryObject(key = Callback(Summarize, session=session), title = "Summarize Options", summary='Shows a quick glance of all options', thumb = R(ICON_SUMMARY)))
+	
+	oc.add(DirectoryObject(key = Callback(MainMenu),title = '<< Main Menu',thumb = R(ICON)))
 	
 	return oc
 	
@@ -668,7 +675,7 @@ def ExtProviders(session, curr_provs=None, refresh=False, item=None, setbool='Tr
 			bool = False
 
 		title_msg = "%02d | Enabled: %s | Provider: %s | Url: %s | Online: %s | Proxy Req.: %s | Parser: %s | Speed: %s sec." % (c, common.GetEmoji(type=bool, mode='simple', session=session), label, website, common.GetEmoji(type=str(provider['online']), mode='simple', session=session),common.GetEmoji(type=str(provider['online_via_proxy']), mode='simple', session=session), common.GetEmoji(type=str(provider['parser']), mode='simple', session=session), provider['speed'])
-		oc.add(DirectoryObject(key = Callback(ExtProviders, session=session, curr_provs=None, item=label, setbool=not bool), title = title_msg, thumb = Resource.ContentsOfURLWithFallback(url = provider['logo'], fallback=ICON_QUESTION)))
+		oc.add(DirectoryObject(key = Callback(ExtProviders, session=session, curr_provs=None, item=label, setbool=not bool), title = title_msg, summary = title_msg, thumb = Resource.ContentsOfURLWithFallback(url = provider['logo'], fallback=ICON_QUESTION)))
 		
 	#oc.add(DirectoryObject(key = Callback(ExtProviders, refresh=True), title = "Refresh External Providers", summary='Reload newly installed External Host Providers.', thumb = R(ICON_REFRESH)))
 		
@@ -717,8 +724,18 @@ def ExtHosts(session, refresh=False, n=None, curr_sources=None, **kwargs):
 		n = JSON.ObjectFromString(D(n))
 		order = JSON.ObjectFromString(D(curr_sources))
 		if len(order) == len(exHosts):
-			order.remove(n)
+			for h in order:
+				if h['name'] == n['name']:
+					order.remove(h)
 			order.insert(0,n)
+			
+			order_2=[]
+			for o1 in order:
+				for o2 in exHosts:
+					if o1['name'] == o2['name']:
+						o2['enabled'] = o1['enabled']
+						order_2.append(o2)
+			order = order_2
 			
 			new_order=[]
 			others = []
@@ -748,12 +765,18 @@ def ExtHosts(session, refresh=False, n=None, curr_sources=None, **kwargs):
 		if c == 0:
 			n = host
 		c += 1
-		title_msg = "%02d | Enabled: %s | Host: %s | Quality: %s | Captcha: %s | Working: %s | Speed: %s sec." % (c, common.GetEmoji(type=host['working'], mode='simple', session=session), host['name'], host['quality'], common.GetEmoji(type=str(host['captcha']), mode='simple', session=session), common.GetEmoji(type=host['working'], mode='simple', session=session), host['speed'])
+		
+		if 'enabled' in host.keys():
+			pass
+		else:
+			host['enabled'] = True
+		
+		title_msg = "%02d | Enabled: %s | Host: %s | Quality: %s | Captcha: %s | Working: %s | Speed: %s sec." % (c, common.GetEmoji(type=host['enabled'], mode='simple', session=session), host['name'], host['quality'], common.GetEmoji(type=str(host['captcha']), mode='simple', session=session), common.GetEmoji(type=host['working'], mode='simple', session=session), host['speed'])
 		
 		summary = "%s%s" % ('' if host['msg'] == '' else '%s%s%s' % ('**', host['msg'], '** | '), title_msg)
 		try:
 			common.INTERNAL_SOURCES.append(host)
-			oc.add(DirectoryObject(key = Callback(ExtHosts, session=session, n=E(JSON.StringFromObject(host)), curr_sources=E(JSON.StringFromObject(exHosts))), title = title_msg, summary = summary, thumb = Resource.ContentsOfURLWithFallback(url = host['logo'], fallback=ICON_QUESTION)))
+			oc.add(DirectoryObject(key = Callback(SetHostOptions, session=session, n=E(JSON.StringFromObject(host)), curr_sources=E(JSON.StringFromObject(exHosts))), title = title_msg, summary = summary, thumb = Resource.ContentsOfURLWithFallback(url = host['logo'], fallback=ICON_QUESTION)))
 		except:
 			pass
 				
@@ -766,6 +789,56 @@ def ExtHosts(session, refresh=False, n=None, curr_sources=None, **kwargs):
 	)
 
 	return oc
+	
+######################################################################################
+@route(PREFIX + "/SetHostOptions")
+def SetHostOptions(session, refresh=False, n=None, curr_sources=None, option='0', **kwargs):
+	
+	host = JSON.ObjectFromString(D(n))
+	order = JSON.ObjectFromString(D(curr_sources))
+	
+	oc = ObjectContainer(title2='Set External Host Options')
+	
+	c = 0
+	for h in common.INTERNAL_SOURCES:
+		if h['name'] == host['name']:
+			common.INTERNAL_SOURCES.remove(h)
+			break
+		c += 1
+	
+	reorder = False
+	if option == '1':
+		host['enabled'] = False
+	elif option == '2':
+		host['enabled'] = True
+	elif option == '3':
+		reorder = True
+	
+	if reorder == True:
+		common.INTERNAL_SOURCES.insert(0,host)
+	else:
+		common.INTERNAL_SOURCES.insert(c,host)
+	curr_sources = E(JSON.StringFromObject(common.INTERNAL_SOURCES))
+	
+	title_msg = "%02d | Enabled: %s | Host: %s | Quality: %s | Captcha: %s | Working: %s | Speed: %s sec." % (c, common.GetEmoji(type=host['enabled'], mode='simple', session=session), host['name'], host['quality'], common.GetEmoji(type=str(host['captcha']), mode='simple', session=session), common.GetEmoji(type=host['working'], mode='simple', session=session), host['speed'])
+	
+	if host['enabled'] == True:
+		oc.add(DirectoryObject(key = Callback(SetHostOptions, session=session, n=E(JSON.StringFromObject(host)), curr_sources=curr_sources, option='1'), title = 'Disable Host', summary = title_msg, thumb = R(ICON_OK)))
+	else:
+		oc.add(DirectoryObject(key = Callback(SetHostOptions, session=session, n=E(JSON.StringFromObject(host)), curr_sources=curr_sources, option='2'), title = 'Enable Host', summary = title_msg, thumb = R(ICON_NOTOK)))
+		
+	oc.add(DirectoryObject(key = Callback(ExtHosts, session=session, n=E(JSON.StringFromObject(host)), curr_sources=curr_sources), title = 'Move to Top in Host List', summary = title_msg, thumb = R(ICON_UPARROW)))
+	
+	oc.add(DirectoryObject(
+		key = Callback(MainMenu, update = MakeSelectionHosts()),
+		title = '<< Save Selection >>',
+		summary = 'Save the Selection which is used when listing External Sources.',
+		thumb = R(ICON_SAVE)
+		)
+	)
+	
+	return oc
+
 	
 ######################################################################################
 @route(PREFIX + "/MakeSelectionHosts")
@@ -896,6 +969,9 @@ def ResetCookies(**kwargs):
 @route(PREFIX + "/ResetExtOptions")
 def ResetExtOptions(session, **kwargs):
 	
+	FilterExt_Search.clear()
+	FilterExt.clear()
+	
 	del common.OPTIONS_PROVIDERS[:]
 	del common.OPTIONS_PROXY[:]
 	del common.INTERNAL_SOURCES[:]
@@ -910,6 +986,24 @@ def ResetExtOptions(session, **kwargs):
 	Thread.Create(SleepAndUpdateThread,{},True,False,session)
 	
 	return MC.message_container('Reset Options', 'Interface Options have been Reset !')
+	
+######################################################################################
+@route(PREFIX + "/ResetAllOptions")
+def ResetAllOptions(session, doReset=False, **kwargs):
+	
+	if doReset == False:
+		oc = ObjectContainer(title2 = 'Confirm Factory Reset', no_cache=isForceNoCache())
+		oc.add(DirectoryObject(key = Callback(Options, session=session), title = 'No', summary = 'Return to Options Menu', thumb = R(ICON_NOTOK)))
+		oc.add(DirectoryObject(key = Callback(ResetAllOptions, session=session, doReset=True), title = 'Yes', summary = 'This will erase all information stored in the Plugin Dictionary (Bookmarks, Recent Watchlist, Searches, Device Options, etc.)', thumb = R(ICON_OK)))
+		oc.add(DirectoryObject(key = Callback(MainMenu),title = '<< Main Menu',thumb = R(ICON)))
+		return oc
+	
+	Dict.Reset()
+	
+	FilterExt_Search.clear()
+	FilterExt.clear()
+	
+	return MC.message_container('Reset All Options', 'All Dictionary stored Options have been Reset to Factory Defaults !')
 	
 ######################################################################################
 @route(PREFIX + "/testSite")
@@ -1537,8 +1631,83 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, **kwargs):
 	############################# Data ############################
 	episodes_XS = []
 	imdb_id = None
-	if dataEXS != None:
-		dataEXS_d = JSON.ObjectFromString(D(dataEXS))
+	if dataEXS != None or ES_API_URL.lower() in url:
+	
+		json_data = None
+		if dataEXS == None:
+			json_data, error = common.GetPageAsString(url=url)
+			if error != '':
+				return MC.message_container(title, error)
+			json_data = json.loads(json_data)
+			
+			dataEXS_d = {}
+			name = json_data['title']
+			try:
+				thumb = json_data['images']['poster']
+			except:
+				thumb = ICON_UNAV
+			try:
+				art = json_data['images']['fanart']
+			except:
+				art = ART
+			try:
+				banner = json_data['images']['banner']
+			except:
+				banner = None
+			rating = json_data['rating']['percentage']
+			year = json_data['year']
+			genres = []
+			summary = 'Plot Summary on Item Page'
+			trailer = None
+			runtime = None
+			num_seasons = None
+			cert = None
+			
+			if '/anime/' in url:
+				type = json_data['type']
+				type = 'anime'
+				subtype = json_data['type']
+				num_seasons = json_data['num_seasons']
+				id = json_data['_id']
+				genres = json_data['genres']
+			elif '/show/' in url:
+				type = 'show'
+				subtype = 'show'
+				num_seasons = json_data['num_seasons']
+				id = json_data['imdb_id']
+				summary = json_data['synopsis']
+			elif '/movie/' in url:
+				summary = json_data['synopsis']
+				genres = json_data['genres']
+				id = json_data['imdb_id']
+				runtime = json_data['runtime']
+				trailer = json_data['trailer']
+				cert = json_data['certification']
+				type = 'movie'
+				subtype = 'movie'
+				
+			loc = ES_API_URL + '/%s/%s' % (type,id)
+			
+			dataEXS_d = {}
+			dataEXS_d['title'] = name
+			dataEXS_d['id'] = id
+			dataEXS_d['thumb'] = thumb
+			dataEXS_d['art'] = art
+			dataEXS_d['banner'] = banner
+			dataEXS_d['rating'] = float(rating)/10.0
+			dataEXS_d['year'] = year
+			dataEXS_d['summary'] = summary
+			dataEXS_d['genres'] = genres
+			dataEXS_d['type'] = type
+			dataEXS_d['subtype'] = subtype
+			dataEXS_d['trailer'] = trailer
+			dataEXS_d['runtime'] = runtime
+			dataEXS_d['num_seasons'] = num_seasons
+			dataEXS_d['certification'] = cert
+			dataEXS_d['itemurl'] = loc
+			
+		else:
+			dataEXS_d = JSON.ObjectFromString(D(dataEXS))
 		
 		title = dataEXS_d['title']
 		imdb_id = dataEXS_d['id']
@@ -1558,24 +1727,24 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, **kwargs):
 		
 		if type == 'show' or (type == 'anime' and subtype == 'show'):
 			isTvSeries = True
-			json_data, error = common.GetPageAsString(url=dataEXS_d['itemurl'])
-			if error != '':
-				return MC.message_container(title, error)
-			json_data = json.loads(json_data)
+			if json_data == None:
+				json_data, error = common.GetPageAsString(url=dataEXS_d['itemurl'])
+				if error != '':
+					return MC.message_container(title, error)
+				json_data = json.loads(json_data)
 			summary = json_data['synopsis']
 			duration = json_data['runtime']
 			genres0 = json_data['genres']
 			episodes_XS = json_data['episodes']
+			rating = float(json_data['rating']['percentage'])/10.0
 
 		try:
-			genre = (','.join(str(x) for x in genre0))
+			genre = (','.join(str(x.title()) for x in genre0))
 			if genre == '':
 				genre = 'Not Available'
 		except:
 			genre = 'Not Available'
-		
-			
-		
+
 	# trailer
 	try:
 		if trailer != None:
@@ -1596,44 +1765,34 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, **kwargs):
 		if Prefs["use_debug"]:
 			Log("case for presenting tv-series with synopsis via external listing")
 		
-		if json_data:
-			seasons = []
-			
-			try:
-				thumb = json_data['images']['poster']
-			except:
-				thumb = None
-			try:
-				art = json_data['images']['fanart']
-			except:
-				art = None
+		seasons = []
+		
+		for json_item in episodes_XS:
+			if int(json_item['season']) not in seasons:
+				seasons.append(int(json_item['season']))
+				season_object            = SeasonObject()
+				season_object.title      = 'Season {0}'.format(json_item['season'])
+				season_object.index      = int(json_item['season'])
+				season_object.show       = title
+				season_object.thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback = ICON_UNAV)
+				season_object.art = Resource.ContentsOfURLWithFallback(url = art, fallback = ART)
+				season_object.rating_key = '%s-%s' % (imdb_id, season_object.index)
+				season_object.key        = Callback(season_menuES, title=season_object.title, show_title=season_object.show, season_index=season_object.index, dataEXSJsonUrl=url, session=session)
+				oc.add(season_object)
 				
-			for json_item in json_data['episodes']:
-				if int(json_item['season']) not in seasons:
-					seasons.append(int(json_item['season']))
+		if len(seasons)-1 != max(seasons):
+			for i in range(1,max(seasons)):
+				if i not in seasons:
+					seasons.append(i)
 					season_object            = SeasonObject()
-					season_object.title      = 'Season {0}'.format(json_item['season'])
-					season_object.index      = int(json_item['season'])
+					season_object.title      = 'Season {0}'.format(i)
+					season_object.index      = i
 					season_object.show       = title
 					season_object.thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback = ICON_UNAV)
 					season_object.art = Resource.ContentsOfURLWithFallback(url = art, fallback = ART)
 					season_object.rating_key = '%s-%s' % (imdb_id, season_object.index)
 					season_object.key        = Callback(season_menuES, title=season_object.title, show_title=season_object.show, season_index=season_object.index, dataEXSJsonUrl=url, session=session)
 					oc.add(season_object)
-					
-			if len(seasons)-1 != max(seasons):
-				for i in range(1,max(seasons)):
-					if i not in seasons:
-						seasons.append(i)
-						season_object            = SeasonObject()
-						season_object.title      = 'Season {0}'.format(i)
-						season_object.index      = i
-						season_object.show       = title
-						season_object.thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback = ICON_UNAV)
-						season_object.art = Resource.ContentsOfURLWithFallback(url = art, fallback = ART)
-						season_object.rating_key = '%s-%s' % (imdb_id, season_object.index)
-						season_object.key        = Callback(season_menuES, title=season_object.title, show_title=season_object.show, season_index=season_object.index, dataEXSJsonUrl=url, session=session)
-						oc.add(season_object)
 
 		oc.objects.sort(key=lambda season_object: season_object.index)
 		
@@ -2283,15 +2442,16 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 		prog = common.interface.checkProgress(key)
 		
 		if use_prog_conc:
-			oc = ObjectContainer(title2='External Sources - Progress %s%s' % (prog, '%'), no_history=True, no_cache=True)
-			oc.add(DirectoryObject(
-				key = Callback(ExtSources, movtitle=movtitle, tvshowtitle=tvshowtitle, season=season, episode=episode, title=title, url=url, summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, session=session),
-				title = 'Refresh - %s%s Done' % (prog,'%'),
-				summary = 'List sources by External Providers.',
-				art = art,
-				thumb = GetThumb(R(ICON_OTHERSOURCES), session=session)
+			if prog < 100:
+				oc = ObjectContainer(title2='External Sources - Progress %s%s' % (prog, '%'), no_history=True, no_cache=True)
+				oc.add(DirectoryObject(
+					key = Callback(ExtSources, movtitle=movtitle, tvshowtitle=tvshowtitle, season=season, episode=episode, title=title, url=url, summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, session=session),
+					title = 'Refresh - %s%s Done' % (prog,'%'),
+					summary = 'List sources by External Providers.',
+					art = art,
+					thumb = GetThumb(R(ICON_OTHERSOURCES), session=session)
+					)
 				)
-			)
 		else:
 			return MC.message_container('External Sources', 'Sources are being fetched ! Progress %s%s' % (prog,'%'))
 	
@@ -2424,7 +2584,7 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 	if Prefs['use_ext_urlservices']:
 		external_extSources = extSourKey
 		
-		external_extSources = common.FilterBasedOn(external_extSources)
+		external_extSources = common.FilterBasedOn(external_extSources, use_host=False)
 		
 		extSources_urlservice = []
 		extExtrasSources_urlservice = []
@@ -2716,6 +2876,7 @@ def GetMovieInfo(summary, urlPath, referer=None, **kwargs):
 @route(PREFIX + "/addRecentWatchList")
 def AddRecentWatchList(title, url, summary, thumb, **kwargs):
 
+	#Log("%s %s" % (title, url))
 	if url == None:
 		return
 	#append the time string to title so we can sort old to new items
@@ -2737,7 +2898,7 @@ def RecentWatchList(title, session=None, **kwargs):
 		return MC.message_container("Please wait..", "Please wait a few seconds for the Interface to Load & Initialize plugins")
 
 	oc = ObjectContainer(title1=title, no_cache=isForceNoCache())
-	NO_OF_ITEMS_IN_RECENT_LIST = 50
+	NO_OF_ITEMS_IN_RECENT_LIST = 100
 	
 	urls_list = []
 	items_to_del = []
@@ -2746,7 +2907,7 @@ def RecentWatchList(title, session=None, **kwargs):
 	for each in Dict:
 		longstring = str(Dict[each])
 		
-		if 'https:' in longstring and 'RR44SS' in longstring:
+		if ('fmovies.' in longstring or ES_API_URL.lower() in longstring) and 'RR44SS' in longstring:
 			longstringsplit = longstring.split('RR44SS')
 			urls_list.append({'key': each, 'time': longstringsplit[4], 'val': longstring})
 				
@@ -2779,7 +2940,8 @@ def RecentWatchList(title, session=None, **kwargs):
 		elif url.replace('fmovies.is',fmovies_base) in items_in_recent or c > NO_OF_ITEMS_IN_RECENT_LIST:
 			items_to_del.append(each['key'])
 		else:
-			url = url.replace(common.client.geturlhost(url),fmovies_base)
+			if 'fmovies.' in longstring:
+				url = url.replace(common.client.geturlhost(url),fmovies_base)
 			items_in_recent.append(url)
 				
 			oc.add(DirectoryObject(
@@ -2853,7 +3015,7 @@ def Bookmarks(title, session = None, **kwargs):
 	for each in Dict:
 		longstring = str(Dict[each])
 		
-		if 'https:' in longstring and 'Key5Split' in longstring:	
+		if ('fmovies.' in longstring or ES_API_URL.lower() in longstring) and 'Key5Split' in longstring:	
 			stitle = unicode(longstring.split('Key5Split')[0])
 			url = longstring.split('Key5Split')[1]
 			summary = unicode(longstring.split('Key5Split')[2])
@@ -2964,6 +3126,10 @@ def Check(title, url, **kwargs):
 	longstring = Dict[title+'-'+E(url)]
 	fmovies_urlhost = common.client.geturlhost(url)
 	#Log("%s --- %s --- %s" % (longstring, url, fmovies_urlhost))
+	
+	if longstring != None and (longstring.lower()).find(ES_API_URL.lower()) != -1:
+		return True
+	
 	if longstring != None and (longstring.lower()).find(SITE.lower()) != -1 and url in longstring:
 		return True
 
@@ -2982,8 +3148,7 @@ def Check(title, url, **kwargs):
 	if longstring != None and (longstring.lower()).find(SITE.lower()) != -1 and surl in longstring:
 		return True
 		
-	if longstring != None and (longstring.lower()).find(ES_API_URL.lower()) != -1:
-		return True
+	
 
 	return False
 
@@ -3503,7 +3668,27 @@ def DoIMDBExtSources(title, year, type, imdbid, season=None, episode=None, episo
 			x_imdbid=imdbid
 			x_thumb=thumb
 			
-			DumbKeyboard(PREFIX, oc, DoIMDBExtSourcesEpisode, dktitle = 'Input Episode No.', dkthumb=R(ICON_DK_ENABLE), dkNumOnly=True, dkHistory=False, title=title, year=year, type=type, imdbid=imdbid, thumb=thumb, season=season, summary=summary, session=session)
+			res = common.interface.getOMDB(title=x_title, year=x_year, season=x_season, episode=str(1), imdbid=x_imdbid, ver=common.VERSION)
+			try:
+				item = json.loads(json.dumps(res))
+			except Exception as e:
+				item = None
+			
+			if item!=None and len(item) > 0:
+				try:
+					genres = item['genre']
+				except:
+					genres = None
+				try:
+					rating = item['imdb_rating']
+				except:
+					rating = None
+				try:
+					duration = item['runtime'].replace('min','').strip()
+				except:
+					duration = None
+			
+			DumbKeyboard(PREFIX, oc, DoIMDBExtSourcesEpisode, dktitle = 'Input Episode No.', dkthumb=R(ICON_DK_ENABLE), dkNumOnly=True, dkHistory=False, title=title, year=year, type=type, imdbid=imdbid, thumb=thumb, season=season, summary=summary, session=session, genres=genres, rating=rating, runtime=duration)
 			
 			for e in range(int(episodeNr),1000):
 				time.sleep(1.0)
@@ -3645,7 +3830,7 @@ def DoIMDBExtSourcesSeason(query, title, year, type, imdbid, summary, thumb, ses
 	
 ####################################################################################################
 @route(PREFIX + "/DoIMDBExtSourcesEpisode")
-def DoIMDBExtSourcesEpisode(query, title, year, type, imdbid, season, summary, thumb, session, **kwargs):
+def DoIMDBExtSourcesEpisode(query, title, year, type, imdbid, season, summary, thumb, session, genres=None, rating=None, runtime=None, **kwargs):
 
 	try:
 		episode = str(int(query))
@@ -3672,11 +3857,20 @@ def DoIMDBExtSourcesEpisode(query, title, year, type, imdbid, season, summary, t
 	item = {}
 	item['poster'] = thumb
 	item['plot'] = summary
-	item['runtime'] = 'Not Available'
-	item['imdb_rating'] = 'Not Available'
+	if runtime == None:
+		item['runtime'] = 'Not Available'
+	else:
+		item['runtime'] = runtime
+	if rating == None:
+		item['imdb_rating'] = 'Not Available'
+	else:
+		item['imdb_rating'] = rating
 	item['actors'] = 'Not Available'
 	item['director'] = 'Not Available'
-	item['genre'] = 'Not Available'
+	if genres == None:
+		item['genre'] = 'Not Available'
+	else:
+		item['genre'] = genres
 	item['released'] = 'Not Available'
 	
 	oc = ObjectContainer(title2='%s (%s)' % (title, watch_title), no_cache=isForceNoCache())
@@ -3684,7 +3878,7 @@ def DoIMDBExtSourcesEpisode(query, title, year, type, imdbid, season, summary, t
 		key = Callback(DoIMDBExtSources, title=title, year=year, type=type, imdbid=imdbid, item=E(JSON.StringFromObject(item)), simpleSummary=True, season=season, episode=episode, session=session), 
 		title = '*'+watch_title,
 		summary =  '%s : %s' % (watch_title,summary),
-		thumb = thumb))
+		thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback = ICON_UNAV)))
 		
 	return oc
 	
@@ -3992,12 +4186,20 @@ def FilterExtSetup(title, session, key1 = None, key2val = None, mode='add', upda
 	
 	if len(FilterExt_Search) == 0:
 		# Set defaults for 'Sort' & 'Order'
-		FilterExt_Search['sort'] = 'trending'
+		FilterExt_Search['sort'] = 'last added'
 		FilterExt_Search['order'] = '-1'
 		FilterExt_Search['type'] = 'movies'
+	elif key1=='type' and key2val != None:
+		FilterExt_Search['type'] = key2val
 		
 	if (key1==None and len(FilterExt.keys()) == 0) or key1=='type':
 		FilterExtSetupData(seltype=FilterExt_Search['type'])
+		if FilterExt_Search['type'] == 'animes':
+			FilterExt_Search['sort'] = 'year'
+		elif FilterExt_Search['type'] == 'movies':
+			FilterExt_Search['sort'] = 'last added'
+		elif FilterExt_Search['type'] == 'shows':
+			FilterExt_Search['sort'] = 'updated'
 		
 	if len(FilterExt) == 0:
 		return MC.message_container("Filter Setup Error", "Sorry but the Filter could not be created !")
@@ -4124,7 +4326,9 @@ def MakeSelectionsExt(key1, key2val, mode, k2v, **kwargs):
 ######################################################################################
 @route(PREFIX + "/clearfilterext")
 def ClearFilterExt(session, **kwargs):
+
 	FilterExt_Search.clear()
+	FilterExt.clear()
 	
 	oc = ObjectContainer(title2 = "Filter Reset", no_cache=isForceNoCache())
 	oc.add(DirectoryObject(
@@ -4139,7 +4343,8 @@ def ClearFilterExt(session, **kwargs):
 def FilterExtSetupData(seltype, **kwargs):
 
 	try:
-		FilterExt['sort']={'Trending':'trending', 'Last Added':'last added', 'Popular':'popular'}
+		FilterExt['sort']={}
+		Filter_sort={'movies':{'Trending':'trending', 'Last Added':'last added', 'Rating':'rating', 'Title':'title','Year':'year'},'shows':{'Trending':'trending', 'Updated':'updated', 'Rating':'rating', 'Title':'name', 'Year':'year'},'animes':{'Year':'year', 'Rating':'rating', 'Title':'name'}}
 		FilterExt['order']={'Ascending':'+1', 'Descending':'-1'}
 		FilterExt['genre']={}
 		Filter_genre={'movies': ['action','adventure','animation','comedy','crime','disaster','documentary','drama','eastern','family','fan-film','fantasy','film-noir','history','holiday','horror','indie','music','mystery','none','road','romance','science-fiction','short','sports','sporting-event','suspense','thriller','tv-movie','war','western'],
@@ -4158,6 +4363,12 @@ def FilterExtSetupData(seltype, **kwargs):
 			genre = Filter_genre[seltype][i]
 			FilterExt['genre'][genre.title()] = genre
 			
+		# Get Sort info
+		FilterExt['sort'] = {}
+		if 'sort' in FilterExt_Search.keys():
+			del FilterExt_Search['sort']
+		FilterExt['sort'] = Filter_sort[seltype]
+			
 	except Exception as e:
 		Log.Exception("init.py>FilterExtSetupData() >> : >>> %s" % (e))
 		# Empty partial Filter if failed - error will be reported when using Filter
@@ -4169,13 +4380,15 @@ def ShowCategoryES(title, filter=None, page_count='1', last_page_no=None, sessio
 	
 	if filter != None:
 		filter = JSON.ObjectFromString(D(filter))
+		
+		#Log(filter)
+		
 		if 'genre' in filter.keys():
 			genre = filter['genre']
 		else:
 			genre = 'ALL'
 		searchString = '%s/%s?sort=%s&order=%s&genre=%s' % (filter['type'], page_count, filter['sort'], filter['order'], genre)
-		searchString = searchString.replace(' ','%20')
-
+		
 		# Build Filter-Search Url
 		#http://movies-v2.api-fetch.website/movies/1?sort=trending&limit=50&year=2017&genre=Comedy&order=-1
 		apiUrl = ES_API_URL + '/%s' % urllib2.quote(searchString, safe='%/_-+=&?')
@@ -4329,6 +4542,18 @@ def season_menuES(title, show_title, season_index, dataEXSJsonUrl, session):
 			art = json_data['images']['fanart']
 		except:
 			art = None
+			
+		rating = json_data['rating']['percentage']
+		
+		runtime = json_data['runtime']
+			
+		genres0 = json_data['genres']
+		try:
+			genres = (','.join(str(x.title()) for x in genres0))
+			if genres == '':
+				genres = 'Not Available'
+		except:
+			genres = 'Not Available'
 
 		eps = []
 		for json_item in json_data['episodes']:
@@ -4363,7 +4588,7 @@ def season_menuES(title, show_title, season_index, dataEXSJsonUrl, session):
 			directory_object.thumb		= Resource.ContentsOfURLWithFallback(url=thumb, fallback=ICON_UNAV)
 			directory_object.art		= Resource.ContentsOfURLWithFallback(url=art, fallback=ART)
 			#directory_object.key		= Callback(episode_menuES, show_title=show_title, season_index=season_index, episode_index=episode['index'], dataEXSJsonUrl=dataEXSJsonUrl, session=session)
-			directory_object.key		= Callback(DoIMDBExtSourcesEpisode, query=episode['index'], title=json_data['title'], year=json_data['year'], type='show', imdbid=json_data['_id'], season=season_index, summary=episode['summary'], thumb=thumb, session=session)
+			directory_object.key		= Callback(DoIMDBExtSourcesEpisode, query=episode['index'], title=json_data['title'], year=json_data['year'], type='show', imdbid=json_data['_id'], season=season_index, summary=episode['summary'], thumb=thumb, session=session, genres=genres, rating=rating, runtime=runtime)
 			object_container.add(directory_object)
 
 	return object_container

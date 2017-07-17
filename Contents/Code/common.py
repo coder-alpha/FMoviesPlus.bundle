@@ -1,3 +1,11 @@
+################################################################################
+TITLE = "FMoviesPlus"
+VERSION = '0.38' # Release notation (x.y - where x is major and y is minor)
+TAG = ''
+GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
+PREFIX = "/video/fmoviesplus"
+################################################################################
+
 import time, base64, unicodedata, re, random, string
 from resources.lib.libraries import control, client, cleantitle, jsfdecoder, jsunpack
 from resources.lib.resolvers import host_openload, host_gvideo
@@ -34,14 +42,6 @@ try:
 except Exception as e:
 	Log.Error('Failed to import execjs >>> {}'.format(e))
 	execjs = None
-
-################################################################################
-TITLE = "FMoviesPlus"
-VERSION = '0.37' # Release notation (x.y - where x is major and y is minor)
-TAG = ''
-GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
-PREFIX = "/video/fmoviesplus"
-################################################################################
 
 CACHE = {}
 CACHE_META = {}
@@ -285,7 +285,22 @@ def OrderBasedOn(srcs, use_host=True):
 	return srcs
 	
 ####################################################################################################
-def FilterBasedOn(srcs, use_quality=True, use_riptype=True, use_vidtype=True, use_provider=True):
+def FilterBasedOn(srcs, use_quality=True, use_riptype=True, use_vidtype=True, use_provider=True, use_host=True):
+
+	# filter sources based on host enabled in INTERNAL_SOURCES
+	#Log(INTERNAL_SOURCES)
+	if use_host == True:
+		filter_extSources = []
+		for host in INTERNAL_SOURCES: filter_extSources += [i for i in srcs if i['source'].lower() == host['name'].lower() and str(host['enabled'])=='True']
+		srcs = filter_extSources
+	
+	# filter sources based on enabled provider in OPTIONS_PROVIDERS
+	#Log(OPTIONS_PROVIDERS)
+	if use_provider == True:
+		filter_extSources = []
+		for provider in OPTIONS_PROVIDERS: filter_extSources += [i for i in srcs if i['provider'].lower() == provider['name'].lower() and str(provider['enabled'])=='True']
+		srcs = filter_extSources
+		
 	# filter sources based on enabled quality in INTERNAL_SOURCES_QUALS
 	#Log(INTERNAL_SOURCES_QUALS)
 	if use_quality == True:
@@ -305,13 +320,6 @@ def FilterBasedOn(srcs, use_quality=True, use_riptype=True, use_vidtype=True, us
 	if use_vidtype == True:
 		filter_extSources = []
 		for vidtype in INTERNAL_SOURCES_FILETYPE: filter_extSources += [i for i in srcs if i['vidtype'].lower() in vidtype['label'].lower() and str(vidtype['enabled'])=='True']
-		srcs = filter_extSources
-	
-	# filter sources based on enabled provider in OPTIONS_PROVIDERS
-	#Log(OPTIONS_PROVIDERS)
-	if use_provider == True:
-		filter_extSources = []
-		for provider in OPTIONS_PROVIDERS: filter_extSources += [i for i in srcs if i['provider'].lower() == provider['name'].lower() and str(provider['enabled'])=='True']
 		srcs = filter_extSources
 	
 	return srcs

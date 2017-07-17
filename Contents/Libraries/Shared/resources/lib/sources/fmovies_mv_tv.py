@@ -38,6 +38,7 @@ class source:
 		self.hash_menu_link = "/user/ajax/menu-bar"
 		self.token_link = "/token"
 		self.MainPageValidatingContent = 'FMovies'
+		self.type_filter = ['movie', 'show', 'anime']
 		self.ssl = False
 		self.name = 'FMovies'
 		self.headers = {}

@@ -33,6 +33,7 @@ class source:
 		self.base_link = 'https://www.alluc.ee'
 		self.moviesearch_link = ''
 		self.MainPageValidatingContent = 'Video Link Search Engine - Alluc'
+		self.type_filter = ['movie', 'show','anime']
 		self.ssl = False
 		self.name = 'ALL-UC'
 		self.loggertxt = []

@@ -190,14 +190,14 @@ class sources:
 	def getMovieSource(self, title, year, imdb, proxy_options, key, source, call):
 		
 		try:
-			url = call.get_movie(imdb, title, year, proxy_options, key)
+			url = call.get_movie(imdb=imdb, title=title, year=year, proxy_options=proxy_options, key=key)
 			if url == None: raise Exception()
 		except:
 			pass
 
 		try:
 			sources = []
-			sources = call.get_sources(url, self.hosthdfullDict, self.hostsdfullDict, self.hostlocDict, proxy_options, key)
+			sources = call.get_sources(url=url, hostDict=self.hosthdfullDict, hosthdDict=self.hostsdfullDict, locDict=self.hostlocDict, proxy_options=proxy_options, key=key)
 			if sources == None: sources = []
 			self.sources.extend(sources)
 		except:
@@ -207,7 +207,7 @@ class sources:
 	def getEpisodeSource(self, title, year, imdb, tvdb, season, episode, tvshowtitle, date, proxy_options, key, source, call):
 		
 		try:
-			url = call.get_show(imdb, tvdb, tvshowtitle, year, season, proxy_options, key)
+			url = call.get_show(imdb=imdb, tvdb=tvdb, tvshowtitle=tvshowtitle, year=year, season=season, proxy_options=proxy_options, key=key)
 			if url == None: raise Exception()
 		except:
 			pass
@@ -216,14 +216,14 @@ class sources:
 		
 		try:
 			if episode == None: raise Exception()
-			if ep_url == None: ep_url = call.get_episode(url, imdb, tvdb, title, year, season, episode, proxy_options, key)
+			if ep_url == None: ep_url = call.get_episode(url=url, imdb=imdb, tvdb=tvdb, title=title, year=year, season=season, episode=episode, proxy_options=proxy_options, key=key)
 			if ep_url == None: raise Exception()
 		except:
 			pass
 
 		try:
 			sources = []
-			sources = call.get_sources(ep_url, self.hosthdfullDict, self.hostsdfullDict, self.hostlocDict, proxy_options, key)
+			sources = call.get_sources(url=ep_url, hostDict=self.hosthdfullDict, hosthdDict=self.hostsdfullDict, locDict=self.hostlocDict, proxy_options=proxy_options, key=key)
 			if sources == None: sources = []
 			self.sources.extend(sources)
 		except:

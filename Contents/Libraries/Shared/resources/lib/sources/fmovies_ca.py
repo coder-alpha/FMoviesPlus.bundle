@@ -18,6 +18,7 @@ class source:
 		self.link_server_f2 = "https://player.fmovies.io/embed.php?id=%s"
 		self.hash_link = '/ajax/episode/info'
 		self.MainPageValidatingContent = 'Watch Free Movies Online -  Streaming MoviesFast - Fmovies'
+		self.type_filter = ['movie', 'show', 'anime']
 		self.ssl = False
 		self.name = 'FMovies.io'
 		self.headers = {}

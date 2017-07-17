@@ -59,6 +59,7 @@ class source:
 		self.MainPageValidatingContent = 'Yesmovies - Watch FREE Movies Online & TV shows'
 		self.ssl = False
 		self.name = 'YesMovies'
+		self.type_filter = ['movie', 'show', 'anime']
 		self.loggertxt = []
 		self.logo = 'http://i.imgur.com/4g0iJ8Y.png'
 		self.info_link = '/ajax/movie_info/%s.html'

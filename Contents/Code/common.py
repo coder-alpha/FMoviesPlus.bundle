@@ -1,6 +1,6 @@
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.38' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.39' # Release notation (x.y - where x is major and y is minor)
 TAG = ''
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
@@ -23,12 +23,12 @@ except:
 
 	
 JSEngines_ALLowed = ['Node']
+Engine_OK = False
 try:
 	# Twoure's check routine - https://github.com/Twoure/9anime.bundle/tree/dev
 	import execjs_110 as execjs
 	execjs.eval("{a:true,b:function (){}}")
 	
-	Engine_OK = False
 	for engine in JSEngines_ALLowed:
 		if engine.lower() in execjs.get().name.lower():
 			Engine_OK = True
@@ -95,11 +95,13 @@ DEVICE_OPTION = {DEVICE_OPTIONS[0]:'The awesome Keyboard for Search impaired dev
 DEVICE_OPTION_CONSTRAINTS = {DEVICE_OPTIONS[2]:[{'Pref':'use_https_alt','Desc':'Use Alternate SSL/TLS','ReqValue':'disabled'}]}
 DEVICE_OPTION_CONSTRAINTS2 = {DEVICE_OPTIONS[5]:[{'Option':6,'ReqValue':False}], DEVICE_OPTIONS[6]:[{'Option':5,'ReqValue':False}]}
 
-# Golbal Overrides - to disable 
+# Golbal Overrides - to disable
+SHOW_EXT_SRC_WHILE_LOADING = True
+USE_EXT_URLSERVICES = True
 USE_COOKIES = True
 NoMovieInfo = False
 USE_CUSTOM_TIMEOUT = False
-USE_SECOND_REQUEST = False
+USE_SECOND_REQUEST = True
 USE_JSFDECODER = True
 USE_JSENGINE = True
 USE_JSWEBHOOK = True
@@ -154,14 +156,17 @@ def GetKeyFromVal(list, val_look):
 			return key
 
 def set_control_settings():
-	try:
-		key = 'control_all_uc_api_key'
-		control.set_setting(key, Prefs[key])
-		
-		if Prefs["use_debug"]:
-			Log("User Preferences have been set to Control")
-	except Exception as e:
-		Log('ERROR common.py>set_control_settings: %s' % e)
+
+	keys = ['use_https_alt','control_all_uc_api_key']
+	for i in range(0,len(keys)):
+		try:
+			key = keys[i]
+			control.set_setting(key, Prefs[key])
+			
+		except Exception as e:
+			Log('ERROR common.py>set_control_settings: %s' % e)
+	if Prefs["use_debug"]:
+		Log("User Preferences have been set to Control")
 			
 ####################################################################################################
 # Gets a client specific identifier
@@ -447,7 +452,7 @@ def isItemVidAvailable(isTargetPlay, data, params=None, host=None, **kwargs):
 			elif isTargetPlay:
 				isVideoOnline = 'unknown'
 			else:
-				if host_gvideo.check(vidurl, headers=headers, cookie=cookie)[0] == True:
+				if host_gvideo.check(vidurl, headers=headers, cookie=cookie, httpsskip=httpsskip)[0] == True:
 						isVideoOnline = 'true'
 
 		except Exception as e:
@@ -512,7 +517,7 @@ def make_cookie_str():
 			cookie_string_arr = []
 		else:
 			#setTokenCookie(serverts=serverts, use_debug=use_debug)
-			error = "Cookie not set !"
+			error = "Cookie not set ! Please try Reset Cookies under the Options menu."
 			p_cookie_s = []
 		
 		for ps in p_cookie_s:

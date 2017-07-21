@@ -421,7 +421,7 @@ def Summarize(session=None, **kwargs):
 	c = 0
 	for host in common.INTERNAL_SOURCES:
 		c += 1
-		title_msg = "Enabled: %s | Host: %s | Quality: %s | Captcha: %s | Working: %s | Speed: %s sec." % (common.GetEmoji(type=host['working'], mode='simple', session=session), host['name'], host['quality'], common.GetEmoji(type=str(host['captcha']), mode='simple', session=session), common.GetEmoji(type=host['working'], mode='simple', session=session), host['speed'])
+		title_msg = "Enabled: %s | Host: %s | Quality: %s | Captcha: %s | Working: %s | Speed: %s sec." % (common.GetEmoji(type=host['enabled'], mode='simple', session=session), host['name'], host['quality'], common.GetEmoji(type=str(host['captcha']), mode='simple', session=session), common.GetEmoji(type=host['working'], mode='simple', session=session), host['speed'])
 		oc.add(DirectoryObject(title = title_msg, key = Callback(MC.message_container, header="Summary Screen", message="Does Nothing")))
 
 	c = 0
@@ -2420,7 +2420,7 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 	key = generatemoviekey(movtitle=movtitle, year=year, tvshowtitle=tvshowcleaned, season=season, episode=episode)
 	oc = ObjectContainer(title2='External Sources')
 	prog = common.interface.checkProgress(key)
-	use_prog_conc = Prefs['show_ext_src_while_loading']
+	use_prog_conc = common.SHOW_EXT_SRC_WHILE_LOADING
 	doSleepForProgress = True
 	
 	if prog == 0:
@@ -2581,7 +2581,7 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 			except:
 				pass
 	
-	if Prefs['use_ext_urlservices']:
+	if common.USE_EXT_URLSERVICES:
 		external_extSources = extSourKey
 		
 		external_extSources = common.FilterBasedOn(external_extSources, use_host=False)
@@ -2907,7 +2907,7 @@ def RecentWatchList(title, session=None, **kwargs):
 	for each in Dict:
 		longstring = str(Dict[each])
 		
-		if ('fmovies.' in longstring or ES_API_URL.lower() in longstring) and 'RR44SS' in longstring:
+		if ('fmovies.' in longstring or ES_API_URL.lower() in longstring.lower()) and 'RR44SS' in longstring:
 			longstringsplit = longstring.split('RR44SS')
 			urls_list.append({'key': each, 'time': longstringsplit[4], 'val': longstring})
 				
@@ -2933,6 +2933,10 @@ def RecentWatchList(title, session=None, **kwargs):
 		#Log("%s %s" % (stitle, url))
 		url = url.replace('www.','')
 		
+		ES = ''
+		if ES_API_URL.lower() in longstring.lower():
+			ES = '*'
+		
 		if url.replace('fmovies.to',fmovies_base) in items_in_recent or c > NO_OF_ITEMS_IN_RECENT_LIST:
 			items_to_del.append(each['key'])
 		elif url.replace('fmovies.se',fmovies_base) in items_in_recent or c > NO_OF_ITEMS_IN_RECENT_LIST:
@@ -2946,7 +2950,7 @@ def RecentWatchList(title, session=None, **kwargs):
 				
 			oc.add(DirectoryObject(
 				key=Callback(EpisodeDetail, title=stitle, url=url, thumb=thumb, session = session),
-				title=stitle,
+				title= '%s%s' % (stitle,ES),
 				thumb=thumb,
 				tagline = timestr,
 				summary=summary
@@ -2983,6 +2987,8 @@ def ClearRecentWatchList(**kwargs):
 			longstring = Dict[each]
 			if longstring.find(SITE.lower()) != -1 and 'http' in longstring and 'RR44SS' in longstring:
 				remove_list.append(each)
+			elif ('fmovies.' in longstring or ES_API_URL.lower() in longstring) and 'RR44SS' in longstring:
+				remove_list.append(each)
 		except:
 			continue
 
@@ -3015,7 +3021,7 @@ def Bookmarks(title, session = None, **kwargs):
 	for each in Dict:
 		longstring = str(Dict[each])
 		
-		if ('fmovies.' in longstring or ES_API_URL.lower() in longstring) and 'Key5Split' in longstring:	
+		if ('fmovies.' in longstring or ES_API_URL.lower() in longstring.lower()) and 'Key5Split' in longstring:	
 			stitle = unicode(longstring.split('Key5Split')[0])
 			url = longstring.split('Key5Split')[1]
 			summary = unicode(longstring.split('Key5Split')[2])
@@ -3036,10 +3042,14 @@ def Bookmarks(title, session = None, **kwargs):
 				
 				items_in_bm.append(url)
 				
+				ES = ''
+				if ES_API_URL.lower() in url.lower():
+					ES = '*'
+				
 				if fmovies.FILTER_PATH in url:
 					oc.add(DirectoryObject(
 						key=Callback(Search, query=stitle.replace(' (All Seasons)',''), session = session, mode='other seasons', thumb=thumb, summary=summary),
-						title=stitle,
+						title='%s%s' % (stitle,ES),
 						thumb=thumb,
 						summary=summary
 						)
@@ -3047,7 +3057,7 @@ def Bookmarks(title, session = None, **kwargs):
 				else:
 					oc.add(DirectoryObject(
 						key=Callback(EpisodeDetail, title=stitle, url=url, thumb=thumb, session = session),
-						title=stitle,
+						title='%s%s' % (stitle,ES),
 						thumb=thumb,
 						summary=summary
 						)
@@ -4685,7 +4695,7 @@ def DumpPrefs(changed=False, **kwargs):
 	Log("No Extra Info. for Nav. Pages (Speeds Up Navigation): %s" % (Prefs["dont_fetch_more_info"]))
 	Log("Use SSL Web-Proxy: %s" % (Prefs["use_web_proxy"]))
 	Log("Use Alternate SSL/TLS: %s" % (Prefs["use_https_alt"]))
-	Log("Use Other Installed URL Services: %s" % (Prefs["use_ext_urlservices"]))
+	Log("Disable External Sources: %s" % (Prefs["disable_extsources"]))
 	Log("Use LinkChecker for Videos: %s" % (Prefs["use_linkchecker"]))
 	Log("Enable Debug Mode: %s" % (Prefs["use_debug"]))
 	Log("=============================================")
@@ -4798,6 +4808,8 @@ def PlayVideo(videoUrl, params, retResponse, url, title, summary, thumb, watch_t
 
 	if 'googleusercontent.com' in videoUrl:
 		pass
+	elif common.client.geturlhost(videoUrl) in common.host_misc_resolvers.supported_hosts:
+		videoUrl = common.host_misc_resolvers.resolve(videoUrl)
 	elif '.mp4' not in videoUrl and 'mime=video/mp4' not in videoUrl:
 		page_data, error = common.GetPageAsString(url=videoUrl)
 		reg_exs = [[r'\[{.*mp4.*}]',0],[r'{.*mp4.*}',0],[r'\({.*mp4.*?}\)',0]]
@@ -4877,7 +4889,10 @@ def PlayVideo(videoUrl, params, retResponse, url, title, summary, thumb, watch_t
 	#Log("http_cookies : %s" % http_cookies)
 	#Log(common.client.request(videoUrl, headers=http_headers, output='chunk')[0:20])
 	
-	return IndirectResponse(VideoClipObject, key=PlayAndAdd(url=url, title=title, summary=summary, thumb=thumb, videoUrl=videoUrl, watch_title=watch_title), http_headers=http_headers, http_cookies=http_cookies)
+	if '.m3u8' in videoUrl:
+		return IndirectResponse(VideoClipObject, key=HTTPLiveStreamURL(url=PlayAndAdd(url=url, title=title, summary=summary, thumb=thumb, videoUrl=videoUrl, watch_title=watch_title)), http_headers=http_headers, http_cookies=http_cookies)
+	else:
+		return IndirectResponse(VideoClipObject, key=PlayAndAdd(url=url, title=title, summary=summary, thumb=thumb, videoUrl=videoUrl, watch_title=watch_title), http_headers=http_headers, http_cookies=http_cookies)
 	
 ####################################################################################################
 @route(common.PREFIX+'/PlayAndAdd')

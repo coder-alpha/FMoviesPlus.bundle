@@ -133,9 +133,13 @@ class host:
 	
 		if 'http' not in url and 'google.com/file' in url:
 			url = 'https://drive.google.com/' + url.split('.com/')[1]
+			
+		httpsskip = False
+		if control.setting('use_https_alt') != None and (control.setting('use_https_alt') == True or control.setting('use_https_alt') == False):
+			httpsskip = control.setting('httpsskip')
 				
 		#print "createMeta1 : %s %s %s %s" % (url, provider, logo, quality)
-		videoData, headers, content, cookie = getVideoMetaData(url)
+		videoData, headers, content, cookie = getVideoMetaData(url, httpsskip)
 		try:
 			cookie += '; %s' % content['Set-Cookie']
 			# cookie_s = cookie.split(';')
@@ -161,7 +165,7 @@ class host:
 		params = client.b64encode(params)
 		
 		quality = file_quality(url, quality, videoData)[0]
-		isOnline = check(url, videoData, headers=headers, cookie=cookie)[0]
+		isOnline = check(url, videoData, headers=headers, cookie=cookie, httpsskip=httpsskip)[0]
 		type = rip_type(url, quality)
 		
 		files = []
@@ -179,9 +183,12 @@ class host:
 				idstr = '%s' % (url.split('/preview')[0].split('/edit')[0].split('/view')[0])
 				idstr = idstr.split('/')
 				id = idstr[len(idstr)-1]
-				durl, f_res = getFileLink(id)
-				
-				if f_res:
+				try:
+					durl, f_res = getFileLink(id, httpsskip)
+				except:
+					durl = None
+					
+				if durl != None:
 					files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':titleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':type, 'provider':provider, 'url':durl, 'urldata':createurldata(durl,quality), 'params':params, 'logo':logo, 'online':isOnline, 'key':key, 'enabled':enabled, 'ts':time.time(), 'lang':lang, 'misc':{'player':'iplayer', 'gp':False}})
 				
 				files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':titleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':type, 'provider':provider, 'url':url, 'urldata':urldata('',''), 'params':params, 'logo':logo, 'online':isOnline, 'key':key, 'enabled':enabled, 'ts':time.time(), 'lang':lang, 'misc':{'player':'eplayer', 'gp':False}})
@@ -263,7 +270,7 @@ def resolve(url):
 	
 	return url
 
-def getVideoMetaData(url):
+def getVideoMetaData(url, httpsskip=False):
 	try:
 		res = ('', '', '', '')
 		
@@ -274,7 +281,7 @@ def getVideoMetaData(url):
 			
 			headers = {}
 			headers['User-Agent'] = client.USER_AGENT
-			result, headers, content, cookie = client.request(meta_url, output = 'extended', headers=headers, IPv4=True)
+			result, headers, content, cookie = client.request(meta_url, output = 'extended', headers=headers, IPv4=True, httpsskip=httpsskip)
 			#print content
 			return (result, headers, content, cookie)
 		return res
@@ -282,27 +289,27 @@ def getVideoMetaData(url):
 		print 'ERROR: %s' % e
 		return res
 	
-def check(url, videoData=None, headers=None, cookie=None, doPrint=False):
+def check(url, videoData=None, headers=None, cookie=None, doPrint=False, httpsskip=False):
 	try:
 		if 'google.com/file' in url:
 			if videoData==None:
-				videoData = getVideoMetaData(url)[0]
+				videoData = getVideoMetaData(url, httpsskip)[0]
 			
-			if 'This+video+doesn%27t+exist' in videoData:  
+			if 'This+video+doesn%27t+exist' in videoData and 'Please+try+again+later' not in videoData:  
 				log('Check Fail', name, 'This video doesn\'t exist : %s' % url)
 				return (False, videoData)
 			
 			res_split = videoData.split('&')
 			for res in res_split:
 				if 'status' in res:
-					if 'fail' in res:
+					if 'fail' in res and 'Please+try+again+later' not in videoData:
 						log('Check Fail', name, 'status == fail')
 						return (False, videoData)
 		else:
-			http_res, red_url = client.request(url=url, output='responsecodeext', followredirect=True, headers=headers, cookie=cookie, IPv4=True)
+			http_res, red_url = client.request(url=url, output='responsecodeext', followredirect=True, headers=headers, cookie=cookie, IPv4=True, httpsskip=httpsskip)
 			key_found = False
 			if http_res in client.HTTP_GOOD_RESP_CODES:
-				chunk = client.request(url=red_url, output='chunk', headers=headers, cookie=cookie, IPv4=True) # dont use web-proxy when retrieving chunk
+				chunk = client.request(url=red_url, output='chunk', headers=headers, cookie=cookie, IPv4=True, httpsskip=httpsskip) # dont use web-proxy when retrieving chunk
 				if doPrint:
 					print "url --- %s" % red_url
 					print "chunk --- %s" % chunk[0:20]
@@ -322,7 +329,7 @@ def check(url, videoData=None, headers=None, cookie=None, doPrint=False):
 	except:
 		return (False, videoData)
 		
-def getFileLink(id):
+def getFileLink(id, httpsskip=False):
 
 	st = time.time()
 	durl = 'https://drive.google.com/uc?export=view&id=%s' % id
@@ -336,7 +343,7 @@ def getFileLink(id):
 		confirm = re.findall(r'confirm.*?&', respD)[0]
 		durl = 'https://drive.google.com/uc?export=download&%sid=%s' % (confirm,id)
 		#print durl
-		durl = client.request(durl, headers=headersD, cookie=cookieD, followredirect=True, output='geturl', limit='0')
+		durl = client.request(durl, headers=headersD, cookie=cookieD, followredirect=True, output='geturl', limit='0', httpsskip=httpsskip)
 		durl = durl.replace('?e=download','?e=file.mp4')
 	
 	res = True

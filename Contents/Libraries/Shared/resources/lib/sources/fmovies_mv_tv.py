@@ -24,16 +24,21 @@ from resources.lib.libraries import control
 from resources.lib.libraries import cleantitle
 from resources.lib.libraries import client
 from resources.lib.libraries import jsfdecoder
+from resources.lib.libraries import jsunpack
 from resources.lib.libraries import testparams
+from resources.lib.libraries import workers
 from resources.lib import resolvers
 from resources.lib import proxies
 from __builtin__ import ord, format
 
 class source:
 	def __init__(self):
-		self.disabled = True
-		self.base_link = 'https://fmovies.unlockpro.top'
+		self.disabled = False
+		self.TOKEN_KEY = []
+		self.base_link = 'https://fmovies.is'
 		self.search_link = '/sitemap'
+		self.ALL_JS = "/assets/min/public/all.js"
+		self.TOKEN_KEY_PASTEBIN_URL = "https://pastebin.com/raw/VNn1454k"
 		self.hash_link = '/ajax/episode/info'
 		self.hash_menu_link = "/user/ajax/menu-bar"
 		self.token_link = "/token"
@@ -52,6 +57,7 @@ class source:
 		self.siteonline = self.testSite()
 		self.testparser = 'Unknown'
 		self.testparser = self.testParser()
+		self.initAndSleepThread()
 		
 	def info(self):
 		return {
@@ -72,8 +78,20 @@ class source:
 		if disp == True:
 			logger(msg)
 			
-	def setNewCookies(self):
+	def initAndSleepThread(self):
+		thread_i = workers.Thread(self.InitSleepThread)
+		thread_i.start()
+		
+	def InitSleepThread(self):
+		while True:
+			time.sleep(60*100)
+			self.initAndSleep()
+			
+	def initAndSleep(self):
 		try:
+			self.TOKEN_KEY = []
+			self.getVidToken()
+			
 			t_base_link = self.base_link
 			self.headers = {'X-Requested-With': 'XMLHttpRequest'}
 			self.headers['Referer'] = t_base_link
@@ -85,9 +103,12 @@ class source:
 			self.headers['Cookie'] = cookie1
 			
 			# get reqkey cookie
-			token_url = urlparse.urljoin(t_base_link, self.token_link)
-			r1 = proxies.request(token_url, headers=self.headers, httpsskip=True)
-			reqkey = self.decodeJSFCookie(r1)
+			try:
+				token_url = urlparse.urljoin(t_base_link, self.token_link)
+				r1 = proxies.request(token_url, headers=self.headers, httpsskip=True)
+				reqkey = self.decodeJSFCookie(r1)
+			except:
+				reqkey = ''
 			
 			# get session cookie
 			serverts = str(((int(time.time())/3600)*3600))
@@ -101,16 +122,17 @@ class source:
 			
 			cookie = cookie1 + '; ' + cookie2 + '; user-info=null; reqkey=' + reqkey
 			self.headers['Cookie'] = cookie
-			self.log('SUCCESS', 'setNewCookies', 'Cookies : %s for %s' % (cookie,self.base_link), dolog=True)
+			self.log('SUCCESS', 'initAndSleep', 'Cookies : %s for %s' % (cookie,self.base_link), dolog=True)
 		except Exception as e:
-			self.log('ERROR','setNewCookies', '%s' % e, dolog=True)
+			self.log('ERROR','initAndSleep', '%s' % e, dolog=True)
+				
 			
 	def testSite(self):
 		try:
 			if self.disabled:
 				self.log('INFO','testSite', 'Plugin Disabled', dolog=True)
 				return False
-			self.setNewCookies()
+			self.initAndSleep()
 			x1 = time.time()
 			http_res, content = proxies.request(url=self.base_link, headers=self.headers, output='response', use_web_proxy=False)
 			self.speedtest = time.time() - x1
@@ -129,16 +151,17 @@ class source:
 			if self.disabled:
 				self.log('INFO','testParser', 'Plugin Disabled', dolog=True)
 				return False
-			getmovieurl = self.get_movie(title=testparams.movie, year=testparams.movieYear, imdb=testparams.movieIMDb, testing=True)
-			movielinks = self.get_sources(url=getmovieurl, testing=True)
-			
-			if movielinks != None and len(movielinks) > 0:
-				self.log('SUCCESS', 'testParser', 'links : %s' % len(movielinks), dolog=True)
-				return True
-			else:
-				self.log('ERROR', 'testParser', 'getmovieurl : %s' % getmovieurl, dolog=True)
-				self.log('ERROR', 'testParser', 'movielinks : %s' % movielinks, dolog=True)
-				return False
+			for movie in testparams.test_movies:
+				getmovieurl = self.get_movie(title=movie['title'], year=movie['year'], imdb=movie['imdb'], testing=True)
+				movielinks = self.get_sources(url=getmovieurl, testing=True)
+				
+				if movielinks != None and len(movielinks) > 0:
+					self.log('SUCCESS', 'testParser', 'links : %s' % len(movielinks), dolog=True)
+					return True
+				else:
+					self.log('ERROR', 'testParser', 'getmovieurl : %s' % getmovieurl, dolog=True)
+					self.log('ERROR', 'testParser', 'movielinks : %s' % movielinks, dolog=True)
+			return False
 		except Exception as e:
 			self.log('ERROR', 'testParser', '%s' % e, dolog=True)
 			return False
@@ -183,7 +206,7 @@ class source:
 			if url == None or self.testparser == False: return sources
 			
 			myts = str(((int(time.time())/3600)*3600))
-			self.log('GRABBER','get_sources-1', '%s' % url, dolog=False)
+			#self.log('GRABBER','get_sources-1', '%s' % url, dolog=False)
 			
 			if not str(url).startswith('http'):
 				try:
@@ -201,9 +224,9 @@ class source:
 					search_url = search_url + '?' + urllib.urlencode(query)
 					result = proxies.request(search_url, headers=self.headers, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
 					
-					self.log('GRABBER','get_sources-2', '%s' % search_url, dolog=False)
+					#self.log('GRABBER','get_sources-2', '%s' % search_url, dolog=False)
 					
-					print result
+					#print result
 
 					r = client.parseDOM(result, 'div', attrs = {'class': '[^"]*movie-list[^"]*'})[0]
 					r = client.parseDOM(r, 'div', attrs = {'class': 'item'})
@@ -217,9 +240,9 @@ class source:
 						url = [(i[0], re.findall('(.+?) (\d+)$', i[1])) for i in r]
 						url = [(i[0], i[1][0][0], i[1][0][1]) for i in url if len(i[1]) > 0]
 						url = [i for i in url if cleantitle.get(title) in cleantitle.get(i[1])]
-						for i in url:
-							print i[2],i[0],i[1]
-							print '%01d' % int(data['season']) == '%01d' % int(i[2])
+						#for i in url:
+							#print i[2],i[0],i[1]
+							#print '%01d' % int(data['season']) == '%01d' % int(i[2])
 
 						url = [i for i in url if '%01d' % int(data['season']) == '%01d' % int(i[2])]
 					else:
@@ -238,22 +261,41 @@ class source:
 			try: url, episode = re.compile('(.+?)\?episode=(\d*)$').findall(url)[0]
 			except: pass
 			
-			self.log('GRABBER','get_sources-3', '%s' % url, dolog=False)
+			#self.log('GRABBER','get_sources-3', '%s' % url, dolog=False)
 
 			referer = url
 			#result = client.request(url, limit='0')
-			result, headers, content, cookie1 = proxies.request(url, headers=self.headers, limit='0', output='extended', proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+			result = proxies.request(url, headers=self.headers, limit='0', proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
 			
 			try:
-				smyts = client.parseDOM(result, 'body', attrs = {'class': 'watching'})[0]
-				myts = client.parseDOM(smyts, 'data-ts')[0]
-				print myts
+				myts = re.findall(r'data-ts="(.*?)"', result)[0]
+				#print myts
 				#myts = result.xpath(".//body[@class='watching']//@data-ts")[0]
 			except:
-				print "xpath not avail."
-				pass
+				print "could not parse ts ! will use generated one."
+				print myts
+				
+			trailers = []
+			links_m = []
 			
-			self.log('GRABBER','get_sources-3.1', '%s' % url, dolog=False)
+			if testing == False:
+				try:
+					matches = re.compile('http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+').findall(result)
+					for match in matches:
+						try:
+							#print match
+							if 'youtube.com' in match:
+								match = match.replace('embed/','watch?v=')
+								trailers.append(match)
+						except:
+							pass
+				except Exception as e:
+					pass
+					
+				for trailer in trailers:
+					links_m = resolvers.createMeta(trailer, self.name, self.logo, '720p', links_m, key, vidtype='Trailer')
+			
+			#self.log('GRABBER','get_sources-3.1', '%s' % url, dolog=False)
 
 			#hash_url = urlparse.urljoin(self.base_link, '/user/ajax/menu-bar')
 			# int(time.time())
@@ -300,9 +342,6 @@ class source:
 			try: servers = [i for i in servers if '%01d' % int(i[1]) == '%01d' % int(episode)]
 			except: pass
 			
-			#print servers
-
-			links_m = []
 			for s in servers[:4]:
 				try:
 
@@ -318,37 +357,61 @@ class source:
 					#self.log('GRABBER','get_sources-3.9', '%s' % hash_url, dolog=False)
 					result = proxies.request(hash_url, headers=headers, limit='0', proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
 					#self.log('GRABBER','get_sources-4', '%s' % result, dolog=False)
-
-					query = {'id': s[0], 'update': '0'}
-					query.update(self.__get_token(query))
+					result = json.loads(result)
+					
+					if 'error' in result and result['error'] == True:
+						query.update(self.__get_token(query, token_error=True))
+						hash_url = hash_url + '?' + urllib.urlencode(query)
+						result = proxies.request(hash_url, headers=headers, limit='0', proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+						result = json.loads(result)
+						
+						query = {'id': s[0], 'update': '0'}
+						query.update(self.__get_token(query, token_error=True))
+					else:
+						query = {'id': s[0], 'update': '0'}
+						query.update(self.__get_token(query))
+					
 					url = url + '?' + urllib.urlencode(query)
 					#result = client2.http_get(url, headers=headers)
-					result = json.loads(result)
+					
 					quality = 'SD'
 					if s[1] == '1080': quality = '1080p'
 					if s[1] == '720': quality = 'HD'
 					if s[1] == 'CAM': quality == 'CAM'
 
-					query = {'id':result['params']['id'], 'token':result['params']['token']}
-					grabber = result['grabber'] + '?' + urllib.urlencode(query)
-				
-					if not grabber.startswith('http'):
-						grabber = 'http:'+grabber
+					if result['target'] != "":
+						pass
+					else:
+						query = {'id':result['params']['id'], 'token':result['params']['token']}
+						grabber = result['grabber'] 
+						if '?' in grabber:
+							grabber += '&' + urllib.urlencode(query)
+						else:
+							grabber += '?' + urllib.urlencode(query)
+					
+						if grabber!=None and not grabber.startswith('http'):
+							grabber = 'http:'+grabber
+							
+						#self.log('GRABBER','url', '%s' % grabber, dolog=False)
+
+						result = proxies.request(grabber, headers=headers, referer=url, limit='0', proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+
+						result = json.loads(result)
 						
-					#self.log('GRABBER','url', '%s' % grabber, dolog=False)
-
-					result = proxies.request(grabber, headers=headers, referer=url, limit='0', proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
-
-					result = json.loads(result)
-
-					print result
+					#print result
+					
 					if 'data' in result.keys():
 						result = [i['file'] for i in result['data'] if 'file' in i]
 
 						for i in result:
 							links_m = resolvers.createMeta(i, self.name, self.logo, quality, links_m, key)
 					else:
-						links_m = resolvers.createMeta(result['target'], self.name, self.logo, quality, links_m, key)
+						target = result['target']
+						
+						if target!=None and not target.startswith('http'):
+							target = 'http:' + target
+							
+						links_m = resolvers.createMeta(target, self.name, self.logo, quality, links_m, key)
 							
 					if testing and len(links_m) > 0:
 						break
@@ -371,7 +434,7 @@ class source:
 		except:
 			return
 	
-	def r01(self, t, e):
+	def r01(self, t, e, token_error=False):
 		i = 0
 		n = 0
 		for i in range(0, max(len(t), len(e))):
@@ -382,19 +445,22 @@ class source:
 		h = format(int(hex(n),16),'x')
 		return h
 
-	def a01(self, t):
+	def a01(self, t, token_error=False):
 		i = 0
-		for e in range(0, len(t)): 
-			i += ord(t[e])
+		for e in range(0, len(t)):
+			if token_error == False:
+				i += ord(t[e]) * e
+			else:
+				i += ord(t[e]) * e + e
 		return i
 
 
-	def __get_token(self, n):
+	def __get_token(self, n, token_error=False):
 		try:
-			d = base64.decodestring("YjgyNmFPNA==")
-			s = self.a01(d)
+			d = self.TOKEN_KEY[0]
+			s = self.a01(d, token_error)
 			for i in n: 
-				s += self.a01(self.r01(d + i, n[i]))
+				s += self.a01(self.r01(d + i, n[i]), token_error)
 			return {'_': str(s)}
 		except Exception as e:
 			print("fmovies.py > get_token > %s" % e)
@@ -405,6 +471,29 @@ class source:
 		dec = dec[1].split(';')
 		dec = dec[0]
 		return dec
+		
+	def getVidToken(self):
+		try:
+			all_js_url = urlparse.urljoin(self.base_link, self.ALL_JS)
+			if len(self.TOKEN_KEY) == 0:
+				all_js_pack_code = proxies.request(all_js_url, use_web_proxy=self.proxyrequired, httpsskip=True)
+				unpacked_code = jsunpack.unpack(all_js_pack_code)
+				cch = re.findall(r'%s' % client.b64decode('ZnVuY3Rpb25cKHQsZSxpXCl7XCJ1c2Ugc3RyaWN0XCI7ZnVuY3Rpb24gblwoXCl7cmV0dXJuICguKj8pfWZ1bmN0aW9uIHJcKHRcKQ=='), unpacked_code)[0]
+				token_key = re.findall(r'%s=.*?\"(.*?)\"' % cch, unpacked_code)[0]
+				if token_key !=None and token_key != '':
+					#cookie_dict.update({'token_key':token_key})
+					self.TOKEN_KEY.append(token_key)
+		except Exception as e:
+			self.log('ERROR', 'getVidToken-1','%s' % e)
+
+		try:
+			if len(self.TOKEN_KEY) == 0:
+				token_key = proxies.request(self.TOKEN_KEY_PASTEBIN_URL, use_web_proxy=self.proxyrequired, httpsskip=True)
+				if token_key !=None and token_key != '':
+					#cookie_dict.update({'token_key':token_key})
+					self.TOKEN_KEY.append(token_key)
+		except Exception as e:
+			self.log('ERROR', 'getVidToken-2','%s' % e)
 
 def logger(msg):
 	control.log(msg)

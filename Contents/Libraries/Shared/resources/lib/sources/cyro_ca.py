@@ -107,7 +107,7 @@ class source:
 				return False
 		
 			for movie in testparams.test_movies:
-				getmovieurl = self.get_movie(title=movie['movie'], year=movie['movieYear'], imdb=movie['movieIMDb'], testing=True)
+				getmovieurl = self.get_movie(title=movie['title'], year=movie['year'], imdb=movie['imdb'], testing=True)
 				movielinks = self.get_sources(url=getmovieurl, testing=True)
 				
 				if movielinks != None and len(movielinks) > 0:

@@ -77,13 +77,19 @@ def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web
 		if use_debug:
 			Log("get_sources url: %s, key: %s" % (url,key))
 			Log("get_sources ret: %s" % ret)
+		token_error = False
+		if error != None and 'token' in error:
+			token_error = True
 		
-		if common.USE_SECOND_REQUEST == True and ret == None: # if the request ever fails - clear CACHE right away and make 2nd attempt
+		# if the request ever fails - clear CACHE right away and make 2nd attempt
+		# if token error make 2nd attempt using modified code
+		if common.USE_SECOND_REQUEST == True and (ret == None or token_error == True):
 			common.CACHE.clear()
 			if use_debug:
+				Log("Using Second Request due to token error")
 				Log("CACHE cleared due to null response from API - maybe cookie issue for %s" % url)
 			time.sleep(1.0)
-			ret, isTargetPlay, error, host = get_sources(url=url, key=key, use_debug=use_debug, serverts=serverts, myts=myts, use_https_alt=use_https_alt, use_web_proxy=use_web_proxy)
+			ret, isTargetPlay, error, host = get_sources(url=url, key=key, use_debug=use_debug, serverts=serverts, myts=myts, use_https_alt=use_https_alt, use_web_proxy=use_web_proxy, token_error=token_error)
 			if use_debug:
 				Log("API - attempt 2nd")
 				Log("get_sources url: %s, key: %s" % (url,key))
@@ -156,6 +162,7 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 		CACHE_EXPIRY = common.CACHE_EXPIRY_TIME
 	
 	use_https_alt = Prefs['use_https_alt']
+	use_https_alt = True
 	
 	if reset:
 		cookie_dict_Str = None
@@ -239,6 +246,7 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 			if dump or use_debug:
 				Log("=====================TOKEN START============================")
 				Log("Token URL %s is not reachable !" % token_url)
+				Log("If the Token URL is not reachable using a browser as well it should not affect operations of this plugin.")
 				Log("=====================TOKEN END============================")
 
 		cookie_dict = {}
@@ -408,7 +416,7 @@ def get_reqkey_cookie(token, use_debug=False, use_https_alt=False, quiet=True):
 			Log.Debug("No method available to decode JSF code - use manual method")
 	return ''
 
-def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=False, use_web_proxy=False, **kwargs):
+def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=False, use_web_proxy=False, token_error=False, **kwargs):
 
 	if serverts == 0:
 		#serverts = ((int(time.time())/3600)*3600)
@@ -458,7 +466,7 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 			
 			hash_url = urlparse.urljoin(T_BASE_URL, HASH_PATH_INFO)
 			query = {'ts': serverts, 'id': key, 'update':'0'}
-			tk = get_token(query)
+			tk = get_token(query, token_error)
 			query.update(tk)
 			hash_url = hash_url + '?' + urllib.urlencode(query)
 
@@ -509,7 +517,7 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 		Log('ERROR fmovies.py>get_sources-2 %s, %s' % (e.args,url))
 		return magic_url, isTargetPlay, error, host_type
 		
-def r01(t, e):
+def r01(t, e, token_error=False):
 	i = 0
 	n = 0
 	for i in range(0, max(len(t), len(e))):
@@ -520,19 +528,22 @@ def r01(t, e):
 	h = format(int(hex(n),16),'x')
 	return h
 
-def a01(t):
+def a01(t, token_error=False):
 	i = 0
-	for e in range(0, len(t)): 
-		i += ord(t[e]) * e
+	for e in range(0, len(t)):
+		if token_error == False:
+			i += ord(t[e]) * e
+		else:
+			i += ord(t[e]) * e + e
 	return i
 
 
-def get_token(n, **kwargs):
+def get_token(n, token_error=False, **kwargs):
 	try:
 		d = TOKEN_KEY[0]
-		s = a01(d)
+		s = a01(d, token_error)
 		for i in n: 
-			s += a01(r01(d + i, n[i]))
+			s += a01(r01(d + i, n[i]), token_error)
 		return {'_': str(s)}
 	except Exception as e:
 		Log("fmovies.py > get_token > %s" % e)

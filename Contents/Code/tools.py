@@ -33,6 +33,8 @@ data_path = os.path.join(support_path, 'Data', identifier)
 caches_path = os.path.join(support_path, 'Caches', identifier)
 
 MC = common.NewMessageContainer(common.PREFIX, common.TITLE)
+
+ES_API_URL = 'http://movies-v2.api-fetch.website'
 	
 ####################################################################################################
 @route(common.PREFIX + '/devtools-cache')
@@ -109,7 +111,7 @@ def SaveBookmarks(**kwargs):
 	for each in Dict:
 		longstring = str(Dict[each])
 		
-		if 'https:' in longstring and 'Key5Split' in longstring:	
+		if ('fmovies.' in longstring or ES_API_URL.lower() in longstring) and 'Key5Split' in longstring:	
 			stitle = unicode(longstring.split('Key5Split')[0])
 			url = longstring.split('Key5Split')[1]
 			summary = unicode(longstring.split('Key5Split')[2])

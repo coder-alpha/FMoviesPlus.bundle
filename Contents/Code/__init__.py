@@ -4802,7 +4802,7 @@ def CreateVideoObject(url, title, summary, thumb, params, duration, genres, vide
 		return video
 
 ####################################################################################################
-@route(common.PREFIX+'/PlayVideo.mp4')
+@route(PREFIX+'/PlayVideo.mp4')
 @indirect
 def PlayVideo(videoUrl, params, retResponse, url, title, summary, thumb, watch_title, **kwargs):
 

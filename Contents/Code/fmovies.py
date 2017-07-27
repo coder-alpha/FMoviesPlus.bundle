@@ -24,7 +24,9 @@ SITE_MAP = "/sitemap"
 SITE_MAP_HTML_ELEMS = []
 ALL_JS = "/assets/min/public/all.js"
 TOKEN_KEY_PASTEBIN_URL = "https://pastebin.com/raw/VNn1454k"
+TOKEN_OPER_PASTEBIN_URL = "https://pastebin.com/raw/9zFcNJuP"
 TOKEN_KEY = []
+TOKEN_OPER = []
 
 newmarketgidstorage = 'MarketGidStorage=%7B%220%22%3A%7B%22svspr%22%3A%22%22%2C%22svsds%22%3A15%2C%22TejndEEDj%22%3A%22MTQ5MzIxMTc0OTQ0NDExMDAxNDc3NDE%3D%22%7D%2C%22C110014%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493215038742%7D%2C%22C110025%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493216772437%7D%2C%22C110023%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493216771928%7D%7D'
 
@@ -183,8 +185,11 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 			cookie = cookie_dict['cookie']
 			reqkey_cookie = cookie_dict['reqkey']
 			token_key = cookie_dict['token_key']
+			token_oper = cookie_dict['token_oper']
 			del TOKEN_KEY[:]
 			TOKEN_KEY.append(token_key)
+			del TOKEN_OPER[:]
+			TOKEN_OPER.append(token_oper)
 		except:
 			setTokenCookie(use_debug=use_debug, reset=True)
 		
@@ -217,6 +222,7 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 			
 			reqkey_cookie = ''
 			del TOKEN_KEY[:]
+			del TOKEN_OPER[:]
 			
 			counter = 0
 			while reqkey_cookie == '' and counter < 5:
@@ -261,6 +267,14 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 				if token_key !=None and token_key != '':
 					#cookie_dict.update({'token_key':token_key})
 					TOKEN_KEY.append(token_key)
+					
+				try:
+					token_oper = re.findall(r'%s' % common.client.b64decode('aVwrPXRcW3JEXVwoZVwpLio/KFwqLio/KTs='), unpacked_code)[0]
+					if token_oper !=None and token_oper != '':
+						#cookie_dict.update({'token_oper':token_oper})
+						TOKEN_OPER.append(token_oper)
+				except Exception as e:
+					Log('ERROR fmovies.py>Token-fetch-1b: %s' % e)
 		except Exception as e:
 			Log('ERROR fmovies.py>Token-fetch-1: %s' % e)
 
@@ -275,6 +289,18 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 			
 		if len(TOKEN_KEY) > 0:
 			cookie_dict.update({'token_key':token_key})
+			
+		try:
+			if len(TOKEN_OPER) == 0:
+				token_oper = common.interface.request_via_proxy_as_backup(TOKEN_OPER_PASTEBIN_URL, httpsskip=use_https_alt)
+				if token_oper !=None and token_oper != '':
+					#cookie_dict.update({'token_oper':token_oper})
+					TOKEN_OPER.append(token_oper)
+		except Exception as e:
+			Log('ERROR fmovies.py>Token-fetch-2b: %s' % e)
+			
+		if len(TOKEN_OPER) > 0:
+			cookie_dict.update({'token_oper':token_oper})
 			
 		query = {'ts': serverts}
 		tk = get_token(query)
@@ -299,6 +325,7 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 			Log("Storing Cookie: %s" % cookie)
 			Log("Storing reqkey Cookie: %s" % reqkey_cookie)
 			Log("Storing Video-Token-Key: %s" % TOKEN_KEY[0])
+			Log("Storing Video-Token-Oper: %s" % TOKEN_OPER[0])
 		Dict['CACHE_COOKIE'] = E(JSON.StringFromObject(cookie_dict))
 		Dict.Save()
 
@@ -532,9 +559,9 @@ def a01(t, token_error=False):
 	i = 0
 	for e in range(0, len(t)):
 		if token_error == False:
-			i += ord(t[e]) * e
-		else:
 			i += ord(t[e]) * e - e
+		else:
+			i += eval('ord(t[%s]) %s' % (e, TOKEN_OPER[0]))
 	return i
 
 

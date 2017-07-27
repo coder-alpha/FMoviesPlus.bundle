@@ -534,7 +534,7 @@ def a01(t, token_error=False):
 		if token_error == False:
 			i += ord(t[e]) * e
 		else:
-			i += ord(t[e]) * e + e
+			i += ord(t[e]) * e - e
 	return i
 
 

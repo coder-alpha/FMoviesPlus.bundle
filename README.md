@@ -47,6 +47,6 @@ Acknowledgements
 ================
 - [mrknow](https://github.com/mrknow) for work on FMovies movie sources routine & Specto plugin for Kodi
 - [lambda](https://github.com/lambda81) for HTTP Request routine for SSL/Alternate lambdalib for Kodi
-- [youtube-dl](https://github.com/rg3/youtube-dl) for their work on OpenLoad scrapper
+- [youtube-dl](https://github.com/rg3/youtube-dl) for their work on OpenLoad scraper
 - [coryo123] (https://forums.plex.tv/discussion/194503) for DumbTools-for-Plex
 - [Twoure] (https://github.com/Twoure) for valuable techinical insights and suggestions for JS routines

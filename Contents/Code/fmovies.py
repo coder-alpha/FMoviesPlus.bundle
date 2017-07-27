@@ -413,7 +413,7 @@ def get_reqkey_cookie(token, use_debug=False, use_https_alt=False, quiet=True):
 									Log.Debug('webhook X-RateLimit-Remaining this month >>> %s' % (content['X-RateLimit-Remaining']))
 								for k in replaced.keys():
 									cookie_string = cookie_string.replace(k, replaced[k])
-								if 'reqkey=' in cookie_string and 'preqkey=' in cookie_string:
+								if 'reqkey=' in cookie_string:
 									success = True
 									Log.Debug("*** Using WebHook for regkey cookie ***")
 								else:

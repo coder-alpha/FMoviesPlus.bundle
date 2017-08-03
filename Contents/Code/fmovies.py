@@ -269,7 +269,7 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 					TOKEN_KEY.append(token_key)
 					
 				try:
-					token_oper = re.findall(r'%s' % common.client.b64decode('aVwrPXRcW3JEXVwoZVwpLio/KFwqLio/KTs='), unpacked_code)[0]
+					token_oper = re.findall(r'%s' % common.client.b64decode('aVwrPXRcW3JEXVwoZVwpLio/KC4qPyk7'), unpacked_code)[0]
 					if token_oper !=None and token_oper != '':
 						#cookie_dict.update({'token_oper':token_oper})
 						TOKEN_OPER.append(token_oper)
@@ -291,7 +291,7 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 			cookie_dict.update({'token_key':token_key})
 			
 		try:
-			if len(TOKEN_OPER) == 0:
+			if len(TOKEN_OPER) == 0 or common.DOWNLOAD_BACKUP_OPER == True:
 				token_oper = common.interface.request_via_proxy_as_backup(TOKEN_OPER_PASTEBIN_URL, httpsskip=use_https_alt)
 				if token_oper !=None and token_oper != '':
 					#cookie_dict.update({'token_oper':token_oper})
@@ -300,7 +300,7 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 			Log('ERROR fmovies.py>Token-fetch-2b: %s' % e)
 			
 		if len(TOKEN_OPER) > 0:
-			cookie_dict.update({'token_oper':token_oper})
+			cookie_dict.update({'token_oper':TOKEN_OPER[0]})
 			
 		query = {'ts': serverts}
 		tk = get_token(query)
@@ -326,6 +326,8 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 			Log("Storing reqkey Cookie: %s" % reqkey_cookie)
 			Log("Storing Video-Token-Key: %s" % TOKEN_KEY[0])
 			Log("Storing Video-Token-Oper: %s" % TOKEN_OPER[0])
+			if len(TOKEN_OPER) > 1:
+				Log("Storing Video-Token-Oper2: %s" % TOKEN_OPER[1])
 		Dict['CACHE_COOKIE'] = E(JSON.StringFromObject(cookie_dict))
 		Dict.Save()
 
@@ -494,6 +496,9 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 			hash_url = urlparse.urljoin(T_BASE_URL, HASH_PATH_INFO)
 			query = {'ts': serverts, 'id': key, 'update':'0'}
 			tk = get_token(query, token_error)
+			if tk == None:
+				raise ValueError('video token algo')
+			
 			query.update(tk)
 			hash_url = hash_url + '?' + urllib.urlencode(query)
 
@@ -559,9 +564,12 @@ def a01(t, token_error=False):
 	i = 0
 	for e in range(0, len(t)):
 		if token_error == False:
-			i += ord(t[e]) * e - e
+			i += ord(t[e]) + e
 		else:
-			i += eval('ord(t[%s]) %s' % (e, TOKEN_OPER[0]))
+			try:
+				i += eval('ord(t[%s]) %s' % (e, TOKEN_OPER[0]))
+			except:
+				i += eval('ord(t[%s]) %s' % (e, TOKEN_OPER[1]))
 	return i
 
 

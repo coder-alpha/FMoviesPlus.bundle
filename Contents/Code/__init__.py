@@ -4689,6 +4689,7 @@ def ValidatePrefs(changed=True, **kwargs):
 @route(PREFIX + "/DumpPrefs")
 def DumpPrefs(changed=False, **kwargs):
 	Log("=================FMoviesPlus Prefs=================")
+	Log(common.TITLE + ' v. %s %s' % (common.VERSION, common.TAG))
 	Log("Channel Preferences:")
 	Log("Base site url: %s" % (fmovies.BASE_URL))
 	Log("Cache Expiry Time (in mins.): %s" % (Prefs["cache_expiry_time"]))

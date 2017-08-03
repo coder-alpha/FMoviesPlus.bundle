@@ -1,7 +1,7 @@
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.40' # Release notation (x.y - where x is major and y is minor)
-TAG = 'b'
+VERSION = '0.41' # Release notation (x.y - where x is major and y is minor)
+TAG = ''
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
 ################################################################################
@@ -66,7 +66,7 @@ EMOJI_TV = u'\U0001F4FA'
 EMOJI_HEART = u'\u2665'
 EMOJI_TICK = u'\u2713'
 EMOJI_CROSS = u'\u2717'
-EMOJI_QUESTION = u'\u2753'
+EMOJI_QUESTION = u'?'
 
 # Text Emoji equivalent
 EMOJI_TXT_POS = u'(v)'
@@ -99,6 +99,7 @@ DEVICE_OPTION_CONSTRAINTS2 = {DEVICE_OPTIONS[5]:[{'Option':6,'ReqValue':False}],
 SHOW_EXT_SRC_WHILE_LOADING = True
 USE_EXT_URLSERVICES = True
 USE_COOKIES = True
+DOWNLOAD_BACKUP_OPER = True
 NoMovieInfo = False
 USE_CUSTOM_TIMEOUT = False
 USE_SECOND_REQUEST = True

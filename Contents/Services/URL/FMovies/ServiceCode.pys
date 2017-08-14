@@ -152,31 +152,44 @@ def MediaObjectsForURL(url, **kwargs):
 			except:
 				res = 480
 				
-			furl = ourl
+			files = [{'file':ourl,'label': res}]
 			if 'openload' not in host:
 				furl = Misc.resolve(ourl)
+				sortable_list = []
+				for ffurl in furl:
+					res = re.findall(r'hls\/(.*)\/', ffurl)[0]
+					if int(res) < 1000:
+						res = '0%s' % res
+					sortable_list.append({'file':ffurl,'label': str(res)})
+				files = sorted(sortable_list, key=lambda k: k['label'], reverse=True)
 				
-			if '.m3u8' in furl:
-				mo = MediaObject(
-					protocol = 'hls',
-					container = 'mpegts',
-					audio_codec = AudioCodec.AAC,
-					video_resolution = res,
-					audio_channels = 2,
-					optimized_for_streaming = direct_play,
-					parts = [PartObject(key=Callback(PlayVideo, url=ourl, isTargetPlay=True, pairrequired=pairrequired, host=host))]
-				)
-			else:
-				mo = MediaObject(
-					container = Container.MP4,
-					video_codec = VideoCodec.H264,
-					audio_codec = AudioCodec.AAC,
-					video_resolution = res,
-					audio_channels = 2,
-					optimized_for_streaming = direct_play,
-					parts = [PartObject(key=Callback(PlayVideo, url=ourl, isTargetPlay=True, pairrequired=pairrequired, host=host))]
-				)
-			media_obj.append(mo)
+			for file in files:
+				furl = file['file']
+				res = int(file['label'])
+				if '.m3u8' in furl:
+					Log("---------furl-------")
+					Log("%s" % furl)
+					
+					mo = MediaObject(
+						protocol = 'hls',
+						container = 'mpegts',
+						audio_codec = AudioCodec.AAC,
+						video_resolution = res,
+						audio_channels = 2,
+						optimized_for_streaming = direct_play,
+						parts = [PartObject(key=Callback(PlayVideo, url=furl, refUrl=ourl, isTargetPlay=True, pairrequired=pairrequired, host=host))]
+					)
+				else:
+					mo = MediaObject(
+						container = Container.MP4,
+						video_codec = VideoCodec.H264,
+						audio_codec = AudioCodec.AAC,
+						video_resolution = res,
+						audio_channels = 2,
+						optimized_for_streaming = direct_play,
+						parts = [PartObject(key=Callback(PlayVideo, url=furl, isTargetPlay=True, pairrequired=pairrequired, host=host))]
+					)
+				media_obj.append(mo)
 			
 		else:
 			files = data['server']
@@ -275,7 +288,8 @@ def PlayVideo(url, isTargetPlay=False, useRedirect=False, refUrl=None, params=No
 			if pairrequired == True:
 				url = Openload.resolve(url)
 		elif isTargetPlay:
-			url = Misc.resolve(url)
+			#url = Misc.resolve(url)
+			pass
 	except:
 		raise Ex.MediaNotAvailable
 		
@@ -302,6 +316,7 @@ def PlayVideo(url, isTargetPlay=False, useRedirect=False, refUrl=None, params=No
 			
 	if useRedirect and refUrl != None:
 		url = GetRedirect(url, 10, ref=refUrl, headers=http_headers, cookie=http_cookies)
+	if refUrl != None:
 		http_headers['Referer'] = refUrl
 		
 	if '.m3u8' in url:

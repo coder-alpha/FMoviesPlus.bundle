@@ -1059,9 +1059,9 @@ def ShowMenu(title, session=None, **kwargs):
 			)
 	elif title == CAT_GROUPS[3]:
 		
-		page_data, error = common.GetPageElements(url=fmovies.BASE_URL)
+		page_data, error = common.GetPageElements(url=fmovies.BASE_URL + '/fmovies')
 		if page_data == None:
-			bool, noc, page_data = testSite(url=fmovies.BASE_URL)
+			bool, noc, page_data = testSite(url=fmovies.BASE_URL + '/fmovies')
 			if bool == False:
 				return noc
 
@@ -1162,7 +1162,7 @@ def ShowMenu(title, session=None, **kwargs):
 @route(PREFIX + "/sortMenu")
 def SortMenu(title, session=None, **kwargs):
 
-	url = fmovies.BASE_URL
+	url = fmovies.BASE_URL + '/fmovies'
 	oc = ObjectContainer(title2 = title, no_cache=isForceNoCache())
 	
 	# Test for the site url initially to report a logical error
@@ -4811,6 +4811,8 @@ def PlayVideo(videoUrl, params, retResponse, url, title, summary, thumb, watch_t
 		pass
 	elif common.client.geturlhost(videoUrl) in common.host_misc_resolvers.supported_hosts:
 		videoUrl = common.host_misc_resolvers.resolve(videoUrl)
+		if videoUrl != None:
+			videoUrl = videoUrl[len(videoUrl)-1]
 	elif '.mp4' not in videoUrl and 'mime=video/mp4' not in videoUrl:
 		page_data, error = common.GetPageAsString(url=videoUrl)
 		reg_exs = [[r'\[{.*mp4.*}]',0],[r'{.*mp4.*}',0],[r'\({.*mp4.*?}\)',0]]

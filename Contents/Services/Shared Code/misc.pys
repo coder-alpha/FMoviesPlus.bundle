@@ -15,9 +15,12 @@ import re, json
 supported_hosts = ['mycloud.to']
 
 def resolve(url):
-	video_url = None
+	video_urlf = None
 	try:
-		page_data_string = HTTP.Request(url).content
+		headers = {}
+		headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:48.0) Gecko/20100101 Firefox/48.0'
+		headers['Referer'] = url
+		page_data_string = HTTP.Request(url, headers=headers).content
 		
 		if page_data_string != None:
 			if 'mycloud' in url and 'Sorry, the page you are looking for could not be found.' not in page_data_string and 'This video is in processing' not in page_data_string:
@@ -25,16 +28,31 @@ def resolve(url):
 				json_data = json.loads(json_data_str)
 				video_url = json_data['file']
 				if 'https:' not in video_url and 'http:' not in video_url:
-					video_url = 'http:' + video_url
-	except:
+					video_url = 'https:' + video_url
+				#Log('=======video_urls_data========')
+				video_urls_data = HTTP.Request(video_url, headers=headers).content
+				#Log('video_urls_data ------------> %s' % video_urls_data)
+				video_urls_arr = re.findall(r'(hls.*)', video_urls_data)
+				#Log('video_urls_arr ------------> %s' % video_urls_arr)
+				#Log('=======video_urls_data========')
+				video_url_a = []
+				for v in video_urls_arr:
+					video_url_a.append(video_url.split('list.m3u8')[0] + v)
+				video_urlf = video_url_a
+				#Log('video_urlf ------------> %s' % video_urlf)
+	except Exception as e:
+		Log('Misc.pys > resolve > error : %s' % e)
 		pass
 		
-	return video_url
+	return video_urlf
 	
 def error(url):
 	error = ''
 	try:
-		page_data_string = HTTP.Request(url).content
+		headers = {}
+		headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/59.0.3071.115 Safari/537.36'
+		headers['Referer'] = url
+		page_data_string = HTTP.Request(url, headers=headers).content
 		
 		if page_data_string != None:
 			if 'mycloud' in url and 'Sorry, the page you are looking for could not be found.' in page_data_string:

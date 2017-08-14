@@ -1,6 +1,6 @@
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.41' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.42' # Release notation (x.y - where x is major and y is minor)
 TAG = ''
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
@@ -447,6 +447,7 @@ def isItemVidAvailable(isTargetPlay, data, params=None, host=None, **kwargs):
 			elif isTargetPlay and host in host_misc_resolvers.supported_hosts:
 				resolved_url = host_misc_resolvers.resolve(vidurl)
 				if resolved_url != None:
+					resolved_url = resolved_url[len(resolved_url)-1]
 					http_res = client.request(url=resolved_url, output='responsecode', headers=headers, cookie=cookie, IPv4=True)
 					if http_res in client.HTTP_GOOD_RESP_CODES:
 						isVideoOnline = 'true'

@@ -2042,7 +2042,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, **kwargs):
 									data = E(JSON.StringFromObject({"server":server_info}))
 								isVideoOnline = common.isItemVidAvailable(isTargetPlay=isTargetPlay, data=data, host=host)
 								
-							if isTargetPlay == True and 'openload' in host:
+							if isTargetPlay == True and 'openload' in host and (Prefs['use_openload_pairing'] or not common.is_uss_installed()):
 								pair_required = common.host_openload.isPairingRequired(url=server_info)
 								if pair_required == True:
 									if common.host_openload.isPairingDone(url=server_info) == False:
@@ -2062,7 +2062,10 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, **kwargs):
 									redirector_stat = ' (via Redirector)'
 									redirector_enabled = 'true'
 									
-								durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":server_info, "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "roles":roles, "directors":directors, "roles":roles, "isTargetPlay":str(isTargetPlay), "useSSL":str(Prefs["use_https_alt"]), "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled, 'urldata':'','quality':qual, 'pairrequired':pair_required, "host":host}))
+								if not Prefs['use_openload_pairing'] and common.is_uss_installed() and URLService.ServiceIdentifierForURL(server_info) != None:
+									durl = server_info
+								else:
+									durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":server_info, "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "roles":roles, "directors":directors, "roles":roles, "isTargetPlay":str(isTargetPlay), "useSSL":str(Prefs["use_https_alt"]), "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled, 'urldata':'','quality':qual, 'pairrequired':pair_required, "host":host}))
 									
 								oc.add(VideoClipObject(
 									url = durl,
@@ -2237,7 +2240,7 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 						data = E(JSON.StringFromObject({"server":server_info}))
 					isVideoOnline = common.isItemVidAvailable(isTargetPlay=isTargetPlay, data=data, host=host)
 					
-				if isTargetPlay == True and 'openload' in host:
+				if isTargetPlay == True and 'openload' in host and (Prefs['use_openload_pairing'] or not common.is_uss_installed()):
 					pair_required = common.host_openload.isPairingRequired(url=server_info)
 					if pair_required == True:
 						if common.host_openload.isPairingDone(url=server_info) == False:
@@ -2256,7 +2259,10 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 					redirector_stat = ' (via Redirector)'
 					redirector_enabled = 'true'
 				
-				durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":server_info, "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "directors":directors, "roles":roles, "isTargetPlay":str(isTargetPlay), "useSSL":str(Prefs["use_https_alt"]), "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled, 'urldata':'', 'pairrequired':pair_required, "host":host}))
+				if not Prefs['use_openload_pairing'] and common.is_uss_installed() and URLService.ServiceIdentifierForURL(server_info) != None:
+					durl = server_info
+				else:
+					durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":server_info, "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "directors":directors, "roles":roles, "isTargetPlay":str(isTargetPlay), "useSSL":str(Prefs["use_https_alt"]), "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled, 'urldata':'', 'pairrequired':pair_required, "host":host}))
 				
 				try:
 					oc.add(VideoClipObject(
@@ -2353,7 +2359,7 @@ def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary
 					data = E(JSON.StringFromObject({"server":server_info}))
 				isVideoOnline = common.isItemVidAvailable(isTargetPlay=isTargetPlay, data=data, host=host)
 				
-			if isTargetPlay == True and 'openload' in host:
+			if isTargetPlay == True and 'openload' in host and (Prefs['use_openload_pairing'] or not common.is_uss_installed()):
 				pair_required = common.host_openload.isPairingRequired(url=server_info)
 				if pair_required == True:
 					if common.host_openload.isPairingDone(url=server_info) == False:
@@ -2377,7 +2383,10 @@ def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary
 					redirector_stat = ' (via Redirector)'
 					redirector_enabled = 'true'
 					
-				durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":server_info, "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "roles":roles, "directors":directors, "roles":roles, "isTargetPlay":str(isTargetPlay), "useSSL":str(Prefs["use_https_alt"]), "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled, 'urldata':'','quality':qual, 'pairrequired':pair_required, "host":host}))
+				if not Prefs['use_openload_pairing'] and common.is_uss_installed() and URLService.ServiceIdentifierForURL(server_info) != None:
+					durl = server_info
+				else:
+					durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":server_info, "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "roles":roles, "directors":directors, "roles":roles, "isTargetPlay":str(isTargetPlay), "useSSL":str(Prefs["use_https_alt"]), "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled, 'urldata':'','quality':qual, 'pairrequired':pair_required, "host":host}))
 					
 				oc.add(VideoClipObject(
 					url = durl,

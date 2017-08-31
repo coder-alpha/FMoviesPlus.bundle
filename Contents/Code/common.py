@@ -1,6 +1,6 @@
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.42' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.43' # Release notation (x.y - where x is major and y is minor)
 TAG = ''
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
@@ -823,6 +823,23 @@ class PageError(Exception):
     pass
 	
 ####################################################################################################
+
+# checks if USS is installed or not
+def is_uss_installed():
+    """Check install state of UnSupported Services"""
+
+    identifiers = list()
+    plugins_list = XML.ElementFromURL('http://127.0.0.1:32400/:/plugins', cacheTime=0)
+
+    for plugin_el in plugins_list.xpath('//Plugin'):
+        identifiers.append(plugin_el.get('identifier'))
+
+    if 'com.plexapp.system.unsupportedservices' in identifiers:
+        return True
+    return False
+	
+####################################################################################################
+
 # author: Twoure
 # source: https://github.com/Twoure/HindiMoviesOnline.bundle/blob/master/Contents/Code/messages.py
 #

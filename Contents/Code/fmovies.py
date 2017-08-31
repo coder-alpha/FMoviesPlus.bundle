@@ -226,27 +226,32 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 			
 			counter = 0
 			while reqkey_cookie == '' and counter < 5:
-				r1 = common.interface.request_via_proxy_as_backup(token_url, headers=headersS, httpsskip=use_https_alt)
+				r, r1 = common.interface.request_via_proxy_as_backup(token_url, headers=headersS, httpsskip=use_https_alt, output='response')
 				time.sleep(0.1)
 				del common.TOKEN_CODE[:]
 				
-				token_enc = common.client.b64encode(r1)
-				common.TOKEN_CODE.append(token_enc)
-				
-				quiet = True
-				if counter == 4:
-					quiet = False
-				
-				try:
-					reqkey_cookie = decodeAndParse(token_enc,use_debug,use_https_alt, quiet=quiet)
-				except:
-					reqkey_cookie = ''
+				if r in common.client.HTTP_GOOD_RESP_CODES and '503 Service Unavailable' not in r1:
+					token_enc = common.client.b64encode(r1)
+					common.TOKEN_CODE.append(token_enc)
+					
+					quiet = True
+					if counter == 4:
+						quiet = False
+					
+					try:
+						reqkey_cookie = decodeAndParse(token_enc,use_debug,use_https_alt, quiet=quiet)
+					except:
+						reqkey_cookie = ''
+						
 				time.sleep(2.0)
 				counter += 1
 			
 			if dump or use_debug:
 				Log("=====================TOKEN START============================")
-				Log(common.TOKEN_CODE[0])
+				if len(common.TOKEN_CODE) == 0:
+					Log('NO COOKIE TOKEN USED/REQUIRED')
+				else:
+					Log(common.TOKEN_CODE[0])
 				Log("=====================TOKEN END============================")
 		except:
 			if dump or use_debug:
@@ -272,7 +277,7 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 					Log('ERROR fmovies.py>Token-fetch-1a: %s' % e)
 					
 				try:
-					token_oper = re.findall(r'%s' % common.client.b64decode('blwrPXRcWy4qXVwoaVwpLio/KC4qPyk7'), unpacked_code)[0]
+					token_oper = re.findall(r'%s' % common.client.b64decode('bi5cKz0udFxbLipdXChpXCkuKj8oLio/KTs='), unpacked_code)[0]
 					if token_oper !=None and token_oper != '':
 						#cookie_dict.update({'token_oper':token_oper})
 						token_oper = token_oper.replace('i','e')

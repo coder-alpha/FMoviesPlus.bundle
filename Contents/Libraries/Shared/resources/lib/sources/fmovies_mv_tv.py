@@ -449,7 +449,7 @@ class source:
 		i = 0
 		for e in range(0, len(t)):
 			if token_error == False:
-				i += ord(t[e]) * e
+				i += ord(t[e]) + e
 			else:
 				i += ord(t[e]) * e + e
 		return i

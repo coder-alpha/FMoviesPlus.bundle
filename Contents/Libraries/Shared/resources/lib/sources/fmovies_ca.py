@@ -14,8 +14,8 @@ class source:
 		self.base_link = 'https://fmovies.io'
 		self.search_link = '/sitemap'
 		self.search_link2 = 'https://fmovies.io/search.html?keyword=%s'
-		self.link_server_f1 = "https://player.fmovies.io/bk/embed.php?id=%s"
-		self.link_server_f2 = "https://player.fmovies.io/embed.php?id=%s"
+		self.link_server_f1 = "https://vidnode.net/streaming.php?id=%s"
+		self.link_server_f2 = "https://player.fmovie.io/embed.php?id=%s"
 		self.hash_link = '/ajax/episode/info'
 		self.MainPageValidatingContent = 'Watch Free Movies Online -  Streaming MoviesFast - Fmovies'
 		self.type_filter = ['movie', 'show', 'anime']
@@ -230,10 +230,10 @@ class source:
 			
 			links_m = []
 			#print urls
-			
+			page = None
 			for url in urls:
 				try:
-					result = proxies.request(url, headers=self.headers, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, httpsskip=True)
+					page = result = proxies.request(url, headers=self.headers, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, httpsskip=True)
 					
 					quality = '480p'
 					type = 'BRRIP'
@@ -267,31 +267,25 @@ class source:
 						if resultx == None:
 							raise Exception()
 							
-					#print url
+					#print result
 
 					r = client.parseDOM(result, 'article', attrs = {'class': 'player current'})[0]
 					result = client.parseDOM(r, 'iframe', ret='src')[0]
 					result = result.split('?')
+					
+					#print result
+					
 					data = urlparse.parse_qs(result[1])
-					
-					id = data['id'][0]
+					var_id = data['id'][0]
+					var_x = data['x'][0]
 					
 					try:
-						server_f1 = self.link_server_f1 % id
+						server_f1 = self.link_server_f1 % var_id
 						result = proxies.request(server_f1, headers=self.headers, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, httpsskip=True)
-
-						ss = client.parseDOM(result, 'source', ret='src')
-						for s in ss:
-							#print s
-							links_m = resolvers.createMeta(s, self.name, self.logo, quality, links_m, key)
-							if testing and len(links_m) > 0:
-								break
-					except:
-						pass
-					
-					try:
-						server_f2 = self.link_server_f2 % id
-						result = proxies.request(server_f2, headers=self.headers, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, httpsskip=True)
+						resultd = client.parseDOM(result, 'iframe', ret='src')[0]
+						if 'http' not in resultd:
+							resultd = 'http:' + resultd
+						result = proxies.request(resultd, headers=self.headers, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, httpsskip=True)
 						ss = client.parseDOM(result, 'source', ret='src')
 						for s in ss:
 							#print s
@@ -300,6 +294,40 @@ class source:
 							links_m = resolvers.createMeta(s, self.name, self.logo, quality, links_m, key)
 						if testing and len(links_m) > 0:
 								break
+					except:
+						pass
+						
+					try:
+						server_f2 = self.link_server_f2 % var_id
+						result = proxies.request(server_f2, headers=self.headers, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, httpsskip=True)
+						resultd = client.parseDOM(result, 'iframe', ret='src')[0]
+						if 'http' not in resultd:
+							resultd = 'http:' + resultd
+						result = proxies.request(resultd, headers=self.headers, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, httpsskip=True)
+						ss = client.parseDOM(result, 'source', ret='src')
+						for s in ss:
+							#print s
+							if testing and len(links_m) > 0:
+								break
+							links_m = resolvers.createMeta(s, self.name, self.logo, quality, links_m, key)
+						if testing and len(links_m) > 0:
+								break
+					except:
+						pass
+						
+					try:
+						all_links = re.findall(r'link_server_.*\"(.*)\";', page)
+						for a_link in all_links:
+							if a_link != None and 'vidnode.net' not in a_link and 'fmovie.io' not in a_link:
+								if 'http' not in a_link:
+									a_link = 'http:' + a_link
+								print a_link
+								try:
+									if testing and len(links_m) > 0:
+										break
+									links_m = resolvers.createMeta(a_link, self.name, self.logo, quality, links_m, key)
+								except:
+									pass
 					except:
 						pass
 				except:

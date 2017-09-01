@@ -51,3 +51,9 @@ def log(msg):
 		print('[FMovies]: %s' % (msg))
 	except Exception as e:
 		pass  # just give up
+
+# set default values for script testing - these will be updated once plugin initializes
+set_setting('use_openload_pairing', True)
+set_setting('is_uss_installed', False)
+set_setting('use_https_alt', True)
+set_setting('control_all_uc_api_key', None)

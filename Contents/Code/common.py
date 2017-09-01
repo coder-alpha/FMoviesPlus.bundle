@@ -1,6 +1,6 @@
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.43' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.44' # Release notation (x.y - where x is major and y is minor)
 TAG = ''
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
@@ -107,6 +107,7 @@ USE_JSFDECODER = True
 USE_JSENGINE = True
 USE_JSWEBHOOK = True
 ALT_PLAYBACK = True
+DEV_BM_CONVERSION = False
 DEV_DEBUG = False
 WBH = 'aHR0cHM6Ly9ob29rLmlvL2NvZGVyLWFscGhhL3Rlc3Q='
 
@@ -158,14 +159,21 @@ def GetKeyFromVal(list, val_look):
 
 def set_control_settings():
 
-	keys = ['use_https_alt','control_all_uc_api_key']
+	keys = ['use_https_alt','control_all_uc_api_key','use_openload_pairing']
 	for i in range(0,len(keys)):
 		try:
 			key = keys[i]
 			control.set_setting(key, Prefs[key])
 			
 		except Exception as e:
-			Log('ERROR common.py>set_control_settings: %s' % e)
+			Log('ERROR common.py-1>set_control_settings: %s' % e)
+			
+	
+	try:
+		control.set_setting('is_uss_installed', is_uss_installed())
+	except Exception as e:
+		Log('ERROR common.py-2>set_control_settings: %s' % e)
+			
 	if Prefs["use_debug"]:
 		Log("User Preferences have been set to Control")
 			

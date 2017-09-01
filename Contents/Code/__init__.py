@@ -124,7 +124,7 @@ def Start():
 	ValidateMyPrefs()
 	
 	# convert old style bookmarks to new
-	if len(CONVERT_BMS) == 0:
+	if common.DEV_BM_CONVERSION and len(CONVERT_BMS) == 0:
 		convertbookmarks()
 
 ######################################################################################
@@ -998,7 +998,10 @@ def ResetAllOptions(session, doReset=False, **kwargs):
 		oc.add(DirectoryObject(key = Callback(MainMenu),title = '<< Main Menu',thumb = R(ICON)))
 		return oc
 	
+	for i in Dict:
+		Dict[i] = None
 	Dict.Reset()
+	Dict.Save()
 	
 	FilterExt_Search.clear()
 	FilterExt.clear()
@@ -2047,6 +2050,8 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, **kwargs):
 								if pair_required == True:
 									if common.host_openload.isPairingDone(url=server_info) == False:
 										pair = ' *Pairing required* '
+									else:
+										pair = ' *Paired* '
 								if Prefs["use_debug"]:
 									Log("%s --- %s : Pairing required: %s" % (server_info, pair, pair_required))
 								
@@ -2062,7 +2067,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, **kwargs):
 									redirector_stat = ' (via Redirector)'
 									redirector_enabled = 'true'
 									
-								if not Prefs['use_openload_pairing'] and common.is_uss_installed() and URLService.ServiceIdentifierForURL(server_info) != None:
+								if not Prefs['use_openload_pairing'] and 'openload' in host and common.is_uss_installed() and URLService.ServiceIdentifierForURL(server_info) != None:
 									durl = server_info
 								else:
 									durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":server_info, "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "roles":roles, "directors":directors, "roles":roles, "isTargetPlay":str(isTargetPlay), "useSSL":str(Prefs["use_https_alt"]), "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled, 'urldata':'','quality':qual, 'pairrequired':pair_required, "host":host}))
@@ -2245,6 +2250,8 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 					if pair_required == True:
 						if common.host_openload.isPairingDone(url=server_info) == False:
 							pair = ' *Pairing required* '
+						else:
+							pair = ' *Paired* '
 					if Prefs["use_debug"]:
 						Log("%s --- %s : Pairing required: %s" % (server_info, pair, pair_required))
 					
@@ -2259,7 +2266,7 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 					redirector_stat = ' (via Redirector)'
 					redirector_enabled = 'true'
 				
-				if not Prefs['use_openload_pairing'] and common.is_uss_installed() and URLService.ServiceIdentifierForURL(server_info) != None:
+				if not Prefs['use_openload_pairing'] and 'openload' in host and common.is_uss_installed() and URLService.ServiceIdentifierForURL(server_info) != None:
 					durl = server_info
 				else:
 					durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":server_info, "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "directors":directors, "roles":roles, "isTargetPlay":str(isTargetPlay), "useSSL":str(Prefs["use_https_alt"]), "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled, 'urldata':'', 'pairrequired':pair_required, "host":host}))
@@ -2364,6 +2371,8 @@ def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary
 				if pair_required == True:
 					if common.host_openload.isPairingDone(url=server_info) == False:
 						pair = ' *Pairing required* '
+					else:
+						pair = ' *Paired* '
 				if Prefs["use_debug"]:
 					Log("%s --- %s : Pairing required: %s" % (server_info, pair, pair_required))
 			elif isTargetPlay == True:
@@ -2383,7 +2392,7 @@ def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary
 					redirector_stat = ' (via Redirector)'
 					redirector_enabled = 'true'
 					
-				if not Prefs['use_openload_pairing'] and common.is_uss_installed() and URLService.ServiceIdentifierForURL(server_info) != None:
+				if not Prefs['use_openload_pairing'] and 'openload' in host and common.is_uss_installed() and URLService.ServiceIdentifierForURL(server_info) != None:
 					durl = server_info
 				else:
 					durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":server_info, "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "roles":roles, "directors":directors, "roles":roles, "isTargetPlay":str(isTargetPlay), "useSSL":str(Prefs["use_https_alt"]), "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled, 'urldata':'','quality':qual, 'pairrequired':pair_required, "host":host}))
@@ -2531,7 +2540,7 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 			redirector_enabled = 'true'
 			
 		pair_required = False
-		if source['source'] == 'openload':
+		if source['source'] == 'openload' and (Prefs['use_openload_pairing'] or not common.is_uss_installed()):
 			pair_required = source['misc']['pair']
 		
 		if source['vidtype'] in 'Movie/Show':
@@ -2547,7 +2556,10 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 			urldata = source['urldata']
 			params = source['params']
 			
-			durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":vidUrl, "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "directors":directors, "roles":roles, "isTargetPlay":str(isTargetPlay), "useSSL":str(Prefs["use_https_alt"]), "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled, 'quality':source['quality'], 'urldata':urldata, 'params':params, 'pairrequired':pair_required, "host":source['source']}))
+			if not Prefs['use_openload_pairing'] and 'openload' in source['source'] and common.is_uss_installed() and URLService.ServiceIdentifierForURL(vidUrl) != None:
+					durl = vidUrl
+			else:
+				durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":vidUrl, "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "directors":directors, "roles":roles, "isTargetPlay":str(isTargetPlay), "useSSL":str(Prefs["use_https_alt"]), "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled, 'quality':source['quality'], 'urldata':urldata, 'params':params, 'pairrequired':pair_required, "host":source['source']}))
 			try:
 				oc.add(VideoClipObject(
 					url = durl,
@@ -4683,10 +4695,11 @@ def ValidatePrefs(changed=True, **kwargs):
 	
 	if changed == True:
 		DumpPrefs(changed=changed)
-		
-	common.CACHE.clear()
-	common.CACHE_META.clear()
-	HTTP.ClearCache()
+	
+	ClearCache()
+	# common.CACHE.clear()
+	# common.CACHE_META.clear()
+	# HTTP.ClearCache()
 	
 	common.set_control_settings()
 	
@@ -4707,6 +4720,7 @@ def DumpPrefs(changed=False, **kwargs):
 	Log("Use Alternate SSL/TLS: %s" % (Prefs["use_https_alt"]))
 	Log("Disable External Sources: %s" % (Prefs["disable_extsources"]))
 	Log("Use LinkChecker for Videos: %s" % (Prefs["use_linkchecker"]))
+	Log("Use Openload Pairing: %s" % (Prefs["use_openload_pairing"]))
 	Log("Enable Debug Mode: %s" % (Prefs["use_debug"]))
 	Log("=============================================")
 	

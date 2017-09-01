@@ -210,7 +210,7 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 		headersS['Referer'] = BASE_URL
 		headersS['User-Agent'] = UA
 		
-		result, headers, content, cookie1 = common.interface.request_via_proxy_as_backup(BASE_URL, headers=headersS, limit='0', output='extended', httpsskip=use_https_alt)
+		result, headers, content, cookie1 = common.interface.request_via_proxy_as_backup(BASE_URL, headers=headersS, limit='0', output='extended', httpsskip=use_https_alt, hideurl=True)
 		page_data_elems = HTML.ElementFromString(result)
 		ALL_JS =  page_data_elems.xpath(".//script[@src[contains(.,'all.js')]]//@src")[0]
 		
@@ -226,7 +226,7 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 			
 			counter = 0
 			while reqkey_cookie == '' and counter < 5:
-				r, r1 = common.interface.request_via_proxy_as_backup(token_url, headers=headersS, httpsskip=use_https_alt, output='response')
+				r, r1 = common.interface.request_via_proxy_as_backup(token_url, headers=headersS, httpsskip=use_https_alt, output='response', hideurl=True)
 				time.sleep(0.1)
 				del common.TOKEN_CODE[:]
 				
@@ -243,6 +243,9 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 					except:
 						reqkey_cookie = ''
 						
+				if '503 Service Unavailable' in r1 and counter > 2:
+					break
+						
 				time.sleep(2.0)
 				counter += 1
 			
@@ -253,7 +256,8 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 				else:
 					Log(common.TOKEN_CODE[0])
 				Log("=====================TOKEN END============================")
-		except:
+		except Exception as e:
+			Log(e)
 			if dump or use_debug:
 				Log("=====================TOKEN START============================")
 				Log("Token URL %s is not reachable !" % token_url)
@@ -266,7 +270,7 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 			if len(TOKEN_KEY) == 0:
 				try:
 					all_js_url = urlparse.urljoin(BASE_URL, ALL_JS)
-					all_js_pack_code = common.interface.request_via_proxy_as_backup(all_js_url, httpsskip=use_https_alt)
+					all_js_pack_code = common.interface.request_via_proxy_as_backup(all_js_url, httpsskip=use_https_alt, hideurl=True)
 					unpacked_code = common.jsunpack.unpack(all_js_pack_code)
 					cch = re.findall(r'%s' % common.client.b64decode('ZnVuY3Rpb25cKHQsaSxuXCl7XCJ1c2Ugc3RyaWN0XCI7ZnVuY3Rpb24gZVwoXCl7cmV0dXJuICguKj8pfWZ1bmN0aW9uIHJcKHRcKQ=='), unpacked_code)[0]
 					token_key = re.findall(r'%s=.*?\"(.*?)\"' % cch, unpacked_code)[0]
@@ -277,19 +281,22 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 					Log('ERROR fmovies.py>Token-fetch-1a: %s' % e)
 					
 				try:
-					token_oper = re.findall(r'%s' % common.client.b64decode('bi5cKz0udFxbLipdXChpXCkuKj8oLio/KTs='), unpacked_code)[0]
+					token_oper = re.findall(r'%s' % common.client.b64decode('blwrPXRcWy4qP11cKGlcKS4qPyguKj8pOw=='), unpacked_code)[0]
 					if token_oper !=None and token_oper != '':
 						#cookie_dict.update({'token_oper':token_oper})
 						token_oper = token_oper.replace('i','e')
 						TOKEN_OPER.append(token_oper)
 				except Exception as e:
 					Log('ERROR fmovies.py>Token-fetch-1b: %s' % e)
+					if common.DEV_DEBUG:
+						Log(match_exp)
+						Log(unpacked_code)
 		except Exception as e:
 			Log('ERROR fmovies.py>Token-fetch-1: %s' % e)
 
 		try:
 			if len(TOKEN_KEY) == 0:
-				token_key = common.interface.request_via_proxy_as_backup(TOKEN_KEY_PASTEBIN_URL, httpsskip=use_https_alt)
+				token_key = common.interface.request_via_proxy_as_backup(TOKEN_KEY_PASTEBIN_URL, httpsskip=use_https_alt, hideurl=True)
 				if token_key !=None and token_key != '':
 					#cookie_dict.update({'token_key':token_key})
 					TOKEN_KEY.append(token_key)
@@ -301,7 +308,7 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 			
 		try:
 			if len(TOKEN_OPER) == 0 or common.DOWNLOAD_BACKUP_OPER == True:
-				token_oper = common.interface.request_via_proxy_as_backup(TOKEN_OPER_PASTEBIN_URL, httpsskip=use_https_alt)
+				token_oper = common.interface.request_via_proxy_as_backup(TOKEN_OPER_PASTEBIN_URL, httpsskip=use_https_alt, hideurl=True)
 				if token_oper !=None and token_oper != '':
 					#cookie_dict.update({'token_oper':token_oper})
 					TOKEN_OPER.append(token_oper)
@@ -317,7 +324,13 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 		hash_url = urlparse.urljoin(BASE_URL, HASH_PATH_MENU)
 		hash_url = hash_url + '?' + urllib.urlencode(query)
 
-		r1, headers, content, cookie2 = common.interface.request_via_proxy_as_backup(hash_url, headers=headersS, limit='0', output='extended', httpsskip=use_https_alt)
+		r1, headers, content, cookie2 = common.interface.request_via_proxy_as_backup(hash_url, headers=headersS, limit='0', output='extended', httpsskip=use_https_alt, hideurl=True)
+		
+		if '__cfduid' in cookie2:
+			cfd = cookie2.split(';')
+			for cfdd in cfd:
+				if '__cfduid' in cfdd:
+					cookie1 = cfdd
 		
 		common.CACHE['cookie'] = {}
 		common.CACHE['cookie']['cookie1'] = cookie1

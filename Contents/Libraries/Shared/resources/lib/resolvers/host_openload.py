@@ -143,16 +143,20 @@ class host:
 		urldata = client.b64encode(json.dumps('', encoding='utf-8'))
 		params = client.b64encode(json.dumps('', encoding='utf-8'))
 		
-		isPairRequired = isPairingRequired(url)
-		#print "isPairRequired %s" % isPairRequired
-		
-		vidurl, err =  resolve(url, usePairing=False)
+		if control.setting('use_openload_pairing') == True or control.setting('is_uss_installed') == False:
+			isPairRequired = isPairingRequired(url)
+			#print "isPairRequired %s" % isPairRequired
+		else:
+			isPairRequired = False
+			
+		vidurl, err = resolve(url, usePairing=False)
 			
 		pair = ''
+		
 		if isPairRequired == True:
 			pair = ' *Pairing required* '
 			if isPairingDone(url):
-				pair = ''
+				pair = ' *Paired* '
 
 		if vidurl == None:
 			vidurl = url

@@ -36,8 +36,7 @@ def refresh_section(section_title, section_key):
 
 # params: movie, show
 def section_info(section):
-	import re
-
+	
 	#strobj = HTTP.Request(query_pms('/library/sections'))
 	#Log(strobj)
 	xmlobj   = XML.ElementFromURL(query_pms('/library/sections'))
@@ -54,7 +53,6 @@ def section_info(section):
 				path = location.get('path')
 				#Log(path)
 				if directory.get('type') == section:
-				#if re.search(r'ss.?p', path):
 					locations_dir.append([directory.get('key'), directory.get('type'), directory.get('title'), location.get('path')])
 		
 			if len(locations_dir) == 0:

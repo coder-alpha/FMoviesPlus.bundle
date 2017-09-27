@@ -220,11 +220,11 @@ class host:
 				if durl != None:
 					files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':ntitleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':type, 'provider':provider, 'url':durl, 'urldata':createurldata(durl,quality), 'params':params, 'logo':logo, 'online':isOnline, 'allowsDownload':self.allowsDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':enabled, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'subdomain':client.geturlhost(durl), 'misc':{'player':'iplayer', 'gp':False}})
 				else:
-					fs = client.getFileSize(url)
+					fs = client.getFileSize(url, retry429=True)
 					
 				files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':ntitleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':type, 'provider':provider, 'url':url, 'urldata':urldata('',''), 'params':params, 'logo':logo, 'online':isOnline, 'allowsDownload':self.allowsDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':enabled, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'subdomain':client.geturlhost(url), 'misc':{'player':'eplayer', 'gp':False}})
 			else:
-				fs = client.getFileSize(url)
+				fs = client.getFileSize(url, retry429=True)
 				
 				files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':ntitleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':type, 'provider':provider, 'url':url, 'urldata':urldata('',''), 'params':params, 'logo':logo, 'online':isOnline, 'allowsDownload':self.allowsDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':enabled, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'subdomain':client.geturlhost(url), 'misc':{'player':'iplayer', 'gp':False}})
 		except Exception as e:
@@ -257,7 +257,7 @@ class host:
 						p = json.dumps(p, encoding='utf-8')
 						p = client.b64encode(p)
 						
-						fs = client.getFileSize(furl)
+						fs = client.getFileSize(furl, retry429=True)
 						
 						files_ret.append({'source': self.name, 'maininfo':'', 'titleinfo':ntitleinfo, 'quality': quality, 'vidtype':vidtype, 'rip':type, 'provider': provider, 'url': furl, 'urldata':urldata('',''), 'params':p, 'logo': logo, 'online': isOnlineT, 'allowsDownload':self.allowsDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':enabled, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'subdomain':client.geturlhost(furl), 'misc':{'player':'iplayer' , 'gp':False}})
 						isGetlinkWork = True
@@ -280,7 +280,7 @@ class host:
 					
 					isOnlineT = check(furl, videoData, headers=headers, cookie=cookie)[0]
 					
-					fs = client.getFileSize(furl)
+					fs = client.getFileSize(furl, retry429=True)
 					
 					files_ret.append({'source': self.name, 'maininfo':'', 'titleinfo':ntitleinfo, 'quality': quality, 'vidtype':vidtype, 'rip':type, 'provider': provider, 'url': furl, 'urldata':createurldata(furl,quality), 'params':params, 'logo': logo, 'online': isOnlineT, 'allowsDownload':self.allowsDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':enabled, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'subdomain':client.geturlhost(furl), 'misc':{'player':'iplayer', 'gp':False}})
 		except Exception as e:

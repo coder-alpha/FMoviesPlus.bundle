@@ -339,10 +339,18 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 			setIP6()
 		return
 		
-def getFileSize(link, retError=False):
+def getFileSize(link, retError=False, retry429=False):
 	try:
 		r = requests.get(link, stream=True, verify=False, allow_redirects=True)
-		if r.status_code != 200 and r.status_code != 206:
+		
+		if retry429 == True:
+			c = 0
+			while r.status_code == 429 and c < 5:
+				time.sleep(3)
+				r = requests.get(link, stream=True, verify=False, allow_redirects=True)
+				c += 1
+		
+		if str(r.status_code) not in HTTP_GOOD_RESP_CODES and str(r.status_code) not in GOOGLE_HTTP_GOOD_RESP_CODES_1:
 			raise Exception('HTTP Response: %s' % str(r.status_code))
 		size = r.headers['Content-length']
 		r.close()

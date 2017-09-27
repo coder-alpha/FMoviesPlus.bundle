@@ -459,7 +459,7 @@ def InterfaceOptions(session, **kwargs):
 	
 ######################################################################################
 @route(common.PREFIX + "/downloadoptions")
-def DownloadOptions(session, **kwargs):
+def DownloadOptions(session, refresh=0, **kwargs):
 	
 	if session != None and Dict[CHECK_AUTH+session] != None and Dict[CHECK_AUTH+session]['auth'] == False:
 		return MC.message_container('Admin Access Only', 'Only the Admin can perform this action !')
@@ -510,11 +510,18 @@ def DownloadOptions(session, **kwargs):
 				oc.add(DirectoryObject(title = title_msg, key = Callback(SetDownloadChoice, session=session, key=section[0], title=section[2], type=type, path=section[3], bool=bool)))
 
 	oc.add(DirectoryObject(
-			key = Callback(MainMenu),
-			title = '<< Save Selection >>',
-			summary = 'Save the Selection for Download Options',
-			thumb = R(ICON_SAVE)
-		))
+		key = Callback(DownloadOptions, session=session, refresh=int(refresh)+1),
+		title = 'Refresh',
+		summary = 'Refresh to load any changes made to the library paths.',
+		thumb = R(ICON_REFRESH)
+	))
+	
+	oc.add(DirectoryObject(
+		key = Callback(MainMenu),
+		title = '<< Save Selection >>',
+		summary = 'Save the Selection for Download Options',
+		thumb = R(ICON_SAVE)
+	))
 		
 	Dict['DOWNLOAD_OPTIONS'] = E(JSON.StringFromObject(common.DOWNLOAD_OPTIONS))
 	Dict.Save()
@@ -3905,8 +3912,8 @@ def DownloadingFilesMenu(title, uid, choice=None, session=None, status=None, con
 					)
 			c += 1
 		oc.add(DirectoryObject(
-			title = 'Download path: %s' % longstringObjs['section_path'],
-			summary = 'Download path: %s' % longstringObjs['section_path'],
+			title = '%s | Download path: %s' % (longstringObjs['section_title'], longstringObjs['section_path']),
+			summary = '%s | Download path: %s' % (longstringObjs['section_title'], longstringObjs['section_path']),
 			key = Callback(MyMessage, title='Download Path', msg=longstringObjs['section_path']),
 			thumb = GetThumb(R(ICON_ENTER), session=session)
 			)

@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 #########################################################################################################
@@ -21,7 +22,8 @@ PAIR_INFO_URL = API_URL + '/streaming/info'
 GET_VIDEO_URL = API_URL + '/streaming/get?file=%s'
 VALID_URL = r'https?://(?:openload\.(?:co|io)|oload\.tv)/(?:f|embed)/(?P<id>[a-zA-Z0-9-_]+)'
 
-def openloadS(url):
+def resolve(url):
+	#Log(url)
 	video_id = match_id(url)
 	video_url = pairing_method(video_id)
 	return video_url
@@ -29,16 +31,17 @@ def openloadS(url):
 def pairing_method(video_id):
 	try:
 		get_info = JSON.ObjectFromURL(GET_VIDEO_URL % video_id)
-		#print "get_info --- %s" % get_info
+		print "get_info --- %s" % get_info
 		
 		status = get_info.get('status')
-		#print "status --- %s" % status
+		print "status --- %s" % status
 		
 		if status == 200:
 			result = get_info.get('result', {})
+			Log(result.get('url'))
 			return result.get('url')
-	except:
-		pass
+	except Exception as e:
+		print e
 	
 	return None
 		

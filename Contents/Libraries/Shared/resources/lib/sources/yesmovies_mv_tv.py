@@ -59,6 +59,7 @@ class source:
 		self.MainPageValidatingContent = 'Yesmovies - Watch FREE Movies Online & TV shows'
 		self.ssl = False
 		self.name = 'YesMovies'
+		self.type_filter = ['movie', 'show', 'anime']
 		self.loggertxt = []
 		self.logo = 'http://i.imgur.com/4g0iJ8Y.png'
 		self.info_link = '/ajax/movie_info/%s.html'
@@ -132,51 +133,63 @@ class source:
 		
 	def testParser(self):
 		try:
-			getmovieurl = self.get_movie(title=testparams.movie, year=testparams.movieYear, imdb=testparams.movieIMDb, testing=True)
-			movielinks = self.get_sources(url=getmovieurl, testing=True)
-			
-			if movielinks != None and len(movielinks) > 0:
-				self.log('SUCCESS', 'testParser', 'links : %s' % len(movielinks), dolog=True)
-				return True
-			else:
-				self.log('ERROR', 'testParser', 'getmovieurl : %s' % getmovieurl, dolog=True)
-				self.log('ERROR', 'testParser', 'movielinks : %s' % movielinks, dolog=True)
+			if self.siteonline == False:
+				self.log('ERROR', 'testParser', 'testSite returned False', dolog=True)
 				return False
+		
+			for movie in testparams.test_movies:
+				getmovieurl = self.get_movie(title=movie['title'], year=movie['year'], imdb=movie['imdb'], testing=True)
+				movielinks = self.get_sources(url=getmovieurl, testing=True)
+				
+				if movielinks != None and len(movielinks) > 0:
+					self.log('SUCCESS', 'testParser', 'links : %s' % len(movielinks), dolog=True)
+					return True
+				else:
+					self.log('ERROR', 'testParser', 'getmovieurl : %s' % getmovieurl, dolog=True)
+					self.log('ERROR', 'testParser', 'movielinks : %s' % movielinks, dolog=True)
+			return False
 		except Exception as e:
 			self.log('ERROR', 'testParser', '%s' % e, dolog=True)
 			return False
 
 	def get_movie(self, imdb, title, year, proxy_options=None, key=None, testing=False):
 		try:
-			t = cleantitle.get(title)
-
-			q = '/search/%s.html' % (urllib.quote_plus(cleantitle.query(title)))
-			q = urlparse.urljoin(self.base_link, q)
-
-			for i in range(3):
-				r = client.request(q)
-				if not r == None: break
-
-			r = client.parseDOM(r, 'div', attrs = {'class': 'ml-item'})
-			r = [(client.parseDOM(i, 'a', ret='href'), client.parseDOM(i, 'a', ret='title')) for i in r]
-			r = [(i[0][0], i[1][0]) for i in r if i[0] and i[1]]
-			r = [i[0] for i in r if t == cleantitle.get(i[1])][:2]
-			r = [(i, re.findall('(\d+)', i)[-1]) for i in r]
-
-			for i in r:
+			variations = [title, title.replace('&','and')]
+			
+			for title in variations:
 				try:
-					y, q = cache.get(self.ymovies_info, 9000, i[1])
-					if not y == year: raise Exception()
-					return urlparse.urlparse(i[0]).path, ''
+					t = cleantitle.get(title)
+
+					q = '/search/%s.html' % (urllib.quote_plus(cleantitle.query(title)))
+					print q
+					q = urlparse.urljoin(self.base_link, q)
+					print q
+
+					for i in range(3):
+						r = client.request(q, IPv4=True)
+						if not r == None: break
+
+					r = client.parseDOM(r, 'div', attrs = {'class': 'ml-item'})
+					r = [(client.parseDOM(i, 'a', ret='href'), client.parseDOM(i, 'a', ret='title')) for i in r]
+					r = [(i[0][0], i[1][0]) for i in r if i[0] and i[1]]
+					r = [i[0] for i in r if t == cleantitle.get(i[1])][:2]
+					r = [(i, re.findall('(\d+)', i)[-1]) for i in r]
+
+					for i in r:
+						try:
+							y, q = cache.get(self.ymovies_info, 9000, i[1])
+							if not y == year: raise Exception()
+							return urlparse.urlparse(i[0]).path, ''
+						except:
+							pass
 				except:
 					pass
-
 		except Exception as e:
 			control.log('Error %s > get_movie %s' % (self.name, e))
 			return
 
 
-	def get_show(self, imdb, tvdb, tvshowtitle, year, proxy_options=None, key=None):
+	def get_show(self, imdb, tvdb, tvshowtitle, year, season, proxy_options=None, key=None):
 		try:
 			url = {'imdb': imdb, 'tvdb': tvdb, 'tvshowtitle': tvshowtitle, 'year': year}
 			url = urllib.urlencode(url)
@@ -195,48 +208,120 @@ class source:
 				data = {}
 				data['tvshowtitle'] = title
 			
-			t = cleantitle.get(data['tvshowtitle'])
-			title = data['tvshowtitle']
-			season = '%01d' % int(season) ; episode = '%01d' % int(episode)
-			#year = re.findall('(\d{4})', date)[0]
-			years = [str(year), str(int(year)+1), str(int(year)-1)]
-
-			r = cache.get(self.ymovies_info_season, 720, title, season)
-			r = [(i[0], re.findall('(.+?)\s+(?:-|)\s+season\s+(\d+)$', i[1].lower())) for i in r]
-			r = [(i[0], i[1][0][0], i[1][0][1]) for i in r if i[1]]
-			r = [i[0] for i in r if t == cleantitle.get(i[1]) and season == '%01d' % int(i[2])][:2]
-			r = [(i, re.findall('(\d+)', i)[-1]) for i in r]
+			t1 = data['tvshowtitle']
+			#t2 = cleantitle.get(data['tvshowtitle'])
+			titles = [t1]
+			if '\'s' in t1:
+				t0 = t1.replace('\'s','')
+				titles.append(t0)
+				if ' ' in t0:
+					t0 = t0.split(' ')
+					t0 = t0[0]
+					titles.append(t0)
+			elif '\'' in t1:
+				t0 = t1.replace('\'','')
+				titles.append(t0)
+				if ' ' in t0:
+					t0 = t0.split(' ')
+					t0 = t0[0]
+					titles.append(t0)
 			
-			#print r
-
-			for i in r:
+			for title in titles:
+				#print title
 				try:
-					y, q = cache.get(self.ymovies_info, 9000, i[1])
-					mychk = False
-					years = [str(year),str(int(year) + 1),str(int(year) - 1)]
-					for x in years:
-						if str(y) == x: mychk = True
-					if mychk == False: raise Exception()
-					return urlparse.urlparse(i[0]).path, (episode)
+					season = '%01d' % int(season) ; episode = '%01d' % int(episode)
+					#year = re.findall('(\d{4})', date)[0]
+					years = [str(year), str(int(year)+1), str(int(year)-1)]
+
+					r = cache.get(self.ymovies_info_season, 720, title, season)
+					if r == None or len(r) == 0: raise Exception()
+					#print r
+					
+					r = [(i[0], re.findall('(.+?)\s+(?:-|)\s+season\s+(\d+)$', i[1].lower())) for i in r]
+					#print r
+					
+					r = [(i[0], i[1][0][0], i[1][0][1]) for i in r if i[1]]
+					#print r
+					
+					r1 = []
+					try:
+						r1 = [i[0] for i in r if title == cleantitle.get(i[1]) and int(season) == int(i[2])][:2]
+					except:
+						pass
+					if len(r1) == 0:
+						r = [i[0] for i in r if int(season) == int(i[2])][:2]
+					else:
+						r = r1
+
+					#print r
+						
+					r = [(i, re.findall('(\d+)', i)[-1]) for i in r]					
+					#print r
+
+					for i in r:
+						try:
+							y, q = cache.get(self.ymovies_info, 9000, i[1])
+							mychk = False
+							years = [str(year),str(int(year) + 1),str(int(year) - 1)]
+							for x in years:
+								if str(y) == x: mychk = True
+							if mychk == False: raise Exception()
+							return urlparse.urlparse(i[0]).path, (episode)
+						except:
+							pass
+							
+					# yr variation for shows
+					try:
+						year = int(year) - int(season)
+						for i in r:
+							try:
+								y, q = cache.get(self.ymovies_info, 9000, i[1])
+								mychk = False
+								years = [str(year),str(int(year) + 1),str(int(year) - 1)]
+								for x in years:
+									if str(y) == x: mychk = True
+								if mychk == False: raise Exception()
+								return urlparse.urlparse(i[0]).path, (episode)
+							except:
+								pass
+					except:
+						pass
+						
+					# yr ignore for shows
+					for i in r:
+						return urlparse.urlparse(i[0]).path, (episode)
+							
 				except:
 					pass
+			return
 		except Exception as e:
 			control.log('Error %s > get_episode %s' % (self.name, e))
 			return
 
 	def ymovies_info_season(self, title, season):
 		try:
+			qs = []
 			q = '%s Season %s' % (cleantitle.query(title), season)
-			q = '/search/%s.html' % (urllib.quote_plus(q))
-			q = urlparse.urljoin(self.base_link, q)
-
-			for i in range(3):
-				r = client.request(q)
-				if not r == None: break
-
-			r = client.parseDOM(r, 'div', attrs = {'class': 'ml-item'})
-			r = [(client.parseDOM(i, 'a', ret='href'), client.parseDOM(i, 'a', ret='title')) for i in r]
-			r = [(i[0][0], i[1][0]) for i in r if i[0] and i[1]]
+			qs.append(q)
+			q = cleantitle.query(title)
+			qs.append(q)
+			
+			#print qs
+			for qm in qs:
+				try:
+					q = '/search/%s.html' % (urllib.quote_plus(qm))
+					q = urlparse.urljoin(self.base_link, q)
+					#print q
+					for i in range(3):
+						r = client.request(q, IPv4=True)
+						if not r == None: break
+					
+					r = client.parseDOM(r, 'div', attrs = {'class': 'ml-item'})
+					r = [(client.parseDOM(i, 'a', ret='href'), client.parseDOM(i, 'a', ret='title')) for i in r]
+					r = [(i[0][0], i[1][0]) for i in r if i[0] and i[1]]
+					if not r == None and len(r) > 0: break
+				except:
+					pass
 
 			return r
 		except:
@@ -247,7 +332,7 @@ class source:
 			u = urlparse.urljoin(self.base_link, self.info_link)
 
 			for i in range(3):
-				r = client.request(u % url)
+				r = client.request(u % url, IPv4=True)
 				if not r == None: break
 
 			q = client.parseDOM(r, 'div', attrs = {'class': 'jtip-quality'})[0]
@@ -263,7 +348,7 @@ class source:
 		#try:
 		try:
 			sources = []
-			
+
 			#print url
 
 			if url is None: return sources
@@ -286,16 +371,38 @@ class source:
 			except:
 				episode = None
 
-			
 			#print mid
 
 			links_m = []
+			trailers = []
+			headers = {'Referer': self.base_link}
+			
+			if testing == False:
+				try:		
+					u = urlparse.urljoin(self.base_link, url[0])
+					print u
+					r = client.request(u, headers=headers, IPv4=True)
+					#regex = r"http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"
+					#matches = re.finditer(regex, r, re.MULTILINE)
+					matches = re.compile('http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+').findall(r)
+					for match in matches:
+						try:
+							#print match
+							if 'youtube.com' in match:
+								match = match.replace('embed/','watch?v=')
+								trailers.append(match)
+						except:
+							pass
+				except Exception as e:
+					pass
+					
+				for trailer in trailers:
+					links_m = resolvers.createMeta(trailer, self.name, self.logo, '720p', links_m, key, vidtype='Trailer')
 			
 			try:
-				headers = {'Referer': url}
 				u = urlparse.urljoin(self.base_link, self.server_link % mid)
 				#print u
-				r = client.request(u, headers=headers, XHR=True)
+				r = client.request(u, headers=headers, XHR=True, IPv4=True)
 				r = json.loads(r)['html']
 				r = client.parseDOM(r, 'div', attrs = {'class': 'pas-list'})
 				ids = client.parseDOM(r, 'li', ret='data-id')
@@ -304,6 +411,7 @@ class source:
 				r = zip(ids, servers, labels)
 				
 				for eid in r:
+					#print r
 					try:
 						try:
 							ep = re.findall('episode.*?(\d+):.*?',eid[2].lower())[0]
@@ -314,21 +422,25 @@ class source:
 							
 							url = urlparse.urljoin(self.base_link, self.token_link % (eid[0], mid))
 							
-							script = client.request(url)
+							script = client.request(url, IPv4=True)
+							#print script
+							
 							if '$_$' in script:
 								params = self.uncensored1(script)
 							elif script.startswith('[]') and script.endswith('()'):
 								params = self.uncensored2(script)
+							elif '_x=' in script and '_y=' in script:
+								params = self.uncensored3(script)
 							else:
 								raise Exception()
 							u = urlparse.urljoin(self.base_link, self.sourcelink % (eid[0], params['x'], params['y']))
-							r = client.request(u)
+							r = client.request(u, IPv4=True)
 							url = json.loads(r)['playlist'][0]['sources']
 							url = [i['file'] for i in url if 'file' in i]
 							url = [client.googletag(i) for i in url]
 							url = [i[0] for i in url if i]
 							for s in url:
-								links_m = resolvers.createMeta(s['url'], self.name, self.logo, '720p', links_m, key)
+								links_m = resolvers.createMeta(s['url'], self.name, self.logo, '720p', links_m, key, vidtype='Movie')
 								if testing and len(links_m) > 0:
 									break
 					except:
@@ -373,6 +485,16 @@ class source:
 	def uncensored2(self, script):
 		try:
 			js = jsunfuck.JSUnfuck(script).decode()
+			x = re.search('''_x=['"]([^"']+)''', js).group(1)
+			y = re.search('''_y=['"]([^"']+)''', js).group(1)
+			return {'x': x, 'y': y}
+		except Exception as e:
+			print "Exception in uncensored2 > %s" % e
+			pass
+			
+	def uncensored3(self, script):
+		try:
+			js = script
 			x = re.search('''_x=['"]([^"']+)''', js).group(1)
 			y = re.search('''_y=['"]([^"']+)''', js).group(1)
 			return {'x': x, 'y': y}

@@ -28,10 +28,13 @@ from resources.lib.libraries import control
 from resources.lib import resolvers
 from resources.lib import proxies
 
+AVOID_DOMAINS = ['9c40a04e9732e6a6.com']
+
 class source:
 	def __init__(self):
 		self.base_link = 'http://www.primewire.ag'
 		self.MainPageValidatingContent = '1Channel | PrimeWire.ag - Watch Movies Online'
+		self.type_filter = ['movie', 'show', 'anime']
 		self.name = 'Primewire'
 		self.loggertxt = []
 		self.ssl = False
@@ -99,6 +102,7 @@ class source:
 					else:
 						self.log('ERROR', 'testSite', 'HTTP Resp : %s via proxy for %s' % (http_res,self.base_link), dolog=True)
 						self.log('ERROR', 'testSite', content, dolog=True)
+
 			return False
 		except Exception as e:
 			self.log('ERROR','testSite', '%s' % e, dolog=True)
@@ -106,16 +110,21 @@ class source:
 		
 	def testParser(self):
 		try:
-			getmovieurl = self.get_movie(title=testparams.movie, year=testparams.movieYear, imdb=testparams.movieIMDb, testing=True)
-			movielinks = self.get_sources(url=getmovieurl, testing=True)
-			
-			if movielinks != None and len(movielinks) > 0:
-				self.log('SUCCESS', 'testParser', 'links : %s' % len(movielinks), dolog=True)
-				return True
-			else:
-				self.log('ERROR', 'testParser', 'getmovieurl : %s' % getmovieurl, dolog=True)
-				self.log('ERROR', 'testParser', 'movielinks : %s' % movielinks, dolog=True)
+			if self.siteonline == False:
+				self.log('ERROR', 'testParser', 'testSite returned False', dolog=True)
 				return False
+		
+			for movie in testparams.test_movies:
+				getmovieurl = self.get_movie(title=movie['title'], year=movie['year'], imdb=movie['imdb'], testing=True)
+				movielinks = self.get_sources(url=getmovieurl, testing=True)
+				
+				if movielinks != None and len(movielinks) > 0:
+					self.log('SUCCESS', 'testParser', 'links : %s' % len(movielinks), dolog=True)
+					return True
+				else:
+					self.log('ERROR', 'testParser', 'getmovieurl : %s' % getmovieurl, dolog=True)
+					self.log('ERROR', 'testParser', 'movielinks : %s' % movielinks, dolog=True)
+			return False
 		except Exception as e:
 			self.log('ERROR', 'testParser', '%s' % e, dolog=True)
 			return False
@@ -211,8 +220,6 @@ class source:
 			url = re.findall('(?://.+?|)(/.+)', url)[0]
 			url = client.replaceHTMLCodes(url)
 			url = url.encode('utf-8')
-			if url != None and'http://' not in url:
-				url = 'http:' + url
 			#print "PRIMEWIRE get_movie %s" % url
 			
 			self.log('SUCCESS', 'get_movie','%s' % url, dolog=testing)
@@ -225,7 +232,7 @@ class source:
 			self.log('ERROR', 'get_movie','%s' % result, dolog=testing)
 			return
 
-	def get_show(self, imdb, tvdb, tvshowtitle, year, proxy_options=None, key=None):
+	def get_show(self, imdb, tvdb, tvshowtitle, year, season, proxy_options=None, key=None):
 		try:
 			#print "PRIMEWIRE get_show %s" % tvshowtitle
 			
@@ -237,6 +244,8 @@ class source:
 			query = self.tvsearch_link % (urllib.quote_plus(cleantitle.query(tvshowtitle)), key)
 			query = urlparse.urljoin(self.base_link, query)
 
+			print query
+			
 			#result = str(proxies.request(query, 'index_item', proxy_options=proxy_options, use_web_proxy=self.proxyrequired))
 			result = str(proxies.request(query, proxy_options=proxy_options, use_web_proxy=self.proxyrequired))
 			#if 'page=2' in result or 'page%3D2' in result: result += str(proxies.request(query + '&page=2', 'index_item', proxy_options=proxy_options, use_web_proxy=self.proxyrequired))
@@ -245,11 +254,19 @@ class source:
 			result = client.parseDOM(result, 'div', attrs = {'class': 'index_item.+?'})
 
 			tvshowtitle = 'watch' + cleantitle.get(tvshowtitle)
-			years = ['(%s)' % str(year), '(%s)' % str(int(year)+1), '(%s)' % str(int(year)-1)]
+			years = ['%s' % str(year)]
+			for iy in range(0,int(season)):
+				years.append('%s' % str(int(year)-int(iy)))
+				years.append('%s' % str(int(year)+int(iy)))
 
+			years = list(set(years))
+			#print years
+				
 			result = [(client.parseDOM(i, 'a', ret='href'), client.parseDOM(i, 'a', ret='title')) for i in result]
 			result = [(i[0][0], i[1][0]) for i in result if len(i[0]) > 0 and len(i[1]) > 0]
 			result = [i for i in result if any(x in i[1] for x in years)]
+			
+			#print result
 
 			r = []
 			for i in result:
@@ -259,8 +276,15 @@ class source:
 				try: u = urlparse.parse_qs(urlparse.urlparse(u).query)['q'][0]
 				except: pass
 				r += [(u, i[1])]
+				
+			print r
 
-			match = [i[0] for i in r if tvshowtitle == cleantitle.get(i[1]) and '(%s)' % str(year) in i[1]]
+			for year in years:
+				match = [i[0] for i in r if tvshowtitle == cleantitle.get(i[1]) and '(%s)' % str(year) in i[1]]
+				if len(match) > 0:
+					break
+				
+			print match
 
 			match2 = [i[0] for i in r]
 			match2 = [x for y,x in enumerate(match2) if x not in match2[:y]]
@@ -279,7 +303,8 @@ class source:
 			url = client.replaceHTMLCodes(url)
 			url = url.encode('utf-8')
 			return url
-		except:
+		except Exception as e:
+			print(e)
 			return
 
 
@@ -323,18 +348,36 @@ class source:
 			sources = []
 			
 			#print "PRIMEWIRE get_sources %s" % url
-			if self.testparser == False:
-				return sources
-
+			
 			if url == None: return sources
 
 			url = urlparse.urljoin(self.base_link, url)
 
 			#result = proxies.request(url, 'choose_tabs', proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
 			result = proxies.request(url, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+			
+			links_m = []
+			trailers = []
+			if testing == False:
+				try:
+					matches = re.findall(r'\"(http[s]?://www.youtube.*?)\"',result)
+					for match in matches:
+						try:
+							#print match
+							if 'youtube.com' in match and '"' not in match:
+								match = match.replace('embed/','watch?v=')
+								trailers.append(match)
+						except:
+							pass
+				except Exception as e:
+					pass
+					
+				for trailer in trailers:
+					links_m = resolvers.createMeta(trailer, self.name, self.logo, '720p', links_m, key, vidtype='Trailer')
 
 			links = client.parseDOM(result, 'tbody')
-
+			riptype = 'BRRIP'
+			
 			for i in links:
 				try:
 					url = client.parseDOM(i, 'a', ret='href')[0]
@@ -350,16 +393,21 @@ class source:
 					
 					if 'http' not in url:
 						raise Exception()
+					for u in AVOID_DOMAINS:
+						if u in url:
+							raise Exception()
 					
 					quality = client.parseDOM(i, 'span', ret='class')[0]
 					
-					if quality == 'quality_cam' or quality == 'quality_ts': quality = 'CAM'
-					elif quality == 'quality_dvd': quality = 'SD'
+					if quality == 'quality_cam' or quality == 'quality_ts': # quality_ts
+						quality = 'CAM'
+						riptype = 'CAM'
+					elif quality == 'quality_dvd': 
+						quality = '720p'
 					else:  raise Exception()
 					
-					links_m = []
-					print "%s --- %s" % (self.name,url)
-					links_m = resolvers.createMeta(url, self.name, self.logo, quality, links_m, key)
+					#print "%s --- %s" % (self.name,url)
+					links_m = resolvers.createMeta(url, self.name, self.logo, quality, links_m, key, riptype)
 
 					sources += [l for l in links_m]
 					if testing and len(sources) > 0:

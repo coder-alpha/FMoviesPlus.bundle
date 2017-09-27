@@ -26,10 +26,12 @@ from resources.lib.libraries import control
 	
 sourceHosts = []
 sourceHostsCall = []
+sourceHostsPlaybackSupport = {}
 
 def init():
 	del sourceHosts[:]
 	del sourceHostsCall[:]
+	sourceHostsPlaybackSupport.clear()
 	
 	for package, name, is_pkg in pkgutil.walk_packages(__path__):	
 		try:
@@ -37,9 +39,31 @@ def init():
 			print "Adding Host %s to Interface" % (c.info()['name'])
 			sourceHostsCall.append({'host': c.info()['host'], 'name': c.info()['name'], 'call': c})
 			sourceHosts.append((c.info()))
+			sourceHostsPlaybackSupport[c.info()['name']] = c.info()['playbacksupport']
 		except Exception as e:
-			print "Error: %s - %s" % (name, e)	
-			pass
+			print "Error: %s - %s" % (name, e)
+			control.log('Error: Loading File %s' % name)
+			error_info = {
+				'name': name,
+				'class': name,
+				'speed': 0,
+				'netloc': name,
+				'host': name,
+				'quality': 'N/A',
+				'logo': None,
+				'working': False,
+				'resolver': False,
+				'captcha': False,
+				'msg': e,
+				'playbacksupport': False,
+				'a/c': False,
+				'streaming' : False,
+				'downloading' : False
+			}
+			sourceHostsCall.append({'host': error_info['host'], 'name': error_info['name'], 'call': None})
+			sourceHosts.append(error_info)
+			sourceHostsPlaybackSupport[error_info['name']] = error_info['playbacksupport']
+
 
 def request(url):
 	try:
@@ -93,7 +117,7 @@ def testLink(url):
 	except:
 		return 'Unknown'
 		
-def createMeta(url, provider, logo, quality, links, key):
+def createMeta(url, provider, logo, quality, links, key, riptype=None, vidtype='Movie', lang='en', txt=''):
 
 	if url == None or url == '':
 		print "resolvers > __init__.py > createMeta : url:%s prov:%s" % (url, provider)
@@ -108,20 +132,30 @@ def createMeta(url, provider, logo, quality, links, key):
 	
 	try:
 		urlhost = re.findall('([\w]+[.][\w]+)$', urlparse.urlparse(url.strip().lower()).netloc)[0]
+		if riptype == None:
+			riptype_def = 'BRRIP'
+		else:
+			riptype_def = riptype
 		for host in sourceHostsCall:
 			print "Searching %s in %s" % (urlhost, host['host'])
 			if urlhost in host['host']:
 				print "Found %s in %s" % (urlhost, host['host'])
-				return host['call'].createMeta(url, provider, logo, quality, links, key)
+				return host['call'].createMeta(url, provider, logo, quality, links, key, riptype_def, vidtype=vidtype, lang=lang, txt=txt)
 
 				
 		print "urlhost '%s' not found in host/resolver plugins" % urlhost
 				
 		quality = file_quality(url, quality)
-		type = rip_type(url, quality)
-		links_m.append({'source':urlhost, 'maininfo':'', 'titleinfo':'', 'quality':quality, 'rip':type, 'provider':provider, 'url':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':'Unknown', 'key':key, 'enabled':True, 'ts':time.time()})
+		
+		if riptype == None:
+			type = rip_type(url, quality)
+		else:
+			type = riptype
+		
+		links_m.append({'source':urlhost, 'maininfo':'', 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':type, 'provider':provider, 'url':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':'Unknown', 'allowsDownload':False, 'resumeDownload':False, 'allowsStreaming':True, 'key':key, 'enabled':True, 'fs':int(0), 'file_ext':'.mp4', 'ts':time.time(), 'lang':lang, 'subdomain':client.geturlhost(url), 'misc':{'player':'eplayer', 'gp':False}})
 	except Exception as e:
-		print "ERROR resolvers > __init__.py > createMeta : %s url: %s" % (e.args, url)
+		control.log("ERROR resolvers > __init__.py > createMeta : %s url: %s" % (e.args, url))
+		#print "ERROR resolvers > __init__.py > createMeta : %s url: %s" % (e.args, url)
 		#quality = file_quality(url, quality)
 		#type = rip_type(url, quality)
 		#links_m.append({'source':urlhost, 'maininfo':'', 'titleinfo':'', 'quality':quality, 'rip':type, 'provider':provider, 'url':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':'Unknown', 'key':key, 'enabled':True})
@@ -132,9 +166,9 @@ def createMeta(url, provider, logo, quality, links, key):
 def fixquality(quality):
 	if quality == '1080p':
 		quality = '1080p'
-	elif (quality == 'HD' or quality == 'HQ'):
+	elif (quality == 'HD' or quality == 'HQ' or '720' in quality):
 		quality = '720p'
-	elif quality == 'SD':
+	elif quality == 'SD' or '480' in quality:
 		quality = '480p'
 	elif quality == 'CAM' or quality == 'SCR':
 		quality = quality
@@ -186,6 +220,10 @@ def check(url):
 		return False
 	return True
 
+def hostsplaybacksupport():
+
+	return sourceHostsPlaybackSupport
+	
 def info():
 	
 	return sourceHosts

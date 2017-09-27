@@ -8,6 +8,10 @@ Desktop.ini
 # Recycle Bin used on file shares
 $RECYCLE.BIN/
 
+# Python compiled files
+*.pyc
+*.pyo
+
 # Windows Installer files
 *.cab
 *.msi

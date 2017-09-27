@@ -18,10 +18,12 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
-import re,sys,urllib2,HTMLParser, urllib, urlparse
+import re,sys,urllib2,HTMLParser,urllib,urlparse
 import random, time, cookielib
 import base64
 import traceback
+import httplib
+import requests
 
 from resources.lib.libraries import cache
 from resources.lib.libraries import control
@@ -46,6 +48,30 @@ def getAddrInfoWrapper(host, port, family=0, socktype=0, proto=0, flags=0):
 # socket.has_ipv6 = False
 #-------------------------------------------------------------------------------------------------------------
 
+# --- SSL fixes.
+
+def fix_ssl():
+	# This solves the HTTP connection problem on Ubuntu Lucid (10.04):
+	#	 SSLError: [Errno 1] _ssl.c:480: error:140770FC:SSL routines:SSL23_GET_SERVER_HELLO:unknown protocol
+	# It also fixes the following problem with StaticPython ob some systems:
+	#	 SSLError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed (_ssl.c:590)
+	#
+	# This fix works with Python version 2.4--2.7, with the bundled and the new
+	# (1.16) ssl module.
+	class fake_ssl:
+		import ssl	# Needed, the MEGA API is https:// only.
+		def partial(func, *args, **kwds):	# Emulate functools.partial for 2.4.
+			return lambda *fargs, **fkwds: func(*(args+fargs), **dict(kwds, **fkwds))
+		wrap_socket = staticmethod(partial(
+				ssl.wrap_socket, ssl_version=ssl.PROTOCOL_TLSv1))
+		# Prevent staticpython from trying to load /usr/local/ssl/cert.pem .
+		# `export PYTHONHTTPSVERIFY=1' would also work from the shell.
+		if getattr(ssl, '_create_unverified_context', None):
+			_create_default_https_context = staticmethod(
+					ssl._create_unverified_context)
+		del ssl, partial
+	httplib.ssl = fake_ssl
+
 def shrink_host(url):
 	u = urlparse.urlparse(url)[1].split('.')
 	u = u[-2] + '.' + u[-1]
@@ -53,6 +79,7 @@ def shrink_host(url):
 
 GLOBAL_TIMEOUT_FOR_HTTP_REQUEST = 15
 HTTP_GOOD_RESP_CODES = ['200','206']
+GOOGLE_HTTP_GOOD_RESP_CODES_1 = ['429']
 	
 USER_AGENT = "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:48.0) Gecko/20100101 Firefox/48.0"
 IE_USER_AGENT = 'Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; AS; rv:11.0) like Gecko'
@@ -62,6 +89,7 @@ IOS_USER_AGENT = 'Mozilla/5.0 (iPhone; CPU iPhone OS 6_0 like Mac OS X) AppleWeb
 ANDROID_USER_AGENT = 'Mozilla/5.0 (Linux; Android 4.4.2; Nexus 4 Build/KOT49H) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/34.0.1847.114 Mobile Safari/537.36'
 #SMU_USER_AGENT = 'URLResolver for Kodi/%s' % (addon_version)
 
+IP_OVERIDE = True
 
 def request(url, close=True, redirect=True, followredirect=False, error=False, proxy=None, post=None, headers=None, mobile=False, limit=None, referer=None, cookie=None, output='', timeout='30', httpsskip=False, use_web_proxy=False, XHR=False, IPv4=False):
 
@@ -74,12 +102,12 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 		if IPv4 == True:
 			setIP4()
 		
-		if not proxy == None:
+		if error==False and not proxy == None:
 			handlers += [urllib2.ProxyHandler({'http':'%s' % (proxy)}), urllib2.HTTPHandler]
 			opener = urllib2.build_opener(*handlers)
 			opener = urllib2.install_opener(opener)
 
-		if output == 'cookie2' or output == 'cookie' or output == 'extended' or not close == True:
+		if error==False and output == 'cookie2' or output == 'cookie' or output == 'extended' or not close == True:
 			cookies = cookielib.LWPCookieJar()
 			if httpsskip or use_web_proxy:
 				handlers += [urllib2.HTTPHandler(), urllib2.HTTPCookieProcessor(cookies)]
@@ -89,13 +117,14 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 			opener = urllib2.install_opener(opener)
 			
 		try:
-			if sys.version_info < (2, 7, 9): raise Exception()
-			import ssl; ssl_context = ssl.create_default_context()
-			ssl_context.check_hostname = False
-			ssl_context.verify_mode = ssl.CERT_NONE
-			handlers += [urllib2.HTTPSHandler(context=ssl_context)]
-			opener = urllib2.build_opener(*handlers)
-			opener = urllib2.install_opener(opener)
+			if error==False:
+				if sys.version_info < (2, 7, 9): raise Exception()
+				import ssl; ssl_context = ssl.create_default_context()
+				ssl_context.check_hostname = False
+				ssl_context.verify_mode = ssl.CERT_NONE
+				handlers += [urllib2.HTTPSHandler(context=ssl_context)]
+				opener = urllib2.build_opener(*handlers)
+				opener = urllib2.install_opener(opener)
 		except:
 			pass
 
@@ -106,7 +135,7 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 		elif not mobile == True:
 			#headers['User-Agent'] = agent()
 			#headers['User-Agent'] = Constants.USER_AGENT
-			headers['User-Agent'] = randomagent()			
+			headers['User-Agent'] = randomagent()		
 		else:
 			headers['User-Agent'] = 'Apple-iPhone/701.341'
 		if 'Referer' in headers:
@@ -126,7 +155,7 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 		elif not cookie == None:
 			headers['Cookie'] = cookie
 
-		if redirect == False:
+		if error==False and redirect == False:
 			class NoRedirection(urllib2.HTTPErrorProcessor):
 				def http_response(self, request, response): 
 					if IPv4 == True:
@@ -141,7 +170,7 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 			
 		redirectHandler = None
 		urlList = []
-		if followredirect:
+		if error==False and followredirect:
 			class HTTPRedirectHandler(urllib2.HTTPRedirectHandler):
 				def redirect_request(self, req, fp, code, msg, headers, newurl):
 					newreq = urllib2.HTTPRedirectHandler.redirect_request(self,
@@ -176,10 +205,15 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 			except:
 				resp_code = None
 			
+			try:
+				content = response.read()
+			except:
+				content = ''
+				
 			if response.code == 503:
 				#Log("AAAA- CODE %s|%s " % (url, response.code))
-				if 'cf-browser-verification' in response.read(5242880):
-					#Log("CF-OK")
+				if 'cf-browser-verification' in content:
+					print("CF-OK")
 
 					netloc = '%s://%s' % (urlparse.urlparse(url).scheme, urlparse.urlparse(url).netloc)
 					#cf = cache.get(cfcookie, 168, netloc, headers['User-Agent'], timeout)
@@ -193,6 +227,8 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 					if IPv4 == True:
 						setIP6()
 					return
+				elif error == True:
+					return '%s: %s' % (response.code, response.reason), content
 			elif response.code == 307:
 				#Log("AAAA- Response read: %s" % response.read(5242880))
 				#Log("AAAA- Location: %s" % (response.headers['Location'].rstrip()))
@@ -303,13 +339,74 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 			setIP6()
 		return
 		
-def getPageDataBasedOnOutput(res, output):
-	if output == 'extended':
-		page_data_string, headers, content, cookie = res
-	elif output == 'response' or output == 'responsecodeext':
-		resp_code, page_data_string = res
+def getFileSize(link, retError=False):
+	try:
+		r = requests.get(link, stream=True, verify=False, allow_redirects=True)
+		if r.status_code != 200 and r.status_code != 206:
+			raise Exception('HTTP Response: %s' % str(r.status_code))
+		size = r.headers['Content-length']
+		r.close()
+		
+		#site = urllib.urlopen(link)
+		#meta = site.info()
+		#size = meta.getheaders("Content-Length")[0]
+		
+		if retError == True:
+			return size, ''
+		else:
+			return size
+	except Exception as e:
+		if retError == True:
+			return 0, '{}'.format(e)
+		else:
+			return 0
+		
+def send_http_request(url, data=None, timeout=None, fix_ssl=True):
+	"""Return a httplib.HTTPResponse object."""
+	#print url
+	#print data
+	if fix_ssl == True:
+		fix_ssl()
+		
+	match = URL_RE.match(url)
+	if not match:
+		raise ValueError('Bad URL: %s' % url)
+	schema = match.group(1)
+	if schema not in ('http', 'https'):
+		raise ValueError('Unknown schema: %s' % schema)
+	host = match.group(2)
+	if match.group(3):
+		port = int(match.group(3))
 	else:
-		page_data_string = res
+		port = (80, 443)[schema == 'https']
+	path = url[match.end():] or '/'
+
+	#print host
+	ipaddr = socket.gethostbyname(host)	# Force IPv4. Needed by Mega.
+	#print ipaddr
+	hc_cls = (httplib.HTTPConnection, httplib.HTTPSConnection)[schema == 'https']
+	# TODO(pts): Cleanup: Call hc.close() eventually.
+	if sys.version_info < (2, 6):	# Python 2.5 doesn't support timeout.
+		hc = hc_cls(ipaddr, port)
+	else:
+		hc = hc_cls(ipaddr, port, timeout=timeout)
+	if data is None:
+		hc.request('GET', path)
+	else:
+		hc.request('POST', path, data)
+	return hc.getresponse()	# HTTPResponse.
+		
+def getPageDataBasedOnOutput(res, output):
+
+	if res == None:
+		page_data_string = None
+	else:
+		if output == 'extended':
+			page_data_string, headers, content, cookie = res
+		elif output == 'response' or output == 'responsecodeext':
+			resp_code, page_data_string = res
+		else:
+			page_data_string = res
 		
 	return page_data_string
 	
@@ -323,15 +420,25 @@ def getResponseDataBasedOnOutput(page_data_string, res, output):
 	else:
 		return page_data_string
 
-def setIP4():
+def setIP4(setoveride=False):
+
+	if setoveride==False and IP_OVERIDE == True:
+		return
 	#replace the original socket.getaddrinfo by our version
 	socket.getaddrinfo = getAddrInfoWrapper
 	socket.has_ipv6 = False
 	
-def setIP6():
+def setIP6(setoveride=False):
+
+	if setoveride==False and IP_OVERIDE == True:
+		return
 	#replace the IP4 socket.getaddrinfo by original
 	socket.getaddrinfo = origGetAddrInfo
 	socket.has_ipv6 = True
+	
+def encodePostData(data):
+	data = urllib.urlencode(data)
+	return data
 
 def source(url, close=True, error=False, proxy=None, post=None, headers=None, mobile=False, safe=False, referer=None, cookie=None, output='', timeout='30'):
 	return request(url, close, error, proxy, post, headers, mobile, safe, referer, cookie, output, timeout)
@@ -628,11 +735,24 @@ def googlepass(url):
 	except:
 		return
 		
+def getUrlHost(url):
+	try:
+		urlhost = re.findall('([\w]+[.][\w]+)$', urlparse.urlparse(url.strip().lower()).netloc)[0]
+	except:
+		urlhost = url[0:10]
+	return urlhost
+		
 def b64encode(ret):
 	return base64.b64encode(ret)
 	
 def b64decode(ret):
 	return base64.b64decode(ret)
+	
+def b64eencode(ret):
+	return base64.b64encode(base64.b64encode(ret))
+	
+def b64ddecode(ret):
+	return base64.b64decode(base64.b64decode(ret))
 
 def search_regex(pattern, string, name, default=None, fatal=True, flags=0, group=None):
 	mobj = re.search(pattern, string, flags)

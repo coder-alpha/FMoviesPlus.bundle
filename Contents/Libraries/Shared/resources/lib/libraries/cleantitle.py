@@ -56,7 +56,7 @@ def removeParanthesisAndSeason(title,season):
 	return title.strip()
 		
 def tvWatchTitle(title,season,episode,etitle):
-
+	if title == None: return
 	title = removeParanthesis(title)
 	
 	if len(title) > 5:
@@ -80,6 +80,7 @@ def tvWatchTitle(title,season,episode,etitle):
 	return title
 	
 def getTitleAndYear(title):
+	if title == None: return
 	if ' ' in title:
 		xtitle = title.split(' ')
 		ntitle = ''
@@ -113,6 +114,39 @@ def get(title):
     title = title.replace('&quot;', '\"').replace('&amp;', '&')
     title = re.sub('\n|([[].+?[]])|([(].+?[)])|\s(vs|v[.])\s|(:|;|-|"|,|\'|\_|\.|\?)|\s', '', title).lower()
     return title
+	
+def windows_filename(title):
+	title = re.sub(r'[^0-9a-zA-Z -!.&@#$()]', ' ', title)
+	title = title.replace('   ',' ').replace('  ',' ')
+	return title
+	
+def getQuality(qual):
+	if qual == None: return
+	ql = '360p'
+	q = qual.lower()
+	t = 'BRRIP'
+	if '0' in q:
+		pass
+	elif 'cam' in q or 'ts' in q or 'scr' in q:
+		t = 'CAM'
+	elif 'hd' in q or 'vod' in q:
+		ql = '720p'
+	elif 'sd' in q:
+		ql = '480p'
+
+	q = q.replace('hdrip','')
+	q = q.replace('hd rip','')
+	q = q.replace('cam','')
+	q = q.replace('ts','')
+	q = q.replace('hd','')
+	q = q.replace('sd','')
+	q = q.replace('vod','')
+	
+	q = q.strip()
+	
+	if q == '':
+		q = ql
+	return q, t
 
 def query(title):
     if title == None: return

@@ -27,7 +27,7 @@ def refresh_section(section_title, section_key):
 	
 	if Prefs['use_debug']:
 		Log("** Refreshing User Library Section Title: %s Section Key: %s **" % (section_title, section_key))
-	HTTP.Request(query_pms('/library/sections/%s/refresh' % section_key), immediate = True)
+	#HTTP.Request(query_pms('/library/sections/%s/refresh' % section_key), immediate = True)
 	try:
 		s = requests.Session()
 		s.get(query_pms('/library/sections/%s/refresh' % section_key))

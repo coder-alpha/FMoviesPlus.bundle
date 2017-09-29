@@ -204,7 +204,7 @@ class Downloader(object):
 			time.sleep(2) # reduce 429 -- too many requests error
 			if common.USE_DOWNLOAD_RESUME_GEN == True and Core.storage.file_exists(abs_path):
 				if Prefs['use_debug']:
-					Log('**Resuming download**')
+					Log('**Resuming download from position: %s**' % startPos)
 				r = resume_download(furl, startPos)
 				
 				if WAIT_AND_RETRY_ON_429 == True and r.status_code == 429:
@@ -268,7 +268,7 @@ class Downloader(object):
 							bytes_read = startPos
 						else:
 							if Prefs['use_debug']:
-								Log('Could not Resume (HTTP Code: %s) - New download' % str(r.status_code))
+								Log.Error('**Could not Resume (HTTP Code: %s) - New download**' % str(r.status_code))
 					else:
 						if Prefs['use_debug']:
 							Log('**New download**')
@@ -317,6 +317,7 @@ class Downloader(object):
 								Dict[purgeKey] = E(JSON.StringFromObject(file_meta))
 							if action == common.DOWNLOAD_ACTIONS[0]: # cancel
 								f.close()
+								r.close()
 								end_download_by_user(title, url, purgeKey)
 								return
 							elif action == common.DOWNLOAD_ACTIONS[1]: # pause
@@ -345,6 +346,7 @@ class Downloader(object):
 								
 							elif action == common.DOWNLOAD_ACTIONS[3]: # postpone
 								f.close()
+								r.close()
 								postpone_download_by_user(title, url, progress, bytes_read, purgeKey)
 								return
 							else:
@@ -471,7 +473,7 @@ def download_subtitle(url, sub_file_path):
 			r.close()
 	
 def resume_download(url, resume_byte_pos):
-	resume_header = {'Range': 'bytes=%s-' % resume_byte_pos}
+	resume_header = {'Range': 'bytes=%s-' % int(resume_byte_pos)}
 	return requests.get(url, headers=resume_header, stream=True, verify=False, allow_redirects=True)
 	
 def download_completed(final_abs_path, section_title, section_key, purgeKey):

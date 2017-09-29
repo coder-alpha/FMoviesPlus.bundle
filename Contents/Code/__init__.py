@@ -3953,115 +3953,118 @@ def DownloadingFilesMenu(title, uid, choice=None, session=None, status=None, con
 	oc = ObjectContainer(title1=title, no_cache=common.isForceNoCache())
 	
 	if choice == None and uid in Dict:
-		longstringObjs = JSON.ObjectFromString(D(Dict[uid]))
-		#status = longstringObjs['status']
-		fileinfo = longstringObjs
-		
-		if status == common.DOWNLOAD_STATUS[1]:
-			if uid in common.DOWNLOAD_STATS:
-				fileinfo = common.DOWNLOAD_STATS[uid]
-			else:
-				fileinfo = Dict[uid]
-			try:
-				eta = float(fileinfo['eta'])
-			except:
-				eta = '?'
-				
-			if eta == '?' or str(eta) == '0':
-				eta_str = 'calculating time'
-			elif eta < 0.1:
-				eta_str = 'almost done'
-			elif eta < 1:
-				eta_str = '%02d sec. remaining' % int(int(float(eta) * 60.0))
-			elif eta > 60:
-				eta_str = '%s hr. %02d min. %02d sec. remaining' % (int(int(eta)/60), (float(int(int(eta)/60))-float(int((float(eta)/60.0)/100)*100)), int(60 * (float(eta) - float(int(eta)))))
-			else:
-				eta_str = '%s min. %02d sec. remaining' % (int(eta), int(60 * (float(eta) - float(int(eta)))))
+		try:
+			longstringObjs = JSON.ObjectFromString(D(Dict[uid]))
+			#status = longstringObjs['status']
+			fileinfo = longstringObjs
 			
-			i_title = '%s | %s | %s MB/s ~ %s MB/s ~ %s MB/s | %s - %s | %s' % (str(fileinfo['progress'])+'%', eta_str, str(fileinfo['chunk_speed']), str(fileinfo['avg_speed_curr']), str(fileinfo['avg_speed']), fileinfo['fs'], fileinfo['quality'], common.DOWNLOAD_ACTIONS_K[fileinfo['action']])
-		else:
-			i_title = '%s | %s MB/s ~ %s MB/s ~ %s MB/s | %s - %s | %s' % (str(fileinfo['progress'])+'%', str(fileinfo['chunk_speed']), str(fileinfo['avg_speed_curr']), str(fileinfo['avg_speed']), fileinfo['fs'], fileinfo['quality'], common.DOWNLOAD_ACTIONS_K[fileinfo['action']])
-		i_title = unicode(i_title)
-		oc.add(DirectoryObject(
-			title = i_title,
-			summary = i_title,
-			key = Callback(MyMessage, title='Info', msg=i_title),
-			thumb = GetThumb(R(ICON_ENTER), session=session)
+			if status == common.DOWNLOAD_STATUS[1]:
+				if uid in common.DOWNLOAD_STATS.keys():
+					fileinfo = common.DOWNLOAD_STATS[uid]
+				else:
+					pass #fileinfo = Dict[uid]
+				try:
+					eta = float(fileinfo['eta'])
+				except:
+					eta = '?'
+					
+				if eta == '?' or str(eta) == '0':
+					eta_str = 'calculating time'
+				elif eta < 0.1:
+					eta_str = 'almost done'
+				elif eta < 1:
+					eta_str = '%02d sec. remaining' % int(int(float(eta) * 60.0))
+				elif eta > 60:
+					eta_str = '%s hr. %02d min. %02d sec. remaining' % (int(int(eta)/60), (float(int(int(eta)/60))-float(int((float(eta)/60.0)/100)*100)), int(60 * (float(eta) - float(int(eta)))))
+				else:
+					eta_str = '%s min. %02d sec. remaining' % (int(eta), int(60 * (float(eta) - float(int(eta)))))
+				
+				i_title = '%s | %s | %s MB/s ~ %s MB/s ~ %s MB/s | %s - %s | %s' % (str(fileinfo['progress'])+'%', eta_str, str(fileinfo['chunk_speed']), str(fileinfo['avg_speed_curr']), str(fileinfo['avg_speed']), fileinfo['fs'], fileinfo['quality'], common.DOWNLOAD_ACTIONS_K[fileinfo['action']])
+			else:
+				i_title = '%s | %s MB/s ~ %s MB/s ~ %s MB/s | %s - %s | %s' % (str(fileinfo['progress'])+'%', str(fileinfo['chunk_speed']), str(fileinfo['avg_speed_curr']), str(fileinfo['avg_speed']), fileinfo['fs'], fileinfo['quality'], common.DOWNLOAD_ACTIONS_K[fileinfo['action']])
+			i_title = unicode(i_title)
+			oc.add(DirectoryObject(
+				title = i_title,
+				summary = i_title,
+				key = Callback(MyMessage, title='Info', msg=i_title),
+				thumb = GetThumb(R(ICON_ENTER), session=session)
+				)
 			)
-		)
-		
-		c = 0
-		for opt in common.DOWNLOAD_ACTIONS:
-			if (status == common.DOWNLOAD_STATUS[0] and opt in [common.DOWNLOAD_ACTIONS[0], common.DOWNLOAD_ACTIONS[3], common.DOWNLOAD_ACTIONS[4]]) or (status == common.DOWNLOAD_STATUS[1] and opt in [common.DOWNLOAD_ACTIONS[0], common.DOWNLOAD_ACTIONS[1], common.DOWNLOAD_ACTIONS[2], common.DOWNLOAD_ACTIONS[3]]) or (status == common.DOWNLOAD_STATUS[3] and opt in [common.DOWNLOAD_ACTIONS[0], common.DOWNLOAD_ACTIONS[4]]) or (status == common.DOWNLOAD_STATUS[4] and opt in [common.DOWNLOAD_ACTIONS[0], common.DOWNLOAD_ACTIONS[4]]):
-				if longstringObjs['action'] != opt and not (opt == common.DOWNLOAD_ACTIONS[2] and longstringObjs['action'] == common.DOWNLOAD_ACTIONS[4]) or status == common.DOWNLOAD_STATUS[3] and not(status == common.DOWNLOAD_STATUS[1] and longstringObjs['action'] in [common.DOWNLOAD_ACTIONS[2], common.DOWNLOAD_ACTIONS[4]]):
-					opt_txt = opt
-					if opt == common.DOWNLOAD_ACTIONS[3] or (opt == common.DOWNLOAD_ACTIONS[4] and longstringObjs['progress'] != '?' and float(longstringObjs['progress']) > 0):
-						postpone_subtext = '(resumable download)' if longstringObjs['resumable']==True else '(non-resumable download)'
-						opt_txt = '%s %s' % (opt,postpone_subtext) 
-					oc.add(DirectoryObject(
-						title = opt_txt,
-						summary = common.DOWNLOAD_ACTIONS_INFO[c],
-						key = Callback(DownloadingFilesMenu, title=title, uid=uid, choice=opt, session=session, status=status),
-						thumb = GetThumb(R(ICON_ENTER), session=session)
+			
+			c = 0
+			for opt in common.DOWNLOAD_ACTIONS:
+				if (status == common.DOWNLOAD_STATUS[0] and opt in [common.DOWNLOAD_ACTIONS[0], common.DOWNLOAD_ACTIONS[3], common.DOWNLOAD_ACTIONS[4]]) or (status == common.DOWNLOAD_STATUS[1] and opt in [common.DOWNLOAD_ACTIONS[0], common.DOWNLOAD_ACTIONS[1], common.DOWNLOAD_ACTIONS[2], common.DOWNLOAD_ACTIONS[3]]) or (status == common.DOWNLOAD_STATUS[3] and opt in [common.DOWNLOAD_ACTIONS[0], common.DOWNLOAD_ACTIONS[4]]) or (status == common.DOWNLOAD_STATUS[4] and opt in [common.DOWNLOAD_ACTIONS[0], common.DOWNLOAD_ACTIONS[4]]):
+					if longstringObjs['action'] != opt and not (opt == common.DOWNLOAD_ACTIONS[2] and longstringObjs['action'] == common.DOWNLOAD_ACTIONS[4]) or status == common.DOWNLOAD_STATUS[3] and not(status == common.DOWNLOAD_STATUS[1] and longstringObjs['action'] in [common.DOWNLOAD_ACTIONS[2], common.DOWNLOAD_ACTIONS[4]]):
+						opt_txt = opt
+						if opt == common.DOWNLOAD_ACTIONS[3] or (opt == common.DOWNLOAD_ACTIONS[4] and longstringObjs['progress'] != '?' and float(longstringObjs['progress']) > 0):
+							postpone_subtext = '(resumable download)' if longstringObjs['resumable']==True else '(non-resumable download)'
+							opt_txt = '%s %s' % (opt,postpone_subtext) 
+						oc.add(DirectoryObject(
+							title = opt_txt,
+							summary = common.DOWNLOAD_ACTIONS_INFO[c],
+							key = Callback(DownloadingFilesMenu, title=title, uid=uid, choice=opt, session=session, status=status),
+							thumb = GetThumb(R(ICON_ENTER), session=session)
+							)
 						)
+				c += 1
+			if longstringObjs['section_key'] == None:
+				oc.add(DirectoryObject(
+					title = 'Set Download Location',
+					summary = '%s | Download path: %s' % (longstringObjs['section_title'], longstringObjs['section_path']),
+					key = Callback(SetReqDownloadLocation, uid=longstringObjs['uid'], type=longstringObjs['type']),
+					thumb = GetThumb(R(ICON_ENTER), session=session)
 					)
-			c += 1
-		if longstringObjs['section_key'] == None:
+				)
+			else:
+				oc.add(DirectoryObject(
+					title = '%s | Download path: %s' % (longstringObjs['section_title'], longstringObjs['section_path']),
+					summary = '%s | Download path: %s' % (longstringObjs['section_title'], longstringObjs['section_path']),
+					key = Callback(MyMessage, title='Download Path', msg=longstringObjs['section_path']),
+					thumb = GetThumb(R(ICON_ENTER), session=session)
+					)
+				)
+			if longstringObjs['purl'] != None:
+				oc.add(DirectoryObject(
+					title = 'Video Page (Other Download Sources)',
+					summary = 'Video Page: %s' % longstringObjs['title'],
+					key = Callback(EpisodeDetail, title=longstringObjs['title'], url=longstringObjs['purl'], thumb=longstringObjs['thumb'], session = session),
+					thumb = GetThumb(R(ICON_ENTER), session=session)
+					)
+				)
+			else:
+				oc.add(DirectoryObject(
+					title = 'Video Page (Unavailable)',
+					summary = 'Video Page: %s' % longstringObjs['title'],
+					key = Callback(MyMessage, title='Video Page', msg='This Video Page is Unavailable'),
+					thumb = GetThumb(R(ICON_ENTER), session=session)
+					)
+				)
+			if status == common.DOWNLOAD_STATUS[2]:
+				oc.add(DirectoryObject(
+					title = 'Clear',
+					key = Callback(DownloadingFilesMenu, title=longstringObjs['title'], uid=uid, choice=common.DOWNLOAD_ACTIONS[0], session=session, status=status),
+					summary = 'Clear %s' % longstringObjs['title'],
+					thumb = GetThumb(R(ICON_ENTER), session=session)
+					)
+				)
 			oc.add(DirectoryObject(
-				title = 'Set Download Location',
-				summary = '%s | Download path: %s' % (longstringObjs['section_title'], longstringObjs['section_path']),
-				key = Callback(SetReqDownloadLocation, uid=longstringObjs['uid'], type=longstringObjs['type']),
-				thumb = GetThumb(R(ICON_ENTER), session=session)
+				title = 'Refresh',
+				key = Callback(DownloadingFilesMenu, title=title, uid=uid, choice=choice, session=session, status=status, confirm=confirm, refresh=int(refresh)+1),
+				summary = 'Refresh Stats for %s' % longstringObjs['title'],
+				thumb = GetThumb(R(ICON_REFRESH), session=session)
 				)
 			)
-		else:
-			oc.add(DirectoryObject(
-				title = '%s | Download path: %s' % (longstringObjs['section_title'], longstringObjs['section_path']),
-				summary = '%s | Download path: %s' % (longstringObjs['section_title'], longstringObjs['section_path']),
-				key = Callback(MyMessage, title='Download Path', msg=longstringObjs['section_path']),
-				thumb = GetThumb(R(ICON_ENTER), session=session)
-				)
-			)
-		if longstringObjs['purl'] != None:
-			oc.add(DirectoryObject(
-				title = 'Video Page (Other Download Sources)',
-				summary = 'Video Page: %s' % longstringObjs['title'],
-				key = Callback(EpisodeDetail, title=longstringObjs['title'], url=longstringObjs['purl'], thumb=longstringObjs['thumb'], session = session),
-				thumb = GetThumb(R(ICON_ENTER), session=session)
-				)
-			)
-		else:
-			oc.add(DirectoryObject(
-				title = 'Video Page (Unavailable)',
-				summary = 'Video Page: %s' % longstringObjs['title'],
-				key = Callback(MyMessage, title='Video Page', msg='This Video Page is Unavailable'),
-				thumb = GetThumb(R(ICON_ENTER), session=session)
-				)
-			)
-		if status == common.DOWNLOAD_STATUS[2]:
-			oc.add(DirectoryObject(
-				title = 'Clear',
-				key = Callback(DownloadingFilesMenu, title=longstringObjs['title'], uid=uid, choice=common.DOWNLOAD_ACTIONS[0], session=session, status=status),
-				summary = 'Clear %s' % longstringObjs['title'],
-				thumb = GetThumb(R(ICON_ENTER), session=session)
-				)
-			)
-		oc.add(DirectoryObject(
-			title = 'Refresh',
-			key = Callback(DownloadingFilesMenu, title=title, uid=uid, choice=choice, session=session, status=status, confirm=confirm, refresh=int(refresh)+1),
-			summary = 'Refresh Stats for %s' % longstringObjs['title'],
-			thumb = GetThumb(R(ICON_REFRESH), session=session)
-			)
-		)
-		
+		except Exception as e:
+			Log(e)
+			return MC.message_container('Unavailable', 'Item removed or no longer available')
+
 		return oc
 		
 	else:
 		if AuthTools.CheckAdmin() == False:
 			return MC.message_container('Admin Access Only', 'Only the Admin can perform this action !')
 		
-		if uid in Dict:
-			
+		if uid in Dict and choice != None:
 			if choice == common.DOWNLOAD_ACTIONS[0] and confirm == False:
 				oc = ObjectContainer(title1=unicode('Confirm ?'), no_cache=common.isForceNoCache())
 				oc.add(DirectoryObject(title = 'YES - Clear %s Entry' % title, key = Callback(DownloadingFilesMenu, title=title, uid=uid, choice=choice, session=session, status=status, confirm=True), thumb = R(ICON_OK)))
@@ -4135,7 +4138,7 @@ def DownloadingFilesMenu(title, uid, choice=None, session=None, status=None, con
 			
 			time.sleep(2)
 			
-			return MC.message_container(choice, '%s applied to %s' % (choice, title))
+			return MC.message_container('%s' % choice, '%s applied to %s' % (choice, title))
 		else:
 			return MC.message_container('Unavailable', 'Item removed or no longer available')
 	

@@ -19,6 +19,7 @@ DLT = []
 Dict['DOWNLOAD_RATE_LIMIT_BUFFER'] = []
 Dict['DOWNLOAD_RATE_LIMIT_TIME'] = []
 
+QUEUE_RUN_ITEMS = {}
 WAIT_AND_RETRY_ON_429 = True
 
 def query_pms(path): return 'http://127.0.0.1:32400%s' % path
@@ -152,6 +153,11 @@ class Downloader(object):
 		#Log("total_size_bytes : %s" % str(total_size_bytes))
 		error = ''
 		
+		chunk_size_n = int(1024.0 * 1024.0 * float(Prefs['download_chunk_size'])) # in bytes
+		if chunk_size != chunk_size_n:
+			chunk_size = chunk_size_n
+			file_meta['chunk_size'] = chunk_size
+		
 		if 'file_ext' in file_meta:
 			file_ext = file_meta['file_ext']
 		else:
@@ -237,6 +243,7 @@ class Downloader(object):
 		Dict[purgeKey] = E(JSON.StringFromObject(file_meta_temp))
 		Dict.Save()
 		common.DOWNLOAD_STATS[purgeKey] = file_meta_temp
+		del QUEUE_RUN_ITEMS[purgeKey]
 
 		FMPdownloader = None
 		
@@ -306,7 +313,7 @@ class Downloader(object):
 								
 							longstringObjs = JSON.ObjectFromString(D(Dict[purgeKey]))
 							action = longstringObjs['action']
-							if action in [common.DOWNLOAD_ACTIONS[1],common.DOWNLOAD_ACTIONS[3]]:
+							if action in [common.DOWNLOAD_ACTIONS[3]]:
 								Dict[purgeKey] = E(JSON.StringFromObject(file_meta))
 							if action == common.DOWNLOAD_ACTIONS[0]: # cancel
 								f.close()
@@ -319,7 +326,7 @@ class Downloader(object):
 									chunk_speed = round(chunk_size/float(delta_time * float(1000 * 1024)),2)
 									avg_speed = round(float(bytes_read)/float((time.time() - first_time) * float(1000 * 1024)),2)
 									avg_speed_curr = round(float(bytes_read_curr)/float((time.time() - first_time_avg) * float(1000 * 1024)),2)
-									#rem_bytes = float(total_size_bytes) - float(bytes_read)
+									rem_bytes = float(total_size_bytes) - float(bytes_read)
 									eta = round(float(((float(rem_bytes) / (1024.0*1024.0))/float(avg_speed_curr))/60.0), 2)
 									progress = round(float(100) * float(bytes_read)/float(total_size_bytes), 2)
 									file_meta['progress'] = progress
@@ -328,12 +335,14 @@ class Downloader(object):
 									file_meta['avg_speed_curr'] = avg_speed_curr
 									common.DOWNLOAD_STATS[purgeKey] = file_meta
 									common.DOWNLOAD_STATS[purgeKey]['action'] = action
-									
-									time.sleep(2)
+									time.sleep(1)
 									longstringObjs = JSON.ObjectFromString(D(Dict[purgeKey]))
 									action = longstringObjs['action']
+									#Log('Action: %s' % action)
+									
 							elif action == common.DOWNLOAD_ACTIONS[2]: # resume
-								pass
+								common.DOWNLOAD_STATS[purgeKey]['action'] = common.DOWNLOAD_ACTIONS[4]
+								
 							elif action == common.DOWNLOAD_ACTIONS[3]: # postpone
 								f.close()
 								postpone_download_by_user(title, url, progress, bytes_read, purgeKey)
@@ -343,9 +352,9 @@ class Downloader(object):
 							
 							common.DOWNLOAD_STATS[purgeKey] = file_meta
 							
-							if self.dlthrottle.getThrottleState() == True and progress < 99:
+							if self.dlthrottle.getThrottleState() == True and progress < 99 and action == common.DOWNLOAD_ACTIONS[4]:
 								last_state = file_meta['action']
-								file_meta['action'] = 'Throttling'
+								file_meta['action'] = common.DOWNLOAD_PROPS[2]
 								common.DOWNLOAD_STATS[purgeKey] = file_meta
 								while self.dlthrottle.getThrottleState() == True:
 									curr_time = time.time()
@@ -424,6 +433,10 @@ def do_download(file_meta_enc):
 
 	if len(common.DOWNLOAD_STATS.keys()) >= int(Prefs['download_connections']):
 		#Log(common.DOWNLOAD_STATS)
+		longstringObjs = JSON.ObjectFromString(D(file_meta_enc))
+		uid = longstringObjs['uid']
+		if uid in QUEUE_RUN_ITEMS.keys():
+			del QUEUE_RUN_ITEMS[uid]
 		Log("Downlod connections limit reached (%s of %s). This item will be queued !" % (str(len(common.DOWNLOAD_STATS.keys())), Prefs['download_connections']))
 		return
 
@@ -564,6 +577,7 @@ def postpone_download_by_user(title, url, progress, startPos, purgeKey):
 	
 def trigger_que_run():
 
+	time.sleep(3)
 	items_for_que_run = []
 	Dict_Temp = {}
 	for each in Dict:
@@ -583,13 +597,15 @@ def trigger_que_run():
 			file_meta = JSON.ObjectFromString(D(Dict_Temp[each]))
 			if file_meta['status'] == common.DOWNLOAD_STATUS[0] and file_meta['action'] == common.DOWNLOAD_ACTIONS[4] and (time.time() - float(file_meta['timeAdded'])) > 0:
 				EncTxt = Dict_Temp[each]
-				items_for_que_run.append({'label':str(file_meta['timeAdded']), 'data':EncTxt})
+				items_for_que_run.append({'label':str(file_meta['timeAdded']), 'data':EncTxt, 'uid':file_meta['uid']})
+				QUEUE_RUN_ITEMS[file_meta['uid']] = False
 			elif file_meta['status'] == common.DOWNLOAD_STATUS[0] and file_meta['action'] == common.DOWNLOAD_ACTIONS[3] and (time.time() - float(file_meta['timeAdded'])) > 0:
 				file_meta['action'] = common.DOWNLOAD_ACTIONS[4]
 				EncTxt = E(JSON.StringFromObject(file_meta))
 				Dict[each] = EncTxt
 				save_dict = True
-				items_for_que_run.append({'label':str(file_meta['timeAdded']), 'data':EncTxt})
+				items_for_que_run.append({'label':str(file_meta['timeAdded']), 'data':EncTxt, 'uid':file_meta['uid']})
+				QUEUE_RUN_ITEMS[file_meta['uid']] = False
 		except Exception as e:
 			Log(e)
 		if save_dict == True:
@@ -602,8 +618,10 @@ def trigger_que_run():
 			try:
 				time.sleep(1)
 				EncTxt = i['data']
+				uid = i['uid']
 				Thread.Create(do_download, {}, file_meta_enc=EncTxt)
-				time.sleep(2)
+				while (uid in QUEUE_RUN_ITEMS.keys()):
+					time.sleep(0.2)
 			except Exception as e:
 				Log(e)
 				

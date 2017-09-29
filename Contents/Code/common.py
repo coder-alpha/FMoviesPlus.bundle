@@ -1,7 +1,7 @@
 ################################################################################
 TITLE = "FMoviesPlus"
 VERSION = '0.45' # Release notation (x.y - where x is major and y is minor)
-TAG = 'dev'
+TAG = 'dev 09-29-2017'
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
 ################################################################################
@@ -104,8 +104,9 @@ DEVICE_OPTION_CONSTRAINTS2 = {DEVICE_OPTIONS[5]:[{'Option':6,'ReqValue':False}],
 
 DOWNLOAD_OPTIONS = {'movie':[], 'show':[]}
 DOWNLOAD_OPTIONS_SECTION_TEMP = {}
+DOWNLOAD_MODE = ['Add','Request']
 Dict['DOWNLOAD_OPTIONS_SECTION_TEMP'] = {}
-DOWNLOAD_STATUS = ['Queued','Downloading','Completed','Failed','All']
+DOWNLOAD_STATUS = ['Queued','Downloading','Completed','Failed','Requested','All']
 DOWNLOAD_ACTIONS = ['Cancel Download','Pause Download','Resume Download','Postpone Download','Start Download']
 DOWNLOAD_ACTIONS_K = {'Cancel Download':'Cancelled','Pause Download':'Paused','Resume Download':'Resumed','Postpone Download':'Postponed','Start Download':'Started','Done':'Done','Limbo':'Limbo','Live':'Live','Throttling':'Throttling','Waiting':'Waiting'}
 DOWNLOAD_ACTIONS_INFO = ['Cancels the Download and removes its entry and temporary file from disk.','Pauses the current Download and let it be Resumed.','Resume the currently Paused Download.','Postpones the current Download for 2 hours by adding it to Queue List','Starts the Postponed Download.']

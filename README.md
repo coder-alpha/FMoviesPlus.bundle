@@ -1,10 +1,11 @@
 FMoviesPlus.bundle
 ===================
-[![GitHub issues](https://img.shields.io/github/issues/coder-alpha/FMoviesPlus.bundle.svg?style=flat)](https://github.com/coder-alpha/FMoviesPlus.bundle/issues) [![](https://img.shields.io/github/release/coder-alpha/FMoviesPlus.bundle.svg?style=flat)](https://github.com/coder-alpha/FMoviesPlus.bundle/releases)
+[![GitHub issues](https://img.shields.io/github/issues/coder-alpha/FMoviesPlus.bundle.svg?style=flat)](https://github.com/coder-alpha/FMoviesPlus.bundle/issues) 
+[![](https://img.shields.io/github/release/coder-alpha/FMoviesPlus.bundle.svg?style=flat)](https://github.com/coder-alpha/FMoviesPlus.bundle/releases)
+[![Plex Forums](https://img.shields.io/badge/Plex%20Forums-PlexPy-E5A00D.svg?style=flat-square)](https://forums.plex.tv/discussion/255348/rel-fmoviesplus-channel/p1)
 
 This is a plugin that creates a new channel in Plex Media Server to view content indexed by the website FMovies(.se|.to|.is), G2G, FMovies.io, YesMovies, Primewire
 
-[Plex Support Thread](http://forums.plex.tv/discussion/255348/)
 [Please read the first post for most up to date info](https://forums.plex.tv/discussion/255348/rel-fmoviesplus-channel/p1)
 
 System Requirements

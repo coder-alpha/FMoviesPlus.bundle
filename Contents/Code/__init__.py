@@ -64,6 +64,7 @@ ICON_SUMMARY = "icon-summary.png"
 ICON_VIDTYPE = "icon-videotype.png"
 ICON_PLEX = "icon-plex.png"
 ICON_DOWNLOADS = "icon-downloads.png"
+ICON_REQUESTS = "icon-requests.png"
 
 MC = common.NewMessageContainer(common.PREFIX, common.TITLE)
 
@@ -141,10 +142,7 @@ def MainMenu(**kwargs):
 	HTTP.Headers['Referer'] = fmovies.BASE_URL
 	
 	session = common.getSession()
-	if Dict[CHECK_AUTH+session] == None or Dict[CHECK_AUTH+session]['auth']==False or (time.time() - Dict[CHECK_AUTH+session]['time'] > 60*60*24):
-		Dict[CHECK_AUTH+session] = {'time':time.time(), 'auth':AuthTools.CheckAdmin()}
-		Dict.Save()
-
+	
 	ClientInfo(session=session)
 	if len(VALID_PREFS_MSGS) > 0:
 		return DisplayMsgs()
@@ -410,7 +408,7 @@ def DeviceOptions(session, **kwargs):
 @route(PREFIX + "/interfaceoptions")
 def InterfaceOptions(session, **kwargs):
 	
-	if session != None and Dict[CHECK_AUTH+session] != None and Dict[CHECK_AUTH+session]['auth'] == False:
+	if AuthTools.CheckAdmin() == False:
 		return MC.message_container('Admin Access Only', 'Only the Admin can perform this action !')
 
 	oc = ObjectContainer(title2='Interface Options', no_cache=common.isForceNoCache())
@@ -461,7 +459,7 @@ def InterfaceOptions(session, **kwargs):
 @route(common.PREFIX + "/downloadoptions")
 def DownloadOptions(session, refresh=0, **kwargs):
 	
-	if session != None and Dict[CHECK_AUTH+session] != None and Dict[CHECK_AUTH+session]['auth'] == False:
+	if AuthTools.CheckAdmin() == False:
 		return MC.message_container('Admin Access Only', 'Only the Admin can perform this action !')
 
 	oc = ObjectContainer(title2='Download Options', no_cache=common.isForceNoCache())
@@ -1126,7 +1124,7 @@ def ResetCookies(**kwargs):
 @route(PREFIX + "/ResetExtOptions")
 def ResetExtOptions(session, **kwargs):
 
-	if session != None and Dict[CHECK_AUTH+session] != None and Dict[CHECK_AUTH+session]['auth'] == False:
+	if AuthTools.CheckAdmin() == False:
 		return MC.message_container('Admin Access Only', 'Only the Admin can perform this action !')
 	
 	FilterExt_Search.clear()
@@ -1151,7 +1149,7 @@ def ResetExtOptions(session, **kwargs):
 @route(PREFIX + "/ResetAllOptions")
 def ResetAllOptions(session, doReset=False, **kwargs):
 
-	if session != None and Dict[CHECK_AUTH+session] != None and Dict[CHECK_AUTH+session]['auth'] == False:
+	if AuthTools.CheckAdmin() == False:
 		return MC.message_container('Admin Access Only', 'Only the Admin can perform this action !')
 	
 	if doReset == False:
@@ -2171,13 +2169,22 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, **kwargs):
 				thumb = R(ICON_OTHERSOURCES)
 				)
 			)
-		if Prefs['disable_downloader'] == False and Dict[CHECK_AUTH+session]['auth'] == True and common.interface.isInitialized():
+		if Prefs['disable_downloader'] == False and AuthTools.CheckAdmin() == True:
 			oc.add(DirectoryObject(
-				key = Callback(ExtSourcesDownload, movtitle=title, year=year, title=title, url=url, summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, session=session), 
+				key = Callback(ExtSourcesDownload, movtitle=title, year=year, title=title, url=url, summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, mode=common.DOWNLOAD_MODE[0], session=session), 
 				title = 'Download Sources',
 				summary = 'List sources of this movie by External Providers.',
 				art = art,
 				thumb = R(ICON_OTHERSOURCESDOWNLOAD)
+				)
+			)
+		elif Prefs['disable_downloader'] == False:
+			oc.add(DirectoryObject(
+				key = Callback(ExtSourcesDownload, movtitle=title, year=year, title=title, url=url, summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, mode=common.DOWNLOAD_MODE[1], session=session), 
+				title = 'Request Download',
+				summary = 'List sources of this movie by External Providers.',
+				art = art,
+				thumb = R(ICON_REQUESTS)
 				)
 			)
 	else:
@@ -2318,13 +2325,22 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, **kwargs):
 				thumb = GetThumb(R(ICON_OTHERSOURCES), session=session)
 				)
 			)
-		if Prefs['disable_downloader'] == False and Dict[CHECK_AUTH+session]['auth'] == True and common.interface.isInitialized():
+		if Prefs['disable_downloader'] == False and AuthTools.CheckAdmin() == True:
 			oc.add(DirectoryObject(
-				key = Callback(ExtSourcesDownload, movtitle=title, year=year, title=title, url=url, summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, session=session), 
+				key = Callback(ExtSourcesDownload, movtitle=title, year=year, title=title, url=url, summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, mode=common.DOWNLOAD_MODE[0], session=session), 
 				title = 'Download Sources',
 				summary = 'List sources of this movie by External Providers.',
 				art = art,
 				thumb = GetThumb(R(ICON_OTHERSOURCESDOWNLOAD), session=session)
+				)
+			)
+		elif Prefs['disable_downloader'] == False:
+			oc.add(DirectoryObject(
+				key = Callback(ExtSourcesDownload, movtitle=title, year=year, title=title, url=url, summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, mode=common.DOWNLOAD_MODE[1], session=session), 
+				title = 'Request Download',
+				summary = 'List sources of this movie by External Providers.',
+				art = art,
+				thumb = GetThumb(R(ICON_REQUESTS), session=session)
 				)
 			)
 						
@@ -2522,13 +2538,22 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 			)
 		)
 	
-	if treatasmovie==False and Prefs['disable_downloader'] == False and Dict[CHECK_AUTH+session]['auth'] == True and common.interface.isInitialized():
+	if treatasmovie==False and Prefs['disable_downloader'] == False and AuthTools.CheckAdmin() == True:
 		oc.add(DirectoryObject(
-			key = Callback(ExtSourcesDownload, tvshowtitle=tvshow, season=season, episode=episode, session=session, title=title, url=url, summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles),
+			key = Callback(ExtSourcesDownload, tvshowtitle=tvshow, season=season, episode=episode, session=session, title=title, url=url, summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, mode=common.DOWNLOAD_MODE[0]),
 			title = 'Download Sources',
 			summary = 'List sources of this episode by External Providers.',
 			art = art,
 			thumb = GetThumb(R(ICON_OTHERSOURCESDOWNLOAD), session=session)
+			)
+		)
+	elif treatasmovie==False and Prefs['disable_downloader'] == False:
+		oc.add(DirectoryObject(
+			key = Callback(ExtSourcesDownload, tvshowtitle=tvshow, season=season, episode=episode, session=session, title=title, url=url, summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, mode=common.DOWNLOAD_MODE[1]),
+			title = 'Request Download',
+			summary = 'List sources of this episode by External Providers.',
+			art = art,
+			thumb = GetThumb(R(ICON_REQUESTS), session=session)
 			)
 		)
 	
@@ -2612,16 +2637,26 @@ def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary
 				)
 				
 				try:
-					if Prefs['disable_downloader'] == False and Dict[CHECK_AUTH+session]['auth']:
+					if Prefs['disable_downloader'] == False:
 						if isTargetPlay == True:
-							oc.add(DirectoryObject(
-								key = Callback(AddToDownloadsListPre, title=watch_title, purl=url, url=server_info, summary=summary, thumb=thumb, year=year, quality=qual, source=host, type=libtype, resumable=True, source_meta={}, file_meta={}, sub_url=sub_url),
-								title = '%s | Add to Download Queue' % qual,
-								summary = 'Adds the current video to Download List',
-								art = art,
-								thumb = GetThumb(R(ICON_OTHERSOURCESDOWNLOAD), session=session)
+							if Prefs['disable_downloader'] == False and AuthTools.CheckAdmin() == True:
+								oc.add(DirectoryObject(
+									key = Callback(AddToDownloadsListPre, title=watch_title, purl=url, url=server_info, summary=summary, thumb=thumb, year=year, quality=qual, source=host, type=libtype, resumable=True, source_meta={}, file_meta={}, sub_url=sub_url, mode=common.DOWNLOAD_MODE[0]),
+									title = '%s | Add to Download Queue' % qual,
+									summary = 'Adds the current video to Download List',
+									art = art,
+									thumb = GetThumb(R(ICON_OTHERSOURCESDOWNLOAD), session=session)
+									)
 								)
-							)
+							elif Prefs['disable_downloader'] == False:
+								oc.add(DirectoryObject(
+									key = Callback(AddToDownloadsListPre, title=watch_title, purl=url, url=server_info, summary=summary, thumb=thumb, year=year, quality=qual, source=host, type=libtype, resumable=True, source_meta={}, file_meta={}, sub_url=sub_url, mode=common.DOWNLOAD_MODE[1]),
+									title = '%s | Add to Request Queue' % qual,
+									summary = 'Adds the current video to Request List',
+									art = art,
+									thumb = GetThumb(R(ICON_REQUESTS), session=session)
+									)
+								)
 						else:
 							host_source = 'gvideo' 
 							files = json.loads(server_info)
@@ -2638,14 +2673,24 @@ def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary
 								furl = file['file']
 								res = str(int(file['label']))+'p'
 								ftype = file['type']
-								oc.add(DirectoryObject(
-									key = Callback(AddToDownloadsListPre, title=watch_title, purl=url, url=furl, summary=summary, thumb=thumb, year=year, quality=res, source=host_source, type=libtype, resumable=True, source_meta={}, file_meta={}, sub_url=sub_url),
-									title = '%s | Add to Download Queue' % res,
-									summary = 'Adds the current video to Download List',
-									art = art,
-									thumb = GetThumb(R(ICON_OTHERSOURCESDOWNLOAD), session=session)
+								if Prefs['disable_downloader'] == False and AuthTools.CheckAdmin() == True:
+									oc.add(DirectoryObject(
+										key = Callback(AddToDownloadsListPre, title=watch_title, purl=url, url=furl, summary=summary, thumb=thumb, year=year, quality=res, source=host_source, type=libtype, resumable=True, source_meta={}, file_meta={}, sub_url=sub_url, mode=common.DOWNLOAD_MODE[0]),
+										title = '%s | Add to Download Queue' % res,
+										summary = 'Adds the current video to Download List',
+										art = art,
+										thumb = GetThumb(R(ICON_OTHERSOURCESDOWNLOAD), session=session)
+										)
 									)
-								)
+								elif Prefs['disable_downloader'] == False:
+									oc.add(DirectoryObject(
+										key = Callback(AddToDownloadsListPre, title=watch_title, purl=url, url=furl, summary=summary, thumb=thumb, year=year, quality=res, source=host_source, type=libtype, resumable=True, source_meta={}, file_meta={}, sub_url=sub_url, mode=common.DOWNLOAD_MODE[1]),
+										title = '%s | Add to Request Queue' % res,
+										summary = 'Adds the current video to Request List',
+										art = art,
+										thumb = GetThumb(R(ICON_REQUESTS), session=session)
+										)
+									)
 						
 				except Exception as e:
 					if Prefs["use_debug"]:
@@ -2901,7 +2946,7 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 	
 ####################################################################################################
 @route(PREFIX + "/ExtSourcesDownload")
-def ExtSourcesDownload(title, url, summary, thumb, art, rating, duration, genre, directors, roles, movtitle=None, year=None, tvshowtitle=None, season=None, episode=None, session=None, imdb_id=None, refresh=0, **kwargs):
+def ExtSourcesDownload(title, url, summary, thumb, art, rating, duration, genre, directors, roles, mode, movtitle=None, year=None, tvshowtitle=None, season=None, episode=None, session=None, imdb_id=None, refresh=0, **kwargs):
 	
 	tvshowcleaned = tvshowtitle
 	if tvshowtitle != None:
@@ -2934,7 +2979,7 @@ def ExtSourcesDownload(title, url, summary, thumb, art, rating, duration, genre,
 			if prog < 100:
 				oc = ObjectContainer(title2='Download Sources - Progress %s%s' % (prog, '%'), no_history=True, no_cache=True)
 				oc.add(DirectoryObject(
-					key = Callback(ExtSourcesDownload, movtitle=movtitle, tvshowtitle=tvshowtitle, season=season, episode=episode, title=title, url=url, summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, session=session, refresh=int(refresh)+1),
+					key = Callback(ExtSourcesDownload, movtitle=movtitle, tvshowtitle=tvshowtitle, season=season, episode=episode, title=title, url=url, summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, session=session, mode=mode, refresh=int(refresh)+1),
 					title = 'Refresh - %s%s Done' % (prog,'%'),
 					summary = 'List sources by External Providers.',
 					art = art,
@@ -3000,11 +3045,11 @@ def ExtSourcesDownload(title, url, summary, thumb, art, rating, duration, genre,
 			pair_required = source['misc']['pair']
 		
 		try:
-			fsBytes = source['fs']
+			fsBytes = int(source['fs'])
 			fs = '%s GB' % str(round(float(source['fs'])/common.TO_GB, 3))
 		except:
 			fsBytes = 0
-			fs = '? GB'
+			fs = None
 		
 		if source['vidtype'] in 'Movie/Show':
 			title_msg = "%s %s| %s | %s | %s | %s | %s" % (status, source['maininfo'], source['rip'], source['quality'], fs, source['source']+':'+source['subdomain'] if source['source']=='gvideo' else source['source'], source['provider'])
@@ -3021,11 +3066,11 @@ def ExtSourcesDownload(title, url, summary, thumb, art, rating, duration, genre,
 			try:
 				libtype='movie' if tvshowtitle == None else 'show'
 				oc.add(DirectoryObject(
-					key = Callback(AddToDownloadsListPre, title=watch_title, purl=url, url=source['url'], summary=summary, thumb=thumb, year=year, fsBytes=fsBytes, fs=fs, file_ext=source['file_ext'], quality=source['quality'], source=source['source'], source_meta={}, file_meta={}, type=libtype, resumable=source['resumeDownload']),
+					key = Callback(AddToDownloadsListPre, title=watch_title, purl=url, url=source['url'], summary=summary, thumb=thumb, year=year, fsBytes=fsBytes, fs=fs, file_ext=source['file_ext'], quality=source['quality'], source=source['source'], source_meta={}, file_meta={}, type=libtype, resumable=source['resumeDownload'], mode=mode),
 					title = title_msg,
-					summary = 'Adds the current video to Download List',
+					summary = 'Adds the current video to %s List' % 'Download' if mode==common.DOWNLOAD_MODE[0] else 'Request',
 					art = art,
-					thumb = GetThumb(R(ICON_OTHERSOURCESDOWNLOAD), session=session)
+					thumb = GetThumb(R('%s' % ICON_OTHERSOURCESDOWNLOAD if mode==common.DOWNLOAD_MODE[0] else ICON_REQUESTS), session=session)
 					)
 				)
 			except Exception as e:
@@ -3501,11 +3546,8 @@ def Bookmarks(title, session = None, **kwargs):
 	
 #######################################################################################################
 @route(PREFIX + '/AddToDownloadsListPre')
-def AddToDownloadsListPre(title, year, url, purl, summary, thumb, quality, source, type, resumable, source_meta, file_meta, sub_url=None, fsBytes=None, fs=None, file_ext=None, section_path=None, section_title=None, section_key=None, session=None, **kwargs):
-
-	if 'openload' in source.lower() and Prefs['use_openload_pairing'] == False:
-		return MC.message_container('Download Sources', 'OpenLoad Pairing needs to be enabled under Channel Setting/Prefs.')
-
+def AddToDownloadsListPre(title, year, url, purl, summary, thumb, quality, source, type, resumable, source_meta, file_meta, mode, sub_url=None, fsBytes=None, fs=None, file_ext=None, section_path=None, section_title=None, section_key=None, session=None, **kwargs):
+	
 	bool = False
 	for i_source in common.interface.getHosts(encode=False):
 		if i_source['name'].lower() in source.lower() and i_source['downloading']:
@@ -3514,17 +3556,65 @@ def AddToDownloadsListPre(title, year, url, purl, summary, thumb, quality, sourc
 
 	if bool == False:
 		return MC.message_container('Download Sources', 'No compatible Download service found for this URL !')
-	
+		
 	title = common.cleantitle.windows_filename(title)
-	
 	tuec = E(title+year+quality+source+url)
+		
+	if mode == common.DOWNLOAD_MODE[1]:
+		if fs == None or fsBytes == None or int(fsBytes) == 0:
+			try:
+				if 'openload' in source:
+					isPairDone = common.host_openload.isPairingDone()
+					online, r1, err, fs_i =  common.host_openload.check(url, usePairing = False, embedpage=True)
+				else:
+					fs_i, err = common.client.getFileSize(url, retError=True, retry429=True, cl=2)
+
+				if err != '':
+					return MC.message_container('Error', 'Error: %s. Please try again later when it becomes available.' % err)
+					
+				try:
+					fsBytes = int(fs_i)
+					fs = '%s GB' % str(round(float(fs_i)/common.TO_GB, 3))
+				except:
+					fsBytes = 0
+					fs = '? GB'
+					
+				if int(fsBytes) < 100 * 1024:
+					return MC.message_container('FileSize Error', 'File reporting %s bytes cannot be downloaded. Please try again later when it becomes available.' % fsBytes)
+
+			except Exception as e:
+				return MC.message_container('Error', '%s. Sorry but file could not be added. Please try again later when it becomes available.' % e)
+
+		uid = 'Down5Split'+E(title+year+fs+quality+source)
+		if Dict[uid] != None:
+			return MC.message_container('Download Sources', 'Item already in Downloads List')
+			
+		#uid = 'Request5Split'+E(title+year+fs+quality+source)
+		#if Dict[uid] != None:
+		#	return MC.message_container('Requested Sources', 'Item already in Requested List')
+			
+		if file_ext == None:
+			file_ext = '.mp4'
+
+		chunk_size = int(1024.0 * 1024.0 * float(Prefs['download_chunk_size'])) # in bytes
+		fid = '.'+common.id_generator()
+		
+		EncTxt = E(JSON.StringFromObject({'title':title, 'year':year, 'url':url, 'purl':purl, 'sub_url':sub_url, 'summary':summary, 'thumb':thumb, 'fsBytes':int(fsBytes), 'fs':fs, 'chunk_size':chunk_size, 'file_ext':file_ext, 'quality':quality, 'source':source, 'source_meta':source_meta, 'file_meta':file_meta, 'uid':uid, 'fid':fid, 'type':type, 'resumable':resumable, 'status':common.DOWNLOAD_STATUS[4], 'startPos':0, 'timeAdded':time.time(), 'first_time':time.time(), 'progress':0, 'chunk_speed':0,'avg_speed':0,'avg_speed_curr':0, 'eta':0, 'error':'', 'last_error':'Unknown Error', 'action':common.DOWNLOAD_PROPS[3],'section_path':section_path, 'section_title':section_title, 'section_key':section_key})) 
+		Dict[uid] = EncTxt
+		Dict.Save()
+		return MC.message_container('Requested Sources', 'Successfully added to Requested List')
+		
+	if 'openload' in source.lower() and Prefs['use_openload_pairing'] == False:
+		return MC.message_container('Download Sources', 'OpenLoad Pairing needs to be enabled under Channel Setting/Prefs.')
+
+		
 	if tuec not in Dict['DOWNLOAD_OPTIONS_SECTION_TEMP']:
 		Dict['DOWNLOAD_OPTIONS_SECTION_TEMP'][tuec] = {}
 		for x in common.DOWNLOAD_OPTIONS.keys():
 			Dict['DOWNLOAD_OPTIONS_SECTION_TEMP'][tuec][x] = common.DOWNLOAD_OPTIONS[x]
 		Dict.Save()
 		
-	return AddToDownloadsList(title=title, purl=purl, url=url, summary=summary, thumb=thumb, year=year, quality=quality, source=source, source_meta=source_meta, file_meta=file_meta, type=type, resumable=resumable, sub_url=sub_url, fsBytes=fsBytes, fs=fs, file_ext=file_ext, section_path=section_path, section_title=section_title, section_key=section_key, session=session)
+	return AddToDownloadsList(title=title, purl=purl, url=url, summary=summary, thumb=thumb, year=year, quality=quality, source=source, source_meta=source_meta, file_meta=file_meta, type=type, resumable=resumable, sub_url=sub_url, fsBytes=fsBytes, fs=fs, file_ext=file_ext, mode=mode, section_path=section_path, section_title=section_title, section_key=section_key, session=session)
 	
 ######################################################################################
 # Adds a movie to the DownloadsList list using the (title + 'Down5Split') as a key for the url
@@ -3591,23 +3681,23 @@ def AddToDownloadsList(title, year, url, purl, summary, thumb, quality, source, 
 					isPairDone = common.host_openload.isPairingDone()
 					online, r1, err, fs_i =  common.host_openload.check(url, usePairing = False, embedpage=True)
 				else:
-					fs_i, err = common.client.getFileSize(url, retError=True)
+					fs_i, err = common.client.getFileSize(url, retError=True, retry429=True, cl=2)
 
 				if err != '':
 					raise Exception(e)
 					
 				try:
-					fsBytes = fs_i
+					fsBytes = int(fs_i)
 					fs = '%s GB' % str(round(float(fs_i)/common.TO_GB, 3))
 				except:
 					fsBytes = 0
 					fs = '? GB'
 					
-			if int(fsBytes) == 0:
+			if int(fsBytes) < 100 * 1024:
 				Dict['DOWNLOAD_OPTIONS_SECTION_TEMP'][tuec] = {}
 				Dict['DOWNLOAD_OPTIONS_SECTION_TEMP'][tuec]['Error'] = 'Error'
 				Dict.Save()
-				return MC.message_container('FileSize Error', 'Sorry but a file reporting 0 bytes cannot be downloaded. Please try again later when it becomes available.')
+				return MC.message_container('FileSize Error', 'File reporting %s bytes cannot be downloaded. Please try again later when it becomes available.' % fsBytes)
 				
 			uid = 'Down5Split'+E(title+year+fs+quality+source)
 			if Dict[uid] != None:
@@ -3660,7 +3750,7 @@ def Downloads(title, session = None, status = None, refresh = 0, **kwargs):
 				if 'Down5Split' in each:
 					try:
 						longstringObjs = JSON.ObjectFromString(D(Dict[each]))
-						if longstringObjs['status'] == dstatus  or dstatus == common.DOWNLOAD_STATUS[4]:
+						if longstringObjs['status'] == dstatus  or dstatus == common.DOWNLOAD_STATUS[5]:
 							c += 1
 					except Exception as e:
 						pass
@@ -3680,7 +3770,7 @@ def Downloads(title, session = None, status = None, refresh = 0, **kwargs):
 		if 'Down5Split' in each:
 			try:
 				longstringObjs = JSON.ObjectFromString(D(Dict[each]))
-				if longstringObjs['status'] == status or status == common.DOWNLOAD_STATUS[4]:
+				if longstringObjs['status'] == status or status == common.DOWNLOAD_STATUS[5]:
 					timestr = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(longstringObjs['timeAdded'])))
 					key = None
 					summary = longstringObjs['summary']
@@ -3735,7 +3825,10 @@ def Downloads(title, session = None, status = None, refresh = 0, **kwargs):
 						wtitle = '%s (%s) | %s | %s - %s | %s | %s | %s - %s' % (longstringObjs['title'], longstringObjs['year'], longstringObjs['type'].title(), longstringObjs['fs'], longstringObjs['quality'], longstringObjs['source'], str(longstringObjs['progress'])+'%', longstringObjs['status'], err)
 						key = Callback(DownloadingFilesMenu, title=longstringObjs['title'], uid=longstringObjs['uid'], choice=None, session=session, status=status)
 						summary = '%s | %s' % (wtitle, summary)
-					else: # All
+					elif status == common.DOWNLOAD_STATUS[4]: # Requested
+						wtitle = '%s (%s) | %s | %s - %s | %s | %s - %s | %s | %s MB/s | Subtitle:%s' % (longstringObjs['title'], longstringObjs['year'], longstringObjs['type'].title(), longstringObjs['fs'], longstringObjs['quality'], longstringObjs['source'], longstringObjs['status'], common.DOWNLOAD_ACTIONS_K[longstringObjs['action']], str(longstringObjs['progress'])+'%', str(longstringObjs['avg_speed_curr']), common.GetEmoji(type=has_sub, mode='simple', session=session))
+						key = Callback(DownloadingFilesMenu, title=longstringObjs['title'], uid=longstringObjs['uid'], choice=None, session=session, status=status)
+					elif status == common.DOWNLOAD_STATUS[5]: # All
 						if longstringObjs['status'] == common.DOWNLOAD_STATUS[1]: # Downloading
 							if each not in common.DOWNLOAD_STATS.keys() and len(common.DOWNLOAD_STATS.keys()) < int(Prefs['download_connections']):
 								longstringObjs['status'] = common.DOWNLOAD_STATUS[1]
@@ -3771,6 +3864,7 @@ def Downloads(title, session = None, status = None, refresh = 0, **kwargs):
 							wtitle = '%s (%s) | %s | %s - %s | %s | %s - %s | %s | %s MB/s ~ %s MB/s ~ %s MB/s | %s | Subtitle:%s' % (longstringObjs['title'], longstringObjs['year'], longstringObjs['type'].title(), longstringObjs['fs'], longstringObjs['quality'], longstringObjs['source'], longstringObjs['status'], common.DOWNLOAD_ACTIONS_K[longstringObjs['action']], str(longstringObjs['progress'])+'%', str(longstringObjs['chunk_speed']), str(longstringObjs['avg_speed_curr']), str(longstringObjs['avg_speed']), str(eta_str), common.GetEmoji(type=has_sub, mode='simple', session=session))
 						else:
 							wtitle = '%s (%s) | %s | %s - %s | %s | %s - %s | %s | %s MB/s | Subtitle:%s' % (longstringObjs['title'], longstringObjs['year'], longstringObjs['type'].title(), longstringObjs['fs'], longstringObjs['quality'], longstringObjs['source'], longstringObjs['status'], common.DOWNLOAD_ACTIONS_K[longstringObjs['action']], str(longstringObjs['progress'])+'%', str(longstringObjs['avg_speed_curr']), common.GetEmoji(type=has_sub, mode='simple', session=session))
+							
 						key = Callback(DownloadingFilesMenu, title=longstringObjs['title'], uid=longstringObjs['uid'], choice=None, session=session, status=longstringObjs['status'])
 						
 					oc.add(DirectoryObject(
@@ -3860,6 +3954,7 @@ def DownloadingFilesMenu(title, uid, choice=None, session=None, status=None, con
 	
 	if choice == None and uid in Dict:
 		longstringObjs = JSON.ObjectFromString(D(Dict[uid]))
+		#status = longstringObjs['status']
 		fileinfo = longstringObjs
 		
 		if status == common.DOWNLOAD_STATUS[1]:
@@ -3897,7 +3992,7 @@ def DownloadingFilesMenu(title, uid, choice=None, session=None, status=None, con
 		
 		c = 0
 		for opt in common.DOWNLOAD_ACTIONS:
-			if (status == common.DOWNLOAD_STATUS[0] and opt in [common.DOWNLOAD_ACTIONS[0], common.DOWNLOAD_ACTIONS[3], common.DOWNLOAD_ACTIONS[4]]) or (status == common.DOWNLOAD_STATUS[1] and opt in [common.DOWNLOAD_ACTIONS[0], common.DOWNLOAD_ACTIONS[1], common.DOWNLOAD_ACTIONS[2], common.DOWNLOAD_ACTIONS[3]]) or (status == common.DOWNLOAD_STATUS[3] and opt in [common.DOWNLOAD_ACTIONS[0], common.DOWNLOAD_ACTIONS[4]]):
+			if (status == common.DOWNLOAD_STATUS[0] and opt in [common.DOWNLOAD_ACTIONS[0], common.DOWNLOAD_ACTIONS[3], common.DOWNLOAD_ACTIONS[4]]) or (status == common.DOWNLOAD_STATUS[1] and opt in [common.DOWNLOAD_ACTIONS[0], common.DOWNLOAD_ACTIONS[1], common.DOWNLOAD_ACTIONS[2], common.DOWNLOAD_ACTIONS[3]]) or (status == common.DOWNLOAD_STATUS[3] and opt in [common.DOWNLOAD_ACTIONS[0], common.DOWNLOAD_ACTIONS[4]]) or (status == common.DOWNLOAD_STATUS[4] and opt in [common.DOWNLOAD_ACTIONS[0], common.DOWNLOAD_ACTIONS[4]]):
 				if longstringObjs['action'] != opt and not (opt == common.DOWNLOAD_ACTIONS[2] and longstringObjs['action'] == common.DOWNLOAD_ACTIONS[4]) or status == common.DOWNLOAD_STATUS[3] and not(status == common.DOWNLOAD_STATUS[1] and longstringObjs['action'] in [common.DOWNLOAD_ACTIONS[2], common.DOWNLOAD_ACTIONS[4]]):
 					opt_txt = opt
 					if opt == common.DOWNLOAD_ACTIONS[3] or (opt == common.DOWNLOAD_ACTIONS[4] and longstringObjs['progress'] != '?' and float(longstringObjs['progress']) > 0):
@@ -3911,13 +4006,22 @@ def DownloadingFilesMenu(title, uid, choice=None, session=None, status=None, con
 						)
 					)
 			c += 1
-		oc.add(DirectoryObject(
-			title = '%s | Download path: %s' % (longstringObjs['section_title'], longstringObjs['section_path']),
-			summary = '%s | Download path: %s' % (longstringObjs['section_title'], longstringObjs['section_path']),
-			key = Callback(MyMessage, title='Download Path', msg=longstringObjs['section_path']),
-			thumb = GetThumb(R(ICON_ENTER), session=session)
+		if longstringObjs['section_key'] == None:
+			oc.add(DirectoryObject(
+				title = 'Set Download Location',
+				summary = '%s | Download path: %s' % (longstringObjs['section_title'], longstringObjs['section_path']),
+				key = Callback(SetReqDownloadLocation, uid=longstringObjs['uid'], type=longstringObjs['type']),
+				thumb = GetThumb(R(ICON_ENTER), session=session)
+				)
 			)
-		)
+		else:
+			oc.add(DirectoryObject(
+				title = '%s | Download path: %s' % (longstringObjs['section_title'], longstringObjs['section_path']),
+				summary = '%s | Download path: %s' % (longstringObjs['section_title'], longstringObjs['section_path']),
+				key = Callback(MyMessage, title='Download Path', msg=longstringObjs['section_path']),
+				thumb = GetThumb(R(ICON_ENTER), session=session)
+				)
+			)
 		if longstringObjs['purl'] != None:
 			oc.add(DirectoryObject(
 				title = 'Video Page (Other Download Sources)',
@@ -3953,7 +4057,7 @@ def DownloadingFilesMenu(title, uid, choice=None, session=None, status=None, con
 		return oc
 		
 	else:
-		if Dict[CHECK_AUTH+session]['auth'] == False:
+		if AuthTools.CheckAdmin() == False:
 			return MC.message_container('Admin Access Only', 'Only the Admin can perform this action !')
 		
 		if uid in Dict:
@@ -4012,23 +4116,72 @@ def DownloadingFilesMenu(title, uid, choice=None, session=None, status=None, con
 							Log("=============ClearDownLoadSection Error============")
 							Log(e)
 					del Dict[uid]
+			elif status == common.DOWNLOAD_STATUS[4]: # Requested
+				uid = longstringObjs['uid']
+				if choice == common.DOWNLOAD_ACTIONS[0]:
+					del Dict[uid]
+				elif choice == common.DOWNLOAD_ACTIONS[4]:
+					if longstringObjs['section_key'] == None:
+						return MC.message_container('Define Location', 'Please define Download Location first !')
+					longstringObjs['status'] = common.DOWNLOAD_STATUS[0]
+					longstringObjs['timeAdded'] = time.time()
+					EncTxt = E(JSON.StringFromObject(longstringObjs))
+					Dict[uid] = EncTxt
 
 			Dict.Save()
 			
 			if doTrigger == True:
 				Thread.Create(download.trigger_que_run)
 			
-			time.sleep(5)
+			time.sleep(2)
 			
 			return MC.message_container(choice, '%s applied to %s' % (choice, title))
 		else:
 			return MC.message_container('Unavailable', 'Item removed or no longer available')
 	
 ######################################################################################
+@route(PREFIX + "/SetReqDownloadLocation")
+def SetReqDownloadLocation(uid, type):
+
+	if AuthTools.CheckAdmin() == False:
+		return MC.message_container('Admin Access Only', 'Only the Admin can perform this action !')
+		
+	oc = ObjectContainer(title1='Select Location', no_cache=common.isForceNoCache())
+	
+	DOWNLOAD_OPTIONS_SECTION_TEMP = {}
+	for x in common.DOWNLOAD_OPTIONS.keys():
+		DOWNLOAD_OPTIONS_SECTION_TEMP[x] = common.DOWNLOAD_OPTIONS[x]
+	
+	for item in DOWNLOAD_OPTIONS_SECTION_TEMP[type]:
+		if item['enabled']:
+			oc.add(DirectoryObject(
+				key = Callback(SetReqDownloadLocationSave, uid=uid, section_title=item['title'], section_key=item['key'], section_path=item['path']),
+				title = '%s | %s' % (item['title'], item['path'])
+				)
+			)
+
+	if len(oc) == 0:
+		return MC.message_container('Download Sources', 'No Download Location set under Download Options')
+	return oc
+	
+######################################################################################
+@route(PREFIX + "/SetReqDownloadLocationSave")
+def SetReqDownloadLocationSave(uid, section_title, section_key, section_path):
+
+	longstringObjs = JSON.ObjectFromString(D(Dict[uid]))
+	longstringObjs['section_title'] = section_title
+	longstringObjs['section_key'] = section_key
+	longstringObjs['section_path'] = section_path
+	EncTxt = E(JSON.StringFromObject(longstringObjs))
+	Dict[uid] = EncTxt
+	Dict.Save()
+	return MC.message_container('Download Sources', 'Download Location has been set.')
+	
+######################################################################################
 @route(PREFIX + "/ClearDownLoadSection")
 def ClearDownLoadSection(status, session, confirm=False):
 
-	if Dict[CHECK_AUTH+session]['auth'] == False:
+	if AuthTools.CheckAdmin() == False:
 		return MC.message_container('Admin Access Only', 'Only the Admin can perform this action !')
 
 	if confirm == False:
@@ -4043,7 +4196,7 @@ def ClearDownLoadSection(status, session, confirm=False):
 		if 'Down5Split' in each:
 			try:
 				longstringObjs = JSON.ObjectFromString(D(Dict[each]))
-				if longstringObjs['status'] == status or status == common.DOWNLOAD_STATUS[4]:
+				if longstringObjs['status'] == status or status == common.DOWNLOAD_STATUS[5]:
 					items_to_del.append(each)
 				elif longstringObjs['status'] not in common.DOWNLOAD_STATUS:
 					items_to_del.append(each)
@@ -4069,7 +4222,7 @@ def ClearDownLoadSection(status, session, confirm=False):
 						Log("=============ClearDownLoadSection Error============")
 						Log(e)
 				del Dict[each]
-			elif status == common.DOWNLOAD_STATUS[4]: # All
+			elif status == common.DOWNLOAD_STATUS[5]: # All
 				longstringObjs = JSON.ObjectFromString(D(Dict[each]))
 				if longstringObjs['status'] == common.DOWNLOAD_STATUS[1]: # Downloading
 					longstringObjs['action'] = common.DOWNLOAD_ACTIONS[0]
@@ -4100,7 +4253,7 @@ def ClearDownLoadSection(status, session, confirm=False):
 @route(PREFIX + "/PauseDownloadingDownloads")
 def PauseDownloadingDownloads(session):
 
-	if Dict[CHECK_AUTH+session]['auth'] == False:
+	if AuthTools.CheckAdmin() == False:
 		return MC.message_container('Admin Access Only', 'Only the Admin can perform this action !')
 
 	for each in Dict:
@@ -4118,7 +4271,7 @@ def PauseDownloadingDownloads(session):
 @route(PREFIX + "/PostponeDownloadingDownloads")
 def PostponeDownloadingDownloads(session):
 
-	if Dict[CHECK_AUTH+session]['auth'] == False:
+	if AuthTools.CheckAdmin() == False:
 		return MC.message_container('Admin Access Only', 'Only the Admin can perform this action !')
 
 	for each in Dict:
@@ -4136,7 +4289,7 @@ def PostponeDownloadingDownloads(session):
 @route(PREFIX + "/RetryFailedDownloads")
 def RetryFailedDownloads(session):
 
-	if Dict[CHECK_AUTH+session]['auth'] == False:
+	if AuthTools.CheckAdmin() == False:
 		return MC.message_container('Admin Access Only', 'Only the Admin can perform this action !')
 
 	items_to_change = []
@@ -4973,15 +5126,23 @@ def DoIMDBExtSourcesEpisode(query, title, year, type, imdbid, season, summary, t
 		summary =  '%s : %s' % (watch_title,summary),
 		thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback = ICON_UNAV)))
 		
-	if Prefs['disable_downloader'] == False and Dict[CHECK_AUTH+session]['auth'] == True:
+	if Prefs['disable_downloader'] == False and AuthTools.CheckAdmin() == True:
 		oc.add(DirectoryObject(
-			key = Callback(ExtSourcesDownload, tvshowtitle=title, season=season, episode=episode, session=session, title=title, url=None, summary=summary, thumb=thumb, art=None, year=year, rating=item['imdb_rating'], genre=item['genre'], duration=item['runtime'], directors=item['director'], roles=item['actors']),
+			key = Callback(ExtSourcesDownload, tvshowtitle=title, season=season, episode=episode, session=session, title=title, url=None, summary=summary, thumb=thumb, art=None, year=year, rating=item['imdb_rating'], genre=item['genre'], duration=item['runtime'], directors=item['director'], roles=item['actors'], mode=common.DOWNLOAD_MODE[0]),
 			title = 'Download Sources',
 			summary = 'List sources of this episode by External Providers.',
 			thumb = GetThumb(R(ICON_OTHERSOURCESDOWNLOAD), session=session)
 			)
 		)
-		
+	elif Prefs['disable_downloader'] == False:
+		oc.add(DirectoryObject(
+			key = Callback(ExtSourcesDownload, tvshowtitle=title, season=season, episode=episode, session=session, title=title, url=None, summary=summary, thumb=thumb, art=None, year=year, rating=item['imdb_rating'], genre=item['genre'], duration=item['runtime'], directors=item['director'], roles=item['actors'], mode=common.DOWNLOAD_MODE[0]),
+			title = 'Request Sources',
+			summary = 'List sources of this episode by External Providers.',
+			thumb = GetThumb(R(ICON_REQUESTS), session=session)
+			)
+		)
+	
 	return oc
 	
 ####################################################################################################
@@ -5769,8 +5930,9 @@ def ValidatePrefs(changed=True, **kwargs):
 	
 	ValidateMyPrefs()
 	
-	download.resetDownloadThrottler()
-	Thread.Create(download.trigger_que_run)
+	if common.interface.isInitialized():
+		download.resetDownloadThrottler()
+		Thread.Create(download.trigger_que_run)
 	
 	return
 	

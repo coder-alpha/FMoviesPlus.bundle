@@ -339,14 +339,14 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 			setIP6()
 		return
 		
-def getFileSize(link, retError=False, retry429=False):
+def getFileSize(link, retError=False, retry429=False, cl=3):
 	try:
 		r = requests.get(link, stream=True, verify=False, allow_redirects=True)
 		
 		if retry429 == True:
 			c = 0
-			while r.status_code == 429 and c < 5:
-				time.sleep(3)
+			while r.status_code == 429 and c < cl:
+				time.sleep(5)
 				r = requests.get(link, stream=True, verify=False, allow_redirects=True)
 				c += 1
 		

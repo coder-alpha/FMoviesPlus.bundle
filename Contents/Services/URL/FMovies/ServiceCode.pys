@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import urllib2, re, urlparse, base64, json
+import urllib2, re, urlparse, base64, json, time
 # import Shared ServiceCode
 import openload as Openload
 import misc as host_misc_resolvers
@@ -320,6 +320,8 @@ def PlayVideo(url, isTargetPlay=False, useRedirect=False, refUrl=None, params=No
 	if refUrl != None:
 		http_headers['Referer'] = refUrl
 		
+	if 'blogspot.com' in url:
+		time.sleep(3)
 
 	if '.m3u8' in url:
 		return IndirectResponse(VideoClipObject, key=HTTPLiveStreamURL(url), http_headers=http_headers, http_cookies=http_cookies)

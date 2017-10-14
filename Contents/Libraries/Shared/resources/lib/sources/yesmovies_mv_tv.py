@@ -413,6 +413,7 @@ class source:
 				for eid in r:
 					#print r
 					try:
+						sub_url = None
 						try:
 							ep = re.findall('episode.*?(\d+):.*?',eid[2].lower())[0]
 						except:
@@ -421,7 +422,6 @@ class source:
 						if (episode is None) or (int(ep) == int(episode)):
 							
 							url = urlparse.urljoin(self.base_link, self.token_link % (eid[0], mid))
-							
 							script = client.request(url, IPv4=True)
 							#print script
 							
@@ -434,13 +434,33 @@ class source:
 							else:
 								raise Exception()
 							u = urlparse.urljoin(self.base_link, self.sourcelink % (eid[0], params['x'], params['y']))
+							
+							#print u
+							
 							r = client.request(u, IPv4=True)
 							url = json.loads(r)['playlist'][0]['sources']
-							url = [i['file'] for i in url if 'file' in i]
-							url = [client.googletag(i) for i in url]
-							url = [i[0] for i in url if i]
+							#print url
+							
+							try:
+								url = [i['file'] for i in url]
+							except:
+								url = [url['file']]
+								
+							#print url
+							
+							#url = [client.googletag(i) for i in url]
+							#print url
+							
+							#url = [i[0] for i in url if i]
+							#print url
+							
+							try:
+								sub_url = json.loads(r)['playlist'][0]['tracks'][0]['file']
+							except:
+								pass
+							
 							for s in url:
-								links_m = resolvers.createMeta(s['url'], self.name, self.logo, '720p', links_m, key, vidtype='Movie')
+								links_m = resolvers.createMeta(s, self.name, self.logo, '720p', links_m, key, vidtype='Movie', sub_url=sub_url)
 								if testing and len(links_m) > 0:
 									break
 					except:

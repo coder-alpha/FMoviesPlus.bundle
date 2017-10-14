@@ -1,7 +1,7 @@
 ################################################################################
 TITLE = "FMoviesPlus"
 VERSION = '0.45' # Release notation (x.y - where x is major and y is minor)
-TAG = 'dev 09-29-2017'
+TAG = 'dev 10-14-2017'
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
 ################################################################################
@@ -491,17 +491,34 @@ def isItemVidAvailable(isTargetPlay, data, params=None, host=None, **kwargs):
 				if host_openload.check(vidurl, embedpage=True, headers=headers, cookie=cookie)[0] == True:
 						isVideoOnline = 'true'
 			elif isTargetPlay and host in host_misc_resolvers.supported_hosts:
-				resolved_url = host_misc_resolvers.resolve(vidurl, Prefs["use_https_alt"])
+				resolved_url, params = host_misc_resolvers.resolve(vidurl, httpsskip)
+				
 				if resolved_url != None:
-					resolved_url = resolved_url[len(resolved_url)-1]
-					http_res = client.request(url=resolved_url, output='responsecode', headers=headers, cookie=cookie, IPv4=True)
-					if http_res in client.HTTP_GOOD_RESP_CODES or http_res in client.GOOGLE_HTTP_GOOD_RESP_CODES_1:
-						isVideoOnline = 'true'
+					# params = JSON.ObjectFromString(D(params))
+					# headers = params['headers']
+					# hls_url = resolved_url[len(resolved_url)-1]['file']
+					
+					# Log(hls_url)
+					# Log(headers)
+					
+					# if httpsskip == True:
+						# http_res = request(hls_url, headers=headers, httpsskip=True)
+					# else:
+						# http_res = HTTP.Request(hls_url, headers=headers).content
+					
+					# Log(http_res)
+					# if http_res == None:
+						# isVideoOnline = 'unknown'
+					# if http_res in client.HTTP_GOOD_RESP_CODES or http_res in client.GOOGLE_HTTP_GOOD_RESP_CODES_1 or 'EXTM3U' in http_res:
+						# isVideoOnline = 'true'
+					hls_url = resolved_url[len(resolved_url)-1]['file']
+					isVideoOnline = 'true'
+						
 			elif isTargetPlay:
 				isVideoOnline = 'unknown'
 			else:
 				if host_gvideo.check(vidurl, headers=headers, cookie=cookie, httpsskip=httpsskip)[0] == True:
-						isVideoOnline = 'true'
+					isVideoOnline = 'true'
 
 		except Exception as e:
 			Log('ERROR common.py>isItemVidAvailable %s, %s:' % (e.args,vidurl))

@@ -117,7 +117,7 @@ def testLink(url):
 	except:
 		return 'Unknown'
 		
-def createMeta(url, provider, logo, quality, links, key, riptype=None, vidtype='Movie', lang='en', txt=''):
+def createMeta(url, provider, logo, quality, links, key, riptype=None, vidtype='Movie', lang='en', sub_url=None, txt=''):
 
 	if url == None or url == '':
 		print "resolvers > __init__.py > createMeta : url:%s prov:%s" % (url, provider)
@@ -131,7 +131,11 @@ def createMeta(url, provider, logo, quality, links, key, riptype=None, vidtype='
 	params = client.b64encode(json.dumps('', encoding='utf-8'))
 	
 	try:
-		urlhost = re.findall('([\w]+[.][\w]+)$', urlparse.urlparse(url.strip().lower()).netloc)[0]
+		try:
+			urlhost = re.findall('([\w]+[.][\w]+)$', urlparse.urlparse(url.strip().lower()).netloc)[0]
+		except:
+			urlhost = re.findall('([\w]+[.][\w]+).*$', urlparse.urlparse(url.strip().lower()).netloc)[0]
+			urlhost = urlhost.split('.')[1]
 		if riptype == None:
 			riptype_def = 'BRRIP'
 		else:
@@ -140,7 +144,7 @@ def createMeta(url, provider, logo, quality, links, key, riptype=None, vidtype='
 			print "Searching %s in %s" % (urlhost, host['host'])
 			if urlhost in host['host']:
 				print "Found %s in %s" % (urlhost, host['host'])
-				return host['call'].createMeta(url, provider, logo, quality, links, key, riptype_def, vidtype=vidtype, lang=lang, txt=txt)
+				return host['call'].createMeta(url, provider, logo, quality, links, key, riptype_def, vidtype=vidtype, lang=lang, sub_url=sub_url, txt=txt)
 
 				
 		print "urlhost '%s' not found in host/resolver plugins" % urlhost
@@ -152,7 +156,7 @@ def createMeta(url, provider, logo, quality, links, key, riptype=None, vidtype='
 		else:
 			type = riptype
 		
-		links_m.append({'source':urlhost, 'maininfo':'', 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':type, 'provider':provider, 'url':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':'Unknown', 'allowsDownload':False, 'resumeDownload':False, 'allowsStreaming':True, 'key':key, 'enabled':True, 'fs':int(0), 'file_ext':'.mp4', 'ts':time.time(), 'lang':lang, 'subdomain':client.geturlhost(url), 'misc':{'player':'eplayer', 'gp':False}})
+		links_m.append({'source':urlhost, 'maininfo':'', 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':type, 'provider':provider, 'url':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':'Unknown', 'allowsDownload':False, 'resumeDownload':False, 'allowsStreaming':True, 'key':key, 'enabled':True, 'fs':int(0), 'file_ext':'.mp4', 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'subdomain':client.geturlhost(url), 'misc':{'player':'eplayer', 'gp':False}})
 	except Exception as e:
 		control.log("ERROR resolvers > __init__.py > createMeta : %s url: %s" % (e.args, url))
 		#print "ERROR resolvers > __init__.py > createMeta : %s url: %s" % (e.args, url)

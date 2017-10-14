@@ -164,7 +164,7 @@ class host:
 		#return ['https://openload.co/f/tr6gjooZMj0/big_buck_bunny_240p_5mb.3gp.mp4']
 		return ['https://openload.co/embed/kUEfGclsU9o']
 		
-	def createMeta(self, url, provider, logo, quality, links, key, riptype, vidtype='Movie', lang='en', txt=''):
+	def createMeta(self, url, provider, logo, quality, links, key, riptype, vidtype='Movie', lang='en', sub_url=None, txt=''):
 	
 		url = url.replace('oload.tv','openload.co')
 		urldata = client.b64encode(json.dumps('', encoding='utf-8'))
@@ -194,10 +194,10 @@ class host:
 		file_ext = '.mp4'
 
 		try:
-			files_ret.append({'source':self.name, 'maininfo':pair, 'titleinfo':titleinfo, 'quality':file_quality(vidurl, quality), 'vidtype':vidtype, 'rip':rip_type(vidurl, riptype), 'provider':provider, 'url':vidurl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'subdomain':client.geturlhost(url), 'misc':{'pair':isPairRequired, 'player':'iplayer', 'gp':False}})
+			files_ret.append({'source':self.name, 'maininfo':pair, 'titleinfo':titleinfo, 'quality':file_quality(vidurl, quality), 'vidtype':vidtype, 'rip':rip_type(vidurl, riptype), 'provider':provider, 'url':vidurl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'subdomain':client.geturlhost(url), 'misc':{'pair':isPairRequired, 'player':'iplayer', 'gp':False}})
 		except Exception as e:
 			self.log('ERROR', 'createMeta', e, dolog=True)
-			files_ret.append({'source':urlhost, 'maininfo':pair, 'titleinfo':titleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'url':vidurl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'subdomain':client.geturlhost(url), 'misc':{'pair':isPairRequired, 'player':'eplayer', 'gp':False}})
+			files_ret.append({'source':urlhost, 'maininfo':pair, 'titleinfo':titleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'url':vidurl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'subdomain':client.geturlhost(url), 'misc':{'pair':isPairRequired, 'player':'eplayer', 'gp':False}})
 			
 		for fr in files_ret:
 			links.append(fr)

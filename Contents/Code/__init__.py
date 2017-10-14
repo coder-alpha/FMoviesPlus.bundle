@@ -3052,7 +3052,7 @@ def ExtSourcesDownload(title, url, summary, thumb, art, rating, duration, genre,
 			fs = None
 		
 		if source['vidtype'] in 'Movie/Show':
-			title_msg = "%s %s| %s | %s | %s | %s | %s" % (status, source['maininfo'], source['rip'], source['quality'], fs, source['source']+':'+source['subdomain'] if source['source']=='gvideo' else source['source'], source['provider'])
+			title_msg = "%s %s| %s | %s | %s | %s | %s | Subtitles: %s" % (status, source['maininfo'], source['rip'], source['quality'], fs, source['source']+':'+source['subdomain'] if source['source']=='gvideo' else source['source'], source['provider'], common.GetEmoji(type=True if source['sub_url'] != None else False, session=session))
 		else:
 			title_msg = "%s %s| %s | %s | %s | %s | %s | %s" % (status, source['maininfo'], source['vidtype'], source['rip'], source['quality'], fs, source['source'], source['provider'])
 			
@@ -3066,7 +3066,7 @@ def ExtSourcesDownload(title, url, summary, thumb, art, rating, duration, genre,
 			try:
 				libtype='movie' if tvshowtitle == None else 'show'
 				oc.add(DirectoryObject(
-					key = Callback(AddToDownloadsListPre, title=watch_title, purl=url, url=source['url'], summary=summary, thumb=thumb, year=year, fsBytes=fsBytes, fs=fs, file_ext=source['file_ext'], quality=source['quality'], source=source['source'], source_meta={}, file_meta={}, type=libtype, resumable=source['resumeDownload'], mode=mode),
+					key = Callback(AddToDownloadsListPre, title=watch_title, purl=url, url=source['url'], sub_url=source['sub_url'], summary=summary, thumb=thumb, year=year, fsBytes=fsBytes, fs=fs, file_ext=source['file_ext'], quality=source['quality'], source=source['source'], source_meta={}, file_meta={}, type=libtype, resumable=source['resumeDownload'], mode=mode),
 					title = title_msg,
 					summary = 'Adds the current video to %s List' % 'Download' if mode==common.DOWNLOAD_MODE[0] else 'Request',
 					art = art,

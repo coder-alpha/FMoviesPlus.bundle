@@ -119,7 +119,7 @@ class host:
 	def testUrl(self):
 		return ['https://www.youtube.com/watch?v=HcRvwVwD1Sc']
 		
-	def createMeta(self, url, provider, logo, quality, links, key, riptype, vidtype='Movie', lang='en', txt=''):
+	def createMeta(self, url, provider, logo, quality, links, key, riptype, vidtype='Movie', lang='en', sub_url=None, txt=''):
 	
 		urldata = client.b64encode(json.dumps('', encoding='utf-8'))
 		params = client.b64encode(json.dumps('', encoding='utf-8'))
@@ -129,10 +129,10 @@ class host:
 		fs = 0
 		
 		try:
-			files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':riptype, 'provider':provider, 'url':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':fs, 'ts':time.time(), 'lang':lang, 'subdomain':self.netloc[0], 'misc':{'player':'eplayer', 'gp':False}})
+			files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':riptype, 'provider':provider, 'url':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':fs, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'subdomain':self.netloc[0], 'misc':{'player':'eplayer', 'gp':False}})
 		except Exception as e:
 			print "ERROR host_youtube.py > createMeta : %s" % e.args
-			files_ret.append({'source':urlhost, 'maininfo':'', 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'url':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':fs, 'ts':time.time(), 'lang':lang, 'subdomain':self.netloc[0], 'misc':{'player':'eplayer', 'gp':False}})
+			files_ret.append({'source':urlhost, 'maininfo':'', 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'url':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':fs, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'subdomain':self.netloc[0], 'misc':{'player':'eplayer', 'gp':False}})
 			
 		for fr in files_ret:
 			links.append(fr)

@@ -150,7 +150,7 @@ class host:
 	def testUrl(self):
 		return ['https://drive.google.com/file/d/0B0JMGMGgxp9WMEdWb1hyQUhlOWs/view']
 		
-	def createMeta(self, url, provider, logo, quality, links, key, riptype, showsplit=False, useGetlinkAPI=True, vidtype='Movie', lang='en', txt=''):
+	def createMeta(self, url, provider, logo, quality, links, key, riptype, showsplit=False, useGetlinkAPI=True, vidtype='Movie', lang='en', sub_url=None, txt=''):
 	
 		if 'http' not in url and 'google.com/file' in url:
 			url = 'https://drive.google.com/' + url.split('.com/')[1]
@@ -218,15 +218,15 @@ class host:
 					durl = None
 					
 				if durl != None:
-					files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':ntitleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':type, 'provider':provider, 'url':durl, 'urldata':createurldata(durl,quality), 'params':params, 'logo':logo, 'online':isOnline, 'allowsDownload':self.allowsDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':enabled, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'subdomain':client.geturlhost(durl), 'misc':{'player':'iplayer', 'gp':False}})
+					files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':ntitleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':type, 'provider':provider, 'url':durl, 'urldata':createurldata(durl,quality), 'params':params, 'logo':logo, 'online':isOnline, 'allowsDownload':self.allowsDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':enabled, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'subdomain':client.geturlhost(durl), 'misc':{'player':'iplayer', 'gp':False}})
 				else:
 					fs = client.getFileSize(url, retry429=True)
 					
-				files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':ntitleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':type, 'provider':provider, 'url':url, 'urldata':urldata('',''), 'params':params, 'logo':logo, 'online':isOnline, 'allowsDownload':self.allowsDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':enabled, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'subdomain':client.geturlhost(url), 'misc':{'player':'eplayer', 'gp':False}})
+				files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':ntitleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':type, 'provider':provider, 'url':url, 'urldata':urldata('',''), 'params':params, 'logo':logo, 'online':isOnline, 'allowsDownload':self.allowsDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':enabled, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'subdomain':client.geturlhost(url), 'misc':{'player':'eplayer', 'gp':False}})
 			else:
 				fs = client.getFileSize(url, retry429=True)
 				
-				files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':ntitleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':type, 'provider':provider, 'url':url, 'urldata':urldata('',''), 'params':params, 'logo':logo, 'online':isOnline, 'allowsDownload':self.allowsDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':enabled, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'subdomain':client.geturlhost(url), 'misc':{'player':'iplayer', 'gp':False}})
+				files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':ntitleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':type, 'provider':provider, 'url':url, 'urldata':urldata('',''), 'params':params, 'logo':logo, 'online':isOnline, 'allowsDownload':self.allowsDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':enabled, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'subdomain':client.geturlhost(url), 'misc':{'player':'iplayer', 'gp':False}})
 		except Exception as e:
 			print '%s > createMeta-1 ERROR: %s for URL: %s' % (self.name, e, url)
 			
@@ -259,7 +259,7 @@ class host:
 						
 						fs = client.getFileSize(furl, retry429=True)
 						
-						files_ret.append({'source': self.name, 'maininfo':'', 'titleinfo':ntitleinfo, 'quality': quality, 'vidtype':vidtype, 'rip':type, 'provider': provider, 'url': furl, 'urldata':urldata('',''), 'params':p, 'logo': logo, 'online': isOnlineT, 'allowsDownload':self.allowsDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':enabled, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'subdomain':client.geturlhost(furl), 'misc':{'player':'iplayer' , 'gp':False}})
+						files_ret.append({'source': self.name, 'maininfo':'', 'titleinfo':ntitleinfo, 'quality': quality, 'vidtype':vidtype, 'rip':type, 'provider': provider, 'url': furl, 'urldata':urldata('',''), 'params':p, 'logo': logo, 'online': isOnlineT, 'allowsDownload':self.allowsDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':enabled, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'subdomain':client.geturlhost(furl), 'misc':{'player':'iplayer' , 'gp':False}})
 						isGetlinkWork = True
 				client.setIP6()
 		except Exception as e:
@@ -282,7 +282,7 @@ class host:
 					
 					fs = client.getFileSize(furl, retry429=True)
 					
-					files_ret.append({'source': self.name, 'maininfo':'', 'titleinfo':ntitleinfo, 'quality': quality, 'vidtype':vidtype, 'rip':type, 'provider': provider, 'url': furl, 'urldata':createurldata(furl,quality), 'params':params, 'logo': logo, 'online': isOnlineT, 'allowsDownload':self.allowsDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':enabled, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'subdomain':client.geturlhost(furl), 'misc':{'player':'iplayer', 'gp':False}})
+					files_ret.append({'source': self.name, 'maininfo':'', 'titleinfo':ntitleinfo, 'quality': quality, 'vidtype':vidtype, 'rip':type, 'provider': provider, 'url': furl, 'urldata':createurldata(furl,quality), 'params':params, 'logo': logo, 'online': isOnlineT, 'allowsDownload':self.allowsDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':enabled, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'subdomain':client.geturlhost(furl), 'misc':{'player':'iplayer', 'gp':False}})
 		except Exception as e:
 			print '%s > createMeta-3 ERROR: %s for URL: %s' % (self.name, e, url)
 
@@ -372,12 +372,13 @@ def getFileLink(id, httpsskip=False):
 	st = time.time()
 	durl = 'https://drive.google.com/uc?export=view&id=%s' % id
 	fs = 0
+	print "Trying DF method link"
 	while 'drive.google.com' in durl and time.time() - st < 30:	
 		#durl = 'https://drive.google.com/uc?export=view&id=0BxHDtiw8Swq7X0E5WUgzZTg2aE0'
 		respD, headersD, contentD, cookieD = client.request(durl, output='extended')
 		#print headers
 		#print content
-		#print cookie
+		#print cookieD
 		try:
 			fs = re.findall(r'</a> \((.*?)G\)', respD)[0]
 			fs = int(float(fs.strip()) * (1024*1024*1024))
@@ -390,7 +391,7 @@ def getFileLink(id, httpsskip=False):
 		confirm = re.findall(r'confirm.*?&', respD)[0]
 		durl = 'https://drive.google.com/uc?export=download&%sid=%s' % (confirm,id)
 		#print durl
-		durl = client.request(durl, headers=headersD, cookie=cookieD, followredirect=True, output='geturl', limit='0', httpsskip=httpsskip)
+		durl = client.request(durl, headers=headersD, cookie=cookieD, followredirect=True, output='geturl', limit='0')
 		durl = durl.replace('?e=download','?e=file.mp4')
 	
 	res = True

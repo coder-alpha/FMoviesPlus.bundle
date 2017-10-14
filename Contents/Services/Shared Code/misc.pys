@@ -48,14 +48,27 @@ ANDROID_USER_AGENT = 'Mozilla/5.0 (Linux; Android 4.4.2; Nexus 4 Build/KOT49H) A
 
 IP_OVERIDE = True
 
+RE_SUB1 = Regex(r'(?m)(^[^\#])')
+RE_SOURCES = Regex(r'(?m)(^.+?\d+/(\d+).+$)')
+
 supported_hosts = ['mycloud.to']
 
-def resolve(url, https_skip):
+def resolve(url, https_skip, test=False):
 	video_urlf = None
 	try:
+		params = {}
 		headers = {}
-		headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 6.1; WOW64; rv:48.0) Gecko/20100101 Firefox/48.0'
-		headers['Referer'] = url
+		headers['User-Agent'] = 'Mozilla5'
+		headers['accept'] = '*/*'
+		headers['accept-encoding'] = 'gzip, deflate, br'
+		headers['accept-language'] = 'en-US,en;q=0.8'
+		headers['cache-control'] = 'no-cache'
+		headers['dnt'] = 1
+		headers['origin'] = 'https://mycloud.to'
+		headers['pragma'] = 'no-cache'
+		headers['Referer'] = 'https://mycloud.to'
+		params['headers'] = headers
+		
 		if https_skip:
 			page_data_string = request(url, headers=headers, httpsskip=True)
 		else:
@@ -73,21 +86,54 @@ def resolve(url, https_skip):
 					video_urls_data = request(video_url, headers=headers, httpsskip=True)
 				else:
 					video_urls_data = HTTP.Request(video_url, headers=headers).content
+				#video_urls_data = D(video_urls_data)
 				#Log('video_urls_data ------------> %s' % video_urls_data)
 				video_urls_arr = re.findall(r'(hls.*)', video_urls_data)
 				#Log('video_urls_arr ------------> %s' % video_urls_arr)
 				#Log('=======video_urls_data========')
 				video_url_a = []
 				for v in video_urls_arr:
-					video_url_a.append(video_url.split('list.m3u8')[0] + v)
+					#video_url_a.append(video_url.split('list.m3u8')[0] + v)
+					video_url_a.append({'file':video_url, 'label':v.split('/')[1]})
 				video_urlf = video_url_a
 				#Log('video_urlf ------------> %s' % video_urlf)
+				
+				if test == True:
+					Log('*** Testing MyCloud ***')
+					vurls = mycloud_streams(video_urlf[len(video_urlf)-1], https_skip, headers)
+				
 	except Exception as e:
 		Log('Misc.pys > resolve > error : %s' % e)
 		pass
 		
-	return video_urlf
+	return video_urlf, base64.b64encode(json.dumps(params))
 	
+#
+# Ref: https://github.com/Twoure/9anime.bundle/blob/6ce7aff245ef6769f2a0a6457281d8891b8452fa/Contents/Services/URL/9anime/ServiceCode.pys#L204...L222
+# Author: Twoure
+#
+####################################################################################################
+def mycloud_streams(hls_url, https_skip, headers=None):
+
+	vurls = list()
+	hls_url = hls_url['file']
+	Log.Debug('Requesting %s' % hls_url)
+	
+	if https_skip:
+		page = request(hls_url, headers=headers, httpsskip=True)
+	else:
+		page = HTTP.Request(hls_url, headers=headers).content
+		
+	Log("MyCloud m3u8 contents")
+	Log("Headers: %s" % headers)
+	Log(page)
+	#page = RE_SUB1.sub(hls_url.rsplit('/', 1)[0]+r'/\1', page)
+	#for (u, r) in RE_SOURCES.findall(page):
+	#	vurls.append({'file': u, 'label': int(r)})
+		
+	#return vurls
+	
+####################################################################################################
 def error(url, https_skip):
 	error = ''
 	try:

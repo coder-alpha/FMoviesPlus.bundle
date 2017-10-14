@@ -8,12 +8,12 @@ import misc as host_misc_resolvers
 USER_AGENT = "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:48.0) Gecko/20100101 Firefox/48.0"
 
 ####################################################################################################
-def NormalizeURL(url):
+def NormalizeURL(url, **kwargs):
 	
 	return url
 
 ####################################################################################################
-def MetadataObjectForURL(url):
+def MetadataObjectForURL(url, **kwargs):
 
 	data = get_data(url)
 	title = data['title']
@@ -123,7 +123,7 @@ def MediaObjectsForURL(url, **kwargs):
 	media_obj = []
 	params = None
 	https_skip = data['useSSL']
-	
+	pairrequired = False
 	direct_play = True
 	
 	try:
@@ -155,10 +155,15 @@ def MediaObjectsForURL(url, **kwargs):
 				
 			files = [{'file':ourl,'label': res}]
 			if 'openload' not in host:
-				furl = host_misc_resolvers.resolve(ourl, https_skip)
+				furl, params = host_misc_resolvers.resolve(ourl, https_skip)
+				#furl = json.loads(furl)
+				#Log(furl)
 				sortable_list = []
-				for ffurl in furl:
-					res = re.findall(r'hls\/(.*)\/', ffurl)[0]
+				for furlA in furl:
+					#Log(furlA)
+					#furlA = json.loads(furlA)
+					res = furlA['label']
+					ffurl = furlA['file']
 					if int(res) < 1000:
 						res = '0%s' % res
 					sortable_list.append({'file':ffurl,'label': str(res)})
@@ -178,7 +183,7 @@ def MediaObjectsForURL(url, **kwargs):
 						video_resolution = res,
 						audio_channels = 2,
 						optimized_for_streaming = direct_play,
-						parts = [PartObject(key=Callback(PlayVideo, url=furl, refUrl=ourl, isTargetPlay=True, pairrequired=pairrequired, host=host))]
+						parts = [PartObject(key=Callback(PlayVideo, url=furl, refUrl=ourl, isTargetPlay=True, pairrequired=pairrequired, https_skip=https_skip, params=params, host=host))]
 					)
 				else:
 					mo = MediaObject(
@@ -188,7 +193,7 @@ def MediaObjectsForURL(url, **kwargs):
 						video_resolution = res,
 						audio_channels = 2,
 						optimized_for_streaming = direct_play,
-						parts = [PartObject(key=Callback(PlayVideo, url=furl, isTargetPlay=True, pairrequired=pairrequired, host=host))]
+						parts = [PartObject(key=Callback(PlayVideo, url=furl, isTargetPlay=True, pairrequired=pairrequired, https_skip=https_skip, params=params, host=host))]
 					)
 				media_obj.append(mo)
 			
@@ -241,6 +246,7 @@ def MediaObjectsForURL(url, **kwargs):
 				type = file['type']
 				
 				#Log("furl ---- %s" % furl)
+				#Log("host --- %s" % host)
 				
 				if type == 'flv' or '.flv' in furl:
 					mo = MediaObject(
@@ -250,7 +256,7 @@ def MediaObjectsForURL(url, **kwargs):
 							video_resolution = res,
 							audio_channels = 2,
 							optimized_for_streaming = direct_play,
-							parts = [PartObject(key=Callback(PlayVideo, url=furl, useRedirect=useRedirect, refUrl=redUrl, params=params))]
+							parts = [PartObject(key=Callback(PlayVideo, url=furl, useRedirect=useRedirect, refUrl=redUrl, https_skip=https_skip, params=params, host=host))]
 						)
 				elif type == '.m3u8' or '.m3u8' in furl:
 					mo = MediaObject(
@@ -260,7 +266,7 @@ def MediaObjectsForURL(url, **kwargs):
 							video_resolution = res,
 							audio_channels = 2,
 							optimized_for_streaming = direct_play,
-							parts = [PartObject(key=Callback(PlayVideo, url=furl, useRedirect=useRedirect, refUrl=redUrl, params=params))]
+							parts = [PartObject(key=Callback(PlayVideo, url=furl, useRedirect=useRedirect, refUrl=redUrl, https_skip=https_skip, params=params, host=host))]
 						)
 				else:
 					mo = MediaObject(
@@ -270,7 +276,7 @@ def MediaObjectsForURL(url, **kwargs):
 							video_resolution = res,
 							audio_channels = 2,
 							optimized_for_streaming = direct_play,
-							parts = [PartObject(key=Callback(PlayVideo, url=furl, useRedirect=useRedirect, refUrl=redUrl, params=params))]
+							parts = [PartObject(key=Callback(PlayVideo, url=furl, useRedirect=useRedirect, refUrl=redUrl, https_skip=https_skip, params=params, host=host))]
 						)
 				
 				media_obj.append(mo)
@@ -282,7 +288,7 @@ def MediaObjectsForURL(url, **kwargs):
 
 ####################################################################################################
 @indirect
-def PlayVideo(url, isTargetPlay=False, useRedirect=False, refUrl=None, params=None, pairrequired=False, host=None):
+def PlayVideo(url, isTargetPlay=False, useRedirect=False, refUrl=None, params=None, pairrequired=False, https_skip=False, host=None, **kwargs):
 
 	try:
 		if isTargetPlay and 'openload' in host:
@@ -323,13 +329,28 @@ def PlayVideo(url, isTargetPlay=False, useRedirect=False, refUrl=None, params=No
 	if 'blogspot.com' in url:
 		time.sleep(3)
 
+	#Log.Debug('* PlayDirect URL = {}'.format(url))
+	
+	# if 'mycloud' in host:
+		# return IndirectResponse(VideoClipObject, key=HTTPLiveStreamURL(Callback(PlayDirect, url=url, https_skip=https_skip, headers=http_headers)), http_headers=http_headers, http_cookies=http_cookies)
 	if '.m3u8' in url:
 		return IndirectResponse(VideoClipObject, key=HTTPLiveStreamURL(url), http_headers=http_headers, http_cookies=http_cookies)
 	else:
 		return IndirectResponse(VideoClipObject, key=url, http_headers=http_headers, http_cookies=http_cookies)
+		
+####################################################################################################
+def PlayDirect(url, https_skip, headers=None, **kwargs):
+
+	if https_skip == True:
+		page = host_misc_resolvers.request(url, headers=headers, https_skip=https_skip, cacheTime=10)
+	else:
+		page = HTTP.Request(url, headers=headers, cacheTime=10).content
+	Log(page)
+
+	return host_misc_resolvers.RE_SUB1.sub(url.rsplit('/', 1)[0]+r'/\1', page)
 
 ####################################################################################################
-def get_data(url):
+def get_data(url, **kwargs):
 	return JSON.ObjectFromString(D(url.split('fmovies://')[1]))
 	
 #########################################################################################################
@@ -337,7 +358,7 @@ def get_data(url):
 #########################################################################################################
 import cookielib
 
-def GetRedirect(url, timeout=10, ref=None, headers=None, cookie=None):
+def GetRedirect(url, timeout=10, ref=None, headers=None, cookie=None, **kwargs):
 	class HTTPRedirectHandler(urllib2.HTTPRedirectHandler):
 		def redirect_request(self, req, fp, code, msg, headers, newurl):
 			newreq = urllib2.HTTPRedirectHandler.redirect_request(self,

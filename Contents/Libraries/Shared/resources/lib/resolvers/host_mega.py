@@ -182,7 +182,7 @@ class host:
 	def testUrl(self):
 		return ['https://mega.nz/#!R6xyBBpY!JmZlf7cn7w2scbWaPYESoppAY8UDbrkXKFz0e2FZASs']
 		
-	def createMeta(self, url, provider, logo, quality, links, key, riptype, vidtype='Movie', lang='en', txt=''):
+	def createMeta(self, url, provider, logo, quality, links, key, riptype, vidtype='Movie', lang='en', sub_url=None, txt=''):
 	
 		urldata = client.b64encode(json.dumps('', encoding='utf-8'))
 		params = client.b64encode(json.dumps('', encoding='utf-8'))
@@ -203,10 +203,10 @@ class host:
 			self.log('ERROR', 'createMeta', e, dolog=True)
 		
 		try:
-			files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':titleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':riptype, 'provider':provider, 'url':url, 'urldata':urldata, 'params':params, 'logo':logo, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'online':online, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'subdomain':self.netloc[0], 'misc':{'player':'iplayer', 'gp':False}})
+			files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':titleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':riptype, 'provider':provider, 'url':url, 'urldata':urldata, 'params':params, 'logo':logo, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'online':online, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'subdomain':self.netloc[0], 'misc':{'player':'iplayer', 'gp':False}})
 		except Exception as e:
 			print "ERROR host_mega.py > createMeta : %s" % e.args
-			files_ret.append({'source':urlhost, 'maininfo':'', 'titleinfo':titleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'url':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'subdomain':self.netloc[0], 'misc':{'player':'iplayer', 'gp':False}})
+			files_ret.append({'source':urlhost, 'maininfo':'', 'titleinfo':titleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'url':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'subdomain':self.netloc[0], 'misc':{'player':'iplayer', 'gp':False}})
 			
 		for fr in files_ret:
 			links.append(fr)

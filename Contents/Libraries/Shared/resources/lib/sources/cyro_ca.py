@@ -224,6 +224,13 @@ class source:
 					q = q[0] if len(q) > 0 else None
 					quality = '1080p' if ' 1080' in q else '720p'
 					
+					sub_url = None
+					
+					try:
+						sub_url = urlparse.urljoin(self.base_link, re.findall('\/.*srt', result)[0])
+					except:
+						pass
+					
 					#print quality
 
 					#r = client.parseDOM(r, 'div', attrs = {'id': '5throw'})[0]
@@ -234,9 +241,16 @@ class source:
 						#print r
 						r = client.parseDOM(r, 'a', ret='href', attrs = {'id': 'dm1'})[0]
 						#print r
-						links = resolvers.createMeta(r, self.name, self.logo, quality, links, key, vidtype='Movie')
+						links = resolvers.createMeta(r, self.name, self.logo, quality, links, key, vidtype='Movie', sub_url=sub_url)
 					except Exception as e:
 						control.log('ERROR %s get_sources3 > %s' % (self.name, e.args))	
+						
+					try:
+						r = self.returnFinalLink(url)
+						if r != None:
+							links = resolvers.createMeta(r, self.name, self.logo, quality, links, key, vidtype='Movie', sub_url=sub_url)
+					except Exception as e:
+						control.log('ERROR %s get_sources3b > %s' % (self.name, e.args))	
 				
 					try:
 						r = client.parseDOM(result, 'iframe', ret='src')
@@ -286,10 +300,10 @@ class source:
 									
 								if part2:
 									#print '2-part video'
-									links = resolvers.createMeta(r, self.name, self.logo, qualityt, links, key, vidtype=vidtype, txt='Part-1')
-									links = resolvers.createMeta(rx, self.name, self.logo, qualityt, links, key, vidtype=vidtype, txt='Part-2')
+									links = resolvers.createMeta(r, self.name, self.logo, qualityt, links, key, vidtype=vidtype, txt='Part-1', sub_url=sub_url)
+									links = resolvers.createMeta(rx, self.name, self.logo, qualityt, links, key, vidtype=vidtype, txt='Part-2', sub_url=sub_url)
 								else:
-									links = resolvers.createMeta(r, self.name, self.logo, qualityt, links, key, vidtype=vidtype)
+									links = resolvers.createMeta(r, self.name, self.logo, qualityt, links, key, vidtype=vidtype, sub_url=sub_url)
 								
 							except:
 								pass
@@ -314,6 +328,44 @@ class source:
 			return url
 		except:
 			return
+			
+	def returnFinalLink(self, url):
+		site = 'http://xpau.se'
+		headers = {'Accept':'text/html,application/xhtml+xml,application/xml;q=0.9,*//**;q=0.8',
+					'Accept-Language':'en-US,en;q=0.8',
+					'Cache-Control':'max-age=0',
+					'Connection':'keep-alive'}
+		headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36'
+		#headers['Cookie'] = ''
+		#url = 'http://xpau.se/watch/war-for-the-planet-of-the-apes'
+		
+		for x in range(0,15):
+
+			if 'wait' in url:
+				url = client.request(url, output='geturl')
+				
+			resp = client.request(url, headers=headers)
+			
+			#print(url)
+			#print(resp)
+			
+			if x == 0:
+				r = client.parseDOM(resp, 'a', ret='href', attrs = {'id': 'playthevid'})[0]
+			elif 'adfoc' in url or 'wait' in url:
+				r = client.parseDOM(resp, 'a', ret='href', attrs = {'id': 'skipper'})[0]
+			else:
+				try:
+					r = client.parseDOM(resp, 'iframe', ret='src')[0]
+				except:
+					return None
+
+			if 'google' in r:
+				return r
+			
+			if 'http' not in r:
+				url = site + r
+			else:
+				url = r
 
 def logger(msg):
 	control.log(msg)

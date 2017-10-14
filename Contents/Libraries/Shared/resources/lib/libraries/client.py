@@ -101,7 +101,7 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 		
 		if IPv4 == True:
 			setIP4()
-		
+			
 		if error==False and not proxy == None:
 			handlers += [urllib2.ProxyHandler({'http':'%s' % (proxy)}), urllib2.HTTPHandler]
 			opener = urllib2.build_opener(*handlers)
@@ -375,6 +375,7 @@ def send_http_request(url, data=None, timeout=None, fix_ssl=True):
 	#print data
 	if fix_ssl == True:
 		fix_ssl()
+		pass
 		
 	match = URL_RE.match(url)
 	if not match:

@@ -141,7 +141,13 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 		if 'Referer' in headers:
 			pass
 		elif referer == None:
-			headers['Referer'] = '%s://%s/' % (urlparse.urlparse(url).scheme, urlparse.urlparse(url).netloc)
+			try:
+				headers['Referer'] = '%s://%s/' % (urlparse.urlparse(url).scheme, urlparse.urlparse(url).netloc)
+			except:
+				try:
+					headers['Referer'] = url
+				except:
+					pass
 		else:
 			headers['Referer'] = referer
 		if not 'Accept-Language' in headers:

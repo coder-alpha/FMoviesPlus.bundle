@@ -59,16 +59,22 @@ def resolve(url, https_skip, test=False):
 		params = {}
 		headers = {}
 		headers['User-Agent'] = 'Mozilla5'
-		headers['accept'] = '*/*'
-		headers['accept-encoding'] = 'gzip, deflate, br'
-		headers['accept-language'] = 'en-US,en;q=0.8'
-		headers['cache-control'] = 'no-cache'
-		headers['dnt'] = 1
-		headers['origin'] = 'https://mycloud.to'
-		headers['pragma'] = 'no-cache'
-		headers['Referer'] = 'https://mycloud.to'
-		params['headers'] = headers
 		
+		if 'mycloud.' in url:
+			headers['Referer'] = 'http://mycloud.to'
+			
+			data = urlparse.parse_qs(url)
+			#Log(data)
+			for k in data.keys():
+				if 'mycloud' in k:
+					url = k.split('?')[0] + '?ui=%s' % data['ui'][0].replace('=','')
+					if 'https:' not in url and 'http:' not in url:
+						url = 'http:' + url
+					break
+				
+		params['headers'] = headers
+		#Log(url)
+					
 		if https_skip:
 			page_data_string = request(url, headers=headers, httpsskip=True)
 		else:
@@ -80,7 +86,7 @@ def resolve(url, https_skip, test=False):
 				json_data = json.loads(json_data_str)
 				video_url = json_data['file']
 				if 'https:' not in video_url and 'http:' not in video_url:
-					video_url = 'https:' + video_url
+					video_url = 'http:' + video_url
 				#Log('=======video_urls_data========')
 				if https_skip:
 					video_urls_data = request(video_url, headers=headers, httpsskip=True)
@@ -93,8 +99,9 @@ def resolve(url, https_skip, test=False):
 				#Log('=======video_urls_data========')
 				video_url_a = []
 				for v in video_urls_arr:
-					#video_url_a.append(video_url.split('list.m3u8')[0] + v)
-					video_url_a.append({'file':video_url, 'label':v.split('/')[1]})
+					f_i = {'file':video_url.split('list.m3u8')[0] + v, 'label':v.split('/')[1]}
+					video_url_a.append(f_i)
+					#Log(f_i)
 				video_urlf = video_url_a
 				#Log('video_urlf ------------> %s' % video_urlf)
 				
@@ -209,7 +216,10 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 		if 'Referer' in headers:
 			pass
 		elif referer == None:
-			headers['Referer'] = '%s://%s/' % (urlparse.urlparse(url).scheme, urlparse.urlparse(url).netloc)
+			try:
+				headers['Referer'] = '%s://%s/' % (urlparse.urlparse(url).scheme, urlparse.urlparse(url).netloc)
+			except:
+				pass
 		else:
 			headers['Referer'] = referer
 		if not 'Accept-Language' in headers:

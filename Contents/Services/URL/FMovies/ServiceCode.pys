@@ -329,25 +329,10 @@ def PlayVideo(url, isTargetPlay=False, useRedirect=False, refUrl=None, params=No
 	if 'blogspot.com' in url:
 		time.sleep(3)
 
-	#Log.Debug('* PlayDirect URL = {}'.format(url))
-	
-	# if 'mycloud' in host:
-		# return IndirectResponse(VideoClipObject, key=HTTPLiveStreamURL(Callback(PlayDirect, url=url, https_skip=https_skip, headers=http_headers)), http_headers=http_headers, http_cookies=http_cookies)
 	if '.m3u8' in url:
 		return IndirectResponse(VideoClipObject, key=HTTPLiveStreamURL(url), http_headers=http_headers, http_cookies=http_cookies)
 	else:
 		return IndirectResponse(VideoClipObject, key=url, http_headers=http_headers, http_cookies=http_cookies)
-		
-####################################################################################################
-def PlayDirect(url, https_skip, headers=None, **kwargs):
-
-	if https_skip == True:
-		page = host_misc_resolvers.request(url, headers=headers, https_skip=https_skip, cacheTime=10)
-	else:
-		page = HTTP.Request(url, headers=headers, cacheTime=10).content
-	Log(page)
-
-	return host_misc_resolvers.RE_SUB1.sub(url.rsplit('/', 1)[0]+r'/\1', page)
 
 ####################################################################################################
 def get_data(url, **kwargs):

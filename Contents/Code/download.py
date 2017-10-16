@@ -153,7 +153,7 @@ class Downloader(object):
 		#Log("total_size_bytes : %s" % str(total_size_bytes))
 		error = ''
 		
-		chunk_size_n = int(1024.0 * 1024.0 * float(Prefs['download_chunk_size'])) # in bytes
+		chunk_size_n = int(1024.0 * 1024.0 * float(common.DOWNLOAD_CHUNK_SIZE)) # in bytes
 		if chunk_size != chunk_size_n:
 			chunk_size = chunk_size_n
 			file_meta['chunk_size'] = chunk_size
@@ -316,8 +316,14 @@ class Downloader(object):
 							if action in [common.DOWNLOAD_ACTIONS[3]]:
 								Dict[purgeKey] = E(JSON.StringFromObject(file_meta))
 							if action == common.DOWNLOAD_ACTIONS[0]: # cancel
-								f.close()
-								r.close()
+								try:
+									f.close()
+								except:
+									pass
+								try:
+									r.close()
+								except:
+									pass
 								end_download_by_user(title, url, purgeKey)
 								return
 							elif action == common.DOWNLOAD_ACTIONS[1]: # pause
@@ -345,8 +351,14 @@ class Downloader(object):
 								common.DOWNLOAD_STATS[purgeKey]['action'] = common.DOWNLOAD_ACTIONS[4]
 								
 							elif action == common.DOWNLOAD_ACTIONS[3]: # postpone
-								f.close()
-								r.close()
+								try:
+									f.close()
+								except:
+									pass
+								try:
+									r.close()
+								except:
+									pass
 								postpone_download_by_user(title, url, progress, bytes_read, purgeKey)
 								return
 							else:
@@ -381,7 +393,10 @@ class Downloader(object):
 						if (progress < 5):
 							raise Exception('Error downloading file.')
 							
-						f.close()
+						try:
+							f.close()
+						except:
+							pass
 						progress = 100
 						file_renamed_inc = True
 						c = 1
@@ -427,7 +442,10 @@ class Downloader(object):
 			download_failed(url, error, progress, bytes_read, purgeKey)
 
 		if r != None:
-			r.close()
+			try:
+				r.close()
+			except:
+				pass
 		
 ##############################################################################################
 	

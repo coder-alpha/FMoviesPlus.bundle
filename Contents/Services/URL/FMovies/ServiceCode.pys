@@ -125,6 +125,10 @@ def MediaObjectsForURL(url, **kwargs):
 	https_skip = data['useSSL']
 	pairrequired = False
 	direct_play = True
+	try:
+		openloadApiKey = data['control_openload_api_key']
+	except:
+		openloadApiKey = None
 	
 	try:
 		params = data['params']
@@ -143,6 +147,9 @@ def MediaObjectsForURL(url, **kwargs):
 		
 			ourl = data['server']
 			#Log("ourl -------- %s" % ourl)
+			
+			#url = Openload.resolve(ourl)
+			#Log("url -------- %s" % url)
 			
 			pairrequired = data['pairrequired']
 			
@@ -183,7 +190,7 @@ def MediaObjectsForURL(url, **kwargs):
 						video_resolution = res,
 						audio_channels = 2,
 						optimized_for_streaming = direct_play,
-						parts = [PartObject(key=Callback(PlayVideo, url=furl, refUrl=ourl, isTargetPlay=True, pairrequired=pairrequired, https_skip=https_skip, params=params, host=host))]
+						parts = [PartObject(key=Callback(PlayVideo, url=furl, refUrl=ourl, isTargetPlay=True, pairrequired=pairrequired, https_skip=https_skip, params=params, host=host, openloadApiKey=openloadApiKey))]
 					)
 				else:
 					mo = MediaObject(
@@ -193,7 +200,7 @@ def MediaObjectsForURL(url, **kwargs):
 						video_resolution = res,
 						audio_channels = 2,
 						optimized_for_streaming = direct_play,
-						parts = [PartObject(key=Callback(PlayVideo, url=furl, isTargetPlay=True, pairrequired=pairrequired, https_skip=https_skip, params=params, host=host))]
+						parts = [PartObject(key=Callback(PlayVideo, url=furl, isTargetPlay=True, pairrequired=pairrequired, https_skip=https_skip, params=params, host=host, openloadApiKey=openloadApiKey))]
 					)
 				media_obj.append(mo)
 			
@@ -288,12 +295,12 @@ def MediaObjectsForURL(url, **kwargs):
 
 ####################################################################################################
 @indirect
-def PlayVideo(url, isTargetPlay=False, useRedirect=False, refUrl=None, params=None, pairrequired=False, https_skip=False, host=None, **kwargs):
+def PlayVideo(url, isTargetPlay=False, useRedirect=False, refUrl=None, params=None, pairrequired=False, https_skip=False, host=None, openloadApiKey=None, **kwargs):
 
 	try:
 		if isTargetPlay and 'openload' in host:
-			if pairrequired == True:
-				url = Openload.resolve(url)
+			#if pairrequired == True:
+			url = Openload.resolve(url, openloadApiKey)
 		elif isTargetPlay:
 			#url = host_misc_resolvers.resolve(url)
 			pass

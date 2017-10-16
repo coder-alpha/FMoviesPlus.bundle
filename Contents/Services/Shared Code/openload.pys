@@ -15,17 +15,19 @@
 #
 #########################################################################################################
 
-import re
+import re, base64
 
 API_URL = 'https://api.openload.co/1'
 PAIR_INFO_URL = API_URL + '/streaming/info'
 GET_VIDEO_URL = API_URL + '/streaming/get?file=%s'
 VALID_URL = r'https?://(?:openload\.(?:co|io)|oload\.tv)/(?:f|embed)/(?P<id>[a-zA-Z0-9-_]+)'
 
-def resolve(url):
+def resolve(url, openloadApiKey):
 	#Log(url)
 	video_id = match_id(url)
-	video_url = pairing_method(video_id)
+	video_url, cont = link_from_api(video_id, openloadApiKey)
+	if video_url == None and cont == True:
+		video_url = pairing_method(video_id)
 	return video_url
 		
 def pairing_method(video_id):
@@ -44,6 +46,47 @@ def pairing_method(video_id):
 		print e
 	
 	return None
+	
+# Twoure's API method
+def link_from_api(fid, openloadApiKey):
+	
+	try:
+		cont = True
+		lk = openloadApiKey
+		if lk == None or lk == '' or len(lk) == 0 or ':' not in lk:
+			lk = base64.b64decode(base64.b64decode('WW1ReU9USmxNalkzTjJZd016RTFOenBmWjNnMU5GTkROUT09'))
+		
+		lk = lk.split(':')
+		l = lk[0]
+		k = lk[1]
+		burl = 'https://api.openload.co/1/file/'
+
+		try:
+			url = None
+			url = burl + 'dlticket?file=' + fid + '&login=' + l + '&key=' + k
+			data = JSON.ObjectFromURL(url)
+		except Exception as e:
+			print e
+			Log.Error(u"* <openload.link_from_api> - error: cannot handle first api link %s >>>" % url)
+			return None, cont
+
+		if data["status"] == 200:
+			t = data["result"]["ticket"]
+			try:
+				url = None
+				url = burl + 'dl?file=' + fid + '&ticket=' + t
+				data = JSON.ObjectFromURL(url)
+				#print data
+				if data["status"] == 200:
+					return data['result']['url'].replace("https", "http"), cont
+				else:
+					Log.Error(u"* <openload.link_from_api> - error: cannot handle 2nd api link %s >>>" % data['msg'])
+			except:
+				Log.Error(u"* <openload.link_from_api> - error: cannot handle 2nd api link %s >>>" % url)
+		Log.Error("* <openload.link_from_api> - error: failed to retrieve video stream")
+	except Exception as e:
+		Log.Error("* <openload.link_from_api> - error: %s" % e)
+	return None, cont
 		
 #############################################################################################
 

@@ -33,7 +33,7 @@
 #########################################################################################################
 
 
-import re,json,time
+import re,json,time,base64
 import os, sys
 import js2py
 from __builtin__ import ord
@@ -391,28 +391,32 @@ def openloadS(url, videoData=None, usePairing=True):
 
 		video_id = match_id(url)
 		ol_id = client.search_regex('<span[^>]+id="[^"]+"[^>]*>([0-9A-Za-z]+)</span>',videoData, 'openload ID')
+		print 'OpenLoad iD: %s' % video_id
 		
 		video_url = 'https://openload.co/stream/%s?mime=true'
 		try:
 			decoded = decode_id(ol_id)
 			video_url = video_url % decoded
 		except DecodeError as e:
-			print('%s; falling back to method with evaluating' % e, video_id)
-			try:
-				decoded = eval_id_decoding(videoData, ol_id)
-				video_url = video_url % decoded
-			except DecodeError as e:
+			print('%s; falling back to method with L/K API' % e, video_id)
+			video_url, cont = link_from_api(video_id)
+			if video_url == None and cont == True:
+				print('%s; falling back to method with evaluating' % e, video_id)
 				try:
-					if usePairing == True:
-						print('%s; falling back to method with pairing' % e, video_id)
-						title, video_url = pairing_method(video_id)
-					else:
-						print('%s; pairing is the only option available' % e, video_id)
-						video_url = None
+					decoded = eval_id_decoding(videoData, ol_id)
+					video_url = video_url % decoded
 				except DecodeError as e:
-					video_url = None
-					ret_error = str(e)
-					print ret_error
+					try:
+						if usePairing == True and video_url == None:
+							print('%s; falling back to method with pairing' % e, video_id)
+							title, video_url = pairing_method(video_id)
+						elif video_url == None:
+							print('%s; pairing is the only option available' % e, video_id)
+							video_url = None
+					except DecodeError as e:
+						video_url = None
+						ret_error = str(e)
+						print ret_error
 
 		return (video_url, videoData, ret_error)
 	except Exception as e:
@@ -612,6 +616,46 @@ def isPairingDone():
 		return True
 		
 	return False
+	
+# Twoure's API method
+def link_from_api(fid):
+	
+	lk = control.setting('control_openload_api_key')
+	lk = lk.split(':')
+	l = lk[0]
+	k = lk[1]
+	burl = 'https://api.openload.co/1/file/'
+	
+	cont = True
+	try:
+		url = None
+		url = burl + 'dlticket?file=' + fid + '&login=' + l + '&key=' + k
+		data = client.request(url)
+		data = json.loads(data)
+		#print data
+	except Exception as e:
+		print e
+		logger(u"* <openload.link_from_api> - error: cannot handle first api link %s >>>" % url)
+		return None, cont
+
+	if data["status"] == 200:
+		t = data["result"]["ticket"]
+		try:
+			url = None
+			url = burl + 'dl?file=' + fid + '&ticket=' + t
+			data = client.request(url)
+			data = json.loads(data)
+			#print data
+			if data["status"] == 200:
+				return data['result']['url'].replace("https", "http"), cont
+			else:
+				logger(u"* <openload.link_from_api> - error: cannot handle 2nd api link %s >>>" % data['msg'])
+		except:
+			logger(u"* <openload.link_from_api> - error: cannot handle 2nd api link %s >>>" % url)
+	else:
+		logger(u"* <openload.link_from_api> - %s >>>" % data['msg'])
+	logger("* <openload.link_from_api> - error: failed to retrieve video stream")
+	return None, cont
 
 		
 def persistPairing(runIndefinite=False):

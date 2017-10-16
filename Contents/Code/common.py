@@ -1,7 +1,7 @@
 ################################################################################
 TITLE = "FMoviesPlus"
 VERSION = '0.45' # Release notation (x.y - where x is major and y is minor)
-TAG = 'dev 10-14-2017'
+TAG = 'dev 10-16-2017'
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
 ################################################################################
@@ -56,6 +56,7 @@ CACHE_EXPIRY = 3600
 CACHE_COOKIE = []
 TOKEN_CODE = []
 TO_GB = float(1024*1024*1024)
+DOWNLOAD_CHUNK_SIZE = 1.0 # in MB
 
 # Help videos on Patebin
 Help_Videos = "https://pastebin.com/raw/BMMHQund"
@@ -181,7 +182,7 @@ def GetKeyFromVal(list, val_look):
 
 def set_control_settings():
 
-	keys = ['use_https_alt','control_all_uc_api_key','use_openload_pairing']
+	keys = ['use_https_alt','control_all_uc_api_key','control_openload_api_key','use_openload_pairing']
 	for i in range(0,len(keys)):
 		try:
 			key = keys[i]

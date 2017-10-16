@@ -92,7 +92,8 @@ def resolve(url, https_skip, test=False):
 					video_urls_data = request(video_url, headers=headers, httpsskip=True)
 				else:
 					video_urls_data = HTTP.Request(video_url, headers=headers).content
-				#video_urls_data = D(video_urls_data)
+				if video_urls_data == None or video_urls_data == '':
+					raise ValueError('M3U8 URL is empty')
 				#Log('video_urls_data ------------> %s' % video_urls_data)
 				video_urls_arr = re.findall(r'(hls.*)', video_urls_data)
 				#Log('video_urls_arr ------------> %s' % video_urls_arr)
@@ -110,7 +111,7 @@ def resolve(url, https_skip, test=False):
 					vurls = mycloud_streams(video_urlf[len(video_urlf)-1], https_skip, headers)
 				
 	except Exception as e:
-		Log('Misc.pys > resolve > error : %s' % e)
+		Log('Misc.pys > resolve > Error : %s' % e)
 		pass
 		
 	return video_urlf, base64.b64encode(json.dumps(params))

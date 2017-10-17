@@ -1,7 +1,7 @@
 ################################################################################
 TITLE = "FMoviesPlus"
 VERSION = '0.45' # Release notation (x.y - where x is major and y is minor)
-TAG = 'dev 10-16-2017'
+TAG = 'dev 10-17-2017'
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
 ################################################################################
@@ -729,7 +729,7 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 		pass
 		
 	return page_data_string
-	
+
 ######################################################################################
 
 def id_generator(size=9, chars=string.ascii_uppercase + string.digits):
@@ -892,23 +892,27 @@ def ArrayItemsInString(arr, mystr):
 	
 ####################################################################################################
 class PageError(Exception):
-    pass
+	pass
 	
 ####################################################################################################
 
 # checks if USS is installed or not
 def is_uss_installed():
-    """Check install state of UnSupported Services"""
+	"""Check install state of UnSupported Services"""
+	
+	try:
+		identifiers = list()
+		plugins_list = XML.ElementFromURL('http://127.0.0.1:32400/:/plugins', cacheTime=0)
 
-    identifiers = list()
-    plugins_list = XML.ElementFromURL('http://127.0.0.1:32400/:/plugins', cacheTime=0)
+		for plugin_el in plugins_list.xpath('//Plugin'):
+			identifiers.append(plugin_el.get('identifier'))
 
-    for plugin_el in plugins_list.xpath('//Plugin'):
-        identifiers.append(plugin_el.get('identifier'))
-
-    if 'com.plexapp.system.unsupportedservices' in identifiers:
-        return True
-    return False
+		if 'com.plexapp.system.unsupportedservices' in identifiers:
+			return True
+		return False
+	except Exception as e:
+		Log.Error("common.is_uss_installed > Error: %s" % e)
+	return False
 	
 ####################################################################################################
 

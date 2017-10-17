@@ -25,7 +25,7 @@ VALID_URL = r'https?://(?:openload\.(?:co|io)|oload\.tv)/(?:f|embed)/(?P<id>[a-z
 def resolve(url, openloadApiKey):
 	#Log(url)
 	video_id = match_id(url)
-	video_url, cont = link_from_api(video_id, openloadApiKey)
+	video_url, cont, cu = link_from_api(video_id, openloadApiKey)
 	if video_url == None and cont == True:
 		video_url = pairing_method(video_id)
 	return video_url
@@ -49,9 +49,14 @@ def pairing_method(video_id):
 	
 # Twoure's API method
 def link_from_api(fid, openloadApiKey):
-	
+
 	try:
+		if 'http' in fid:
+			fid = match_id(fid)
+
 		cont = True
+		catcha_url = None
+		
 		lk = openloadApiKey
 		if lk == None or lk == '' or len(lk) == 0 or ':' not in lk:
 			lk = base64.b64decode(base64.b64decode('WW1ReU9USmxNalkzTjJZd016RTFOenBmWjNnMU5GTkROUT09'))
@@ -68,17 +73,19 @@ def link_from_api(fid, openloadApiKey):
 		except Exception as e:
 			print e
 			Log.Error(u"* <openload.link_from_api> - error: cannot handle first api link %s >>>" % url)
-			return None, cont
+			return None, cont, catcha_url
 
 		if data["status"] == 200:
 			t = data["result"]["ticket"]
+			if 'captcha_url' in data["result"].keys():
+				catcha_url = data["result"]["captcha_url"]
 			try:
 				url = None
 				url = burl + 'dl?file=' + fid + '&ticket=' + t
 				data = JSON.ObjectFromURL(url)
 				#print data
 				if data["status"] == 200:
-					return data['result']['url'].replace("https", "http"), cont
+					return data['result']['url'].replace("https", "http"), cont, catcha_url
 				else:
 					Log.Error(u"* <openload.link_from_api> - error: cannot handle 2nd api link %s >>>" % data['msg'])
 			except:
@@ -86,7 +93,7 @@ def link_from_api(fid, openloadApiKey):
 		Log.Error("* <openload.link_from_api> - error: failed to retrieve video stream")
 	except Exception as e:
 		Log.Error("* <openload.link_from_api> - error: %s" % e)
-	return None, cont
+	return None, cont, catcha_url
 		
 #############################################################################################
 

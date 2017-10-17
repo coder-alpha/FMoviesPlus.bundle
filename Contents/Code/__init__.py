@@ -2218,7 +2218,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, **kwargs):
 						if Prefs["use_debug"]:
 							Log("%s - %s" % (url, url_s))
 						server_info, isTargetPlay, error, host, sub_url = fmovies.GetApiUrl(url=url, key=url_s, serverts=serverts)
-						
+						server_info_t = server_info
 						if server_info != None:
 							qual = common.getHighestQualityLabel(server_info, label_i['quality'])
 							title_s = label + ' - ' + qual
@@ -2236,12 +2236,14 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, **kwargs):
 								isVideoOnline = common.isItemVidAvailable(isTargetPlay=isTargetPlay, data=data, host=host)
 								
 							if isTargetPlay == True and 'openload' in host and (Prefs['use_openload_pairing'] or not common.is_uss_installed()):
-								pair_required = common.host_openload.isPairingRequired(url=server_info)
+								pair_required, u1 = common.host_openload.isPairingRequired(url=server_info)
 								if pair_required == True:
 									if common.host_openload.isPairingDone() == False:
 										pair = ' *Pairing required* '
 									else:
 										pair = ' *Paired* '
+								else:
+									server_info_t = u1
 								if Prefs["use_debug"]:
 									Log("%s --- %s : Pairing required: %s" % (server_info, pair, pair_required))
 								
@@ -2260,7 +2262,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, **kwargs):
 								if not Prefs['use_openload_pairing'] and 'openload' in host and common.is_uss_installed() and URLService.ServiceIdentifierForURL(server_info) != None:
 									durl = server_info
 								else:
-									durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":server_info, "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "roles":roles, "directors":directors, "roles":roles, "isTargetPlay":str(isTargetPlay), "useSSL":Prefs["use_https_alt"], "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled, 'urldata':'','quality':qual, 'pairrequired':pair_required, "host":host, "openloadApiKey":Prefs['control_openload_api_key']}))
+									durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":server_info_t, "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "roles":roles, "directors":directors, "roles":roles, "isTargetPlay":str(isTargetPlay), "useSSL":Prefs["use_https_alt"], "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled, 'urldata':'','quality':qual, 'pairrequired':pair_required, "host":host, "openloadApiKey":Prefs['control_openload_api_key']}))
 									
 								oc.add(VideoClipObject(
 									url = durl,
@@ -2439,8 +2441,9 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 		
 		if common.UsingOption(common.DEVICE_OPTIONS[5], session=session):	
 			server_info,isTargetPlay, error, host, sub_url = fmovies.GetApiUrl(url=url, key=url_s, serverts=serverts)
-			if server_info != None:
+			server_info_t = server_info
 			
+			if server_info != None:
 				pair = ''
 				pair_required = False
 				status = ''
@@ -2454,12 +2457,14 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 					isVideoOnline = common.isItemVidAvailable(isTargetPlay=isTargetPlay, data=data, host=host)
 					
 				if isTargetPlay == True and 'openload' in host and (Prefs['use_openload_pairing'] or not common.is_uss_installed()):
-					pair_required = common.host_openload.isPairingRequired(url=server_info)
+					pair_required, u1 = common.host_openload.isPairingRequired(url=server_info)
 					if pair_required == True:
 						if common.host_openload.isPairingDone() == False:
 							pair = ' *Pairing required* '
 						else:
 							pair = ' *Paired* '
+					else:
+						server_info_t = u1
 					if Prefs["use_debug"]:
 						Log("%s --- %s : Pairing required: %s" % (server_info, pair, pair_required))
 					
@@ -2477,7 +2482,7 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 				if not Prefs['use_openload_pairing'] and 'openload' in host and common.is_uss_installed() and URLService.ServiceIdentifierForURL(server_info) != None:
 					durl = server_info
 				else:
-					durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":server_info, "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "directors":directors, "roles":roles, "isTargetPlay":str(isTargetPlay), "useSSL":Prefs["use_https_alt"], "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled, 'urldata':'', 'pairrequired':pair_required, "host":host, "openloadApiKey":Prefs['control_openload_api_key']}))
+					durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":server_info_t, "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "directors":directors, "roles":roles, "isTargetPlay":str(isTargetPlay), "useSSL":Prefs["use_https_alt"], "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled, 'urldata':'', 'pairrequired':pair_required, "host":host, "openloadApiKey":Prefs['control_openload_api_key']}))
 				
 				try:
 					oc.add(VideoClipObject(
@@ -2572,7 +2577,9 @@ def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary
 		if Prefs["use_debug"]:
 			Log("%s - %s" % (url, url_s))
 		server_info, isTargetPlay, error, host, sub_url = fmovies.GetApiUrl(url=url, key=url_s, serverts=serverts)
-		
+		server_info_t = server_info
+		captcha = None
+		dlt = None
 		if server_info != None:
 			if label_i_qual != None:
 				qual = common.getHighestQualityLabel(server_info, label_i_qual)
@@ -2594,12 +2601,19 @@ def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary
 				isVideoOnline = common.isItemVidAvailable(isTargetPlay=isTargetPlay, data=data, host=host)
 				
 			if isTargetPlay == True and 'openload' in host and (Prefs['use_openload_pairing'] or not common.is_uss_installed()):
-				pair_required = common.host_openload.isPairingRequired(url=server_info)
+			
+				pair_required, u1 = common.host_openload.isPairingRequired(url=server_info)
+				#Log(u1)
+				
 				if pair_required == True:
+					a1,a2,captcha,dlt = common.host_openload.link_from_api(server_info)
 					if common.host_openload.isPairingDone() == False:
 						pair = ' *Pairing required* '
 					else:
 						pair = ' *Paired* '
+				else:
+					server_info_t = u1
+					
 				if Prefs["use_debug"]:
 					Log("%s --- %s : Pairing required: %s" % (server_info, pair, pair_required))
 			elif isTargetPlay == True:
@@ -2622,7 +2636,7 @@ def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary
 				if not Prefs['use_openload_pairing'] and 'openload' in host and common.is_uss_installed() and URLService.ServiceIdentifierForURL(server_info) != None:
 					durl = server_info
 				else:
-					durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":server_info, "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "roles":roles, "directors":directors, "roles":roles, "isTargetPlay":str(isTargetPlay), "useSSL":Prefs["use_https_alt"], "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled, 'urldata':'','quality':qual, 'pairrequired':pair_required, "host":host, "openloadApiKey":Prefs['control_openload_api_key']}))
+					durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":server_info_t, "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "roles":roles, "directors":directors, "roles":roles, "isTargetPlay":str(isTargetPlay), "useSSL":Prefs["use_https_alt"], "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled, 'urldata':'','quality':qual, 'pairrequired':pair_required, "host":host, "openloadApiKey":Prefs['control_openload_api_key']}))
 					
 				oc.add(VideoClipObject(
 					url = durl,
@@ -2635,6 +2649,9 @@ def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary
 					key = AddRecentWatchList(title=title, url=url, summary=summary, thumb=thumb)
 					)
 				)
+				
+				if captcha != None and captcha != False:
+					DumbKeyboard(PREFIX, oc, SolveCaptcha, dktitle = 'Solve Captcha: ' + title, dkHistory = False, dkthumb = captcha, url = server_info, dlt = dlt)
 				
 				try:
 					if Prefs['disable_downloader'] == False:
@@ -2710,9 +2727,9 @@ def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary
 	except Exception as e:
 		Log("ERROR init.py>VideoDetail>Movie3 %s %s" % (url,url_s))
 		Log("ERROR init.py>VideoDetail>Movie3 %s" % (server_info))
-		Log('ERROR init.py>VideoDetail>Movie3 %s, %s' % (e.args, (title + ' - ' + title_s)))
+		Log('ERROR init.py>VideoDetail>Movie3 %s, %s' % (e, (title + ' - ' + title_s)))
 		
-		return MC.message_container('Video Unavailable', 'Video Unavailable. Error: %s' % e.args)
+		return MC.message_container('Video Unavailable', 'Video Unavailable. Error: %s' % e)
 
 	return oc
 	
@@ -3713,7 +3730,9 @@ def AddToDownloadsList(title, year, url, purl, summary, thumb, quality, source, 
 				if 'openload' in source:
 					isPairDone = common.host_openload.isPairingDone()
 					if isPairDone == False:
-						pair_required = common.host_openload.isPairingRequired(url=url)
+						pair_required, u1 = common.host_openload.isPairingRequired(url=url)
+						if pair_required == False:
+							fs_i, err = common.client.getFileSize(u1, retError=True, retry429=True, cl=2)
 					online, r1, err, fs_i =  common.host_openload.check(url, usePairing = False, embedpage=True)
 				else:
 					fs_i, err = common.client.getFileSize(url, retError=True, retry429=True, cl=2)
@@ -6211,6 +6230,24 @@ def PlayAndAdd(url, title, summary, thumb, videoUrl, watch_title, **kwargs):
 	addfile = AddRecentWatchList(title=watch_title, url=url, summary=summary, thumb=thumb)
 	
 	return videoUrl
+	
+####################################################################################################
+def SolveCaptcha(query, url, dlt, **kwargs):
+
+	try:
+		resp = common.host_openload.SolveCaptcha(query, url, dlt)
+	except Exception as e:
+		if Prefs['use_debug']:
+			Log("SolveCaptcha Error resp: %s" % e)
+		resp = None
+	
+	if Prefs['use_debug']:
+		Log("SolveCaptcha resp: %s" % resp)
+	
+	if resp == None:
+		return MC.message_container('Captcha Unsolved', 'Captcha Not Solved. Incorrect response !')
+	else:
+		return MC.message_container('Captcha Solved', 'Captcha Solved Successfully')
 	
 ####################################################################################################
 @route(common.PREFIX+'/MyMessage')

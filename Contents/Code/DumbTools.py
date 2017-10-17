@@ -96,6 +96,9 @@ class DumbKeyboard:
 		return self.History()
 
 	def AddHistory(self, query):
+		if Dict['DumbKeyboard-History'] == None:
+			Dict['DumbKeyboard-History'] = []
+			Dict.Save()
 		if query not in Dict['DumbKeyboard-History']:
 			Dict['DumbKeyboard-History'].append(query)
 			Dict.Save()

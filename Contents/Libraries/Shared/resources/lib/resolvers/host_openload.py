@@ -51,6 +51,11 @@ except:
 	# import client
 	# import control
 	pass
+	
+try:
+	import phantomjs
+except:
+	pass
 
 API_URL = 'https://api.openload.co/1'
 PAIR_INFO_URL = API_URL + '/streaming/info'
@@ -171,7 +176,7 @@ class host:
 		params = client.b64encode(json.dumps('', encoding='utf-8'))
 		
 		if control.setting('use_openload_pairing') == True or control.setting('is_uss_installed') == False:
-			isPairRequired = isPairingRequired(url)
+			isPairRequired, a1 = isPairingRequired(url)
 			#print "isPairRequired %s" % isPairRequired
 		else:
 			isPairRequired = False
@@ -392,14 +397,28 @@ def openloadS(url, videoData=None, usePairing=True):
 		video_id = match_id(url)
 		ol_id = client.search_regex('<span[^>]+id="[^"]+"[^>]*>([0-9A-Za-z]+)</span>',videoData, 'openload ID')
 		print 'OpenLoad iD: %s' % video_id
+		video_url = None
 		
-		video_url = 'https://openload.co/stream/%s?mime=true'
 		try:
-			decoded = decode_id(ol_id)
-			video_url = video_url % decoded
+			print('phantomjs method', video_id)
+			v_url, bool = phantomjs.decode(url)
+			if bool == False:
+				raise DecodeError(v_url)
+			else:
+				video_url = v_url
 		except DecodeError as e:
-			print('%s; falling back to method with L/K API' % e, video_id)
-			video_url, cont = link_from_api(video_id)
+			if video_url == None:
+				print('%s; falling back to method with L/K API' % e, video_id)
+				video_url, cont, cu, dlk = link_from_api(video_id)
+			if video_url == None:
+				e = 'L/K API error'
+				print('%s; falling back to decode_id method' % e, video_id)
+				try:
+					v_url = 'https://openload.co/stream/%s?mime=true'
+					decoded = decode_id(ol_id)
+					video_url = v_url % decoded
+				except DecodeError as e:
+					pass
 			if video_url == None and cont == True:
 				print('%s; falling back to method with evaluating' % e, video_id)
 				try:
@@ -594,9 +613,9 @@ def isPairingRequired(url):
 	resolved_url, err = resolve(url=url, usePairing=False)
 	
 	if resolved_url != None:
-		return False
+		return False, resolved_url
 	
-	return True
+	return True, resolved_url
 	
 def isPairingDone():
 	
@@ -618,7 +637,7 @@ def isPairingDone():
 	return False
 	
 # Twoure's API method
-def link_from_api(fid):
+def link_from_api(fid, lk=None, test=False):
 	
 	lk = control.setting('control_openload_api_key')
 	lk = lk.split(':')
@@ -627,7 +646,13 @@ def link_from_api(fid):
 	burl = 'https://api.openload.co/1/file/'
 	
 	cont = True
+	captcha_url = None
+	dlticket = None
+	
 	try:
+		if 'http' in fid:
+			fid = match_id(fid)
+			
 		url = None
 		url = burl + 'dlticket?file=' + fid + '&login=' + l + '&key=' + k
 		data = client.request(url)
@@ -636,18 +661,25 @@ def link_from_api(fid):
 	except Exception as e:
 		print e
 		logger(u"* <openload.link_from_api> - error: cannot handle first api link %s >>>" % url)
-		return None, cont
+		return None, cont, captcha_url, dlticket
 
 	if data["status"] == 200:
-		t = data["result"]["ticket"]
+		dlticket = data["result"]["ticket"]
+		if 'captcha_url' in data["result"].keys():
+			captcha_url = data["result"]["captcha_url"]
+			if captcha_url != None and captcha_url != False:
+				captcha_url = captcha_url.replace('://',':||').replace('//','/').replace(':||','://')
+			
+		if test == True:
+			captcha_url = 'https://openload.co/dlcaptcha/QdCRoYF8wouT3YSj.png'
 		try:
 			url = None
-			url = burl + 'dl?file=' + fid + '&ticket=' + t
+			url = burl + 'dl?file=' + fid + '&ticket=' + dlticket
 			data = client.request(url)
 			data = json.loads(data)
 			#print data
 			if data["status"] == 200:
-				return data['result']['url'].replace("https", "http"), cont
+				return data['result']['url'].replace("https", "http"), cont, captcha_url, dlticket
 			else:
 				logger(u"* <openload.link_from_api> - error: cannot handle 2nd api link %s >>>" % data['msg'])
 		except:
@@ -655,8 +687,29 @@ def link_from_api(fid):
 	else:
 		logger(u"* <openload.link_from_api> - %s >>>" % data['msg'])
 	logger("* <openload.link_from_api> - error: failed to retrieve video stream")
-	return None, cont
+	return None, cont, captcha_url, dlticket
+	
+######################################################################################
+def SolveCaptcha(captcha_response, fid, dlticket):
+	
+	burl = 'https://api.openload.co/1/file/'
+	try:
+		if 'http' in fid:
+			fid = match_id(fid)
+			
+		url = None
+		url = burl + 'dl?file=' + fid + '&ticket=' + dlticket + '&captcha_response=' + captcha_response
+		data = client.request(url)
+		data = json.loads(data)
+		#print data
+		if data["status"] == 200:
+			return data['result']['url'].replace("https", "http")
+		else:
+			logger(u"* <openload.link_from_api> - error: cannot handle 2nd api link %s >>>" % data['msg'])
+	except:
+		logger(u"* <openload.link_from_api> - error: cannot handle 2nd api link %s >>>" % url)
 
+	return None
 		
 def persistPairing(runIndefinite=False):
 	pairurl = 'https://openload.co/pair'

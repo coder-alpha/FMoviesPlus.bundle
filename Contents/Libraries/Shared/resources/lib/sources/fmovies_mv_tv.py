@@ -412,7 +412,9 @@ class source:
 						pass
 					else:
 						query = {'id':result['params']['id'], 'token':result['params']['token']}
-						grabber = result['grabber'] 
+						grabber = result['grabber']
+						sub_url = result['subtitle']
+						
 						if '?' in grabber:
 							grabber += '&' + urllib.urlencode(query)
 						else:
@@ -431,16 +433,17 @@ class source:
 					
 					if 'data' in result.keys():
 						result = [i['file'] for i in result['data'] if 'file' in i]
-
+						
 						for i in result:
-							links_m = resolvers.createMeta(i, self.name, self.logo, quality, links_m, key, riptype)
+							links_m = resolvers.createMeta(i, self.name, self.logo, quality, links_m, key, riptype, sub_url=sub_url)
 					else:
 						target = result['target']
+						sub_url = result['subtitle']
 						
 						if target!=None and not target.startswith('http'):
 							target = 'http:' + target
 							
-						links_m = resolvers.createMeta(target, self.name, self.logo, quality, links_m, key, riptype)
+						links_m = resolvers.createMeta(target, self.name, self.logo, quality, links_m, key, riptype, sub_url=sub_url)
 							
 					if testing and len(links_m) > 0:
 						break

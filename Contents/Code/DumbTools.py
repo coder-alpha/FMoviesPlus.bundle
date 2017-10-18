@@ -11,7 +11,7 @@ class DumbKeyboard:
 	NUM_KEYS = list('1234567890')
 	SHIFT_KEYS = list('ABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*()_+:{}|\"<>?')
 
-	def __init__(self, prefix, oc, callback, dktitle=None, dkthumb=None,
+	def __init__(self, prefix, oc, callback, dktitle=None, dkthumb=None, dkart=None,
 				 dkplaceholder=None, dksecure=False, dkNumOnly=False, dkHistory=True, **kwargs):
 		cb_hash = hash(str(callback)+str(kwargs))
 		Route.Connect(prefix+'/dumbkeyboard/%s'%cb_hash, self.Keyboard)
@@ -23,7 +23,7 @@ class DumbKeyboard:
 		oc.add(DirectoryObject(key=Callback(self.Keyboard, query=dkplaceholder),
 							   title=str(dktitle) if dktitle else \
 									 u'%s'%L('DumbKeyboard Search'),
-							   thumb=dkthumb))
+							   thumb=dkthumb, art=dkart))
 		# establish our dict entry
 		if 'DumbKeyboard-History' not in Dict:
 			Dict['DumbKeyboard-History'] = []

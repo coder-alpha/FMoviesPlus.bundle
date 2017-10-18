@@ -25,14 +25,14 @@ def decode(url, python_dir=None, debug=False):
 			elif sys.platform == "darwin":
 				file_cmd = [os.path.join(PHANTOMJS_PATH, 'phantomjs'), os.path.join(PHANTOMJS_PATH, 'openload.js'), url]
 			else:
-				file_cmd = ['xvfb-run', python_dir, os.path.join(PHANTOMJS_PATH, 'phantomjs'), os.path.join(PHANTOMJS_PATH, 'openload.js'), url]
+				file_cmd = [os.path.join(PHANTOMJS_PATH, 'phantomjs'), os.path.join(PHANTOMJS_PATH, 'openload.js'), url]
 		else:
 			if sys.platform == "win32":
 				file_cmd = [os.path.join(PHANTOMJS_PATH, 'phantomjs'), os.path.join(PHANTOMJS_PATH, 'openload.js'), url]
 			elif sys.platform == "darwin":
 				file_cmd = [os.path.join(PHANTOMJS_PATH, 'phantomjs'), os.path.join(PHANTOMJS_PATH, 'openload.js'), url]
 			else:
-				file_cmd = ['xvfb-run', python_dir, os.path.join(PHANTOMJS_PATH, 'phantomjs'), os.path.join(PHANTOMJS_PATH, 'openload.js'), url]
+				file_cmd = [os.path.join(PHANTOMJS_PATH, 'phantomjs'), os.path.join(PHANTOMJS_PATH, 'openload.js'), url]
 
 
 		output = ""

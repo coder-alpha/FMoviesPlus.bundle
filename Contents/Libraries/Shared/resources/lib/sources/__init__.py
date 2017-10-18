@@ -110,7 +110,7 @@ class sources:
 			pass
 		self.isProvThreadRunning = False
 
-	def getSources(self, name, title, year, imdb, tmdb, tvdb, tvrage, season, episode, tvshowtitle, alter, date, proxy_options, provider_options, key):
+	def getSources(self, name, title, year, imdb, tmdb, tvdb, tvrage, season, episode, tvshowtitle, alter, date, proxy_options, provider_options, key, session):
 		#try:
 		sourceDict = []
 		self.getSourcesAlive = True

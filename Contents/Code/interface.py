@@ -60,7 +60,8 @@ def runGetSources(
 	proxy_options = None,
 	provider_options = None,
 	key = None,
-	useCached = True):
+	useCached = True,
+	session = None):
 	
 	# fix stuff
 	if episode != None:
@@ -102,7 +103,7 @@ def runGetSources(
 	if wait_for_init() == False:
 		return
 		
-	initA[0].getSources(name, title, year, imdb, tmdb, tvdb, tvrage, season, episode, tvshowtitle, alter, date, proxy_options, provider_options, key)
+	initA[0].getSources(name, title, year, imdb, tmdb, tvdb, tvrage, season, episode, tvshowtitle, alter, date, proxy_options, provider_options, key, session)
 	
 	# while initA[0].checkProgress() != 100:
 		# time.sleep(1)
@@ -333,7 +334,7 @@ def checkKeyInThread(key=None):
 	
 	return initA[0].checkKeyInThread(key=key)
 		
-def getExtSources(movtitle=None, year=None, tvshowtitle=None, season=None, episode=None, proxy_options=None, provider_options=None, key=None, maxcachetime=0, ver=None, imdb_id=None):
+def getExtSources(movtitle=None, year=None, tvshowtitle=None, season=None, episode=None, proxy_options=None, provider_options=None, key=None, maxcachetime=0, ver=None, imdb_id=None, session=None):
 
 	InterfaceThread[key] = True
 	
@@ -363,7 +364,8 @@ def getExtSources(movtitle=None, year=None, tvshowtitle=None, season=None, episo
 	proxy_options = proxy_options,
 	provider_options = provider_options,
 	key = key,
-	imdb=imdb_id)
+	imdb=imdb_id,
+	session=session)
 	
 	# if Prefs['use_debug']:
 		# Log("Movie: %s" % movtitle)

@@ -1,7 +1,7 @@
 ################################################################################
 TITLE = "FMoviesPlus"
 VERSION = '0.45' # Release notation (x.y - where x is major and y is minor)
-TAG = 'dev 10-17-2017'
+TAG = 'dev 10-18-2017'
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
 ################################################################################
@@ -92,16 +92,18 @@ INTERNAL_SOURCES_QUALS_CONST = [{'label':'4K','enabled': 'True'},{'label':'1080p
 INTERNAL_SOURCES_RIPTYPE_CONST = [{'label':'BRRIP','enabled': 'True'},{'label':'PREDVD','enabled': 'True'},{'label':'CAM','enabled': 'True'},{'label':'TS','enabled': 'True'},{'label':'SCR','enabled': 'True'},{'label':'UNKNOWN','enabled': 'True'}]
 INTERNAL_SOURCES_FILETYPE_CONST = [{'label':'Movie/Show','enabled': 'True'},{'label':'Trailer','enabled': 'False'},{'label':'Behind the scenes','enabled': 'False'},{'label':'Music Video','enabled': 'False'},{'label':'Misc.','enabled': 'False'}]
 
-DEVICE_OPTIONS = ['Dumb-Keyboard','List-View','Redirector','Simple-Emoji','Vibrant-Emoji','Multi-Link-View','Full-poster display']
+DEVICE_OPTIONS = ['Dumb-Keyboard','List-View','Redirector','Simple-Emoji','Vibrant-Emoji','Multi-Link-View','Full-poster display','Use-PhantomJS']
 DEVICE_OPTION = {DEVICE_OPTIONS[0]:'The awesome Keyboard for Search impaired devices',
 				DEVICE_OPTIONS[1]:'Force List-View of Playback page listing sources',
 				DEVICE_OPTIONS[2]:'Required in certain cases - *Experimental (refer forum)',
 				DEVICE_OPTIONS[3]:'Enable Simple Emoji Icons (%s|%s - Supported by Most Clients)' % (EMOJI_TICK,EMOJI_CROSS),
 				DEVICE_OPTIONS[4]:'Enable Vibrant Emoji Icons (%s|%s - Supported by Limited Clients)' % (EMOJI_GREEN_HEART,EMOJI_BROKEN_HEART),
 				DEVICE_OPTIONS[5]:'Shows All Video Items in single container - makes many requests to server',
-				DEVICE_OPTIONS[6]:'Shows Uncropped Poster - client compatibility is untested'}
+				DEVICE_OPTIONS[6]:'Shows Uncropped Poster - client compatibility is untested',
+				DEVICE_OPTIONS[7]:'Use PhantomJS - For parsing links. Binary download required (refer forum)'}
 DEVICE_OPTION_CONSTRAINTS = {DEVICE_OPTIONS[2]:[{'Pref':'use_https_alt','Desc':'Use Alternate SSL/TLS','ReqValue':'disabled'}]}
 DEVICE_OPTION_CONSTRAINTS2 = {DEVICE_OPTIONS[5]:[{'Option':6,'ReqValue':False}], DEVICE_OPTIONS[6]:[{'Option':5,'ReqValue':False}]}
+DEVICE_OPTION_PROPOGATE_TO_CONTROL = {DEVICE_OPTIONS[7]:True}
 
 DOWNLOAD_OPTIONS = {'movie':[], 'show':[]}
 DOWNLOAD_OPTIONS_SECTION_TEMP = {}
@@ -182,7 +184,7 @@ def GetKeyFromVal(list, val_look):
 
 def set_control_settings():
 
-	keys = ['use_https_alt','control_all_uc_api_key','control_openload_api_key','use_openload_pairing']
+	keys = ['use_https_alt','control_all_uc_api_key','control_openload_api_key','use_openload_pairing','use_phantomjs']
 	for i in range(0,len(keys)):
 		try:
 			key = keys[i]
@@ -190,12 +192,11 @@ def set_control_settings():
 			
 		except Exception as e:
 			Log('ERROR common.py-1>set_control_settings: %s' % e)
-			
-	
+
 	try:
 		control.set_setting('is_uss_installed', is_uss_installed())
 	except Exception as e:
-		Log('ERROR common.py-2>set_control_settings: %s' % e)
+		Log.Error('ERROR common.py-2>set_control_settings: %s' % e)
 			
 	if Prefs["use_debug"]:
 		Log("User Preferences have been set to Control")
@@ -273,6 +274,9 @@ def setDictVal(key, val, session=None):
 				
 	if session == None:
 		session = getSession()
+		
+	if key in DEVICE_OPTION_PROPOGATE_TO_CONTROL.keys() and DEVICE_OPTION_PROPOGATE_TO_CONTROL[key] != None and DEVICE_OPTION_PROPOGATE_TO_CONTROL[key] == True:
+		control.set_setting('%s-%s' % (session,key), True if val=='enabled' else False)
 
 	Dict['Toggle'+key+session] = val
 	Dict.Save()

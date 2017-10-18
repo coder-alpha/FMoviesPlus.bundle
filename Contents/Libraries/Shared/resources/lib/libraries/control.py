@@ -50,7 +50,7 @@ def log(msg):
 			msg = msg.encode('utf-8')
 			
 		loggertxt.append(msg)
-		print('[FMovies]: %s' % (msg))
+		print('[FMP]: %s' % (msg))
 	except Exception as e:
 		pass  # just give up
 
@@ -59,3 +59,6 @@ set_setting('use_openload_pairing', True)
 set_setting('is_uss_installed', False)
 set_setting('use_https_alt', True)
 set_setting('control_all_uc_api_key', None)
+set_setting('control_openload_api_key',None)
+set_setting('use_phantomjs', False)
+set_setting('%s-%s' % (None,'Use-PhantomJS'), False)

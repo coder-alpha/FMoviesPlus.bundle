@@ -2137,7 +2137,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, **kwargs):
 				CACHE_EXPIRY = 60 * int(Prefs["cache_expiry_time"])
 			except:
 				CACHE_EXPIRY = common.CACHE_EXPIRY_TIME
-			Thread.Create(common.interface.getExtSources, {}, movtitle=title, year=year, tvshowtitle=None, season=None, episode=None, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY, ver=common.VERSION, imdb_id=imdb_id)
+			Thread.Create(common.interface.getExtSources, {}, movtitle=title, year=year, tvshowtitle=None, season=None, episode=None, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY, ver=common.VERSION, imdb_id=imdb_id, session=session)
 		
 		SeasonN = 0
 		oc.title2 = title
@@ -2201,7 +2201,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, **kwargs):
 					CACHE_EXPIRY = 60 * int(Prefs["cache_expiry_time"])
 				except:
 					CACHE_EXPIRY = common.CACHE_EXPIRY_TIME
-				Thread.Create(common.interface.getExtSources, {}, movtitle=title, year=year, tvshowtitle=None, season=None, episode=None, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY, ver=common.VERSION, imdb_id=imdb_id)
+				Thread.Create(common.interface.getExtSources, {}, movtitle=title, year=year, tvshowtitle=None, season=None, episode=None, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY, ver=common.VERSION, imdb_id=imdb_id, session=session)
 		
 		# create timeout thread
 		Thread.Create(ThreadTimeoutTimer, {}, Client.Product, E(url), client_id)
@@ -2219,6 +2219,8 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, **kwargs):
 							Log("%s - %s" % (url, url_s))
 						server_info, isTargetPlay, error, host, sub_url = fmovies.GetApiUrl(url=url, key=url_s, serverts=serverts)
 						server_info_t = server_info
+						captcha = None
+						dlt = None
 						if server_info != None:
 							qual = common.getHighestQualityLabel(server_info, label_i['quality'])
 							title_s = label + ' - ' + qual
@@ -2236,8 +2238,9 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, **kwargs):
 								isVideoOnline = common.isItemVidAvailable(isTargetPlay=isTargetPlay, data=data, host=host)
 								
 							if isTargetPlay == True and 'openload' in host and (Prefs['use_openload_pairing'] or not common.is_uss_installed()):
-								pair_required, u1 = common.host_openload.isPairingRequired(url=server_info)
+								pair_required, u1 = common.host_openload.isPairingRequired(url=server_info, session=session)
 								if pair_required == True:
+									a1,a2,captcha,dlt,err = common.host_openload.link_from_api(server_info)
 									if common.host_openload.isPairingDone() == False:
 										pair = ' *Pairing required* '
 									else:
@@ -2279,6 +2282,12 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, **kwargs):
 								Log('ERROR init.py>EpisodeDetail>Movie2a %s' % (e.args))
 								Log("ERROR: %s with key:%s returned %s" % (url,url_s,server_info))
 								Log('ERROR init.py>EpisodeDetail>Movie2a %s' % (title + ' - ' + title_s))
+								
+							if captcha != None and captcha != False:
+								DumbKeyboard(PREFIX, oc, SolveCaptcha, dktitle = 'Solve Captcha: ' + title, dkHistory = False, dkthumb = captcha, dkart=captcha, url = server_info, dlt = dlt)
+								po = create_photo_object(url = captcha, title = 'View Captcha')
+								oc.add(po)
+								
 						else:
 							pass
 							if Prefs["use_debug"]:
@@ -2430,7 +2439,7 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 				CACHE_EXPIRY = 60 * int(Prefs["cache_expiry_time"])
 			except:
 				CACHE_EXPIRY = common.CACHE_EXPIRY_TIME
-			Thread.Create(common.interface.getExtSources, {}, movtitle=None, year=year, tvshowtitle=tvshowcleaned, season=season, episode=episode, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY, ver=common.VERSION, imdb_id=imdb_id)
+			Thread.Create(common.interface.getExtSources, {}, movtitle=None, year=year, tvshowtitle=tvshowcleaned, season=season, episode=episode, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY, ver=common.VERSION, imdb_id=imdb_id, session=session)
 	
 	# create timeout thread
 	Thread.Create(ThreadTimeoutTimer, {}, Client.Product, E(url), client_id)
@@ -2442,7 +2451,8 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 		if common.UsingOption(common.DEVICE_OPTIONS[5], session=session):	
 			server_info,isTargetPlay, error, host, sub_url = fmovies.GetApiUrl(url=url, key=url_s, serverts=serverts)
 			server_info_t = server_info
-			
+			captcha = None
+			dlt = None
 			if server_info != None:
 				pair = ''
 				pair_required = False
@@ -2457,14 +2467,16 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 					isVideoOnline = common.isItemVidAvailable(isTargetPlay=isTargetPlay, data=data, host=host)
 					
 				if isTargetPlay == True and 'openload' in host and (Prefs['use_openload_pairing'] or not common.is_uss_installed()):
-					pair_required, u1 = common.host_openload.isPairingRequired(url=server_info)
+					pair_required, u1 = common.host_openload.isPairingRequired(url=server_info, session=session)
 					if pair_required == True:
+						a1,a2,captcha,dlt,err = common.host_openload.link_from_api(server_info)
 						if common.host_openload.isPairingDone() == False:
 							pair = ' *Pairing required* '
 						else:
 							pair = ' *Paired* '
 					else:
 						server_info_t = u1
+						
 					if Prefs["use_debug"]:
 						Log("%s --- %s : Pairing required: %s" % (server_info, pair, pair_required))
 					
@@ -2499,6 +2511,11 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 				except:
 					Log('ERROR init.py>TvShowDetail %s, %s' % (e.args, (title + ' - ' + title_s)))
 					Log("ERROR: %s with key:%s returned %s" % (url,url_s,server_info))
+					
+				if captcha != None and captcha != False:
+					DumbKeyboard(PREFIX, oc, SolveCaptcha, dktitle = 'Solve Captcha: ' + title, dkHistory = False, dkthumb = captcha, dkart=captcha, url = server_info, dlt = dlt)
+					po = create_photo_object(url = captcha, title = 'View Captcha')
+					oc.add(po)
 			else:
 				pass
 				if Prefs["use_debug"]:
@@ -2602,11 +2619,10 @@ def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary
 				
 			if isTargetPlay == True and 'openload' in host and (Prefs['use_openload_pairing'] or not common.is_uss_installed()):
 			
-				pair_required, u1 = common.host_openload.isPairingRequired(url=server_info)
-				#Log(u1)
+				pair_required, u1 = common.host_openload.isPairingRequired(url=server_info, session=session)
 				
 				if pair_required == True:
-					a1,a2,captcha,dlt = common.host_openload.link_from_api(server_info)
+					a1,a2,captcha,dlt,err = common.host_openload.link_from_api(server_info)
 					if common.host_openload.isPairingDone() == False:
 						pair = ' *Pairing required* '
 					else:
@@ -2651,7 +2667,9 @@ def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary
 				)
 				
 				if captcha != None and captcha != False:
-					DumbKeyboard(PREFIX, oc, SolveCaptcha, dktitle = 'Solve Captcha: ' + title, dkHistory = False, dkthumb = captcha, url = server_info, dlt = dlt)
+					DumbKeyboard(PREFIX, oc, SolveCaptcha, dktitle = 'Solve Captcha: ' + title, dkHistory = False, dkthumb = captcha, dkart=captcha, url = server_info, dlt = dlt)
+					po = create_photo_object(url = captcha, title = 'View Captcha')
+					oc.add(po)
 				
 				try:
 					if Prefs['disable_downloader'] == False:
@@ -2753,7 +2771,7 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 				CACHE_EXPIRY = 60 * int(Prefs["cache_expiry_time"])
 			except:
 				CACHE_EXPIRY = common.CACHE_EXPIRY_TIME
-			Thread.Create(common.interface.getExtSources, {}, movtitle=movtitle, year=year, tvshowtitle=tvshowtitle, season=season, episode=episode, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY, ver=common.VERSION, imdb_id=imdb_id)
+			Thread.Create(common.interface.getExtSources, {}, movtitle=movtitle, year=year, tvshowtitle=tvshowtitle, season=season, episode=episode, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY, ver=common.VERSION, imdb_id=imdb_id, session=session)
 		if doSleepForProgress:
 			time.sleep(7)
 			doSleepForProgress = False
@@ -2981,7 +2999,7 @@ def ExtSourcesDownload(title, url, summary, thumb, art, rating, duration, genre,
 				CACHE_EXPIRY = 60 * int(Prefs["cache_expiry_time"])
 			except:
 				CACHE_EXPIRY = common.CACHE_EXPIRY_TIME
-			Thread.Create(common.interface.getExtSources, {}, movtitle=movtitle, year=year, tvshowtitle=tvshowtitle, season=season, episode=episode, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY, ver=common.VERSION, imdb_id=imdb_id)
+			Thread.Create(common.interface.getExtSources, {}, movtitle=movtitle, year=year, tvshowtitle=tvshowtitle, season=season, episode=episode, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY, ver=common.VERSION, imdb_id=imdb_id, session=session)
 		if doSleepForProgress:
 			time.sleep(7)
 			doSleepForProgress = False
@@ -3730,7 +3748,7 @@ def AddToDownloadsList(title, year, url, purl, summary, thumb, quality, source, 
 				if 'openload' in source:
 					isPairDone = common.host_openload.isPairingDone()
 					if isPairDone == False:
-						pair_required, u1 = common.host_openload.isPairingRequired(url=url)
+						pair_required, u1 = common.host_openload.isPairingRequired(url=url, session=session)
 						if pair_required == False:
 							fs_i, err = common.client.getFileSize(u1, retError=True, retry429=True, cl=2)
 					online, r1, err, fs_i =  common.host_openload.check(url, usePairing = False, embedpage=True)
@@ -4885,7 +4903,7 @@ def SearchExt(query=None, query2=None, session=None, append=False, **kwargs):
 			if type == 'movie':
 				key = generatemoviekey(movtitle=mtitle, year=year, tvshowtitle=tvtitle, season=season, episode=episode)
 				if common.interface.getExtSourcesThreadStatus(key=key) == False:
-					Thread.Create(common.interface.getExtSources, {}, movtitle=mtitle, year=year, tvshowtitle=tvtitle, season=season, episode=episode, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY, ver=common.VERSION)
+					Thread.Create(common.interface.getExtSources, {}, movtitle=mtitle, year=year, tvshowtitle=tvtitle, season=season, episode=episode, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY, ver=common.VERSION, session=session)
 			
 			thumb = GetThumb(thumb, session=session)
 			dobj = DirectoryObject(
@@ -5080,7 +5098,7 @@ def DoIMDBExtSources(title, year, type, imdbid, season=None, episode=None, episo
 				
 				key = generatemoviekey(movtitle=None, year=x_year, tvshowtitle=x_title, season=season, episode=str(e))
 				if common.interface.getExtSourcesThreadStatus(key=key) == False:
-					Thread.Create(common.interface.getExtSources, {}, movtitle=None, year=x_year, tvshowtitle=x_title, season=season, episode=str(e), proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY, ver=common.VERSION)
+					Thread.Create(common.interface.getExtSources, {}, movtitle=None, year=x_year, tvshowtitle=x_title, season=season, episode=str(e), proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY, ver=common.VERSION, session=session)
 				
 				time.sleep(0.1)
 				
@@ -5172,7 +5190,7 @@ def DoIMDBExtSourcesEpisode(query, title, year, type, imdbid, season, summary, t
 	
 	key = generatemoviekey(movtitle=None, year=year, tvshowtitle=title, season=season, episode=episode)
 	if common.interface.getExtSourcesThreadStatus(key=key) == False:
-		Thread.Create(common.interface.getExtSources, {}, movtitle=None, year=year, tvshowtitle=title, season=season, episode=episode, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY, ver=common.VERSION)
+		Thread.Create(common.interface.getExtSources, {}, movtitle=None, year=year, tvshowtitle=title, season=season, episode=episode, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY, ver=common.VERSION, session=session)
 		
 	item = {}
 	item['poster'] = thumb
@@ -6248,6 +6266,24 @@ def SolveCaptcha(query, url, dlt, **kwargs):
 		return MC.message_container('Captcha Unsolved', 'Captcha Not Solved. Incorrect response !')
 	else:
 		return MC.message_container('Captcha Solved', 'Captcha Solved Successfully')
+		
+####################################################################################################
+def create_photo_object(url, title, include_container=False, **kwargs):
+	po = PhotoObject(
+		key=Callback(create_photo_object, url=url, include_container=True),
+		rating_key=url,
+		source_title=title,
+		title=title,
+		thumb=url,
+		items=[
+			MediaObject(parts=[
+				PartObject(key=url)
+				])
+			]
+		)
+	if include_container:
+		return ObjectContainer(objects=[po])
+	return po
 	
 ####################################################################################################
 @route(common.PREFIX+'/MyMessage')

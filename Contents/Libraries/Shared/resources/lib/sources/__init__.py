@@ -244,7 +244,7 @@ class sources:
 	def purgeSources(self, maxcachetimeallowed=0):
 		filtered = []
 		curr_time = time.time()
-		filtered += [i for i in self.sources if (i['ts'] + maxcachetimeallowed) >= curr_time]
+		filtered += [i for i in self.sources if (i['ts'] + float(maxcachetimeallowed)) >= curr_time]
 		del self.sources[:]
 		for i in filtered:
 			self.sources.append(i)

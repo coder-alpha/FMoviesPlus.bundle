@@ -51,6 +51,7 @@ ICON_OTHERSOURCES = "icon-othersources.png"
 ICON_OTHERSOURCESDOWNLOAD = "icon-othersourcesdownload.png"
 ICON_SAVE = "icon-save.png"
 ICON_QUALITIES = "icon-qualities.png"
+ICON_FILESIZES = "icon-filesizes.png"
 ICON_RIPTYPE = "icon-riptype.png"
 ICON_QUESTION = "icon-question.png"
 ICON_PROXY = "icon-proxy.png"
@@ -232,6 +233,8 @@ def SleepPersistAndUpdateCookie(**kwargs):
 @route(PREFIX + "/SleepAndUpdateThread")
 def SleepAndUpdateThread(update=True, startthread=True, session=None, **kwargs):
 
+	doSave = False
+	
 	try:
 		DOWNLOAD_OPTIONS_SAVED = JSON.ObjectFromString(D(Dict['DOWNLOAD_OPTIONS']))
 		#Log("DOWNLOAD_OPTIONS %s" % DOWNLOAD_OPTIONS_SAVED)
@@ -239,6 +242,7 @@ def SleepAndUpdateThread(update=True, startthread=True, session=None, **kwargs):
 	except Exception as e:
 		Log(e)
 		DownloadOptions(session=session)
+		doSave = True
 		
 	####################################
 		
@@ -267,9 +271,27 @@ def SleepAndUpdateThread(update=True, startthread=True, session=None, **kwargs):
 			del common.INTERNAL_SOURCES_QUALS[:]
 			for q in common.INTERNAL_SOURCES_QUALS_CONST:
 				common.INTERNAL_SOURCES_QUALS.append(q)
+			doSave = True
 	except:
 		pass
-	#Log("common.INTERNAL_SOURCES_QUALS %s" % INTERNAL_SOURCES_QUALS)
+	#Log("common.INTERNAL_SOURCES_QUALS %s" % common.INTERNAL_SOURCES_QUALS)
+	
+	try:
+		LOAD_T = Dict['INTERNAL_SOURCES_SIZES']
+		if LOAD_T != None:
+			ARRAY_T = JSON.ObjectFromString(D(LOAD_T))
+		if LOAD_T != None and len(ARRAY_T) > 0:
+			del common.INTERNAL_SOURCES_SIZES[:]
+			for q in ARRAY_T:
+				common.INTERNAL_SOURCES_SIZES.append(q)
+		else:
+			del common.INTERNAL_SOURCES_SIZES[:]
+			for q in common.INTERNAL_SOURCES_SIZES_CONST:
+				common.INTERNAL_SOURCES_SIZES.append(q)
+			doSave = True
+	except:
+		pass
+	#Log("common.INTERNAL_SOURCES_SIZES %s" % common.INTERNAL_SOURCES_SIZES)
 
 	try:
 		LOAD_T = Dict['INTERNAL_SOURCES_RIPTYPE']
@@ -283,9 +305,10 @@ def SleepAndUpdateThread(update=True, startthread=True, session=None, **kwargs):
 			del common.INTERNAL_SOURCES_RIPTYPE[:]
 			for q in common.INTERNAL_SOURCES_RIPTYPE_CONST:
 				common.INTERNAL_SOURCES_RIPTYPE.append(q)
+			doSave = True
 	except:
 		pass
-	#Log("common.INTERNAL_SOURCES_RIPTYPE %s" % INTERNAL_SOURCES_RIPTYPE)
+	#Log("common.INTERNAL_SOURCES_RIPTYPE %s" % common.INTERNAL_SOURCES_RIPTYPE)
 	
 	try:
 		LOAD_T = Dict['INTERNAL_SOURCES_FILETYPE']
@@ -299,9 +322,10 @@ def SleepAndUpdateThread(update=True, startthread=True, session=None, **kwargs):
 			del common.INTERNAL_SOURCES_FILETYPE[:]
 			for q in common.INTERNAL_SOURCES_FILETYPE_CONST:
 				common.INTERNAL_SOURCES_FILETYPE.append(q)
+			doSave = True
 	except:
 		pass
-	#Log("common.INTERNAL_SOURCES_FILETYPE %s" % INTERNAL_SOURCES_FILETYPE)
+	#Log("common.INTERNAL_SOURCES_FILETYPE %s" % common.INTERNAL_SOURCES_FILETYPE)
 
 	try:
 		LOAD_T = Dict['OPTIONS_PROVIDERS']
@@ -309,6 +333,7 @@ def SleepAndUpdateThread(update=True, startthread=True, session=None, **kwargs):
 		ExtProviders(curr_provs=curr_provs,session=session)
 	except:
 		ExtProviders(session=session)
+		doSave = True
 		
 	try:
 		LOAD_T = Dict['OPTIONS_PROXY']
@@ -319,6 +344,7 @@ def SleepAndUpdateThread(update=True, startthread=True, session=None, **kwargs):
 		ExtProxies(n=proxy_n,curr_proxies=curr_proxies,session=session)
 	except:
 		ExtProxies(session=session)
+		doSave = True
 		
 	try:
 		LOAD_T = Dict['INTERNAL_SOURCES']
@@ -329,6 +355,10 @@ def SleepAndUpdateThread(update=True, startthread=True, session=None, **kwargs):
 		ExtHosts(n=sources_n,curr_sources=curr_sources,session=session)
 	except:
 		ExtHosts(session=session)
+		doSave = True
+		
+	if doSave == True:
+		Dict.Save()
 			
 	Thread.Create(download.DownloadInit)
 		
@@ -372,7 +402,7 @@ def Options(session, **kwargs):
 	
 	oc.add(DirectoryObject(key = Callback(ResetCookies), title = "Reset Cookies", summary='Reset Session, CF, etc. cookies', thumb = R(ICON_CLEAR)))
 	
-	oc.add(DirectoryObject(key = Callback(tools.DevToolsC), title = "Tools", summary='Tools', thumb = R(tools.ICON_TOOLS)))
+	oc.add(DirectoryObject(key = Callback(tools.DevToolsC), title = "Tools", summary='Tools - Save/Load Bookmarks', thumb = R(tools.ICON_TOOLS)))
 	
 	oc.add(DirectoryObject(key = Callback(DownloadOptions, title="Download Options", session = session), title = "Download Options", thumb = R(ICON_DOWNLOADS)))
 	
@@ -449,6 +479,7 @@ def InterfaceOptions(session, **kwargs):
 	oc.add(DirectoryObject(key = Callback(ExtHostsQuals, session=session), title = "Qualities Allowed", summary='Enable/Disable External Host Qualities.', thumb = R(ICON_QUALITIES)))
 	oc.add(DirectoryObject(key = Callback(ExtHostsRipType, session=session), title = "Rip Type Allowed", summary='Enable/Disable External Host Rip Type.', thumb = R(ICON_RIPTYPE)))
 	oc.add(DirectoryObject(key = Callback(ExtHostsFileType, session=session), title = "Video Type Allowed", summary='Enable/Disable External Host Video Type.', thumb = R(ICON_VIDTYPE)))
+	oc.add(DirectoryObject(key = Callback(ExtHostsSizes, session=session), title = "Sizes Allowed", summary='Enable/Disable External Host File Sizes.', thumb = R(ICON_FILESIZES)))
 	oc.add(DirectoryObject(key = Callback(Summarize, session=session), title = "Summarize Options", summary='Shows a quick glance of all options', thumb = R(ICON_SUMMARY)))
 	
 	oc.add(DirectoryObject(key = Callback(MainMenu),title = '<< Main Menu',thumb = R(ICON)))
@@ -589,6 +620,12 @@ def Summarize(session=None, **kwargs):
 		label = qual['label']
 		bool = qual['enabled']
 		title_msg = "Enabled: %s | Quality: %s" % (common.GetEmoji(type=bool, mode='simple', session=session), label)
+		oc.add(DirectoryObject(title = title_msg, key = Callback(MC.message_container, header="Summary Screen", message="Does Nothing")))
+		
+	for sz in common.INTERNAL_SOURCES_SIZES:
+		label = sz['label']
+		bool = sz['enabled']
+		title_msg = "Enabled: %s | File Sizes: %s" % (common.GetEmoji(type=bool, mode='simple', session=session), label)
 		oc.add(DirectoryObject(title = title_msg, key = Callback(MC.message_container, header="Summary Screen", message="Does Nothing")))
 	
 
@@ -766,6 +803,57 @@ def MakeSelectionExtHostsQuals(item=None, setbool='True', **kwargs):
 		
 	#Log(common.INTERNAL_SOURCES_QUALS)
 	Dict['INTERNAL_SOURCES_QUALS'] = E(JSON.StringFromObject(common.INTERNAL_SOURCES_QUALS))
+	Dict.Save()
+	
+######################################################################################
+@route(PREFIX + "/ExtHostsSizes")
+def ExtHostsSizes(session, item=None, setbool='True', **kwargs):
+
+	oc = ObjectContainer(title2='External Hosts File Sizes')
+	
+	for sz in common.INTERNAL_SOURCES_SIZES:
+	
+		label = sz['label']
+		bool = sz['enabled']
+		if bool == 'True':
+			bool = True
+		else:
+			bool = False
+		
+		if label == item:
+			bool = not bool
+		
+		title_msg = "Enabled: %s | File Sizes: %s" % (common.GetEmoji(type=bool, mode='simple', session=session), label)
+		oc.add(DirectoryObject(key = Callback(ExtHostsSizes, session=session, item=label, setbool=not bool), title = title_msg, thumb = Resource.ContentsOfURLWithFallback(url=None, fallback=None)))
+		
+	oc.add(DirectoryObject(
+			key = Callback(MainMenu, update = MakeSelectionExtHostsSizes(item=item, setbool=setbool)),
+			title = '<< Save Selection >>',
+			summary = 'Save the Selection which is used when listing External Sources.',
+			thumb = R(ICON_SAVE)
+		))
+
+	return oc
+
+######################################################################################
+@route(PREFIX + "/MakeSelectionExtHostsSizes")
+def MakeSelectionExtHostsSizes(item=None, setbool='True', **kwargs):
+
+	if item != None:
+		ARRAY_T = []
+		ARRAY_T += [q for q in common.INTERNAL_SOURCES_SIZES]
+		del common.INTERNAL_SOURCES_SIZES[:]
+		
+		for sz in ARRAY_T:
+			bool = sz['enabled']
+			if item == sz['label']:
+				bool = setbool
+			
+			sz['enabled']=bool
+			common.INTERNAL_SOURCES_SIZES.append(sz)
+		
+	#Log(common.INTERNAL_SOURCES_SIZES)
+	Dict['INTERNAL_SOURCES_SIZES'] = E(JSON.StringFromObject(common.INTERNAL_SOURCES_SIZES))
 	Dict.Save()
 
 ######################################################################################
@@ -1137,6 +1225,7 @@ def ResetExtOptions(session, **kwargs):
 	Dict['OPTIONS_PROVIDERS'] = None
 	Dict['INTERNAL_SOURCES'] = None
 	Dict['INTERNAL_SOURCES_QUALS'] = None
+	Dict['INTERNAL_SOURCES_SIZES'] = None
 	Dict['INTERNAL_SOURCES_RIPTYPE'] = None
 	Dict['INTERNAL_SOURCES_FILETYPE'] = None
 	Dict.Save()
@@ -2935,7 +3024,7 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 	if common.USE_EXT_URLSERVICES:
 		external_extSources = extSourKey
 		
-		external_extSources = common.FilterBasedOn(external_extSources, use_host=False)
+		external_extSources = common.FilterBasedOn(external_extSources, use_host=False, use_filesize=False)
 		
 		extSources_urlservice = []
 		extExtrasSources_urlservice = []
@@ -4927,7 +5016,7 @@ def SearchExt(query=None, query2=None, session=None, append=False, **kwargs):
 	
 ####################################################################################################
 @route(PREFIX + "/DoIMDBExtSources")
-def DoIMDBExtSources(title, year, type, imdbid, season=None, episode=None, episodeNr='1', summary=None, simpleSummary=False, thumb=None, item=None, session=None, **kwargs):
+def DoIMDBExtSources(title, year, type, imdbid, season=None, episode=None, episodeNr='1', summary=None, simpleSummary=False, thumb=None, item=None, session=None, final=False, **kwargs):
 
 	if type == 'movie':
 		res = common.interface.searchOMDB(title, year, ver=common.VERSION)
@@ -5096,18 +5185,97 @@ def DoIMDBExtSources(title, year, type, imdbid, season=None, episode=None, episo
 				summary = summary,
 				thumb = thumb))
 				
-				key = generatemoviekey(movtitle=None, year=x_year, tvshowtitle=x_title, season=season, episode=str(e))
-				if common.interface.getExtSourcesThreadStatus(key=key) == False:
-					Thread.Create(common.interface.getExtSources, {}, movtitle=None, year=x_year, tvshowtitle=x_title, season=season, episode=str(e), proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY, ver=common.VERSION, session=session)
-				
 				time.sleep(0.1)
 				
-				if int(episodeNr) + 4 == e:
+				if int(episodeNr) + 9 == e:
 					oc.add(DirectoryObject(
 					key = Callback(DoIMDBExtSources, title=x_title, year=x_year, type=type, imdbid=x_imdbid, thumb=x_thumb, season=season, episodeNr=str(e+1), session=session), 
 					title = 'Next Page >>',
 					thumb = R(ICON_NEXT)))
 					break
+					
+		elif final == False:
+			try:
+				CACHE_EXPIRY = 60 * int(Prefs["cache_expiry_time"])
+			except:
+				CACHE_EXPIRY = common.CACHE_EXPIRY_TIME
+				
+			item = JSON.ObjectFromString(D(item))
+		
+			#title = item['title']
+			#year = item['year']
+			
+			thumb = item['poster']
+			summary = item['plot']
+			duration = item['runtime'].replace('min','').strip()
+			rating = item['imdb_rating']
+			roles = item['actors']
+			directors = item['director']
+			genre = item['genre']
+			released = item['released']
+			
+			if simpleSummary == False:
+				if str(summary) == 'N/A':
+					summary = 'Plot Summary Not Available'
+				if str(directors) == 'N/A':
+					directors = 'Not Available'
+				if str(roles) == 'N/A':
+					roles = 'Not Available'
+			
+				summary += '\n '
+				summary += 'Actors: ' + roles + '\n '
+				summary += 'Directors: ' + directors + '\n '
+				
+				if str(duration) == 'Not Available':
+					summary += 'Runtime: ' + str(duration) + '\n '
+				else:
+					summary += 'Runtime: ' + str(duration) + ' min.' + '\n '
+				
+				summary += 'Year: ' + year + '\n '
+				summary += 'Genre: ' + genre + '\n '
+				summary += 'IMDB rating: ' + rating + '\n '
+				
+				if str(released) != 'N/A' and str(released) != 'Not Available':
+					summary = released + ' : ' + summary
+			
+			summary = unicode(summary.replace('–','-'))
+			
+			watch_title = 'S%02dE%02d - %s' % (int(season), int(episode), title)
+			if int(season) > 99 and int(episode) > 99:
+				watch_title = 'S%03dE%03d - %s' % (int(season), int(episode), title)
+			elif int(episode) > 99:
+				watch_title = 'S%02dE%03d - %s' % (int(season), int(episode), title)
+			
+			oc = ObjectContainer(title2='%s (Season %s)' % (title, season), no_cache=common.isForceNoCache())
+			
+			oc.add(DirectoryObject(
+				key = Callback(DoIMDBExtSources, title=title, year=year, type=type, imdbid=imdbid, item=E(JSON.StringFromObject(item)), season=season, episode=episode, session=session, final=True), 
+				title = '*'+watch_title,
+				summary = summary,
+				thumb = thumb)
+			)
+			
+			if Prefs['disable_downloader'] == False and AuthTools.CheckAdmin() == True:
+				oc.add(DirectoryObject(
+					key = Callback(ExtSourcesDownload, tvshowtitle=title, season=season, episode=episode, session=session, title=title, url=None, summary=summary, thumb=thumb, art=None, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, mode=common.DOWNLOAD_MODE[0]),
+					title = 'Download Sources',
+					summary = 'List sources of this episode by External Providers.',
+					thumb = GetThumb(R(ICON_OTHERSOURCESDOWNLOAD), session=session)
+					)
+				)
+			elif Prefs['disable_downloader'] == False:
+				oc.add(DirectoryObject(
+					key = Callback(ExtSourcesDownload, tvshowtitle=title, season=season, episode=episode, session=session, title=title, url=None, summary=summary, thumb=thumb, art=None, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, mode=common.DOWNLOAD_MODE[1]),
+					title = 'Request Download',
+					summary = 'List sources of this episode by External Providers.',
+					art = art,
+					thumb = GetThumb(R(ICON_REQUESTS), session=session)
+					)
+				)
+		
+			key = generatemoviekey(movtitle=None, year=year, tvshowtitle=title, season=season, episode=episode)
+			if common.interface.getExtSourcesThreadStatus(key=key) == False:
+				Thread.Create(common.interface.getExtSources, {}, movtitle=None, year=year, tvshowtitle=title, season=season, episode=episode, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY, ver=common.VERSION, session=session)
 				
 		else:
 			item = JSON.ObjectFromString(D(item))
@@ -5150,8 +5318,9 @@ def DoIMDBExtSources(title, year, type, imdbid, season=None, episode=None, episo
 			
 			summary = unicode(summary.replace('–','-'))
 			
-
 			return ExtSources(tvshowtitle=title, year=year, title=title, url=None, summary=summary, thumb=thumb, art=None, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, season=season, episode=episode, session=session)
+			
+			return ExtSourcesDownload(tvshowtitle=title, year=year, title=title, url=None, summary=summary, thumb=thumb, art=None, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, season=season, episode=episode, session=session)
 			
 		return oc
 			
@@ -5213,7 +5382,7 @@ def DoIMDBExtSourcesEpisode(query, title, year, type, imdbid, season, summary, t
 	
 	oc = ObjectContainer(title2='%s (%s)' % (title, watch_title), no_cache=common.isForceNoCache())
 	oc.add(DirectoryObject(
-		key = Callback(DoIMDBExtSources, title=title, year=year, type=type, imdbid=imdbid, item=E(JSON.StringFromObject(item)), simpleSummary=True, season=season, episode=episode, session=session), 
+		key = Callback(DoIMDBExtSources, title=title, year=year, type=type, imdbid=imdbid, item=E(JSON.StringFromObject(item)), simpleSummary=True, season=season, episode=episode, session=session, final=True), 
 		title = '*'+watch_title,
 		summary =  '%s : %s' % (watch_title,summary),
 		thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback = ICON_UNAV)))
@@ -6040,8 +6209,13 @@ def DumpPrefs(changed=False, **kwargs):
 	Log("Use SSL Web-Proxy: %s" % (Prefs["use_web_proxy"]))
 	Log("Use Alternate SSL/TLS: %s" % (Prefs["use_https_alt"]))
 	Log("Disable External Sources: %s" % (Prefs["disable_extsources"]))
+	Log("Disable Downloading Sources: %s" % (Prefs["disable_downloader"]))
+	Log("Number of concurrent Download Threads: %s" % (Prefs["download_connections"]))
+	Log("Limit Aggregate Download Speed (KB/s): %s" % (Prefs["download_speed_limit"]))
 	Log("Use LinkChecker for Videos: %s" % (Prefs["use_linkchecker"]))
 	Log("Use Openload Pairing: %s" % (Prefs["use_openload_pairing"]))
+	Log("Use PhantomJS: %s" % (Prefs["use_phantomjs"]))
+	Log("Auth Admin through Plex.tv: %s" % (Prefs["plextv"]))
 	Log("Enable Debug Mode: %s" % (Prefs["use_debug"]))
 	Log("=============================================")
 	

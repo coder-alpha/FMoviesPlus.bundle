@@ -414,6 +414,8 @@ class source:
 						query = {'id':result['params']['id'], 'token':result['params']['token']}
 						grabber = result['grabber']
 						sub_url = result['subtitle']
+						if sub_url==None or len(sub_url) == 0:
+							sub_url = None
 						
 						if '?' in grabber:
 							grabber += '&' + urllib.urlencode(query)
@@ -439,6 +441,8 @@ class source:
 					else:
 						target = result['target']
 						sub_url = result['subtitle']
+						if sub_url==None or len(sub_url) == 0:
+							sub_url = None
 						
 						if target!=None and not target.startswith('http'):
 							target = 'http:' + target

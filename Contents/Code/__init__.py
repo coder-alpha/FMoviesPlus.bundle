@@ -2343,7 +2343,8 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, **kwargs):
 								status = common.GetEmoji(type=isVideoOnline, session=session) + ' ' + pair
 							else:
 								status = common.GetEmoji(type=isVideoOnline, session=session)
-								
+							
+							vco = None
 							try:
 								redirector_stat = ''
 								redirector_enabled = 'false'
@@ -2356,7 +2357,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, **kwargs):
 								else:
 									durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":server_info_t, "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "roles":roles, "directors":directors, "roles":roles, "isTargetPlay":str(isTargetPlay), "useSSL":Prefs["use_https_alt"], "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled, 'urldata':'','quality':qual, 'pairrequired':pair_required, "host":host, "openloadApiKey":Prefs['control_openload_api_key']}))
 									
-								oc.add(VideoClipObject(
+								vco = VideoClipObject(
 									url = durl,
 									title = status + title + ' - ' + title_s + redirector_stat,
 									thumb = GetThumb(thumb, session=session),
@@ -2366,14 +2367,14 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, **kwargs):
 									summary = summary,
 									key = AddRecentWatchList(title=title, url=url, summary=summary, thumb=thumb)
 									)
-								)
+								oc.add(vco)
 							except Exception as e:
 								Log('ERROR init.py>EpisodeDetail>Movie2a %s' % (e.args))
 								Log("ERROR: %s with key:%s returned %s" % (url,url_s,server_info))
 								Log('ERROR init.py>EpisodeDetail>Movie2a %s' % (title + ' - ' + title_s))
 								
 							if captcha != None and captcha != False:
-								DumbKeyboard(PREFIX, oc, SolveCaptcha, dktitle = 'Solve Captcha: ' + title, dkHistory = False, dkthumb = captcha, dkart=captcha, url = server_info, dlt = dlt)
+								DumbKeyboard(PREFIX, oc, SolveCaptcha, dktitle = 'Solve Captcha: ' + title, dkHistory = False, dkthumb = captcha, dkart=captcha, url = server_info, dlt = dlt, vco=vco, title=title + ' - ' + title_s + redirector_stat)
 								po = create_photo_object(url = captcha, title = 'View Captcha')
 								oc.add(po)
 								
@@ -2585,8 +2586,9 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 				else:
 					durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":server_info_t, "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "directors":directors, "roles":roles, "isTargetPlay":str(isTargetPlay), "useSSL":Prefs["use_https_alt"], "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled, 'urldata':'', 'pairrequired':pair_required, "host":host, "openloadApiKey":Prefs['control_openload_api_key']}))
 				
+				vco = None
 				try:
-					oc.add(VideoClipObject(
+					vco = VideoClipObject(
 						url = durl,
 						title = status + title + ' (' + label + ')' + redirector_stat,
 						thumb = GetThumb(thumb, session=session),
@@ -2596,13 +2598,13 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 						summary = summary,
 						key = AddRecentWatchList(title = watch_title, url=url, summary=summary, thumb=thumb)
 						)
-					)
+					oc.add(vco)
 				except:
 					Log('ERROR init.py>TvShowDetail %s, %s' % (e.args, (title + ' - ' + title_s)))
 					Log("ERROR: %s with key:%s returned %s" % (url,url_s,server_info))
 					
 				if captcha != None and captcha != False:
-					DumbKeyboard(PREFIX, oc, SolveCaptcha, dktitle = 'Solve Captcha: ' + title, dkHistory = False, dkthumb = captcha, dkart=captcha, url = server_info, dlt = dlt)
+					DumbKeyboard(PREFIX, oc, SolveCaptcha, dktitle = 'Solve Captcha: ' + title, dkHistory = False, dkthumb = captcha, dkart=captcha, url = server_info, dlt = dlt, vco=vco, title=title + ' (' + label + ')' + redirector_stat)
 					po = create_photo_object(url = captcha, title = 'View Captcha')
 					oc.add(po)
 			else:
@@ -2743,7 +2745,8 @@ def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary
 				else:
 					durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":server_info_t, "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "roles":roles, "directors":directors, "roles":roles, "isTargetPlay":str(isTargetPlay), "useSSL":Prefs["use_https_alt"], "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled, 'urldata':'','quality':qual, 'pairrequired':pair_required, "host":host, "openloadApiKey":Prefs['control_openload_api_key']}))
 					
-				oc.add(VideoClipObject(
+				vco = None
+				vco = VideoClipObject(
 					url = durl,
 					title = status + title + ' - ' + title_s + redirector_stat,
 					thumb = GetThumb(thumb, session=session),
@@ -2753,10 +2756,10 @@ def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary
 					summary = summary,
 					key = AddRecentWatchList(title=title, url=url, summary=summary, thumb=thumb)
 					)
-				)
+				oc.add(vco)
 				
 				if captcha != None and captcha != False:
-					DumbKeyboard(PREFIX, oc, SolveCaptcha, dktitle = 'Solve Captcha: ' + title, dkHistory = False, dkthumb = captcha, dkart=captcha, url = server_info, dlt = dlt)
+					DumbKeyboard(PREFIX, oc, SolveCaptcha, dktitle = 'Solve Captcha: ' + title, dkHistory=False, dkthumb=captcha, dkart=captcha, url=server_info, dlt=dlt, vco=vco, title=title + ' - ' + title_s + redirector_stat)
 					po = create_photo_object(url = captcha, title = 'View Captcha')
 					oc.add(po)
 				
@@ -6213,7 +6216,7 @@ def DumpPrefs(changed=False, **kwargs):
 	Log("Number of concurrent Download Threads: %s" % (Prefs["download_connections"]))
 	Log("Limit Aggregate Download Speed (KB/s): %s" % (Prefs["download_speed_limit"]))
 	Log("Use LinkChecker for Videos: %s" % (Prefs["use_linkchecker"]))
-	Log("Use Openload Pairing: %s" % (Prefs["use_openload_pairing"]))
+	Log("Use Openload: %s" % (Prefs["use_openload_pairing"]))
 	Log("Use PhantomJS: %s" % (Prefs["use_phantomjs"]))
 	Log("Auth Admin through Plex.tv: %s" % (Prefs["plextv"]))
 	Log("Enable Debug Mode: %s" % (Prefs["use_debug"]))
@@ -6424,7 +6427,7 @@ def PlayAndAdd(url, title, summary, thumb, videoUrl, watch_title, **kwargs):
 	return videoUrl
 	
 ####################################################################################################
-def SolveCaptcha(query, url, dlt, **kwargs):
+def SolveCaptcha(query, url, dlt, vco, title, page_url, **kwargs):
 
 	try:
 		resp = common.host_openload.SolveCaptcha(query, url, dlt)
@@ -6439,7 +6442,19 @@ def SolveCaptcha(query, url, dlt, **kwargs):
 	if resp == None:
 		return MC.message_container('Captcha Unsolved', 'Captcha Not Solved. Incorrect response !')
 	else:
-		return MC.message_container('Captcha Solved', 'Captcha Solved Successfully')
+		oc = ObjectContainer(title2 = title , no_cache=common.isForceNoCache())
+		durl = vco.url
+		durl = durl.replace('fmovies://','')
+		durl = JSON.ObjectFromString(D(durl))
+		durl['url'] = resp
+		durl['title'] = title
+		durl = "fmovies://" + E(JSON.StringFromObject(durl))
+		vco.url = durl
+		vco.title = title
+		oc.add(vco)
+		oc.add(DirectoryObject(key = Callback(MainMenu), title = '<< Main Menu',thumb = R(ICON)))
+		return oc
+		#return MC.message_container('Captcha Solved', 'Captcha Solved Successfully')
 		
 ####################################################################################################
 def create_photo_object(url, title, include_container=False, **kwargs):

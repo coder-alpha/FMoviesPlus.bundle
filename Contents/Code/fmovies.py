@@ -586,6 +586,9 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 					grabber += '&' + urllib.urlencode(query)
 				else:
 					grabber += '?' + urllib.urlencode(query)
+					
+			if subtitle == None or len(subtitle) == 0:
+				subtitle = None
 				
 			if grabber!=None and not grabber.startswith('http'):
 				grabber = 'http:'+grabber

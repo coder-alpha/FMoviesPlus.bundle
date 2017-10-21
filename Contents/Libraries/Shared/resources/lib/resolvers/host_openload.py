@@ -413,7 +413,7 @@ def openloadS(url, videoData=None, usePairing=True, session=None):
 		ol_id = client.search_regex('<span[^>]+id="[^"]+"[^>]*>([0-9A-Za-z]+)</span>',videoData, 'openload ID')
 		print 'OpenLoad iD: %s' % video_id
 		video_url = None
-		
+		e = ''
 		try:
 			if USE_LOGIN_KEY == True and video_url == None:
 				print('using L/K API method', video_id)
@@ -716,7 +716,7 @@ def link_from_api(fid, lk=None, test=False):
 	else:
 		msg = data["msg"]
 		logger(u"* <host_openload.link_from_api> - %s >>>" % data['msg'])
-	logger("* <host_openload.link_from_api> - error: failed to retrieve video stream")
+	#logger("* <host_openload.link_from_api> - error: failed to retrieve video stream")
 	return None, cont, captcha_url, dlticket, msg
 	
 ######################################################################################

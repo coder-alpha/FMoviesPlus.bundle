@@ -1,7 +1,7 @@
 ################################################################################
 TITLE = "FMoviesPlus"
 VERSION = '0.45' # Release notation (x.y - where x is major and y is minor)
-TAG = 'dev 10-21-2017'
+TAG = 'dev 10-22-2017'
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
 ################################################################################
@@ -750,6 +750,13 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 		pass
 		
 	return page_data_string
+	
+####################################################################################################
+def OpenLoadUnpair(**kwargs):
+	msg = host_openload.unpair()
+	if Prefs["use_debug"]:
+		for m in msg:
+			Log('OpenLoad UnPair: %s' % m)
 
 ######################################################################################
 

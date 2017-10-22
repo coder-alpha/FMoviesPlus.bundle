@@ -1072,6 +1072,8 @@ def SetHostOptions(session, refresh=False, n=None, curr_sources=None, option='0'
 		
 	oc.add(DirectoryObject(key = Callback(ExtHosts, session=session, n=E(JSON.StringFromObject(host)), curr_sources=curr_sources), title = 'Move to Top in Host List', summary = title_msg, thumb = R(ICON_UPARROW)))
 	
+	oc.add(DirectoryObject(key = Callback(HostTools, title=None, host=host['name']), title = "Tools", summary='Tools for hosts', thumb = R(tools.ICON_TOOLS)))
+	
 	oc.add(DirectoryObject(
 		key = Callback(MainMenu, update = MakeSelectionHosts()),
 		title = '<< Save Selection >>',
@@ -1164,6 +1166,30 @@ def MakeSelectionProxies(**kwargs):
 	Dict['OPTIONS_PROXY'] = E(JSON.StringFromObject(common.OPTIONS_PROXY))
 	Dict.Save()
 
+####################################################################################################
+@route(PREFIX + "/HostTools")
+def HostTools(title=None, host=None, header=None, message=None, **kwargs):
+	
+	oc = ObjectContainer(title2='%s Tools' % host.title(), header=header, message=message)
+
+	if title:
+		if title == 'openload_unpair':
+			Thread.Create(common.OpenLoadUnpair)
+			time.sleep(7)
+			message = 'UnPairing will be completed in a few seconds. Please return to previous screen.'
+		return MC.message_container('Info', message)
+
+	if host == 'openload':
+		oc.add(DirectoryObject(key=Callback(HostTools, title='openload_unpair', host=host),
+			title=u'*Paired* - UnPair OpenLoad' if common.host_openload.isPairingDone() == True else u'*Not Paired*',
+			thumb = R(tools.ICON_TOOLS),
+			summary=u'UnPair with OpenLoad'))
+
+	if len(oc) == 0:
+		return MC.message_container('Info', 'No tools available for %s' % host)
+
+	return oc
+	
 ######################################################################################
 @route(PREFIX + "/clearcache")
 def ClearCache(**kwargs):
@@ -2769,7 +2795,7 @@ def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary
 						if isTargetPlay == True:
 							if Prefs['disable_downloader'] == False and AuthTools.CheckAdmin() == True:
 								oc.add(DirectoryObject(
-									key = Callback(AddToDownloadsListPre, title=watch_title, purl=url, url=server_info, summary=summary, thumb=thumb, year=year, quality=qual, source=host, type=libtype, resumable=True, source_meta={}, file_meta={}, sub_url=sub_url, mode=common.DOWNLOAD_MODE[0], session=session, admin=True),
+									key = Callback(AddToDownloadsListPre, title=watch_title, purl=url, url=server_info, durl=server_info, summary=summary, thumb=thumb, year=year, quality=qual, source=host, type=libtype, resumable=True, source_meta={}, file_meta={}, sub_url=sub_url, mode=common.DOWNLOAD_MODE[0], session=session, admin=True),
 									title = '%s | Add to Download Queue' % qual,
 									summary = 'Adds the current video to Download List',
 									art = art,
@@ -2778,7 +2804,7 @@ def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary
 								)
 							elif Prefs['disable_downloader'] == False:
 								oc.add(DirectoryObject(
-									key = Callback(AddToDownloadsListPre, title=watch_title, purl=url, url=server_info, summary=summary, thumb=thumb, year=year, quality=qual, source=host, type=libtype, resumable=True, source_meta={}, file_meta={}, sub_url=sub_url, mode=common.DOWNLOAD_MODE[1], session=session, admin=False),
+									key = Callback(AddToDownloadsListPre, title=watch_title, purl=url, url=server_info, durl=server_info, summary=summary, thumb=thumb, year=year, quality=qual, source=host, type=libtype, resumable=True, source_meta={}, file_meta={}, sub_url=sub_url, mode=common.DOWNLOAD_MODE[1], session=session, admin=False),
 									title = '%s | Add to Request Queue' % qual,
 									summary = 'Adds the current video to Request List',
 									art = art,
@@ -2803,7 +2829,7 @@ def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary
 								ftype = file['type']
 								if Prefs['disable_downloader'] == False and AuthTools.CheckAdmin() == True:
 									oc.add(DirectoryObject(
-										key = Callback(AddToDownloadsListPre, title=watch_title, purl=url, url=furl, summary=summary, thumb=thumb, year=year, quality=res, source=host_source, type=libtype, resumable=True, source_meta={}, file_meta={}, sub_url=sub_url, mode=common.DOWNLOAD_MODE[0], session=session, admin=True),
+										key = Callback(AddToDownloadsListPre, title=watch_title, purl=url, url=furl, durl=furl, summary=summary, thumb=thumb, year=year, quality=res, source=host_source, type=libtype, resumable=True, source_meta={}, file_meta={}, sub_url=sub_url, mode=common.DOWNLOAD_MODE[0], session=session, admin=True),
 										title = '%s | Add to Download Queue' % res,
 										summary = 'Adds the current video to Download List',
 										art = art,
@@ -2812,7 +2838,7 @@ def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary
 									)
 								elif Prefs['disable_downloader'] == False:
 									oc.add(DirectoryObject(
-										key = Callback(AddToDownloadsListPre, title=watch_title, purl=url, url=furl, summary=summary, thumb=thumb, year=year, quality=res, source=host_source, type=libtype, resumable=True, source_meta={}, file_meta={}, sub_url=sub_url, mode=common.DOWNLOAD_MODE[1], session=session, admin=False),
+										key = Callback(AddToDownloadsListPre, title=watch_title, purl=url, url=furl, durl=furl, summary=summary, thumb=thumb, year=year, quality=res, source=host_source, type=libtype, resumable=True, source_meta={}, file_meta={}, sub_url=sub_url, mode=common.DOWNLOAD_MODE[1], session=session, admin=False),
 										title = '%s | Add to Request Queue' % res,
 										summary = 'Adds the current video to Request List',
 										art = art,
@@ -3194,7 +3220,7 @@ def ExtSourcesDownload(title, url, summary, thumb, art, rating, duration, genre,
 			try:
 				libtype='movie' if tvshowtitle == None else 'show'
 				oc.add(DirectoryObject(
-					key = Callback(AddToDownloadsListPre, title=watch_title, purl=url, url=source['url'], sub_url=source['sub_url'], summary=summary, thumb=thumb, year=year, fsBytes=fsBytes, fs=fs, file_ext=source['file_ext'], quality=source['quality'], source=source['source'], source_meta={}, file_meta={}, type=libtype, resumable=source['resumeDownload'], mode=mode, session=session, admin=True if mode==common.DOWNLOAD_MODE[0] else False),
+					key = Callback(AddToDownloadsListPre, title=watch_title, purl=url, url=source['url'], durl=source['durl'], sub_url=source['sub_url'], summary=summary, thumb=thumb, year=year, fsBytes=fsBytes, fs=fs, file_ext=source['file_ext'], quality=source['quality'], source=source['source'], source_meta={}, file_meta={}, type=libtype, resumable=source['resumeDownload'], mode=mode, session=session, admin=True if mode==common.DOWNLOAD_MODE[0] else False),
 					title = title_msg,
 					summary = 'Adds the current video to %s List' % 'Download' if mode==common.DOWNLOAD_MODE[0] else 'Request',
 					art = art,
@@ -3674,7 +3700,7 @@ def Bookmarks(title, session = None, **kwargs):
 	
 #######################################################################################################
 @route(PREFIX + '/AddToDownloadsListPre')
-def AddToDownloadsListPre(title, year, url, purl, summary, thumb, quality, source, type, resumable, source_meta, file_meta, mode, sub_url=None, fsBytes=None, fs=None, file_ext=None, section_path=None, section_title=None, section_key=None, session=None, admin=False, update=False, **kwargs):
+def AddToDownloadsListPre(title, year, url, durl, purl, summary, thumb, quality, source, type, resumable, source_meta, file_meta, mode, sub_url=None, fsBytes=None, fs=None, file_ext=None, section_path=None, section_title=None, section_key=None, session=None, admin=False, update=False, **kwargs):
 	
 	admin = True if str(admin) == 'True' else False
 	update = True if str(update) == 'True' else False
@@ -3733,7 +3759,7 @@ def AddToDownloadsListPre(title, year, url, purl, summary, thumb, quality, sourc
 			return MC.message_container('Item Update', 'Item has been updated with new download url')
 		elif admin == True and update == False and EncTxt['url'] != url:
 			oc = ObjectContainer(title1='Item exists in Downloads List', no_cache=common.isForceNoCache())
-			oc.add(DirectoryObject(key = Callback(AddToDownloadsListPre, title=title, purl=purl, url=url, summary=summary, thumb=thumb, year=year, quality=quality, source=source, source_meta=source_meta, file_meta=file_meta, type=type, resumable=resumable, sub_url=sub_url, fsBytes=fsBytes, fs=fs, file_ext=file_ext, mode=mode, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, update=True), title = 'Update this item'))
+			oc.add(DirectoryObject(key = Callback(AddToDownloadsListPre, title=title, purl=purl, url=url, durl=durl, summary=summary, thumb=thumb, year=year, quality=quality, source=source, source_meta=source_meta, file_meta=file_meta, type=type, resumable=resumable, sub_url=sub_url, fsBytes=fsBytes, fs=fs, file_ext=file_ext, mode=mode, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, update=True), title = 'Update this item'))
 			oc.add(DirectoryObject(key = Callback(MyMessage, title='Return', msg='Use back to Return to previous screen'), title = 'Return'))
 			return oc
 		elif admin == True and update == True and EncTxt['url'] == url:
@@ -3755,7 +3781,7 @@ def AddToDownloadsListPre(title, year, url, purl, summary, thumb, quality, sourc
 		chunk_size = int(1024.0 * 1024.0 * float(common.DOWNLOAD_CHUNK_SIZE)) # in bytes
 		fid = '.'+common.id_generator()
 		
-		EncTxt = E(JSON.StringFromObject({'title':title, 'year':year, 'url':url, 'purl':purl, 'sub_url':sub_url, 'summary':summary, 'thumb':thumb, 'fsBytes':int(fsBytes), 'fs':fs, 'chunk_size':chunk_size, 'file_ext':file_ext, 'quality':quality, 'source':source, 'source_meta':source_meta, 'file_meta':file_meta, 'uid':uid, 'fid':fid, 'type':type, 'resumable':resumable, 'status':common.DOWNLOAD_STATUS[4], 'startPos':0, 'timeAdded':time.time(), 'first_time':time.time(), 'progress':0, 'chunk_speed':0,'avg_speed':0,'avg_speed_curr':0, 'eta':0, 'error':'', 'last_error':'Unknown Error', 'action':common.DOWNLOAD_PROPS[3],'section_path':section_path, 'section_title':section_title, 'section_key':section_key})) 
+		EncTxt = E(JSON.StringFromObject({'title':title, 'year':year, 'url':url, 'durl':durl, 'purl':purl, 'sub_url':sub_url, 'summary':summary, 'thumb':thumb, 'fsBytes':int(fsBytes), 'fs':fs, 'chunk_size':chunk_size, 'file_ext':file_ext, 'quality':quality, 'source':source, 'source_meta':source_meta, 'file_meta':file_meta, 'uid':uid, 'fid':fid, 'type':type, 'resumable':resumable, 'status':common.DOWNLOAD_STATUS[4], 'startPos':0, 'timeAdded':time.time(), 'first_time':time.time(), 'progress':0, 'chunk_speed':0,'avg_speed':0,'avg_speed_curr':0, 'eta':0, 'error':'', 'last_error':'Unknown Error', 'action':common.DOWNLOAD_PROPS[3],'section_path':section_path, 'section_title':section_title, 'section_key':section_key})) 
 		Dict[uid] = EncTxt
 		Dict.Save()
 		return MC.message_container('Requested Sources', 'Successfully added to Requested List')
@@ -3770,12 +3796,12 @@ def AddToDownloadsListPre(title, year, url, purl, summary, thumb, quality, sourc
 			Dict['DOWNLOAD_OPTIONS_SECTION_TEMP'][tuec][x] = common.DOWNLOAD_OPTIONS[x]
 		Dict.Save()
 		
-	return AddToDownloadsList(title=title, purl=purl, url=url, summary=summary, thumb=thumb, year=year, quality=quality, source=source, source_meta=source_meta, file_meta=file_meta, type=type, resumable=resumable, sub_url=sub_url, fsBytes=fsBytes, fs=fs, file_ext=file_ext, mode=mode, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, update=update)
+	return AddToDownloadsList(title=title, purl=purl, url=url, durl=durl, summary=summary, thumb=thumb, year=year, quality=quality, source=source, source_meta=source_meta, file_meta=file_meta, type=type, resumable=resumable, sub_url=sub_url, fsBytes=fsBytes, fs=fs, file_ext=file_ext, mode=mode, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, update=update)
 	
 ######################################################################################
 # Adds a movie to the DownloadsList list using the (title + 'Down5Split') as a key for the url
 @route(PREFIX + "/addToDownloadsList")
-def AddToDownloadsList(title, year, url, purl, summary, thumb, quality, source, type, resumable, source_meta, file_meta, sub_url=None, fsBytes=None, fs=None, file_ext=None, section_path=None, section_title=None, section_key=None, session=None, admin=False, update=False, **kwargs):
+def AddToDownloadsList(title, year, url, durl, purl, summary, thumb, quality, source, type, resumable, source_meta, file_meta, sub_url=None, fsBytes=None, fs=None, file_ext=None, section_path=None, section_title=None, section_key=None, session=None, admin=False, update=False, **kwargs):
 
 	admin = True if str(admin) == 'True' else False
 	update = True if str(update) == 'True' else False
@@ -3820,13 +3846,13 @@ def AddToDownloadsList(title, year, url, purl, summary, thumb, quality, source, 
 					LOCS.append(item)
 			if len(LOCS) == 1:
 				item = LOCS[0]
-				return AddToDownloadsList(title=title, year=year, url=url, purl=purl, summary=summary, thumb=thumb, fs=fs, fsBytes=fsBytes, file_ext=file_ext, quality=quality, source=source, source_meta=source_meta, file_meta=file_meta, type=type, resumable=resumable, sub_url=sub_url, section_path=item['path'], section_title=item['title'], section_key=item['key'], session=session, admin=admin, update=update)
+				return AddToDownloadsList(title=title, year=year, url=url, durl=durl, purl=purl, summary=summary, thumb=thumb, fs=fs, fsBytes=fsBytes, file_ext=file_ext, quality=quality, source=source, source_meta=source_meta, file_meta=file_meta, type=type, resumable=resumable, sub_url=sub_url, section_path=item['path'], section_title=item['title'], section_key=item['key'], session=session, admin=admin, update=update)
 			else:
 				oc = ObjectContainer(title1='Select Location', no_cache=common.isForceNoCache())
 				for item in DOWNLOAD_OPTIONS_SECTION_TEMP[type]:
 					if item['enabled']:
 						oc.add(DirectoryObject(
-							key = Callback(AddToDownloadsList, title=title, year=year, url=url, purl=purl, summary=summary, thumb=thumb, fs=fs, fsBytes=fsBytes, file_ext=file_ext, quality=quality, source=source, source_meta=source_meta, file_meta=file_meta, type=type, resumable=resumable, sub_url=sub_url, section_path=item['path'], section_title=item['title'], section_key=item['key'], session=session, admin=admin, update=update),
+							key = Callback(AddToDownloadsList, title=title, year=year, url=url, durl=durl, purl=purl, summary=summary, thumb=thumb, fs=fs, fsBytes=fsBytes, file_ext=file_ext, quality=quality, source=source, source_meta=source_meta, file_meta=file_meta, type=type, resumable=resumable, sub_url=sub_url, section_path=item['path'], section_title=item['title'], section_key=item['key'], session=session, admin=admin, update=update),
 							title = '%s | %s' % (item['title'], item['path'])
 							)
 						)
@@ -3880,7 +3906,7 @@ def AddToDownloadsList(title, year, url, purl, summary, thumb, quality, source, 
 			chunk_size = int(1024.0 * 1024.0 * float(common.DOWNLOAD_CHUNK_SIZE)) # in bytes
 			fid = '.'+common.id_generator()
 			
-			EncTxt = E(JSON.StringFromObject({'title':title, 'year':year, 'url':url, 'purl':purl, 'sub_url':sub_url, 'summary':summary, 'thumb':thumb, 'fsBytes':int(fsBytes), 'fs':fs, 'chunk_size':chunk_size, 'file_ext':file_ext, 'quality':quality, 'source':source, 'source_meta':source_meta, 'file_meta':file_meta, 'uid':uid, 'fid':fid, 'type':type, 'resumable':resumable, 'status':common.DOWNLOAD_STATUS[0], 'startPos':0, 'timeAdded':time.time(), 'first_time':time.time(), 'progress':0, 'chunk_speed':0,'avg_speed':0,'avg_speed_curr':0, 'eta':0, 'error':'', 'last_error':'Unknown Error', 'action':common.DOWNLOAD_ACTIONS[4],'section_path':section_path, 'section_title':section_title, 'section_key':section_key})) 
+			EncTxt = E(JSON.StringFromObject({'title':title, 'year':year, 'url':url, 'durl':durl, 'purl':purl, 'sub_url':sub_url, 'summary':summary, 'thumb':thumb, 'fsBytes':int(fsBytes), 'fs':fs, 'chunk_size':chunk_size, 'file_ext':file_ext, 'quality':quality, 'source':source, 'source_meta':source_meta, 'file_meta':file_meta, 'uid':uid, 'fid':fid, 'type':type, 'resumable':resumable, 'status':common.DOWNLOAD_STATUS[0], 'startPos':0, 'timeAdded':time.time(), 'first_time':time.time(), 'progress':0, 'chunk_speed':0,'avg_speed':0,'avg_speed_curr':0, 'eta':0, 'error':'', 'last_error':'Unknown Error', 'action':common.DOWNLOAD_ACTIONS[4],'section_path':section_path, 'section_title':section_title, 'section_key':section_key})) 
 			Dict[uid] = EncTxt
 			Dict.Save()
 			Thread.Create(download.trigger_que_run)

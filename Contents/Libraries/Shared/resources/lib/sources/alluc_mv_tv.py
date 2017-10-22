@@ -137,7 +137,7 @@ class source:
 				r = r + "+%23newlinks"
 				rr = proxies.request(r, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
 				r1 = json.loads(rr)
-				print r1
+				#print r1
 				
 				for item in r1['result']:
 					if len(item['hosterurls']) == 1:

@@ -178,6 +178,8 @@ class host:
 	def createMeta(self, url, provider, logo, quality, links, key, riptype, vidtype='Movie', lang='en', sub_url=None, txt=''):
 	
 		url = url.replace('oload.tv','openload.co')
+		durl = url
+		
 		urldata = client.b64encode(json.dumps('', encoding='utf-8'))
 		params = client.b64encode(json.dumps('', encoding='utf-8'))
 		a1 = None
@@ -209,10 +211,10 @@ class host:
 		file_ext = '.mp4'
 
 		try:
-			files_ret.append({'source':self.name, 'maininfo':pair, 'titleinfo':titleinfo, 'quality':file_quality(vidurl, quality), 'vidtype':vidtype, 'rip':rip_type(vidurl, riptype), 'provider':provider, 'url':vidurl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'subdomain':client.geturlhost(url), 'misc':{'pair':isPairRequired, 'player':'iplayer', 'gp':False}})
+			files_ret.append({'source':self.name, 'maininfo':pair, 'titleinfo':titleinfo, 'quality':file_quality(vidurl, quality), 'vidtype':vidtype, 'rip':rip_type(vidurl, riptype), 'provider':provider, 'url':vidurl, 'durl':durl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'subdomain':client.geturlhost(url), 'misc':{'pair':isPairRequired, 'player':'iplayer', 'gp':False}})
 		except Exception as e:
 			self.log('ERROR', 'createMeta', e, dolog=True)
-			files_ret.append({'source':urlhost, 'maininfo':pair, 'titleinfo':titleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'url':vidurl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'subdomain':client.geturlhost(url), 'misc':{'pair':isPairRequired, 'player':'eplayer', 'gp':False}})
+			files_ret.append({'source':urlhost, 'maininfo':pair, 'titleinfo':titleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'url':vidurl, 'durl':durl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'subdomain':client.geturlhost(url), 'misc':{'pair':isPairRequired, 'player':'eplayer', 'gp':False}})
 			
 		for fr in files_ret:
 			links.append(fr)
@@ -654,7 +656,7 @@ def isPairingDone():
 	checkpairurl = 'https://openload.co/checkpair/%s'
 	
 	r = client.request(echourl, headers=openloadhdr)
-	print "URL:%s  Resp:%s" % (echourl, r)
+	#print "URL:%s  Resp:%s" % (echourl, r)
 	
 	checkpairurl_withip = checkpairurl % r
 	r = client.request(checkpairurl_withip, headers=openloadhdr)
@@ -665,6 +667,43 @@ def isPairingDone():
 		return True
 		
 	return False
+	
+def unpair():
+
+	c = 0
+	video_id = ['kUEfGclsU9o','RQaodwqBjek','XDCUk2CA_U0','L-eIQjFctxQ','o3v8nnBhPDY','M2bsX_p_ptg','G-WGlQ_9cec','UiZLdKPsoL4','RQaodwqBjek','XDCUk2CA_U0','L-eIQjFctxQ']
+	
+	myLog = []
+	
+	if isPairingDone() == True:
+	
+		msg = 'System is paired. Continuing unpair routine.'
+		myLog.append(msg)
+		
+		try:
+			while isPairingDone() == True and c < 25:
+				for i in range(0, len(video_id)):	
+					msg = 'UnPair attempt %s' % str(c*len(video_id)+i)
+					myLog.append(msg)
+					title, video_url = pairing_method(video_id[i])
+					msg = 'Title: %s Url: %s' % (title, video_url)
+					#myLog.append(msg)
+					if video_url == None:
+						raise DecodeError('Null video_url')
+					
+					time.sleep(0.2)
+				c += 1
+		except DecodeError as e:
+			print e
+			msg = 'System should now be UnPaired'
+			myLog.append(msg)
+			
+	else:
+		msg = 'System is not paired'
+		myLog.append(msg)
+		
+	return myLog
+		
 	
 # Twoure's API method
 def link_from_api(fid, lk=None, test=False):

@@ -128,6 +128,7 @@ class Downloader(object):
 		title = file_meta['title']
 		url = file_meta['url']
 		furl = url
+		durl = file_meta['durl']
 		purl = file_meta['purl']
 		year = file_meta['year']
 		summary = file_meta['summary']
@@ -180,9 +181,11 @@ class Downloader(object):
 		
 		if 'openload' in source.lower():
 			furl, error = common.host_openload.resolve(furl)
-			Log(furl)
-			Log(error)
 			if error != '' or furl == None:
+				furl, error = common.host_openload.resolve(durl)
+			if error != '' or furl == None:
+				Log('OpenLoad URL: %s' % furl)
+				Log('OpenLoad Error: %s' % error)
 				download_failed(url, error, progress, startPos, purgeKey)
 				return
 		

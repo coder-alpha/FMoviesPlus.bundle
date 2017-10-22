@@ -88,7 +88,7 @@ INTERNAL_SOURCES_QUALS = [{'label':'4K','enabled': 'True'},{'label':'1080p','ena
 INTERNAL_SOURCES_RIPTYPE = [{'label':'BRRIP','enabled': 'True'},{'label':'PREDVD','enabled': 'True'},{'label':'CAM','enabled': 'True'},{'label':'TS','enabled': 'True'},{'label':'SCR','enabled': 'True'},{'label':'UNKNOWN','enabled': 'True'}]
 INTERNAL_SOURCES_FILETYPE = [{'label':'Movie/Show','enabled': 'True'},{'label':'Trailer','enabled': 'False'},{'label':'Behind the scenes','enabled': 'False'},{'label':'Music Video','enabled': 'False'}]
 INTERNAL_SOURCES_SIZES = [{'label':'> 2GB','enabled': 'True','LL':2*TO_GB,'UL':100*TO_GB},{'label':'1GB - 2GB','enabled': 'True','LL':1*TO_GB,'UL':2*TO_GB},{'label':'0.5GB - 1GB','enabled': 'True','LL':0.5*TO_GB,'UL':1*TO_GB},{'label':'0GB - 0.5GB','enabled': 'True','LL':1,'UL':0.5*TO_GB},{'label':'0GB','enabled': 'False','LL':0,'UL':0}]
-INTERNAL_SOURCES_SIZES_CONST = [{'label':'> 2GB','enabled': 'True','LL':2*TO_GB,'UL':100*TO_GB},{'label':'1GB >= 2GB','enabled': 'True','LL':1*TO_GB,'UL':2*TO_GB},{'label':'0.5GB >= 1GB','enabled': 'True','LL':0.5*TO_GB,'UL':1*TO_GB},{'label':'0GB >= 0.5GB','enabled': 'True','LL':1,'UL':0.5*TO_GB},{'label':'0GB','enabled': 'False','LL':0,'UL':999999}]
+INTERNAL_SOURCES_SIZES_CONST = [{'label':'> 2GB','enabled': 'True','LL':2*TO_GB,'UL':100*TO_GB},{'label':'1GB >= 2GB','enabled': 'True','LL':1*TO_GB,'UL':2*TO_GB},{'label':'0.5GB >= 1GB','enabled': 'True','LL':0.5*TO_GB,'UL':1*TO_GB},{'label':'0GB >= 0.5GB','enabled': 'True','LL':999999,'UL':0.5*TO_GB},{'label':'0GB','enabled': 'False','LL':0,'UL':999999}]
 INTERNAL_SOURCES_QUALS_CONST = [{'label':'4K','enabled': 'True'},{'label':'1080p','enabled': 'True'},{'label':'720p','enabled': 'True'},{'label':'480p','enabled': 'True'},{'label':'360p','enabled': 'True'}]
 INTERNAL_SOURCES_RIPTYPE_CONST = [{'label':'BRRIP','enabled': 'True'},{'label':'PREDVD','enabled': 'True'},{'label':'CAM','enabled': 'True'},{'label':'TS','enabled': 'True'},{'label':'SCR','enabled': 'True'},{'label':'UNKNOWN','enabled': 'True'}]
 INTERNAL_SOURCES_FILETYPE_CONST = [{'label':'Movie/Show','enabled': 'True'},{'label':'Trailer','enabled': 'False'},{'label':'Behind the scenes','enabled': 'False'},{'label':'Music Video','enabled': 'False'},{'label':'Misc.','enabled': 'False'}]
@@ -379,7 +379,7 @@ def FilterBasedOn(srcs, use_quality=True, use_riptype=True, use_vidtype=True, us
 	#Log(INTERNAL_SOURCES_SIZES)
 	if use_filesize == True:
 		filter_extSources = []
-		for fs in INTERNAL_SOURCES_SIZES: filter_extSources += [i for i in srcs if i['fs'] >= fs['LL'] and i['fs'] < fs['UL'] and str(fs['enabled'])=='True']
+		for fs in INTERNAL_SOURCES_SIZES: filter_extSources += [i for i in srcs if (i['vidtype'].lower() in 'movie/show' and i['fs'] >= fs['LL'] and i['fs'] < fs['UL'] and str(fs['enabled'])=='True') or (i['vidtype'].lower() not in 'movie/show')]
 		srcs = filter_extSources
 	
 	# filter sources based on enabled rip-type in INTERNAL_SOURCES_RIPTYPE

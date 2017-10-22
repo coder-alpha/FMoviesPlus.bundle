@@ -12,7 +12,7 @@ class DumbKeyboard:
 	SHIFT_KEYS = list('ABCDEFGHIJKLMNOPQRSTUVWXYZ!@#$%^&*()_+:{}|\"<>?')
 
 	def __init__(self, prefix, oc, callback, dktitle=None, dkthumb=None, dkart=None,
-				 dkplaceholder=None, dksecure=False, dkNumOnly=False, dkHistory=True, **kwargs):
+				 dkplaceholder=None, dksecure=False, dkNumOnly=False, dkHistory=True, dirObj=True, **kwargs):
 		cb_hash = hash(str(callback)+str(kwargs))
 		Route.Connect(prefix+'/dumbkeyboard/%s'%cb_hash, self.Keyboard)
 		Route.Connect(prefix+'/dumbkeyboard/%s/submit'%cb_hash, self.Submit)
@@ -20,7 +20,14 @@ class DumbKeyboard:
 		Route.Connect(prefix+'/dumbkeyboard/%s/history/clear'%cb_hash, self.ClearHistory)
 		Route.Connect(prefix+'/dumbkeyboard/%s/history/add/{query}'%cb_hash, self.AddHistory)
 		# Add our directory item
-		oc.add(DirectoryObject(key=Callback(self.Keyboard, query=dkplaceholder),
+		if dirObj == True:
+			oc.add(DirectoryObject(key=Callback(self.Keyboard, query=dkplaceholder),
+							   title=str(dktitle) if dktitle else \
+									 u'%s'%L('DumbKeyboard Search'),
+							   thumb=dkthumb, art=dkart))
+		else:
+			oc.add(MovieObject(key=Callback(self.Keyboard, query=dkplaceholder),
+								rating_key=dktitle,
 							   title=str(dktitle) if dktitle else \
 									 u'%s'%L('DumbKeyboard Search'),
 							   thumb=dkthumb, art=dkart))

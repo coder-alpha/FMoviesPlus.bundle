@@ -153,6 +153,9 @@ class Downloader(object):
 		#Log("total_size_bytes : %s" % str(total_size_bytes))
 		error = ''
 		
+		if common.DOWNLOAD_TEMP == None:
+			common.DOWNLOAD_TEMP = {}
+		
 		chunk_size_n = int(1024.0 * 1024.0 * float(common.DOWNLOAD_CHUNK_SIZE)) # in bytes
 		if chunk_size != chunk_size_n:
 			chunk_size = chunk_size_n
@@ -234,9 +237,6 @@ class Downloader(object):
 		file_meta_temp['avg_speed'] = '?'
 		file_meta_temp['avg_speed_curr'] = '?'
 		file_meta_temp['eta'] = '?'
-		
-		if common.DOWNLOAD_TEMP == None:
-			common.DOWNLOAD_TEMP = {}
 			
 		common.DOWNLOAD_TEMP[purgeKey] = E(JSON.StringFromObject(file_meta_temp))
 		Dict['DOWNLOAD_TEMP'] = E(JSON.StringFromObject(common.DOWNLOAD_TEMP))

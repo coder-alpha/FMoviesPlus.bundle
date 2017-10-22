@@ -1,7 +1,7 @@
 ################################################################################
 TITLE = "FMoviesPlus"
 VERSION = '0.45' # Release notation (x.y - where x is major and y is minor)
-TAG = 'dev 10-20-2017'
+TAG = 'dev 10-21-2017'
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
 ################################################################################
@@ -183,7 +183,7 @@ def GetKeyFromVal(list, val_look):
 		if val == val_look:
 			return key
 
-def set_control_settings():
+def set_control_settings(session=None):
 
 	keys = ['use_https_alt','control_all_uc_api_key','control_openload_api_key','use_openload_pairing','use_phantomjs']
 	for i in range(0,len(keys)):
@@ -198,6 +198,15 @@ def set_control_settings():
 		control.set_setting('is_uss_installed', is_uss_installed())
 	except Exception as e:
 		Log.Error('ERROR common.py-2>set_control_settings: %s' % e)
+		
+	try:
+		key = DEVICE_OPTIONS[7]
+		
+		if key in DEVICE_OPTION_PROPOGATE_TO_CONTROL.keys() and DEVICE_OPTION_PROPOGATE_TO_CONTROL[key] != None and DEVICE_OPTION_PROPOGATE_TO_CONTROL[key] == True:
+			control.set_setting('%s-%s' % (session,key), UsingOption(key, session=session))
+				
+	except Exception as e:
+		Log.Error('ERROR common.py-3>set_control_settings: %s' % e)
 			
 	if Prefs["use_debug"]:
 		Log("User Preferences have been set to Control")
@@ -279,7 +288,7 @@ def setDictVal(key, val, session=None):
 	if key in DEVICE_OPTION_PROPOGATE_TO_CONTROL.keys() and DEVICE_OPTION_PROPOGATE_TO_CONTROL[key] != None and DEVICE_OPTION_PROPOGATE_TO_CONTROL[key] == True:
 		control.set_setting('%s-%s' % (session,key), True if val=='enabled' else False)
 
-	Dict['Toggle'+key+session] = val
+	Dict['Toggle%s%s' % (key,session)] = val
 	Dict.Save()
 	if Prefs["use_debug"]:
 		Log("%s status: %s" % (key,val))
@@ -290,7 +299,7 @@ def setDictVal(key, val, session=None):
 def UsingOption(key, session=None):
 	if session == None:
 		session = getSession()
-	if Dict['Toggle'+key+session] == None or Dict['Toggle'+key+session] == 'disabled':
+	if Dict['Toggle%s%s' % (key,session)] == None or Dict['Toggle%s%s' % (key,session)] == 'disabled':
 		return False
 	else:
 		return True
@@ -504,7 +513,7 @@ def isItemVidAvailable(isTargetPlay, data, params=None, host=None, **kwargs):
 				if host_openload.check(vidurl, embedpage=True, headers=headers, cookie=cookie)[0] == True:
 						isVideoOnline = 'true'
 			elif isTargetPlay and host in host_misc_resolvers.supported_hosts:
-				resolved_url, params = host_misc_resolvers.resolve(vidurl, httpsskip)
+				resolved_url, params, udp = host_misc_resolvers.resolve(vidurl, httpsskip)
 				
 				if resolved_url != None:
 					# params = JSON.ObjectFromString(D(params))

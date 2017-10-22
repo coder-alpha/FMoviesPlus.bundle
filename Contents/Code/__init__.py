@@ -143,7 +143,7 @@ def MainMenu(**kwargs):
 	HTTP.Headers['Referer'] = fmovies.BASE_URL
 	
 	session = common.getSession()
-	
+	common.set_control_settings(session=session)
 	ClientInfo(session=session)
 	if len(VALID_PREFS_MSGS) > 0:
 		return DisplayMsgs()
@@ -2724,9 +2724,10 @@ def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary
 				if Prefs["use_debug"]:
 					Log("%s --- %s : Pairing required: %s" % (server_info, pair, pair_required))
 			elif isTargetPlay == True:
-				error = common.host_misc_resolvers.error(server_info, Prefs["use_https_alt"])
-				if error != '':
-					raise Exception(error)
+				if isVideoOnline != 'true':
+					error = common.host_misc_resolvers.error(server_info, Prefs["use_https_alt"])
+					if error != '':
+						raise Exception(error)
 				
 			if isVideoOnline != str(False):
 				status = common.GetEmoji(type=isVideoOnline, session=session) + ' ' + pair
@@ -3696,7 +3697,7 @@ def AddToDownloadsListPre(title, year, url, purl, summary, thumb, quality, sourc
 		try:
 			if 'openload' in source:
 				isPairDone = common.host_openload.isPairingDone()
-				online, r1, err, fs_i =  common.host_openload.check(url, usePairing = False, embedpage=True)
+				online, r1, err, fs_i, furl2 =  common.host_openload.check(url, usePairing = False, embedpage=True)
 			else:
 				fs_i, err = common.client.getFileSize(url, retError=True, retry429=True, cl=2)
 
@@ -3714,7 +3715,7 @@ def AddToDownloadsListPre(title, year, url, purl, summary, thumb, quality, sourc
 				return MC.message_container('FileSize Error', 'File reporting %s bytes cannot be downloaded. Please try again later when it becomes available.' % fsBytes)
 
 		except Exception as e:
-			return MC.message_container('Error', '%s. Sorry but file could not be added. Please try again later when it becomes available.' % e)
+			return MC.message_container('Error', '%s. Sorry but file could not be added.' % e)
 
 	uid = 'Down5Split'+E(title+year+fs+quality+source)
 	if Dict[uid] != None:
@@ -3760,7 +3761,7 @@ def AddToDownloadsListPre(title, year, url, purl, summary, thumb, quality, sourc
 		return MC.message_container('Requested Sources', 'Successfully added to Requested List')
 		
 	if 'openload' in source.lower() and Prefs['use_openload_pairing'] == False:
-		return MC.message_container('Download Sources', 'OpenLoad needs to be enabled under Channel Setting/Prefs.')
+		return MC.message_container('Download Sources', 'Use OpenLoad needs to be enabled under Channel Setting/Prefs.')
 
 		
 	if tuec not in Dict['DOWNLOAD_OPTIONS_SECTION_TEMP']:
@@ -6331,7 +6332,8 @@ def PlayVideo(videoUrl, params, retResponse, url, title, summary, thumb, watch_t
 	if 'googleusercontent.com' in videoUrl:
 		pass
 	elif common.client.geturlhost(videoUrl) in common.host_misc_resolvers.supported_hosts:
-		videoUrl = common.host_misc_resolvers.resolve(videoUrl, Prefs["use_https_alt"])
+		videoUrl, params_enc, b = common.host_misc_resolvers.resolve(videoUrl, Prefs["use_https_alt"])
+		params = JSON.ObjectFromString(D(params_enc))
 		if videoUrl != None:
 			videoUrl = videoUrl[len(videoUrl)-1]
 	elif '.mp4' not in videoUrl and 'mime=video/mp4' not in videoUrl:

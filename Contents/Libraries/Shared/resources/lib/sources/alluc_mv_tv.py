@@ -125,6 +125,7 @@ class source:
 	def get_movie(self, imdb, title, year, proxy_options=None, key=None, testing=False):
 		try:
 			stream_url = []
+			print control.setting('control_all_uc_api_key')
 			if control.setting('control_all_uc_api_key'):
 				if control.setting('realdebrid_token') or control.setting('premiumize_user'):
 					self.moviesearch_link = '/api/search/download?user=%s&password=%s&query=%s+%s'
@@ -136,7 +137,8 @@ class source:
 				r = r + "+%23newlinks"
 				rr = proxies.request(r, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
 				r1 = json.loads(rr)
-
+				print r1
+				
 				for item in r1['result']:
 					if len(item['hosterurls']) == 1:
 						lang = item['lang'].encode('utf-8')

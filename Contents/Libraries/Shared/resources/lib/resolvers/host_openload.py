@@ -421,6 +421,7 @@ def openloadS(url, videoData=None, usePairing=True, session=None):
 				if v_url == None:
 					raise DecodeError(ret_error)
 				else:
+					ret_error = ''
 					video_url = v_url
 			else:
 				raise DecodeError('L/K method disabled via device options')
@@ -430,9 +431,11 @@ def openloadS(url, videoData=None, usePairing=True, session=None):
 				try:
 					v_url, bool = phantomjs.decode(url)
 					if bool == False:
-						raise DecodeError(v_url)
+						ret_error = v_url
+						raise DecodeError(ret_error)
 					else:
 						video_url = v_url
+						ret_error = ''
 				except:
 					pass
 			if USE_DECODING1 == True and video_url == None:
@@ -456,6 +459,7 @@ def openloadS(url, videoData=None, usePairing=True, session=None):
 						print('%s; falling back to method with pairing' % e, video_id)
 						title, video_url = pairing_method(video_id)
 					elif video_url == None:
+						ret_error = 'pairing is the only option available'
 						print('%s; pairing is the only option available' % e, video_id)
 						video_url = None
 				except DecodeError as e:
@@ -697,9 +701,12 @@ def link_from_api(fid, lk=None, test=False):
 			captcha_url = data["result"]["captcha_url"]
 			if captcha_url != None and captcha_url != False:
 				captcha_url = captcha_url.replace('://',':||').replace('//','/').replace(':||','://')
+				#captcha_url = 'https://rsz.io/%s?w=300&h=300' % captcha_url.split('//')[1]
+				logger(u"* <host_openload.link_from_api> - captcha url %s >>>" % captcha_url)
 			
 		if test == True:
 			captcha_url = 'https://openload.co/dlcaptcha/QdCRoYF8wouT3YSj.png'
+
 		try:
 			url = None
 			url = burl + 'dl?file=' + fid + '&ticket=' + dlticket

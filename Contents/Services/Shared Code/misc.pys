@@ -51,70 +51,90 @@ IP_OVERIDE = True
 RE_SUB1 = Regex(r'(?m)(^[^\#])')
 RE_SOURCES = Regex(r'(?m)(^.+?\d+/(\d+).+$)')
 
-supported_hosts = ['mycloud.to']
+supported_hosts = ['mycloud.to','mcloud.to']
 
-def resolve(url, https_skip, test=False):
+def resolve(url, https_skip, test=False, strip_url=True):
 	video_urlf = None
+	
+	if 'https:' not in url and 'http:' not in url:
+		url = 'http:' + url
+	ourl = url
+	#Log(ourl)
+	data = {'test':'test'}
+	
 	try:
-		params = {}
-		headers = {}
-		headers['User-Agent'] = 'Mozilla5'
+		myParams = {}
+		myheaders = {}
+		myheaders['User-Agent'] = 'Mozilla5'
+		myheaders['Referer'] = 'http://mycloud.to'
+		myParams['headers'] = myheaders
 		
-		if 'mycloud.' in url:
-			headers['Referer'] = 'http://mycloud.to'
-			
-			data = urlparse.parse_qs(url)
-			#Log(data)
-			for k in data.keys():
-				if 'mycloud' in k:
-					url = k.split('?')[0] + '?ui=%s' % data['ui'][0].replace('=','')
-					if 'https:' not in url and 'http:' not in url:
-						url = 'http:' + url
-					break
+		if strip_url == True and 'mycloud.' in url or 'mcloud.' in url:
+			try:
+				if '?' in ourl:
+					data = urlparse.parse_qs(ourl.split('?')[1])
+					kurl = ourl.split('?')[0]
+				else:
+					kurl = ourl
+					data = {'a.url':'https%3A%2F%2Ffmovies.to%2Facode%2Fplayer.html','a.close':0,'ui':['ZwrN0oNRXfRP686L3Z3BPkXInMs']}
+			except:
+				data.update({'a.url':'https%3A%2F%2Ffmovies.to%2Facode%2Fplayer.html','a.close':0,'ui':['ZwrN0oNRXfRP686L3Z3BPkXInMs']})
+				kurl = ourl
 				
-		params['headers'] = headers
-		#Log(url)
+			#Log(data)
+			url = kurl + '?ui=%s' % data['ui'][0].replace('=','')
+			if 'https:' not in url and 'http:' not in url:
+				url = 'http:' + url
+
+		Log(url)
 					
-		if https_skip:
-			page_data_string = request(url, headers=headers, httpsskip=True)
-		else:
-			page_data_string = HTTP.Request(url, headers=headers).content
+		page_data_string = request(url, headers=myheaders, httpsskip=True)
+		#Log(page_data_string)
 		
 		if page_data_string != None:
-			if 'mycloud.' in url and 'Sorry, the page you are looking for could not be found.' not in page_data_string and 'This video is in processing' not in page_data_string:
-				json_data_str = re.findall(r'({\".*(.*m3u8|.mp4|.flv).*\"})', page_data_string)[0][0]
-				json_data = json.loads(json_data_str)
-				video_url = json_data['file']
-				if 'https:' not in video_url and 'http:' not in video_url:
-					video_url = 'http:' + video_url
-				#Log('=======video_urls_data========')
-				if https_skip:
-					video_urls_data = request(video_url, headers=headers, httpsskip=True)
-				else:
-					video_urls_data = HTTP.Request(video_url, headers=headers).content
-				if video_urls_data == None or video_urls_data == '':
-					raise ValueError('M3U8 URL is empty')
-				#Log('video_urls_data ------------> %s' % video_urls_data)
-				video_urls_arr = re.findall(r'(hls.*)', video_urls_data)
-				#Log('video_urls_arr ------------> %s' % video_urls_arr)
-				#Log('=======video_urls_data========')
-				video_url_a = []
-				for v in video_urls_arr:
-					f_i = {'file':video_url.split('list.m3u8')[0] + v, 'label':v.split('/')[1]}
-					video_url_a.append(f_i)
-					#Log(f_i)
-				video_urlf = video_url_a
-				#Log('video_urlf ------------> %s' % video_urlf)
+			if 'mycloud.' in ourl or 'mcloud.' in ourl:
+				#Log('============ MyCloud URL ==================')
 				
-				if test == True:
-					Log('*** Testing MyCloud ***')
-					vurls = mycloud_streams(video_urlf[len(video_urlf)-1], https_skip, headers)
+				if 'Sorry, the page you are looking for could not be found.' not in page_data_string and 'This video is in processing' not in page_data_string:	
+					json_data_str = re.findall(r'({\".*(.*m3u8|.mp4|.flv).*\"})', page_data_string)[0][0]
+					json_data = json.loads(json_data_str)
+					video_url = json_data['file']
+					if 'https:' not in video_url and 'http:' not in video_url:
+						video_url = 'http:' + video_url
+					
+					#Log('=======video_urls_data========')
+					video_urls_data = request(video_url, headers=myheaders, httpsskip=True)
+					
+					if video_urls_data == None or video_urls_data == '':
+						raise ValueError('M3U8 URL is empty')
+					#Log('video_urls_data ------------> %s' % video_urls_data)
+					
+					video_url_a = []
+					try:
+						video_urls_arr = re.findall(r'(hls.*)', video_urls_data)
+						#Log('video_urls_arr ------------> %s' % video_urls_arr)
+						if len(video_urls_arr) == 0:
+							raise
+						#Log('=======video_urls_data========')
+						for v in video_urls_arr:
+							f_i = {'file':video_url.split('list.m3u8')[0] + v, 'label':v.split('/')[1]}
+							video_url_a.append(f_i)
+							#Log(f_i)
+					except:
+						f_i = {'file':video_url, 'label':'720'}
+						video_url_a.append(f_i)
+					video_urlf = video_url_a
+					#Log('video_urlf ------------> %s' % video_urlf)
+					
+					if test == True:
+						Log('*** Testing MyCloud ***')
+						vurls = mycloud_streams(video_urlf[len(video_urlf)-1], https_skip, myheaders)
 				
 	except Exception as e:
 		Log('Misc.pys > resolve > Error : %s' % e)
 		pass
 		
-	return video_urlf, base64.b64encode(json.dumps(params))
+	return video_urlf, base64.b64encode(json.dumps(myParams)), True
 	
 #
 # Ref: https://github.com/Twoure/9anime.bundle/blob/6ce7aff245ef6769f2a0a6457281d8891b8452fa/Contents/Services/URL/9anime/ServiceCode.pys#L204...L222
@@ -144,19 +164,39 @@ def mycloud_streams(hls_url, https_skip, headers=None):
 ####################################################################################################
 def error(url, https_skip):
 	error = ''
+	ourl = url
+	
 	try:
 		headers = {}
-		headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/59.0.3071.115 Safari/537.36'
-		headers['Referer'] = url
-		if https_skip:
-			page_data_string = request(url, headers=headers, httpsskip=True)
-		else:
-			page_data_string = HTTP.Request(url, headers=headers).content
+		headers['User-Agent'] = 'Mozilla5'
+		headers['Referer'] = 'http://mycloud.to'
+		data = {}
+		
+		if 'mycloud.' in url or 'mcloud.' in url:
+			try:
+				if '?' in ourl:
+					data = urlparse.parse_qs(ourl.split('?')[1])
+					kurl = ourl.split('?')[0]
+				else:
+					kurl = ourl
+					data = {'a.url':'https%3A%2F%2Ffmovies.to%2Facode%2Fplayer.html','a.close':0,'ui':['ZwrN0oNRXfRP686L3Z3BPkXInMs']}
+			except:
+				data.update({'a.url':'https%3A%2F%2Ffmovies.to%2Facode%2Fplayer.html','a.close':0,'ui':['ZwrN0oNRXfRP686L3Z3BPkXInMs']})
+				kurl = ourl
+				
+			#Log(data)
+			url = kurl + '?ui=%s' % data['ui'][0].replace('=','')
+			if 'https:' not in url and 'http:' not in url:
+				url = 'http:' + url
+		
+		#Log('misc>error : %s' % url)
+		page_data_string = request(url, httpsskip=True)
+		#Log(page_data_string)
 		
 		if page_data_string != None:
-			if 'mycloud.' in url and 'Sorry, the page you are looking for could not be found.' in page_data_string:
+			if ('mycloud.' in ourl or 'mcloud.' in ourl) and 'Sorry, the page you are looking for could not be found.' in page_data_string:
 				error = 'URL Error.'
-			elif 'mycloud.' in url and 'This video is in processing' in page_data_string:
+			elif ('mycloud.' in ourl or 'mcloud.' in ourl) and 'This video is in processing' in page_data_string:
 				error = 'Video is in processing, try again later.'
 		else:
 			error = 'Page returned None'
@@ -334,8 +374,8 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 					setIP6()
 				return
 		except Exception as e:
-			print ('Error client.py>request : %s' % url)
-			print ('Error client.py>request : %s' % (e.args))
+			Log ('Error misc.py>request : %s' % url)
+			Log ('Error misc.py>request : %s' % (e.args))
 			if IPv4 == True:
 				setIP6()
 			if output == 'response':
@@ -412,7 +452,7 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 		return result
 		
 	except Exception as e:
-		print ('ERROR client.py>request %s, %s' % (e.args,url))
+		Log ('ERROR misc.py>request %s, %s' % (e.args,url))
 		if IPv4 == True:
 			setIP6()
 		return

@@ -85,6 +85,7 @@ crypto_msg = None
 try:
 	from resources.lib.libraries import mega
 	mega.fix_ssl()
+	from Cryptodome.Cipher import AES
 	print 'Cryptodome library loaded'
 except:
 	crypto_msg = 'Cryptodome library not found.'

@@ -782,8 +782,12 @@ class Mega(object):
 		#assert len(iv_str) == 16
 
 		return {'name': file_name, 'size': file_size, 'url': file_url, 'key': key_str, 'iv': iv_str, 'id': file_id}
-												 
-			
+	
+	def directDecode(self, chunk, key_str, iv_str):
+		yield_size = 0
+		for pdata in yield_aes_ctr(chunk, key_str, iv_str, self.bufsize):
+			yield(pdata)
+			yield_size += len(pdata)
 
 def next(dl):
 	for d in dl:
@@ -880,17 +884,12 @@ def download_mega_url(url, mega):
 def get_mega_dl_link(mega_url):
 	#fix_ssl()
 	mega = Mega()
-	logger('SUCCESS: mega>get_mega_dl_link - : created Mega service')
+	log(type='INFO',method='get_mega_dl_link',err='created Mega service')
 	login = mega._login()
-	logger('SUCCESS: mega>get_mega_dl_link - : anon login')
+	log(type='INFO',method='get_mega_dl_link',err='anon login')
 	dl_info = mega.file_info(mega_url)
-	logger('SUCCESS: mega>get_mega_dl_link - : created Mega downloader')
+	log(type='INFO',method='get_mega_dl_link',err='created Mega downloader')
 	
-	#logger('SUCCESS: mega>get_mega_dl_link - : created Mega downloader obj %s' % dl)
-	#dl_info = dl.next()
-	#dl_info = next(dl)
-	
-	#logger('SUCCESS: mega>get_mega_dl_link - : created download info %s' % dl_info)
 	file_url = "%s/%s" % (dl_info['url'],dl_info['name'])
 	file_ext = dl_info['name'].split('.')
 	file_ext = '.%s' % file_ext[1]
@@ -925,7 +924,11 @@ def test2():
 	fix_ssl()
 	print get_mega_dl_link('https://mega.nz/#!R6xyBBpY!JmZlf7cn7w2scbWaPYESoppAY8UDbrkXKFz0e2FZASs')
 	
-def logger(msg):
-	print msg
-
+def log(type='INFO', method='undefined', err='', logToControl=False, doPrint=True, name='mega'):
+		msg = '%s: %s > %s > %s : %s' % (time.ctime(time.time()), type, name, method, err)
+		if logToControl == True:
+			control.log(msg)
+		if doPrint == True:
+			print msg
+	
 #test()

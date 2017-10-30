@@ -36,33 +36,40 @@ def init():
 	for package, name, is_pkg in pkgutil.walk_packages(__path__):	
 		try:
 			c = __import__(name, globals(), locals(), [], -1).host()
-			print "Adding Host %s to Interface" % (c.info()['name'])
+			log("Adding Host %s to Interface" % (c.info()['name']))
 			sourceHostsCall.append({'host': c.info()['host'], 'name': c.info()['name'], 'call': c})
 			sourceHosts.append((c.info()))
 			sourceHostsPlaybackSupport[c.info()['name']] = c.info()['playbacksupport']
 		except Exception as e:
-			print "Error: %s - %s" % (name, e)
-			control.log('Error: Loading File %s' % name)
-			error_info = {
-				'name': name,
-				'class': name,
-				'speed': 0,
-				'netloc': name,
-				'host': name,
-				'quality': 'N/A',
-				'logo': None,
-				'working': False,
-				'resolver': False,
-				'captcha': False,
-				'msg': e,
-				'playbacksupport': False,
-				'a/c': False,
-				'streaming' : False,
-				'downloading' : False
-			}
-			sourceHostsCall.append({'host': error_info['host'], 'name': error_info['name'], 'call': None})
-			sourceHosts.append(error_info)
-			sourceHostsPlaybackSupport[error_info['name']] = error_info['playbacksupport']
+			log(type='CRITICAL', err='Could not import %s > %s (Retrying)' % (name,e))
+			try:
+				c = __import__(name, globals(), locals(), [], -1).host()
+				log("Adding Host %s to Interface" % (c.info()['name']))
+				sourceHostsCall.append({'host': c.info()['host'], 'name': c.info()['name'], 'call': c})
+				sourceHosts.append((c.info()))
+				sourceHostsPlaybackSupport[c.info()['name']] = c.info()['playbacksupport']
+			except Exception as e:
+				log(type='CRITICAL', err='Could not import %s > %s (Retry-Failed)' % (name,e))
+				error_info = {
+					'name': name,
+					'class': name,
+					'speed': 0,
+					'netloc': name,
+					'host': name,
+					'quality': 'N/A',
+					'logo': None,
+					'working': False,
+					'resolver': False,
+					'captcha': False,
+					'msg': e,
+					'playbacksupport': False,
+					'a/c': False,
+					'streaming' : False,
+					'downloading' : False
+				}
+				sourceHostsCall.append({'host': error_info['host'], 'name': error_info['name'], 'call': None})
+				sourceHosts.append(error_info)
+				sourceHostsPlaybackSupport[error_info['name']] = error_info['playbacksupport']
 
 
 def request(url):
@@ -77,7 +84,7 @@ def request(url):
 		for host in sourceHostsCall:
 			if urlhost in host['host']:
 				ret = host['call'].resolve(url)
-				control.log("#RESOLVER FOUND# url : %s -- %s" % (url, host['name']))
+				log("#RESOLVER FOUND# url : %s -- %s" % (url, host['name']))
 				return ret
 	except:
 		pass
@@ -117,13 +124,18 @@ def testLink(url):
 	except:
 		return 'Unknown'
 		
-def createMeta(url, provider, logo, quality, links, key, riptype=None, vidtype='Movie', lang='en', sub_url=None, txt=''):
+def createMeta(url, provider, logo, quality, links, key, riptype=None, vidtype='Movie', lang='en', sub_url=None, txt='', testing=False):
 
 	if url == None or url == '':
-		print "resolvers > __init__.py > createMeta : url:%s prov:%s" % (url, provider)
 		return links
 		
 	url = url.strip()
+	
+	
+	for item in links:
+		if url == item['durl']:
+			log("%s has already been processed" % url)
+			return links
 	
 	quality = fixquality(quality)
 	links_m=[]
@@ -136,18 +148,22 @@ def createMeta(url, provider, logo, quality, links, key, riptype=None, vidtype='
 		except:
 			urlhost = re.findall('([\w]+[.][\w]+).*$', urlparse.urlparse(url.strip().lower()).netloc)[0]
 			urlhost = urlhost.split('.')[1]
+			
 		if riptype == None:
 			riptype_def = 'BRRIP'
 		else:
 			riptype_def = riptype
 		for host in sourceHostsCall:
-			print "Searching %s in %s" % (urlhost, host['host'])
-			if urlhost in host['host']:
-				print "Found %s in %s" % (urlhost, host['host'])
-				return host['call'].createMeta(url, provider, logo, quality, links, key, riptype_def, vidtype=vidtype, lang=lang, sub_url=sub_url, txt=txt)
+			log("Searching %s in %s" % (urlhost, host['host']), logToControl=False)
 
+			if urlhost in host['host'] and control.setting('Host-%s' % host['name']) != False:
+				log("Found %s in %s" % (urlhost, host['host']))
+				return host['call'].createMeta(url, provider, logo, quality, links, key, riptype_def, vidtype=vidtype, lang=lang, sub_url=sub_url, txt=txt, testing=testing)
+			elif urlhost in host['host']:
+				log("Found %s in %s but host disabled by User !" % (urlhost, host['host']))
+				return links
 				
-		print "urlhost '%s' not found in host/resolver plugins" % urlhost
+		log("urlhost '%s' not found in host/resolver plugins - creating generic meta for external services" % urlhost)
 				
 		quality = file_quality(url, quality)
 		
@@ -156,13 +172,9 @@ def createMeta(url, provider, logo, quality, links, key, riptype=None, vidtype='
 		else:
 			type = riptype
 		
-		links_m.append({'source':urlhost, 'maininfo':'', 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':type, 'provider':provider, 'url':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':'Unknown', 'allowsDownload':False, 'resumeDownload':False, 'allowsStreaming':True, 'key':key, 'enabled':True, 'fs':int(0), 'file_ext':'.mp4', 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'subdomain':client.geturlhost(url), 'misc':{'player':'eplayer', 'gp':False}})
+		links_m.append({'source':urlhost, 'maininfo':'', 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':type, 'provider':provider, 'url':url, 'durl':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':'Unknown', 'allowsDownload':False, 'resumeDownload':False, 'allowsStreaming':True, 'key':key, 'enabled':True, 'fs':int(0), 'file_ext':'.mp4', 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'subdomain':client.geturlhost(url), 'misc':{'player':'eplayer', 'gp':False}})
 	except Exception as e:
-		control.log("ERROR resolvers > __init__.py > createMeta : %s url: %s" % (e.args, url))
-		#print "ERROR resolvers > __init__.py > createMeta : %s url: %s" % (e.args, url)
-		#quality = file_quality(url, quality)
-		#type = rip_type(url, quality)
-		#links_m.append({'source':urlhost, 'maininfo':'', 'titleinfo':'', 'quality':quality, 'rip':type, 'provider':provider, 'url':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':'Unknown', 'key':key, 'enabled':True})
+		log(type='ERROR', err="createMeta : %s url: %s" % (e.args, url))
 		
 	links += [l for l in links_m]
 	return links
@@ -753,3 +765,10 @@ def info():
 		# 'captcha': False,
 		# 'a/c': False
 	# }]
+
+def log(err='', type='INFO', logToControl=True, doPrint=True):
+		msg = '%s: %s > %s : %s' % (time.ctime(time.time()), type, 'resolvers', err)
+		if logToControl == True:
+			control.log(msg)
+		elif doPrint == True:
+			print msg

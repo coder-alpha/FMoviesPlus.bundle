@@ -287,11 +287,25 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 					all_js_url = urlparse.urljoin(BASE_URL, ALL_JS)
 					all_js_pack_code = common.interface.request_via_proxy_as_backup(all_js_url, httpsskip=use_https_alt, hideurl=True)
 					unpacked_code = common.jsunpack.unpack(all_js_pack_code)
-					cch = re.findall(r'%s' % common.client.b64decode('ZnVuY3Rpb25cKHQsaSxuXCl7XCJ1c2Ugc3RyaWN0XCI7ZnVuY3Rpb24gZVwoXCl7cmV0dXJuICguKj8pfWZ1bmN0aW9uIHJcKHRcKQ=='), unpacked_code)[0]
-					token_key = re.findall(r'%s=.*?\"(.*?)\"' % cch, unpacked_code)[0]
-					if token_key !=None and token_key != '':
-						#cookie_dict.update({'token_key':token_key})
-						TOKEN_KEY.append(token_key)
+					
+					try:
+						cch = re.findall(r'%s' % common.client.b64decode('ZnVuY3Rpb25cKHQsaSxuXCl7XCJ1c2Ugc3RyaWN0XCI7ZnVuY3Rpb24gZVwoXCl7cmV0dXJuICguKj8pfWZ1bmN0aW9uIHJcKHRcKQ=='), unpacked_code)[0]
+						token_key = re.findall(r'%s=.*?\"(.*?)\"' % cch, unpacked_code)[0]
+						if token_key !=None and token_key != '':
+							#cookie_dict.update({'token_key':token_key})
+							TOKEN_KEY.append(token_key)
+					except:
+						pass
+						
+					if len(TOKEN_KEY) == 0:
+						try:
+							cch = re.findall(r'%s' % common.client.b64decode('ZnVuY3Rpb25cKFthLXpdLFthLXpdLFthLXpdXCl7XCJ1c2Ugc3RyaWN0XCI7ZnVuY3Rpb24gW2Etel1cKFwpe3JldHVybiAoLio/KX1mdW5jdGlvbiBbYS16XVwoW2Etel1cKQ=='), unpacked_code)[0]
+							token_key = re.findall(r'%s=.*?\"(.*?)\"' % cch, unpacked_code)[0]
+							if token_key !=None and token_key != '':
+								#cookie_dict.update({'token_key':token_key})
+								TOKEN_KEY.append(token_key)
+						except:
+							pass
 				except Exception as e:
 					Log('ERROR fmovies.py>Token-fetch-1a: %s' % e)
 					

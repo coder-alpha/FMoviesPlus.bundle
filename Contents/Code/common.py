@@ -1,7 +1,7 @@
 ################################################################################
 TITLE = "FMoviesPlus"
 VERSION = '0.45' # Release notation (x.y - where x is major and y is minor)
-TAG = 'dev 10-22-2017 b'
+TAG = 'dev 10-29-2017 a'
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
 ################################################################################
@@ -81,19 +81,21 @@ EMOJI_TXT_POS = u'(v)'
 EMOJI_TXT_NEG = u'(x)'
 EMOJI_TXT_QUES = u'(?)'
 
+INTERFACE_OPTIONS_LABELS = {'Provider':'Provider', 'Host':'Host', 'Proxy':'Proxy'}
+
 OPTIONS_PROXY = []
 INTERNAL_SOURCES = []
 OPTIONS_PROVIDERS = []
 INTERNAL_SOURCES_QUALS = [{'label':'4K','enabled': 'True'},{'label':'1080p','enabled': 'True'},{'label':'720p','enabled': 'True'},{'label':'480p','enabled': 'True'},{'label':'360p','enabled': 'True'}]
 INTERNAL_SOURCES_RIPTYPE = [{'label':'BRRIP','enabled': 'True'},{'label':'PREDVD','enabled': 'True'},{'label':'CAM','enabled': 'True'},{'label':'TS','enabled': 'True'},{'label':'SCR','enabled': 'True'},{'label':'UNKNOWN','enabled': 'True'}]
-INTERNAL_SOURCES_FILETYPE = [{'label':'Movie/Show','enabled': 'True'},{'label':'Trailer','enabled': 'False'},{'label':'Behind the scenes','enabled': 'False'},{'label':'Music Video','enabled': 'False'}]
+INTERNAL_SOURCES_FILETYPE = [{'label':'Movie/Show','enabled': 'True'},{'label':'Trailer','enabled': 'True'},{'label':'Behind the scenes','enabled': 'False'},{'label':'Music Video','enabled': 'False'}]
 INTERNAL_SOURCES_SIZES = [{'label':'> 2GB','enabled': 'True','LL':2*TO_GB,'UL':100*TO_GB},{'label':'1GB - 2GB','enabled': 'True','LL':1*TO_GB,'UL':2*TO_GB},{'label':'0.5GB - 1GB','enabled': 'True','LL':0.5*TO_GB,'UL':1*TO_GB},{'label':'0GB - 0.5GB','enabled': 'True','LL':1,'UL':0.5*TO_GB},{'label':'0GB','enabled': 'False','LL':0,'UL':0}]
 INTERNAL_SOURCES_SIZES_CONST = [{'label':'> 2GB','enabled': 'True','LL':2*TO_GB,'UL':100*TO_GB},{'label':'1GB >= 2GB','enabled': 'True','LL':1*TO_GB,'UL':2*TO_GB},{'label':'0.5GB >= 1GB','enabled': 'True','LL':0.5*TO_GB,'UL':1*TO_GB},{'label':'0GB >= 0.5GB','enabled': 'True','LL':999999,'UL':0.5*TO_GB},{'label':'0GB','enabled': 'False','LL':0,'UL':999999}]
 INTERNAL_SOURCES_QUALS_CONST = [{'label':'4K','enabled': 'True'},{'label':'1080p','enabled': 'True'},{'label':'720p','enabled': 'True'},{'label':'480p','enabled': 'True'},{'label':'360p','enabled': 'True'}]
 INTERNAL_SOURCES_RIPTYPE_CONST = [{'label':'BRRIP','enabled': 'True'},{'label':'PREDVD','enabled': 'True'},{'label':'CAM','enabled': 'True'},{'label':'TS','enabled': 'True'},{'label':'SCR','enabled': 'True'},{'label':'UNKNOWN','enabled': 'True'}]
-INTERNAL_SOURCES_FILETYPE_CONST = [{'label':'Movie/Show','enabled': 'True'},{'label':'Trailer','enabled': 'False'},{'label':'Behind the scenes','enabled': 'False'},{'label':'Music Video','enabled': 'False'},{'label':'Misc.','enabled': 'False'}]
+INTERNAL_SOURCES_FILETYPE_CONST = [{'label':'Movie/Show','enabled': 'True'},{'label':'Trailer','enabled': 'True'},{'label':'Behind the scenes','enabled': 'False'},{'label':'Music Video','enabled': 'False'},{'label':'Misc.','enabled': 'False'}]
 
-DEVICE_OPTIONS = ['Dumb-Keyboard','List-View','Redirector','Simple-Emoji','Vibrant-Emoji','Multi-Link-View','Full-poster display','Use-PhantomJS']
+DEVICE_OPTIONS = ['Dumb-Keyboard','List-View','Redirector','Simple-Emoji','Vibrant-Emoji','Multi-Link-View','Full-poster display','Use-PhantomJS','No-Extra-Page-Info']
 DEVICE_OPTION = {DEVICE_OPTIONS[0]:'The awesome Keyboard for Search impaired devices',
 				DEVICE_OPTIONS[1]:'Force List-View of Playback page listing sources',
 				DEVICE_OPTIONS[2]:'Required in certain cases - *Experimental (refer forum)',
@@ -101,7 +103,8 @@ DEVICE_OPTION = {DEVICE_OPTIONS[0]:'The awesome Keyboard for Search impaired dev
 				DEVICE_OPTIONS[4]:'Enable Vibrant Emoji Icons (%s|%s - Supported by Limited Clients)' % (EMOJI_GREEN_HEART,EMOJI_BROKEN_HEART),
 				DEVICE_OPTIONS[5]:'Shows All Video Items in single container - makes many requests to server',
 				DEVICE_OPTIONS[6]:'Shows Uncropped Poster - client compatibility is untested',
-				DEVICE_OPTIONS[7]:'Use PhantomJS - For parsing links. Binary download required'}
+				DEVICE_OPTIONS[7]:'Use PhantomJS - For parsing links. Binary download required',
+				DEVICE_OPTIONS[8]:'No-Extra-Page-Info - Speeds up navigation by not downloading detailed item info'}
 DEVICE_OPTION_CONSTRAINTS = {DEVICE_OPTIONS[2]:[{'Pref':'use_https_alt','Desc':'Use Alternate SSL/TLS','ReqValue':'disabled'}]}
 DEVICE_OPTION_CONSTRAINTS2 = {DEVICE_OPTIONS[5]:[{'Option':6,'ReqValue':False}], DEVICE_OPTIONS[6]:[{'Option':5,'ReqValue':False}]}
 DEVICE_OPTION_PROPOGATE_TO_CONTROL = {DEVICE_OPTIONS[7]:True}
@@ -126,14 +129,14 @@ USE_DOWNLOAD_RESUME_MEGA = True
 USE_EXT_URLSERVICES = True
 USE_COOKIES = True
 DOWNLOAD_BACKUP_OPER = True
-NoMovieInfo = False
-USE_CUSTOM_TIMEOUT = False
 USE_SECOND_REQUEST = True
 USE_JSFDECODER = True
 USE_JSENGINE = True
 USE_JSWEBHOOK = True
 ALT_PLAYBACK = True
 DEV_BM_CONVERSION = False
+NO_MOVIE_INFO = False
+USE_CUSTOM_TIMEOUT = False
 DEV_DEBUG = False
 WBH = 'aHR0cHM6Ly9ob29rLmlvL2NvZGVyLWFscGhhL3Rlc3Q='
 
@@ -144,7 +147,7 @@ def GetEmoji(type, mode='vibrant', session=None):
 
 	# modes = ['simple','vibrant'] - enforce mode to override Prefs for Search Filter
 
-	type = str(type).lower()
+	type = str(type).strip().lower()
 	
 	if session == None:
 		session = getSession()
@@ -204,12 +207,41 @@ def set_control_settings(session=None):
 		
 		if key in DEVICE_OPTION_PROPOGATE_TO_CONTROL.keys() and DEVICE_OPTION_PROPOGATE_TO_CONTROL[key] != None and DEVICE_OPTION_PROPOGATE_TO_CONTROL[key] == True:
 			control.set_setting('%s-%s' % (session,key), UsingOption(key, session=session))
-				
 	except Exception as e:
 		Log.Error('ERROR common.py-3>set_control_settings: %s' % e)
+		
+	try:
+		control_all_uc_api_key = Prefs['control_all_uc_api_key']
+		if control_all_uc_api_key == None or len(control_all_uc_api_key) == 0:
+			is_control_all_uc_api_key = False
+		else:
+			is_control_all_uc_api_key = True
+		control.set_setting('is_control_all_uc_api_key', is_control_all_uc_api_key)
+	except Exception as e:
+		Log.Error('ERROR common.py-2>set_control_settings: %s' % e)
+		
+	try:
+		control_openload_api_key = Prefs['control_openload_api_key']
+		if control_openload_api_key == None or len(control_openload_api_key) == 0:
+			is_control_openload_api_key = False
+		else:
+			is_control_openload_api_key = True
+		control.set_setting('is_control_openload_api_key', is_control_openload_api_key)
+	except Exception as e:
+		Log.Error('ERROR common.py-2>set_control_settings: %s' % e)
 			
 	if Prefs["use_debug"]:
 		Log("User Preferences have been set to Control")
+		
+def set_settings_to_control(key, val):
+
+	try:
+		control.set_setting(key, val)
+	except Exception as e:
+		Log.Error('ERROR common.py>set_settings_to_control: %s' % e)
+	
+	if Prefs["use_debug"]:
+		Log("User Setting %s:%s set to Control" % (key,val))
 			
 ####################################################################################################
 # Gets a client specific identifier
@@ -898,6 +930,9 @@ def strip_accents(text):
 	text = text.decode("utf-8")
 	return str(text)
 
+def ascii_only(my_s):
+	printable = set(string.printable)
+	return filter(lambda x: x in printable, my_s)
 
 ####################################################################################################
 @route(PREFIX + "/MakeStringLength")

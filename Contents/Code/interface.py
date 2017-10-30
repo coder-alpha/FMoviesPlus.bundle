@@ -1,4 +1,16 @@
 import time, sys, os, json, re
+
+# try:
+	# try:
+		# PATH_R = os.path.dirname(os.path.abspath(__file__)).split('Code')[0]
+	# except:
+		# PATH_R = os.path.dirname(os.path.abspath('__file__')).split('Code')[0]
+		
+	# PATH = os.path.join(PATH_R, 'Libraries/Shared')
+	# sys.path.insert(0,PATH)
+# except:
+	# pass
+
 import omdb
 from resources.lib.sources import sources
 from resources.lib import resolvers
@@ -242,14 +254,14 @@ def getCacheSize():
 		
 	return 0
 	
-def getSources(encode=True):
+def getSources(key=None, encode=True):
 	if wait_for_init() == False:
 		return
 
 	if encode:
-		return E(JSON.StringFromObject(initA[0].sourcesFilter()))
+		return E(JSON.StringFromObject(initA[0].sourcesFilter(key=key)))
 		
-	return initA[0].sourcesFilter()
+	return initA[0].sourcesFilter(key=key)
 	
 def getProxies():
 	if wait_for_init() == False:
@@ -283,44 +295,83 @@ def getProviders(encode=True):
 		
 	return E(JSON.StringFromObject(initA[0].getProviders()))
 	
-def getProvidersLoggerTxts():
+def getProvidersLoggerTxts(choice=None, dumpToLog=True):
 	if wait_for_init() == False:
 		return
 	loggertxt = []
-	if Prefs["use_debug"]:
-		Log(" === LOGGER txt START === ")
+	if Prefs["use_debug"] or choice != None:
+		#Log(" === LOGGER txt START === ")
 		for provider in initA[0].providersCaller:
-			Log(" === Provider: %s Start ===" % provider['name'])
-			for txt in provider['call'].loggertxt:
-				loggertxt.append(txt)
-				Log(txt)
-			Log(" === Provider: %s Start End ===" % provider['name'])
-			
-			Log(" === CONTROL txt Start ===")
-			for txt in control.loggertxt:
-				loggertxt.append(txt)
-				Log(txt)
-			Log(" === CONTROL txt End ===")
-		Log(" === LOGGER txt END === ")
-	return loggertxt
+			try:
+				if choice == None:
+					if dumpToLog == True:
+						Log(" === Provider: %s Start ===" % provider['name'])
+					provider['call'].getLog()
+					for txt in provider['call'].loggertxt:
+						loggertxt.append(txt)
+						if dumpToLog == True:
+							Log(txt)
+					if dumpToLog == True:
+						Log(" === Provider: %s End ===" % provider['name'])
+				elif choice == provider['name']:
+					if dumpToLog == True:
+						Log(" === Provider: %s Start ===" % provider['name'])
+					provider['call'].getLog()
+					for txt in provider['call'].loggertxt:
+						loggertxt.append(txt)
+						if dumpToLog == True:
+							Log(txt)
+					if dumpToLog == True:
+						Log(" === Provider: %s End ===" % provider['name'])
+			except Exception as e:
+				Log(e)	
+		#Log(" === LOGGER txt END === ")
+	return list(reversed(loggertxt))
 
 	
-def getHostsLoggerTxts():
+def getHostsLoggerTxts(choice=None, dumpToLog=True):
+	if wait_for_init() == False:
+		return
+	loggertxt = []
+	if Prefs["use_debug"] or choice != None:
+		#Log(" === LOGGER txt START === ")
+		for host in initA[0].hostsCaller():
+			try:
+				if choice == None:
+					if dumpToLog == True:
+						Log(" === Host: %s Start ===" % host['name'])
+					host['call'].getLog()
+					for txt in host['call'].loggertxt:
+						loggertxt.append(txt)
+						if dumpToLog == True:
+							Log(txt)
+					if dumpToLog == True:
+						Log(" === Host: %s End ===" % host['name'])
+				elif choice == host['name']:
+					if dumpToLog == True:
+						Log(" === Host: %s Start ===" % host['name'])
+					host['call'].getLog()
+					for txt in host['call'].loggertxt:
+						loggertxt.append(txt)
+						if dumpToLog == True:
+							Log(txt)
+					if dumpToLog == True:
+						Log(" === Host: %s End ===" % host['name'])
+			except Exception as e:
+				Log(e)				
+		#Log(" === LOGGER txt END === ")
+	return list(reversed(loggertxt))
+	
+def getControlLoggerTxts():
 	if wait_for_init() == False:
 		return
 	loggertxt = []
 	if Prefs["use_debug"]:
-		Log(" === LOGGER txt START === ")
-		for host in initA[0].hostsCaller():
-			Log(" === Host: %s Start ===" % host['name'])
-			try:
-				for txt in host['call'].loggertxt:
-					loggertxt.append(txt)
-					Log(txt)
-			except Exception as e:
-				Log(e)				
-			Log(" === Host: %s End ===" % host['name'])
-		Log(" === LOGGER txt END === ")
+		Log(" === CONTROL txt Start ===")
+		for txt in control.loggertxt:
+			loggertxt.append(txt)
+			Log(txt)
+		Log(" === CONTROL txt End ===")
 	return loggertxt
 	
 def getExtSourcesThreadStatus(key=None):
@@ -380,7 +431,7 @@ def getExtSources(movtitle=None, year=None, tvshowtitle=None, season=None, episo
 	InterfaceThreadLastQuery['LastQuery'] = key
 	InterfaceThread[key] = False
 	
-	return E(JSON.StringFromObject(initA[0].sourcesFilter()))
+	return E(JSON.StringFromObject(initA[0].sourcesFilter(key=key)))
 	
 def request(url, close=True, redirect=True, followredirect=False, error=False, proxy=None, post=None, headers=None, mobile=False, limit=None, referer=None, cookie=None, output='', timeout='30', httpsskip=False, use_web_proxy=False, XHR=False, IPv4=False, hideurl=False):
 
@@ -422,4 +473,7 @@ def request_via_proxy_as_backup(url, close=True, redirect=True, followredirect=F
 	use_web_proxy_as_backup=True
 	return initA[0].request_via_proxy(url=url, proxy_name=None, proxy_url=None, close=close, redirect=redirect, followredirect=followredirect, error=error, proxy=proxy, post=post, headers=headers, mobile=mobile, limit=limit, referer=referer, cookie=cookie, output=output, timeout=timeout, httpsskip=httpsskip, XHR=XHR, use_web_proxy=use_web_proxy, use_web_proxy_as_backup=use_web_proxy_as_backup, IPv4=IPv4)
 
+def test():
+	print init()
 	
+#test()

@@ -28,19 +28,25 @@ from resources.lib.libraries import testparams
 from resources.lib.libraries import control
 from resources.lib import proxies
 
+name = 'GoGoAnime'
+loggertxt = []
 
 class source:
 	def __init__(self):
+		del loggertxt[:]
+		log(type='INFO', method='init', err=' -- Initializing %s Start --' % name)
 		self.priority = 1
+		self.disabled = False
 		self.language = ['en']
 		self.type_filter = ['anime']
 		self.domains = ['gogoanimemobile.com', 'gogoanimemobile.net', 'gogoanime.io']
-		self.base_link = 'https://www.gogoanime.io'
+		self.base_link_alts = ['https://ww3.gogoanime.io','https://gogoanime.io','http://gogoanimemobile.com', 'http://gogoanimemobile.net']
+		self.base_link = self.base_link_alts[0]
 		self.search_link = '/search.html?keyword=%s'
 		self.episode_link = '/%s-episode-%s'
 		self.MainPageValidatingContent = 'anime'
 		self.urlhost = 'gogoanime.io'
-		self.name = 'GoGoAnime'
+		self.name = name
 		self.loggertxt = []
 		self.ssl = False
 		self.logo = 'http://i.imgur.com/XC3vwqj.png'
@@ -52,12 +58,15 @@ class source:
 		self.siteonline = self.testSite()
 		self.testparser = 'Unknown'
 		self.testparser = self.testParser()
+		self.msg = ''
+		log(type='INFO', method='init', err=' -- Initializing %s End --' % name)
 
 	def info(self):
 		return {
 			'url': self.base_link,
 			'speed': round(self.speedtest,3),
 			'name': self.name,
+			'msg' : self.msg,
 			'logo': self.logo,
 			'ssl' : self.ssl,
 			'online': self.siteonline,
@@ -65,51 +74,60 @@ class source:
 			'parser': self.testparser
 		}
 		
-	def log(self, type, method, err, dolog=False, disp=True):
-		msg = '%s : %s>%s - : %s' % (type, self.name, method, err)
-		if dolog == True:
-			self.loggertxt.append(msg)
-		if disp == True:
-			logger(msg)
+	def getLog(self):
+		self.loggertxt = loggertxt
+		return self.loggertxt
 		
 	def testSite(self):
+		for site in self.base_link_alts:
+			bool = self.testSiteAlts(site)
+			if bool == True:
+				self.base_link = site
+				return bool
+				
+		self.base_link = self.base_link_alts[0]
+		return False
+		
+	def testSiteAlts(self, site):
 		try:
 			x1 = time.time()
-			http_res, content = proxies.request(url=self.base_link, output='response', use_web_proxy=False)
+			http_res, content = proxies.request(url=site, output='response', use_web_proxy=False)
 			self.speedtest = time.time() - x1
 			if content != None and content.find(self.MainPageValidatingContent) >-1:
-				self.log('SUCCESS', 'testSite', 'HTTP Resp : %s for %s' % (http_res,self.base_link), dolog=True)
+				log('SUCCESS', 'testSite', 'HTTP Resp : %s for %s' % (http_res,site))
 				return True
 			else:
-				self.log('ERROR', 'testSite', 'HTTP Resp : %s for %s' % (http_res,self.base_link), dolog=True)
+				self.log('ERROR', 'testSite', 'HTTP Resp : %s for %s' % (http_res,site))
 				x1 = time.time()
-				http_res, content = proxies.request(url=self.base_link, output='response', use_web_proxy=True)
+				http_res, content = proxies.request(url=site, output='response', use_web_proxy=True)
 				self.speedtest = time.time() - x1
 				if content != None and content.find(self.MainPageValidatingContent) >-1:
 					self.proxyrequired = True
-					self.log('SUCCESS', 'testSite', 'HTTP Resp : %s via proxy for %s' % (http_res,self.base_link), dolog=True)
+					log('SUCCESS', 'testSite', 'HTTP Resp : %s via proxy for %s' % (http_res,site))
 					return True
 				else:
 					time.sleep(2.0)
 					x1 = time.time()
-					http_res, content = proxies.request(url=self.base_link, output='response', use_web_proxy=True)
+					http_res, content = proxies.request(url=site, output='response', use_web_proxy=True)
 					self.speedtest = time.time() - x1
 					if content != None and content.find(self.MainPageValidatingContent) >-1:
 						self.proxyrequired = True
-						self.log('SUCCESS', 'testSite', 'HTTP Resp : %s via proxy for %s' % (http_res,self.base_link), dolog=True)
+						log('SUCCESS', 'testSite', 'HTTP Resp : %s via proxy for %s' % (http_res,site))
 						return True
 					else:
-						self.log('ERROR', 'testSite', 'HTTP Resp : %s via proxy for %s' % (http_res,self.base_link), dolog=True)
-						self.log('ERROR', 'testSite', content, dolog=True)
+						log('ERROR', 'testSite', 'HTTP Resp : %s via proxy for %s' % (http_res,site))
 			return False
 		except Exception as e:
-			self.log('ERROR','testSite', '%s' % e, dolog=True)
+			log('ERROR','testSite', '%s' % e)
 			return False
 
 	def testParser(self):
 		try:
+			if self.disabled == True:
+				log('INFO','testParser', 'Plugin Disabled - cannot test parser')
+				return False
 			if self.siteonline == False:
-				self.log('ERROR', 'testParser', 'testSite returned False', dolog=True)
+				log('INFO', 'testParser', '%s is offline - cannot test parser' % self.base_link)
 				return False
 		
 			for show in testparams.test_shows:
@@ -118,19 +136,31 @@ class source:
 				links = self.get_sources(url=geturl, testing=True)
 				
 				if links != None and len(links) > 0:
-					self.log('SUCCESS', 'testParser', 'links : %s' % len(links), dolog=True)
+					log('SUCCESS', 'testParser', 'links : %s' % len(links))
 					return True
-				else:
-					self.log('ERROR', 'testParser', 'geturl : %s' % geturl, dolog=True)
-					self.log('ERROR', 'testParser', 'links : %s' % links, dolog=True)
+
+			log('ERROR', 'testParser', 'links : %s' % len(links))
 			return False
 		except Exception as e:
-			self.log('ERROR', 'testParser', '%s' % e, dolog=True)
+			log('ERROR', 'testParser', '%s' % e)
 			return False
+			
+	def get_movie(self,imdb, title, year, proxy_options=None, key=None):
+		try:
+			if control.setting('Provider-%s' % name) == False:
+				log('Provider Disabled by User')
+				return None
+			return
+		except Exception as e: 
+			log('ERROR', 'get_movie','%s: %s' % (title,e))
+			return
 		
 	def get_show(self, tvshowtitle, season, imdb=None, tvdb=None, year=None, proxy_options=None, key=None):
 		try:
-			
+			if control.setting('Provider-%s' % name) == False:
+				log('Provider Disabled by User')
+				return None
+				
 			t = cleantitle.get(tvshowtitle)
 
 			q = urlparse.urljoin(self.base_link, self.search_link)
@@ -153,12 +183,15 @@ class source:
 			
 			return url
 		except Exception as e:
-			print e
+			log('ERROR', 'get_show', '%s' % e)
 			return
 
 
 	def get_episode(self, url, episode, imdb=None, tvdb=None, title=None, year=None, season=None, proxy_options=None, key=None):
 		try:
+			if control.setting('Provider-%s' % name) == False:
+				return None
+				
 			if url == None: return
 
 			url = [i for i in url.strip('/').split('/')][-1]
@@ -166,14 +199,13 @@ class source:
 			
 			return url
 		except Exception as e:
-			print e
+			log('ERROR', 'get_episode', '%s' % e)
 			return
 
 
 	def get_sources(self, url, hosthdDict=None, hostDict=None, locDict=None, proxy_options=None, key=None, testing=False):
 		try:
 			sources = []
-
 			if url == None: return sources
 
 			url = urlparse.urljoin(self.base_link, url)
@@ -205,11 +237,9 @@ class source:
 						except:
 							qualityt = u'720p'
 						try:
-							links = resolvers.createMeta(i, self.name, self.logo, qualityt, links, key, vidtype='Show')
+							links = resolvers.createMeta(i, self.name, self.logo, qualityt, links, key, vidtype='Show', testing=testing)
 						except:
 							pass
-						if testing and len(links) > 0:
-							break
 				except:
 					pass
 					
@@ -217,14 +247,19 @@ class source:
 
 			return sources
 		except Exception as e:
-			control.log('ERROR %s get_sources > %s' % (self.name, e))
+			log('ERROR', 'get_sources', '%s' % e, dolog=False)
 			return sources
 
 	def resolve(self, url):
 		return url
 		
-def logger(msg):
-	control.log(msg)
-	
+def log(type='INFO', method='undefined', err='', dolog=True, logToControl=False, doPrint=True):
+		msg = '%s: %s > %s > %s : %s' % (time.ctime(time.time()), type, name, method, err)
+		if dolog == True:
+			loggertxt.append(msg)
+		if logToControl == True:
+			control.log(msg)
+		if doPrint == True:
+			print msg
 
 

@@ -38,7 +38,7 @@ def setting(key):
 
 def set_setting(key, value):
 	if key == base64.b64decode('Y29udHJvbF9hbGxfdWNfYXBpX2tleQ==') and (value == None or value == '' or len(value) == 0):
-		value = base64.b64decode(base64.b64decode('WmpGak5XUTNPVGRsWVdNM1lUSTJPR0l5TURGbU16QXlNalEzTm1RMFpqTT0='))
+		value = base64.b64decode(base64.b64decode('WXpFeE1qZzROV0k0WTJWall6Rm1aR1ZtWlRNNU1tVXdaR1E1WlRneVlqRT0='))
 	elif key == base64.b64decode('Y29udHJvbF9vcGVubG9hZF9hcGlfa2V5') and (value == None or value == '' or len(value) == 0 or ':' not in value):
 		value = base64.b64decode(base64.b64decode('WW1ReU9USmxNalkzTjJZd016RTFOenBmWjNnMU5GTkROUT09'))
 	
@@ -50,7 +50,7 @@ def log(msg):
 			msg = msg.encode('utf-8')
 			
 		loggertxt.append(msg)
-		print('[FMP]: %s' % (msg))
+		print('%s' % msg)
 	except Exception as e:
 		pass  # just give up
 

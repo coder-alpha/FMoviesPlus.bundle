@@ -21,6 +21,7 @@ Dict['DOWNLOAD_RATE_LIMIT_TIME'] = []
 
 QUEUE_RUN_ITEMS = {}
 WAIT_AND_RETRY_ON_429 = True
+CONNECTION_TIMEOUT = 60
 
 def query_pms(path): return 'http://127.0.0.1:32400%s' % path
 
@@ -220,18 +221,18 @@ class Downloader(object):
 				if r.status_code != 200 and r.status_code != 206:
 					if Prefs['use_debug']:
 						Log('Could not Resume (HTTP Code: %s) - New download' % str(r.status_code))
-					r = requests.get(furl, stream=True,  verify=False, allow_redirects=True)
+					r = request_download(furl)
 				else:
 					write_mode = 'ab'
 					bytes_read = startPos
 			else:
 				if Prefs['use_debug']:
 					Log('**New download**')
-				r = requests.get(furl, stream=True, verify=False, allow_redirects=True)
+				r = request_download(furl)
 				
 				if WAIT_AND_RETRY_ON_429 == True and r.status_code == 429:
 					time.sleep(5)
-					r = requests.get(furl, stream=True, verify=False, allow_redirects=True)
+					r = request_download(furl)
 		
 		file_meta_temp = file_meta
 		file_meta_temp['status'] = common.DOWNLOAD_STATUS[1]
@@ -479,7 +480,7 @@ def download_subtitle(url, sub_file_path):
 		if url == None:
 			return
 		r = None
-		r = requests.get(url, stream=True, verify=False, allow_redirects=True)
+		r = request_download(url)
 		if r.status_code == 200:
 			FMPdownloaderSub = r.iter_content(1024*64)
 			with io.open(sub_file_path, 'wb') as f:
@@ -493,9 +494,12 @@ def download_subtitle(url, sub_file_path):
 		if r != None:
 			r.close()
 	
+def request_download(url):
+	return requests.get(url, stream=True, verify=False, allow_redirects=True, timeout=CONNECTION_TIMEOUT)
+	
 def resume_download(url, resume_byte_pos):
 	resume_header = {'Range': 'bytes=%s-' % int(resume_byte_pos)}
-	return requests.get(url, headers=resume_header, stream=True, verify=False, allow_redirects=True)
+	return requests.get(url, headers=resume_header, stream=True, verify=False, allow_redirects=True, timeout=CONNECTION_TIMEOUT)
 	
 def download_completed(final_abs_path, section_title, section_key, purgeKey):
 

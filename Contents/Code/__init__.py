@@ -629,25 +629,29 @@ def Summarize(session=None, **kwargs):
 		oc.add(DirectoryObject(title = title_msg, key = Callback(MC.message_container, header="Summary Screen", message="Does Nothing")))
 	
 
-	for qual in common.INTERNAL_SOURCES_RIPTYPE:
-		label = qual['label']
-		bool = qual['enabled']
+	for rt in common.INTERNAL_SOURCES_RIPTYPE:
+		label = rt['label']
+		bool = rt['enabled']
 		title_msg = "Enabled: %s | Rip-Type: %s" % (common.GetEmoji(type=bool, mode='simple', session=session), label)
 		oc.add(DirectoryObject(title = title_msg, key = Callback(MC.message_container, header="Summary Screen", message="Does Nothing")))
 		
-	for qual in common.INTERNAL_SOURCES_FILETYPE:
-		label = qual['label']
-		bool = qual['enabled']
+	for ft in common.INTERNAL_SOURCES_FILETYPE:
+		label = ft['label']
+		bool = ft['enabled']
 		title_msg = "Enabled: %s | File-Type: %s" % (common.GetEmoji(type=bool, mode='simple', session=session), label)
 		oc.add(DirectoryObject(title = title_msg, key = Callback(MC.message_container, header="Summary Screen", message="Does Nothing")))
+		
+	Log(" === INTERFACE LOGGER txt START === ")
 		
 	common.interface.getHostsLoggerTxts()
 	
 	common.interface.getProvidersLoggerTxts()
+	
+	common.interface.getControlLoggerTxts()
+	
+	Log(" === INTERFACE LOGGER txt END === ")
 		
 	return oc
-	
-
 	
 ######################################################################################
 @route(PREFIX + "/ExtHostsRipType")
@@ -903,25 +907,26 @@ def ExtProviders(session, curr_provs=None, refresh=False, item=None, setbool='Tr
 	c = 0
 	for provider in common.OPTIONS_PROVIDERS:
 		c += 1
-		label = provider['name']
-		bool = str(provider['enabled'])
-		website = provider['url']
 		
-		if item == label:
-			bool = setbool
-
-		if bool == 'True':
-			bool = True
+		if 'enabled' in provider.keys():
+			if provider['online'] == False:
+				provider['enabled'] = False
+			pass
 		else:
-			bool = False
+			provider['enabled'] = True
+			
+		set_bool = common.control.setting(common.INTERFACE_OPTIONS_LABELS['Provider']+'-'+provider['name'])
+		if set_bool != provider['enabled']:
+			common.set_settings_to_control(common.INTERFACE_OPTIONS_LABELS['Provider']+'-'+provider['name'], provider['enabled'])
 
-		title_msg = "%02d | Enabled: %s | Provider: %s | Url: %s | Online: %s | Proxy Req.: %s | Parser: %s | Speed: %s sec." % (c, common.GetEmoji(type=bool, mode='simple', session=session), label, website, common.GetEmoji(type=str(provider['online']), mode='simple', session=session),common.GetEmoji(type=str(provider['online_via_proxy']), mode='simple', session=session), common.GetEmoji(type=str(provider['parser']), mode='simple', session=session), provider['speed'])
-		oc.add(DirectoryObject(key = Callback(ExtProviders, session=session, curr_provs=None, item=label, setbool=not bool), title = title_msg, summary = title_msg, thumb = Resource.ContentsOfURLWithFallback(url = provider['logo'], fallback=ICON_QUESTION)))
+		title_msg = "%02d | Enabled: %s | Provider: %s | Url: %s | Online: %s | Proxy Req.: %s | Parser: %s | Speed: %s sec." % (c, common.GetEmoji(type=provider['enabled'], mode='simple', session=session), provider['name'], provider['url'], common.GetEmoji(type=str(provider['online']), mode='simple', session=session),common.GetEmoji(type=str(provider['online_via_proxy']), mode='simple', session=session), common.GetEmoji(type=str(provider['parser']), mode='simple', session=session), provider['speed'])
+		
+		oc.add(DirectoryObject(key = Callback(SetProviderOptions, session=session, n=E(JSON.StringFromObject(provider)), curr_prov=E(JSON.StringFromObject(common.OPTIONS_PROVIDERS))), title = title_msg, summary = title_msg if provider['msg']=='' else provider['msg'], thumb = Resource.ContentsOfURLWithFallback(url = provider['logo'], fallback=ICON_QUESTION)))
 		
 	#oc.add(DirectoryObject(key = Callback(ExtProviders, refresh=True), title = "Refresh External Providers", summary='Reload newly installed External Host Providers.', thumb = R(ICON_REFRESH)))
 		
 	oc.add(DirectoryObject(
-			key = Callback(MainMenu, update = MakeSelectionProviders(item=item, setbool=setbool)),
+			key = Callback(MainMenu, update = MakeSelectionProviders()),
 			title = '<< Save Selection >>',
 			summary = 'Save the Selection which is used when listing External Sources.',
 			thumb = R(ICON_SAVE)
@@ -930,22 +935,60 @@ def ExtProviders(session, curr_provs=None, refresh=False, item=None, setbool='Tr
 	return oc
 	
 ######################################################################################
+@route(PREFIX + "/SetProviderOptions")
+def SetProviderOptions(session, refresh=False, n=None, curr_prov=None, option='0', **kwargs):
+	
+	provider = JSON.ObjectFromString(D(n))
+	order = JSON.ObjectFromString(D(curr_prov))
+	
+	oc = ObjectContainer(title2='Set External Provider Options')
+	
+	c = 0
+	for h in common.OPTIONS_PROVIDERS:
+		if h['name'] == provider['name']:
+			common.OPTIONS_PROVIDERS.remove(h)
+			break
+		c += 1
+	
+	reorder = False
+	if option == '1':
+		provider['enabled'] = False
+	elif option == '2':
+		provider['enabled'] = True
+	elif option == '3':
+		reorder = True
+	
+	if reorder == True:
+		common.OPTIONS_PROVIDERS.insert(0,provider)
+	else:
+		common.OPTIONS_PROVIDERS.insert(c,provider)
+	curr_prov = E(JSON.StringFromObject(common.OPTIONS_PROVIDERS))
+	
+	title_msg = "%02d | Enabled: %s | Provider: %s | Url: %s | Online: %s | Proxy Req.: %s | Parser: %s | Speed: %s sec." % (c, common.GetEmoji(type=provider['enabled'], mode='simple', session=session), provider['name'], provider['url'], common.GetEmoji(type=str(provider['online']), mode='simple', session=session),common.GetEmoji(type=str(provider['online_via_proxy']), mode='simple', session=session), common.GetEmoji(type=str(provider['parser']), mode='simple', session=session), provider['speed'])
+	
+	if provider['enabled'] == True:
+		oc.add(DirectoryObject(key = Callback(SetProviderOptions, session=session, n=E(JSON.StringFromObject(provider)), curr_prov=curr_prov, option='1'), title = 'Disable Provider', summary = title_msg, thumb = R(ICON_OK)))
+	else:
+		oc.add(DirectoryObject(key = Callback(SetProviderOptions, session=session, n=E(JSON.StringFromObject(provider)), curr_prov=curr_prov, option='2'), title = 'Enable Provider', summary = title_msg, thumb = R(ICON_NOTOK)))
+		
+	oc.add(DirectoryObject(key = Callback(ExtProviders, session=session, n=E(JSON.StringFromObject(provider)), curr_prov=curr_prov), title = 'Move to Top in Provider List', summary = title_msg, thumb = R(ICON_UPARROW)))
+	
+	oc.add(DirectoryObject(key = Callback(ProviderTools, title=None, provider=provider['name']), title = "Tools", summary='Tools for providers', thumb = R(tools.ICON_TOOLS)))
+	
+	oc.add(DirectoryObject(
+		key = Callback(MainMenu, update = MakeSelectionProviders()),
+		title = '<< Save Selection >>',
+		summary = 'Save the Selection which is used when listing External Providers.',
+		thumb = R(ICON_SAVE)
+		)
+	)
+	
+	return oc
+	
+######################################################################################
 @route(PREFIX + "/MakeSelectionProviders")
-def MakeSelectionProviders(item=None, setbool='True', **kwargs):
-
-	if item != None:
-		ARRAY_T = []
-		ARRAY_T += [q for q in common.OPTIONS_PROVIDERS]
-		del common.OPTIONS_PROVIDERS[:]
-		
-		for qual in ARRAY_T:
-			bool = qual['enabled']
-			if item == qual['name']:
-				bool = setbool
-				
-			qual['enabled'] = bool
-			common.OPTIONS_PROVIDERS.append(qual)
-		
+def MakeSelectionProviders(**kwargs):
+	
 	#Log(common.OPTIONS_PROVIDERS)
 	Dict['OPTIONS_PROVIDERS'] = E(JSON.StringFromObject(common.OPTIONS_PROVIDERS))
 	Dict.Save()
@@ -1003,8 +1046,6 @@ def ExtHosts(session, refresh=False, n=None, curr_sources=None, **kwargs):
 	
 	c = 0
 	for host in exHosts:
-		if c == 0:
-			n = host
 		c += 1
 		
 		if 'enabled' in host.keys():
@@ -1013,6 +1054,10 @@ def ExtHosts(session, refresh=False, n=None, curr_sources=None, **kwargs):
 			pass
 		else:
 			host['enabled'] = True
+			
+		set_bool = common.control.setting(common.INTERFACE_OPTIONS_LABELS['Host']+'-'+host['name'])
+		if set_bool != host['enabled']:
+			common.set_settings_to_control(common.INTERFACE_OPTIONS_LABELS['Host']+'-'+host['name'], host['enabled'])
 		
 		title_msg = "%02d | Enabled: %s | Host: %s | Working: %s | Streaming:%s | Downloading:%s | Speed: %s s. | Captcha: %s" % (c, common.GetEmoji(type=host['enabled'], mode='simple', session=session), host['name'], common.GetEmoji(type=host['working'], mode='simple', session=session), common.GetEmoji(type=str(host['streaming']), mode='simple', session=session), common.GetEmoji(type=str(host['downloading']), mode='simple', session=session), host['speed'], common.GetEmoji(type=str(host['captcha']), mode='simple', session=session))
 		
@@ -1177,16 +1222,75 @@ def HostTools(title=None, host=None, header=None, message=None, **kwargs):
 			Thread.Create(common.OpenLoadUnpair)
 			time.sleep(7)
 			message = 'UnPairing will be completed in a few seconds. Please return to previous screen.'
-		return MC.message_container('Info', message)
-
-	if host == 'openload':
-		oc.add(DirectoryObject(key=Callback(HostTools, title='openload_unpair', host=host),
-			title=u'*Paired* - UnPair OpenLoad' if common.host_openload.isPairingDone() == True else u'*Not Paired*',
+		if title == 'show_dump_log':
+			items = common.interface.getHostsLoggerTxts(choice=host, dumpToLog=False)
+			if len(items) > 0:
+				Thread.Create(common.interface.getHostsLoggerTxts, {}, host, True)
+				if len(items) > 100:
+					msg = '%s Log has too many entries to display (last 100 shown here), full-text will be written to Channel Log !' % host.title()
+					oc.add(DirectoryObject(title=msg))
+					for i in range(0,100):
+						oc.add(DirectoryObject(title=items[i]))
+				elif len(items) > 0:
+					for i in items:
+						oc.add(DirectoryObject(title=i))
+			else:
+				message = '%s Log has no entries !' % host.title()
+			
+		if message != None:
+			return MC.message_container('Info', message)
+			
+	else:
+	
+		oc.add(DirectoryObject(key=Callback(HostTools, title='show_dump_log', host=host),
+			title=u'Show/Dump log',
 			thumb = R(tools.ICON_TOOLS),
-			summary=u'UnPair with OpenLoad'))
+			summary=u'List the logged events and dumps to Channel log'))
+		if host == 'openload':
+			oc.add(DirectoryObject(key=Callback(HostTools, title='openload_unpair', host=host),
+				title=u'*Paired* - UnPair OpenLoad' if common.host_openload.isPairingDone() == True else u'*Not Paired*',
+				thumb = R(tools.ICON_TOOLS),
+				summary=u'UnPair with OpenLoad'))
 
 	if len(oc) == 0:
 		return MC.message_container('Info', 'No tools available for %s' % host)
+
+	return oc
+	
+####################################################################################################
+@route(PREFIX + "/ProviderTools")
+def ProviderTools(title=None, provider=None, header=None, message=None, **kwargs):
+	
+	oc = ObjectContainer(title2='%s Tools' % provider.title(), header=header, message=message)
+
+	if title:
+		if title == 'show_dump_log':
+			items = common.interface.getProvidersLoggerTxts(choice=provider, dumpToLog=False)
+			if len(items) > 0:
+				Thread.Create(common.interface.getProvidersLoggerTxts, {}, provider, True)
+				if len(items) > 100:
+					msg = '%s Log has too many entries to display (last 100 shown here), full-text will be written to Channel Log !' % provider.title()
+					oc.add(DirectoryObject(title=msg))
+					for i in range(0,100):
+						oc.add(DirectoryObject(title=items[i]))
+				elif len(items) > 0:
+					for i in items:
+						oc.add(DirectoryObject(title=i))
+			else:
+				message = '%s Log has no entries !' % provider.title()
+			
+		if message != None:
+			return MC.message_container('Info', message)
+			
+	else:
+	
+		oc.add(DirectoryObject(key=Callback(ProviderTools, title='show_dump_log', provider=provider),
+			title=u'Show/Dump log',
+			thumb = R(tools.ICON_TOOLS),
+			summary=u'List the logged events and dumps to Channel log'))
+
+	if len(oc) == 0:
+		return MC.message_container('Info', 'No tools available for %s' % provider)
 
 	return oc
 	
@@ -1502,7 +1606,7 @@ def SortMenu(title, session=None, **kwargs):
 				oc.add(DirectoryObject(
 					key = Callback(EpisodeDetail, title = name, url = loc, thumb = thumb, session = session),
 					title = name + " (" + quality + ")",
-					summary = GetMovieInfo(summary=summary, urlPath=more_info_link, referer=url),
+					summary = GetMovieInfo(summary=summary, urlPath=more_info_link, referer=url, session=session),
 					thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback=ICON_UNAV)
 					)
 				)
@@ -1547,7 +1651,7 @@ def SortMenu(title, session=None, **kwargs):
 				oc.add(DirectoryObject(
 					key = Callback(EpisodeDetail, title = name, url = loc, thumb = thumb, session = session),
 					title = name + title_eps_no,
-					summary = GetMovieInfo(summary=summary, urlPath=more_info_link, referer=url) + eps_nos,
+					summary = GetMovieInfo(summary=summary, urlPath=more_info_link, referer=url, session=session) + eps_nos,
 					thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback=ICON_UNAV)
 					)
 				)
@@ -1659,7 +1763,7 @@ def ShowCategory(title, key=' ', urlpath=None, page_count='1', session=None, **k
 		oc.add(DirectoryObject(
 			key = Callback(EpisodeDetail, title = name, url = loc, thumb = thumb, session = session),
 			title = name + title_eps_no,
-			summary = GetMovieInfo(summary=summary, urlPath=more_info_link, referer=newurl) + eps_nos,
+			summary = GetMovieInfo(summary=summary, urlPath=more_info_link, referer=newurl, session=session) + eps_nos,
 			thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback=ICON_UNAV)
 			)
 		)
@@ -1745,7 +1849,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, **kwargs):
 	oc = ObjectContainer(title2 = title + item_unav, art = art, no_cache=common.isForceNoCache())
 	
 	try:
-		summary = json.dumps(page_data.xpath(".//*[@id='info']//div[@class='info col-md-19']//div[@class='desc']//text()")[0])
+		summary = page_data.xpath(".//*[@id='info']//div[@class='info col-md-19']//div[@class='desc']//text()")[0]
 		#summary = re.sub(r'[^0-9a-zA-Z \-/.,\':+&!()]', '', summary)
 	except:
 		summary = 'Summary Not Available.'
@@ -1800,21 +1904,22 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, **kwargs):
 		servers = []
 	
 	summary += '\n '
-	summary += 'Actors: ' + json.dumps(roles) + '\n '
-	summary += 'Directors: ' + json.dumps(directors) + '\n '
+	summary += 'Actors: ' + (roles) + '\n '
+	summary += 'Directors: ' + (directors) + '\n '
 	
 	if str(duration) == 'Not Available':
-		summary += 'Runtime: ' + json.dumps(str(duration)) + '\n '
+		summary += 'Runtime: ' + (str(duration)) + '\n '
 		duration = 0
 	else:
-		summary += 'Runtime: ' + json.dumps(str(duration)) + ' min.' + '\n '
+		summary += 'Runtime: ' + (str(duration)) + ' min.' + '\n '
 	
-	summary += 'Year: ' + json.dumps(year) + '\n '
-	summary += 'Genre: ' + json.dumps(genre) + '\n '
-	summary += 'IMDB rating: ' + json.dumps(rating) + '\n '
+	summary += 'Year: ' + (year) + '\n '
+	summary += 'Genre: ' + (genre) + '\n '
+	summary += 'IMDB rating: ' + (rating) + '\n '
 
 	try:
-		summary = unicode(str(summary).replace('"','').replace('\u00',''))
+		summary = unicode(common.ascii_only(summary))
+		#summary = unicode(str(summary).replace('"','').replace('\u00',''))
 	except:
 		summary = 'Not Available'
 		
@@ -2174,10 +2279,12 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, **kwargs):
 				title_s = 'Ep:' + eps[server_lab[0]]['quality']
 				episode = eps[server_lab[0]]['quality']
 			try:
-				desc = episodes_list[qual_i]['air_date'] + " : " + episodes_list[qual_i]['desc']
+				desc = unicode('%s : %s' % (episodes_list[qual_i]['air_date'] , episodes_list[qual_i]['desc']))
 			except:
 				desc = 'Episode Summary Not Available.'
 				
+			desc = common.ascii_only(desc)
+			
 			try:
 				oc.add(DirectoryObject(
 					key = Callback(TvShowDetail, tvshow=title, title=title_s, url=url, servers_list_new=servers_list_new[c], server_lab=(','.join(str(x) for x in server_lab)), summary=desc+'\n '+summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, serverts=serverts, session=session, season=SeasonN, episode=episode, imdb_id=imdb_id),
@@ -2319,7 +2426,8 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, **kwargs):
 				Thread.Create(common.interface.getExtSources, {}, movtitle=title, year=year, tvshowtitle=None, season=None, episode=None, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY, ver=common.VERSION, imdb_id=imdb_id, session=session)
 		
 		# create timeout thread
-		Thread.Create(ThreadTimeoutTimer, {}, Client.Product, E(url), client_id)
+		if common.USE_CUSTOM_TIMEOUT == True:
+			Thread.Create(ThreadTimeoutTimer, {}, Client.Product, E(url), client_id)
 		
 		watch_title = title
 	
@@ -2558,7 +2666,8 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 			Thread.Create(common.interface.getExtSources, {}, movtitle=None, year=year, tvshowtitle=tvshowcleaned, season=season, episode=episode, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY, ver=common.VERSION, imdb_id=imdb_id, session=session)
 	
 	# create timeout thread
-	Thread.Create(ThreadTimeoutTimer, {}, Client.Product, E(url), client_id)
+	if common.USE_CUSTOM_TIMEOUT == True:
+		Thread.Create(ThreadTimeoutTimer, {}, Client.Product, E(url), client_id)
 	
 	pair_required = False
 	for label in server_lab:
@@ -2720,7 +2829,7 @@ def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary
 				title_s = label + ' - ' + qual
 			else:
 				title_s = label
-				qual = None
+				qual = '480p'
 			
 			pair_required = False
 			pair = ''
@@ -2919,7 +3028,7 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 	if season != None and episode != None:
 		watch_title = common.cleantitle.tvWatchTitle(tvshowtitle,season,episode,title)
 		
-	extSour = common.interface.getSources(encode=False)
+	extSour = common.interface.getSources(encode=False, key=key)
 	
 	if use_prog_conc and len(extSour) == 0:
 		pass
@@ -3147,7 +3256,7 @@ def ExtSourcesDownload(title, url, summary, thumb, art, rating, duration, genre,
 	if season != None and episode != None:
 		watch_title = common.cleantitle.tvWatchTitle(tvshowtitle,season,episode,title)
 		
-	extSour = common.interface.getSources(encode=False)
+	extSour = common.interface.getSources(encode=False, key=key)
 	
 	if use_prog_conc and len(extSour) == 0:
 		pass
@@ -3359,7 +3468,7 @@ def SimilarRecommendations(title, similar_reccos, referer=None, session = None, 
 		oc.add(DirectoryObject(
 			key = Callback(EpisodeDetail, title = name, url = loc, thumb = thumb, session = session),
 			title = name,
-			summary = GetMovieInfo(summary=summary, urlPath=more_info_link, referer=referer) + eps_nos,
+			summary = GetMovieInfo(summary=summary, urlPath=more_info_link, referer=referer, session=session) + eps_nos,
 			thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback=ICON_UNAV)
 			)
 		)
@@ -3431,9 +3540,9 @@ def MoviesWithTag(tags, session, **kwargs):
 	
 ####################################################################################################
 @route(PREFIX + "/getmovieinfo")
-def GetMovieInfo(summary, urlPath, referer=None, **kwargs):
+def GetMovieInfo(summary, urlPath, referer=None, session=None, **kwargs):
 
-	if common.NoMovieInfo == True or urlPath == None and (summary == None or summary == '') or Prefs['use_web_proxy']:
+	if common.NO_MOVIE_INFO == True or urlPath == None and (summary == None or summary == '') or Prefs['use_web_proxy'] or common.UsingOption(common.DEVICE_OPTIONS[8], session=session) == True:
 		return 'Plot Summary on Item Page'
 	elif summary != None and Prefs["dont_fetch_more_info"]:
 		return summary
@@ -4797,7 +4906,7 @@ def Search(query=None, surl=None, page_count='1', mode='default', thumb=None, su
 				do = DirectoryObject(
 					key = Callback(EpisodeDetail, title = name, url = loc, thumb = thumb, session = session),
 					title = name + title_eps_no,
-					summary = GetMovieInfo(summary=summary, urlPath=more_info_link, referer=url) + eps_nos,
+					summary = GetMovieInfo(summary=summary, urlPath=more_info_link, referer=url, session=session) + eps_nos,
 					thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback=ICON_UNAV)
 					)
 				if mode == 'default' or mode == 'people' or mode == 'tag':

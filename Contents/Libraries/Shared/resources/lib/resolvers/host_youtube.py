@@ -43,9 +43,12 @@ hdr = {
 	'Connection': 'keep-alive'}
 
 name = 'youtube'
+loggertxt = []
 	
 class host:
 	def __init__(self):
+		del loggertxt[:]
+		log(type='INFO', method='init', err=' -- Initializing %s Start --' % name)
 		self.logo = 'http://i.imgur.com/qZUP77r.png'
 		self.name = name
 		self.host = ['youtube.com']
@@ -59,9 +62,10 @@ class host:
 		self.ac = False
 		self.pluginManagedPlayback = False
 		self.speedtest = 0
-		self.working = self.test()[0]
-		self.resolver = self.test2()
+		self.working = self.testWorking()[0]
+		self.resolver = self.testResolver()
 		self.msg = ''
+		log(type='INFO', method='init', err=' -- Initializing %s End --' % name)
 
 	def info(self):
 		return {
@@ -81,15 +85,12 @@ class host:
 			'streaming' : self.allowsStreaming,
 			'downloading' : self.allowsDownload
 		}
+					
+	def getLog(self):
+		self.loggertxt = loggertxt
+		return self.loggertxt
 		
-	def log(self, type, method, err, dolog=False, disp=True):
-		msg = '%s : %s>%s - : %s' % (type, self.name, method, err)
-		if dolog == True:
-			self.loggertxt.append(msg)
-		if disp == True:
-			logger(msg)
-		
-	def test(self):
+	def testWorking(self):
 		try:
 			testUrls = self.testUrl()
 			bool = False
@@ -99,28 +100,41 @@ class host:
 				bool = check(testUrl)
 				self.speedtest = time.time() - x1
 				msg.append([bool, testUrl])
+				if bool == True:
+					break
+				
+			log(method='testWorking', err='%s online status: %s' % (self.name, bool))
 			return (bool,msg)
-		except:
+		except Exception as e:
+			log(method='testWorking', err='%s online status: %s' % (self.name, bool))
+			log(type='ERROR', method='testWorking', err=e)
 			return False
 			
-	def test2(self):
+	def testResolver(self):
 		try:
 			testUrls = self.testUrl()
 			links = []
+			bool = False
 			for testUrl in testUrls:
-				links = self.createMeta(testUrl, 'Test', '', '', links, 'testing', 'BRRIP')
-				print links
-			if len(links) > 0:
-				return True
+				links = self.createMeta(testUrl, 'Test', '', '720p', links, 'testing', 'BRRIP')
+				if len(links) > 0:
+					bool = True
+					break
 		except Exception as e:
-			self.log('ERROR', 'test2', e, dolog=True)
-		return False
+			log(type='ERROR', method='testResolver', err=e)
+			
+		log(method='testResolver', err='%s parser status: %s' % (self.name, bool))
+		return bool
 		
 	def testUrl(self):
 		return ['https://www.youtube.com/watch?v=HcRvwVwD1Sc']
 		
-	def createMeta(self, url, provider, logo, quality, links, key, riptype, vidtype='Movie', lang='en', sub_url=None, txt=''):
+	def createMeta(self, url, provider, logo, quality, links, key, riptype, vidtype='Movie', lang='en', sub_url=None, txt='', testing=False):
 	
+		if testing == True:
+			links.append(url)
+			return links
+			
 		urldata = client.b64encode(json.dumps('', encoding='utf-8'))
 		params = client.b64encode(json.dumps('', encoding='utf-8'))
 		
@@ -131,7 +145,7 @@ class host:
 		try:
 			files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':riptype, 'provider':provider, 'url':url, 'durl':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':fs, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'subdomain':self.netloc[0], 'misc':{'player':'eplayer', 'gp':False}})
 		except Exception as e:
-			print "ERROR host_youtube.py > createMeta : %s" % e.args
+			log(type='ERROR',method='createMeta', err=u'%s' % e)
 			files_ret.append({'source':urlhost, 'maininfo':'', 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'url':url, 'durl':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':fs, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'subdomain':self.netloc[0], 'misc':{'player':'eplayer', 'gp':False}})
 			
 		for fr in files_ret:
@@ -168,8 +182,11 @@ def check(url, headers=None, cookie=None):
 def test(url):
 	return resolve(url)
 	
-def log(type, name, msg):
-	control.log('%s: %s %s' % (type, name, msg))
-	
-def logger(msg):
-	control.log(msg)
+def log(type='INFO', method='undefined', err='', dolog=True, logToControl=False, doPrint=True, name=name):
+		msg = '%s: %s > %s > %s : %s' % (time.ctime(time.time()), type, name, method, err)
+		if dolog == True:
+			loggertxt.append(msg)
+		if logToControl == True:
+			control.log(msg)
+		if doPrint == True:
+			print msg

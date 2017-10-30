@@ -86,10 +86,10 @@ try:
 	from resources.lib.libraries import mega
 	mega.fix_ssl()
 	from Cryptodome.Cipher import AES
-	print 'Cryptodome library loaded'
+	#print 'Cryptodome library loaded'
 except:
 	crypto_msg = 'Cryptodome library not found.'
-	print crypto_msg
+	#print crypto_msg
 
 http_hdrs = {
 	'User-Agent': client.USER_AGENT,
@@ -100,9 +100,12 @@ http_hdrs = {
 	'Connection': 'keep-alive'}
 	
 name = 'mega'
+loggertxt = []
 	
 class host:
 	def __init__(self):
+		del loggertxt[:]
+		log(type='INFO', method='init', err=' -- Initializing %s Start --' % name)
 		self.logo = 'https://i.imgur.com/FYtin8g.png'
 		self.name = name
 		self.host = ['mega.nz','mega.co.nz']
@@ -116,16 +119,17 @@ class host:
 		self.ac = False
 		self.pluginManagedPlayback = True
 		self.speedtest = 0
-		self.working = self.test()[0]
-		self.resolver = self.test2()
+		self.working = self.testWorking()[0]
+		self.resolver = self.testResolver()
 		self.msg = ''
 		if crypto_msg != None:
-			logger('Cryptodome library not found.')
 			self.msg = 'Cryptodome library not found.'
+			log(type='CRITICAL', method='init', err=self.msg)
 			self.resolver = False
 			self.working = False
-	
-		#raise ValueError('Cryptodome.Cipher.AES not found.')
+		else:
+			log(type='SUCCESS', method='init', err='Cryptodome library loaded')
+		log(type='INFO', method='init', err=' -- Initializing %s End --' % name)
 
 	def info(self):
 		return {
@@ -145,15 +149,12 @@ class host:
 			'streaming' : self.allowsStreaming,
 			'downloading' : self.allowsDownload
 		}
+			
+	def getLog(self):
+		self.loggertxt = loggertxt
+		return self.loggertxt
 		
-	def log(self, type, method, err, dolog=False, disp=True):
-		msg = '%s : %s>%s - : %s' % (type, self.name, method, err)
-		if dolog == True:
-			self.loggertxt.append(msg)
-		if disp == True:
-			logger(msg)
-		
-	def test(self):
+	def testWorking(self):
 		try:
 			testUrls = self.testUrl()
 			bool = False
@@ -163,27 +164,40 @@ class host:
 				bool = check(testUrl)
 				self.speedtest = time.time() - x1
 				msg.append([bool, testUrl])
-			return (bool,msg)
-		except:
-			return False
+				if bool == True:
+					break
+				
+			log(method='testWorking', err='%s online status: %s' % (self.name, bool))
+			return (bool, msg)
+		except Exception as e:
+			log(method='testWorking', err='%s online status: %s' % (self.name, bool))
+			log(type='ERROR', method='testWorking', err=e)
+			return False, msg
 			
-	def test2(self):
+	def testResolver(self):
 		try:
 			testUrls = self.testUrl()
 			links = []
+			bool = False
 			for testUrl in testUrls:
-				links = self.createMeta(testUrl, 'Test', '', '', links, 'testing', 'BRRIP')
-				print links
-			if len(links) > 0:
-				return True
+				links = self.createMeta(testUrl, 'Test', '', '720p', links, 'testing', 'BRRIP')
+				if len(links) > 0:
+					bool = True
+					break
 		except Exception as e:
-			self.log('ERROR', 'test2', e, dolog=True)
-		return False
+			log(type='ERROR', method='testResolver', err=e)
+			
+		log(method='testResolver', err='%s parser status: %s' % (self.name, bool))
+		return bool
 		
 	def testUrl(self):
 		return ['https://mega.nz/#!R6xyBBpY!JmZlf7cn7w2scbWaPYESoppAY8UDbrkXKFz0e2FZASs']
 		
-	def createMeta(self, url, provider, logo, quality, links, key, riptype, vidtype='Movie', lang='en', sub_url=None, txt=''):
+	def createMeta(self, url, provider, logo, quality, links, key, riptype, vidtype='Movie', lang='en', sub_url=None, txt='', testing=False):
+	
+		if testing == True:
+			links.append(url)
+			return links
 	
 		urldata = client.b64encode(json.dumps('', encoding='utf-8'))
 		params = client.b64encode(json.dumps('', encoding='utf-8'))
@@ -200,9 +214,8 @@ class host:
 			urldata = createurldata(furl, quality)
 		except Exception as e:
 			online = False
-			self.log('ERROR', 'createMeta', url, dolog=True)
-			self.log('ERROR', 'createMeta', e, dolog=True)
-		
+			log('ERROR', 'createMeta', '%s - %s' % (url,e))
+
 		try:
 			files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':titleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':riptype, 'provider':provider, 'durl':url, 'url':url, 'urldata':urldata, 'params':params, 'logo':logo, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'online':online, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'subdomain':self.netloc[0], 'misc':{'player':'iplayer', 'gp':False}})
 		except Exception as e:
@@ -231,14 +244,8 @@ def resolve(url):
 
 	
 def check(url, headers=None, cookie=None):
-	try:
-		# http_res, red_url = client.request(url=url, output='responsecodeext', followredirect=True, headers=headers, cookie=cookie, httpsskip=True)
-		# if str(http_res) not in client.HTTP_GOOD_RESP_CODES:
-			# return False
-			
+	try:			
 		http_res = mega.send_http_request(url)
-		#print http_res
-		#print http_res.status
 		if str(http_res.status) not in client.HTTP_GOOD_RESP_CODES:
 			return False
 
@@ -250,34 +257,31 @@ def createurldata(mfile, qual):
 	ret = ''
 	
 	try:
-		#mfile = urllib.quote(mfile)
 		mfile = unicode(mfile)
 		qual = unicode(qual)
 		files = []
 		jsondata = {'label': qual, 'type': 'video/mp4', 'src': mfile, 'file': mfile, 'res': qual}
 		jsondata = json.loads(json.dumps(jsondata))
 		
-		#print jsondata
-		
 		files.append(jsondata)
 		
 		if len(files) > 0:
 			ret = files
 	except Exception as e:
-		print "Error in createurldata"
-		print "URL : %s | Qual: %s" % (mfile, qual)
-		print "Error: %s" % e
-		
-	#print ret
+		log('ERROR', 'createurldata', '%s - %s' % (mfile,e))
+	
 	ret = json.dumps(ret, encoding='utf-8')
-	#print "urldata ------ %s" % ret
+	
 	return client.b64encode(ret)
 		
 def test(url):
 	return resolve(url)
 
-def log(type, name, msg):
-	control.log('%s: %s %s' % (type, name, msg))
-	
-def logger(msg):
-	control.log(msg)
+def log(type='INFO', method='undefined', err='', dolog=True, logToControl=False, doPrint=True, name=name):
+		msg = '%s: %s > %s > %s : %s' % (time.ctime(time.time()), type, name, method, err)
+		if dolog == True:
+			loggertxt.append(msg)
+		if logToControl == True:
+			control.log(msg)
+		if doPrint == True:
+			print msg

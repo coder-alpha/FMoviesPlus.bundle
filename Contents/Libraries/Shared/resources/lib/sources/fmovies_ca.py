@@ -9,34 +9,42 @@ from resources.lib import resolvers
 from resources.lib import proxies
 from __builtin__ import ord, format
 
+name = 'FMovies.io'
+loggertxt = []
+
 class source:
 	def __init__(self):
-		self.base_link = 'https://fmovies.io'
+		del loggertxt[:]
+		log(type='INFO', method='init', err=' -- Initializing %s Start --' % name)
+		self.base_link = 'https://www4.fmovies.io'
 		self.search_link = '/sitemap'
-		self.search_link2 = 'https://fmovies.io/search.html?keyword=%s'
 		self.link_server_f1 = "https://vidnode.net/streaming.php?id=%s"
 		self.link_server_f2 = "https://player.fmovie.io/embed.php?id=%s"
 		self.hash_link = '/ajax/episode/info'
 		self.MainPageValidatingContent = 'Watch Free Movies Online -  Streaming MoviesFast - Fmovies'
 		self.type_filter = ['movie', 'show', 'anime']
 		self.ssl = False
+		self.disabled = False
 		self.name = 'FMovies.io'
 		self.headers = {}
 		self.cookie = None
 		self.loggertxt = []
-		self.logo = 'http://i.imgur.com/li8Skjf.jpg'
+		self.logo = 'https://i.imgur.com/jsD6b0O.png'
 		self.speedtest = 0
 		if len(proxies.sourceProxies)==0:
 			proxies.init()
 		self.proxyrequired = False
 		self.siteonline = self.testSite()
 		self.testparser = 'Unknown'
+		self.msg = ''
 		self.testparser = self.testParser()
+		log(type='INFO', method='init', err=' -- Initializing %s End --' % name)
 		
 	def info(self):
 		return {
 			'url': self.base_link,
 			'name': self.name,
+			'msg' : self.msg,
 			'speed': round(self.speedtest,3),
 			'logo': self.logo,
 			'ssl' : self.ssl,
@@ -44,13 +52,10 @@ class source:
 			'online_via_proxy' : self.proxyrequired,
 			'parser': self.testparser
 		}
-		
-	def log(self, type, method, err, dolog=False, disp=True):
-		msg = '%s : %s>%s - : %s' % (type, self.name, method, err)
-		if dolog == True:
-			self.loggertxt.append(msg)
-		if disp == True:
-			logger(msg)
+			
+	def getLog(self):
+		self.loggertxt = loggertxt
+		return self.loggertxt
 			
 	def setNewCookies(self):
 		try:
@@ -59,7 +64,7 @@ class source:
 			self.cookie = proxies.request(url=self.base_link, headers=self.headers, output='cookie', use_web_proxy=self.proxyrequired)
 			self.headers['Cookie'] = self.cookie
 		except Exception as e:
-			self.log('ERROR','setNewCookies', '%s' % e, dolog=True)
+			log('ERROR','setNewCookies', '%s' % e)
 		
 			
 	def testSite(self):
@@ -74,13 +79,13 @@ class source:
 				self.cookie = proxies.request(url=self.base_link, headers=self.headers, output='cookie', use_web_proxy=False, httpsskip=True)
 				self.speedtest = time.time() - x1
 				self.headers['Cookie'] = self.cookie
-				self.log('SUCCESS', 'testSite', 'HTTP Resp : %s for %s' % (http_res,self.base_link), dolog=True)
-				self.log('SUCCESS', 'testSite', 'Cookie Resp : %s for %s' % (self.cookie,self.base_link), dolog=True)
+				log('SUCCESS', 'testSite', 'HTTP Resp : %s for %s' % (http_res,self.base_link))
+				log('SUCCESS', 'testSite', 'Cookie Resp : %s for %s' % (self.cookie,self.base_link))
 				return True
 			else:
-				self.log('ERROR', 'testSite', 'HTTP Resp : %s for %s' % (http_res,self.base_link), dolog=True)
+				log('ERROR', 'testSite', 'HTTP Resp : %s for %s' % (http_res,self.base_link))
 				x1 = time.time()
-				http_res, content = proxies.request(url=self.base_link, headers=self.headers, output='response', use_web_proxy=True, httpsskip=True)
+				http_res, content = proxies.request(url=self.base_link.replace('https:','http:'), headers=self.headers, output='response', use_web_proxy=True, httpsskip=True)
 				self.speedtest = time.time() - x1
 				if content != None and content.find(self.MainPageValidatingContent) >-1:
 					self.proxyrequired = True
@@ -88,8 +93,8 @@ class source:
 					self.cookie = proxies.request(url=self.base_link, headers=self.headers, output='cookie', use_web_proxy=True, httpsskip=True)
 					self.speedtest = time.time() - x1
 					self.headers['Cookie'] = self.cookie
-					self.log('SUCCESS', 'testSite', 'HTTP Resp : %s via proxy for %s' % (http_res,self.base_link), dolog=True)
-					self.log('SUCCESS', 'testSite', 'Cookie Resp : %s for %s' % (self.cookie,self.base_link), dolog=True)
+					log('SUCCESS', 'testSite', 'HTTP Resp : %s via proxy for %s' % (http_res,self.base_link))
+					log('SUCCESS', 'testSite', 'Cookie Resp : %s for %s' % (self.cookie,self.base_link))
 					return True
 				else:
 					time.sleep(2.0)
@@ -98,72 +103,80 @@ class source:
 					self.speedtest = time.time() - x1
 					if content != None and content.find(self.MainPageValidatingContent) >-1:
 						self.proxyrequired = True
-						self.log('SUCCESS', 'testSite', 'HTTP Resp : %s via proxy for %s' % (http_res,self.base_link), dolog=True)
+						log('SUCCESS', 'testSite', 'HTTP Resp : %s via proxy for %s' % (http_res,self.base_link))
 						return True
-					else:
-						self.log('ERROR', 'testSite', 'HTTP Resp : %s via proxy for %s' % (http_res,self.base_link), dolog=True)
-						self.log('ERROR', 'testSite', content, dolog=True)
+			log('ERROR', 'testSite', 'HTTP Resp : %s via proxy for %s' % (http_res,self.base_link))
 			return False
 		except Exception as e:
-			self.log('ERROR','testSite', '%s' % e, dolog=True)
+			log('ERROR','testSite', '%s' % e)
 			return False
 		
 	def testParser(self):
 		try:
-			if self.siteonline == False:
-				self.log('ERROR', 'testParser', 'testSite returned False', dolog=True)
+			if self.disabled == True:
+				log('INFO','testParser', 'Plugin Disabled - cannot test parser')
 				return False
-		
+			if self.siteonline == False:
+				log('INFO', 'testParser', '%s is offline - cannot test parser' % self.base_link)
+				return False
+				
 			for movie in testparams.test_movies:
-				getmovieurl = self.get_movie(title=movie['title'], year=movie['year'], imdb=movie['imdb'], testing=True)
+				getmovieurl = self.get_movie(title=movie['title'], year=movie['year'], imdb=movie['imdb'])
 				movielinks = self.get_sources(url=getmovieurl, testing=True)
 				
 				if movielinks != None and len(movielinks) > 0:
-					self.log('SUCCESS', 'testParser', 'links : %s' % len(movielinks), dolog=True)
+					log('SUCCESS', 'testParser', 'links : %s' % len(movielinks))
 					return True
-				else:
-					self.log('ERROR', 'testParser', 'getmovieurl : %s' % getmovieurl, dolog=True)
-					self.log('ERROR', 'testParser', 'movielinks : %s' % movielinks, dolog=True)
+					
+				log('ERROR', 'testParser', 'movielinks : %s' % len(movielinks))
 			return False
 		except Exception as e:
-			self.log('ERROR', 'testParser', '%s' % e, dolog=True)
+			log('ERROR', 'testParser', '%s' % e)
 			return False
 
-	def get_movie(self, imdb, title, year, proxy_options=None, key=None, testing=False):
+	def get_movie(self, imdb=None, title=None, year=None, proxy_options=None, key=None):
 		try:
+			if control.setting('Provider-%s' % name) == False:
+				log('Provider Disabled by User')
+				return None
 			title = title.replace('&','and')
 			url = {'imdb': imdb, 'title': title, 'year': year}
 			url = urllib.urlencode(url)
 			#X - Requested - With:"XMLHttpRequest"
 			return url
-		except:
+		except Exception as e: 
+			log('ERROR', 'get_movie','%s: %s' % (title,e))
 			return
 
-	def get_show(self, imdb, tvdb, tvshowtitle, year, season, proxy_options=None, key=None, testing=False):
-
+	def get_show(self, imdb=None, tvdb=None, tvshowtitle=None, year=None, season=None, proxy_options=None, key=None):
 		try:
+			if control.setting('Provider-%s' % name) == False:
+				log('Provider Disabled by User')
+				return None
 			url = {'imdb': imdb, 'tvdb': tvdb, 'tvshowtitle': tvshowtitle, 'year': year}
 			url = urllib.urlencode(url)
 			return url
-		except:
-			return None
+		except Exception as e: 
+			log('ERROR', 'get_show','%s: %s' % (tvshowtitle,e))
+			return
 
 
-	def get_episode(self, url, imdb, tvdb, title, year, season, episode, proxy_options=None, key=None, testing=False):
-
+	def get_episode(self, url=None, imdb=None, tvdb=None, title=None, year=None, season=None, episode=None, proxy_options=None, key=None):
 		try:
+			if control.setting('Provider-%s' % name) == False:
+				return None
 			url = {'year':year, 'imdb': imdb, 'tvdb': tvdb, 'title': title, 'season': season, 'episode': episode}
 			url = urllib.urlencode(url)
 			return url
-		except:
+		except Exception as e: 
+			log('ERROR', 'get_episode','%s: %s' % (title,e))
 			return
 
 	def get_sources(self, url, hosthdDict=None, hostDict=None, locDict=None, proxy_options=None, key=None, testing=False):
-
 		try:
 			sources = []
-			
 			if url == None: return sources
+			
 			urls = []
 			
 			if not str(url).startswith('http'):
@@ -187,7 +200,7 @@ class source:
 					
 					result = proxies.request(search_url, headers=self.headers, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, httpsskip=True)
 					
-					#self.log('GRABBER','get_sources-2', '%s' % search_url, dolog=False)
+					#log('GRABBER','get_sources-2', '%s' % search_url, dolog=False)
 					r = client.parseDOM(result, 'div', attrs = {'class': 'wrapper'})
 					try:
 						r = r[1]
@@ -276,63 +289,40 @@ class source:
 							
 					#print result
 
-					r = client.parseDOM(result, 'article', attrs = {'class': 'player current'})[0]
-					result = client.parseDOM(r, 'iframe', ret='src')[0]
-					result = result.split('?')
+					#r = client.parseDOM(result, 'article', attrs = {'class': 'player current'})[0]
+					#r = client.parseDOM(r, 'iframe', ret='src')[0]
+					#r = r.split('?')
 					
-					#print result
-					
-					data = urlparse.parse_qs(result[1])
-					var_id = data['id'][0]
-					var_x = data['x'][0]
-					
+					#print r
+						
 					try:
-						server_f1 = self.link_server_f1 % var_id
-						result = proxies.request(server_f1, headers=self.headers, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, httpsskip=True)
-						resultd = client.parseDOM(result, 'iframe', ret='src')[0]
-						if 'http' not in resultd:
-							resultd = 'http:' + resultd
-						result = proxies.request(resultd, headers=self.headers, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, httpsskip=True)
-						ss = client.parseDOM(result, 'source', ret='src')
-						for s in ss:
-							#print s
+						servers = re.findall(r'link_server_.*\"(.*)\";', page)
+						for server in servers:
+							try:
+								if 'http' not in server:
+									server = 'http:' + server
+							
+									result = proxies.request(server, headers=self.headers, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, httpsskip=True)
+									server = client.parseDOM(result, 'iframe', ret='src')[0]
+									if 'http' not in server:
+										server = 'http:' + server
+								
+								links_m = resolvers.createMeta(server, self.name, self.logo, quality, links_m, key, testing=testing)
+							except Exception as e:
+								pass
 							if testing and len(links_m) > 0:
 								break
-							links_m = resolvers.createMeta(s, self.name, self.logo, quality, links_m, key)
-						if testing and len(links_m) > 0:
-								break
-					except:
+					except Exception as e:
 						pass
 						
 					try:
-						server_f2 = self.link_server_f2 % var_id
-						result = proxies.request(server_f2, headers=self.headers, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, httpsskip=True)
-						resultd = client.parseDOM(result, 'iframe', ret='src')[0]
-						if 'http' not in resultd:
-							resultd = 'http:' + resultd
-						result = proxies.request(resultd, headers=self.headers, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, httpsskip=True)
-						ss = client.parseDOM(result, 'source', ret='src')
-						for s in ss:
-							#print s
-							if testing and len(links_m) > 0:
-								break
-							links_m = resolvers.createMeta(s, self.name, self.logo, quality, links_m, key)
-						if testing and len(links_m) > 0:
-								break
-					except:
-						pass
-						
-					try:
-						all_links = re.findall(r'link_server_.*\"(.*)\";', page)
-						for a_link in all_links:
-							if a_link != None and 'vidnode.net' not in a_link and 'fmovie.io' not in a_link:
-								if 'http' not in a_link:
-									a_link = 'http:' + a_link
-								print a_link
+						servers = re.findall(r'link_server_.*\'(.*)\';', page)
+						for server in servers:
+							if server != None:
+								if 'http' not in server:
+									server = 'http:' + server
 								try:
-									if testing and len(links_m) > 0:
-										break
-									links_m = resolvers.createMeta(a_link, self.name, self.logo, quality, links_m, key)
+									links_m = resolvers.createMeta(server, self.name, self.logo, quality, links_m, key, testing=testing)	
 								except:
 									pass
 					except:
@@ -340,13 +330,12 @@ class source:
 				except:
 					pass
 
-			#print links_m
 			for link in links_m:
 				sources.append(link)
-			self.log('SUCCESS', 'get_sources','links : %s' % len(sources), dolog=testing)
+			log('SUCCESS', 'get_sources','links : %s' % len(sources), dolog=False)
 			return sources
 		except Exception as e:
-			self.log('ERROR', 'get_sources','%s' % e, dolog=testing)
+			log('ERROR', 'get_sources','%s' % e, dolog=False)
 			return sources
 
 
@@ -356,5 +345,11 @@ class source:
 		except:
 			return
 
-def logger(msg):
-	control.log(msg)
+def log(type='INFO', method='undefined', err='', dolog=True, logToControl=False, doPrint=True):
+		msg = '%s: %s > %s > %s : %s' % (time.ctime(time.time()), type, name, method, err)
+		if dolog == True:
+			loggertxt.append(msg)
+		if logToControl == True:
+			control.log(msg)
+		if doPrint == True:
+			print msg

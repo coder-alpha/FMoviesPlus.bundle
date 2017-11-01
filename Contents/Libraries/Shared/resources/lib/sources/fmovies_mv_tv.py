@@ -364,12 +364,14 @@ class source:
 			try: quality = client.parseDOM(result, 'span', attrs = {'class': 'quality'})[0].lower()
 			except: quality = 'hd'
 			if quality == 'cam' or quality == 'ts': 
-				quality = 'CAM'
+				quality = '480p'
 				riptype = 'CAM'
 			elif quality == 'hd' or 'hd ' in quality: 
-				quality = 'HD'
+				quality = '720p'
+				riptype = 'BRRIP'
 			else: 
-				quality = 'SD'
+				quality = '480p'
+				riptype = 'BRRIP'
 
 			result = client.parseDOM(result, 'ul', attrs = {'data-range-id':"0"})
 
@@ -417,16 +419,19 @@ class source:
 					#quality = '360p'
 					if '1080' in s[1]: 
 						quality = '1080p'
-						riptype = 'BRRIP'
-					if '720' in s[1] or 'hd' in s[1].lower(): 
+						#riptype = 'BRRIP'
+					elif '720' in s[1] or 'hd' in s[1].lower(): 
 						quality = '720p'
-						riptype = 'BRRIP'
-					if '480' in s[1]: 
+						#riptype = 'BRRIP'
+					elif '480' in s[1]: 
 						quality = '480p'
-						riptype = 'BRRIP'
-					if 'cam' in s[1].lower() or 'ts' in s[1].lower(): 
+						#riptype = 'BRRIP'
+					elif 'cam' in s[1].lower() or 'ts' in s[1].lower(): 
 						quality = '480p'
-						riptype = 'CAM'
+						#riptype = 'CAM'
+					else:
+						quality = '480p'
+						#riptype = 'CAM'
 						
 					log('INFO','get_sources-5', result, dolog=False)
 					

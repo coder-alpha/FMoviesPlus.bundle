@@ -191,7 +191,7 @@ class source:
 			log('ERROR', 'get_movie','%s: %s' % (title,e))
 			return
 
-	def get_show(self, imdb, tvdb, tvshowtitle, year, season, proxy_options=None, key=None):
+	def get_show(self, imdb=None, tvdb=None, tvshowtitle=None, year=None, season=None, proxy_options=None, key=None):
 		try:
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_show','Provider Disabled by User')
@@ -205,7 +205,7 @@ class source:
 			return
 
 
-	def get_episode(self, url, imdb, tvdb, title, date, season, episode, proxy_options=None, key=None):
+	def get_episode(self, url=None, imdb=None, tvdb=None, title=None, year=None, season=None, episode=None, proxy_options=None, key=None):
 		try:
 			if control.setting('Provider-%s' % name) == False:
 				return None
@@ -217,6 +217,8 @@ class source:
 					self.moviesearch_link = '/api/search/stream/?apikey=%s&query=%s'
 
 			tvshowtitle, year = re.compile('(.+?) [(](\d{4})[)]$').findall(url)[0]
+			season = str(season)
+			episode = str(episode)
 			season, episode = season.zfill(2), episode.zfill(2)
 			query = '%s s%se%s' % (tvshowtitle, season, episode)
 			query = self.moviesearch_link % (control.setting('control_all_uc_api_key'), urllib.quote_plus(query))
@@ -225,7 +227,7 @@ class source:
 			#r = requests.get(r).json()
 			rr = proxies.request(xr, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
 			rr = json.loads(rr)
-
+			
 			for item in rr['result']:   
 				if len(item['hosterurls']) == 1:
 					lang = item['lang'].encode('utf-8')
@@ -293,8 +295,8 @@ class source:
 					urlenc = client.b64decode(key)
 					data = urlparse.parse_qs(urlenc)
 					title = data['movtitle'][0]
-					if title == None:	
-						title = '%s S%sE%s' % (data['tvshowtitle'][0],data['season'][0],data['episode'][0])
+					if title == None or title == 'None':	
+						title = '%s S%sE%s' % (data['tvshowtitle'][0],str(data['season'][0]),str(data['episode'][0]))
 				else:
 					title = 'Unknown Title'
 			except:

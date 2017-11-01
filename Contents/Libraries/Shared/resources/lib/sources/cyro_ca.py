@@ -335,7 +335,7 @@ class source:
 					urlenc = client.b64decode(key)
 					data = urlparse.parse_qs(urlenc)
 					title = data['movtitle'][0]
-					if title == None:	
+					if title == None or title == 'None':	
 						title = '%s S%sE%s' % (data['tvshowtitle'][0],data['season'][0],data['episode'][0])
 				else:
 					title = 'Unknown Title'

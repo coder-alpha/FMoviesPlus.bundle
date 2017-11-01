@@ -150,9 +150,10 @@ class source:
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_movie','Provider Disabled by User')
 				return None
-			return
+				
+			raise Exception('Could not find a matching movie title: %s' % title)
 		except Exception as e: 
-			log('ERROR', 'get_movie','%s: %s' % (title,e))
+			log('ERROR', 'get_movie','%s' % e)
 			return
 		
 	def get_show(self, tvshowtitle, season, imdb=None, tvdb=None, year=None, proxy_options=None, key=None):
@@ -171,6 +172,10 @@ class source:
 
 			r = client.parseDOM(r, 'ul', attrs={'class': 'items'})
 			r = client.parseDOM(r, 'li')
+			
+			if len(r) == 0:
+				raise Exception('Could not find a matching show title: %s' % tvshowtitle)
+			
 			r = [(client.parseDOM(i, 'a', ret='href'), client.parseDOM(i, 'a', ret='title'), re.findall('\d{4}', i)) for i in r]
 			
 			r = [(i[0][0], i[1][0], i[2][-1]) for i in r if i[0] and i[1] and i[2]]
@@ -250,7 +255,7 @@ class source:
 					urlenc = client.b64decode(key)
 					data = urlparse.parse_qs(urlenc)
 					title = data['movtitle'][0]
-					if title == None:	
+					if title == None or title == 'None':	
 						title = '%s S%sE%s' % (data['tvshowtitle'][0],data['season'][0],data['episode'][0])
 				else:
 					title = 'Unknown Title'

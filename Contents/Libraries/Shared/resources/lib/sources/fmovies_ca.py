@@ -16,7 +16,8 @@ class source:
 	def __init__(self):
 		del loggertxt[:]
 		log(type='INFO', method='init', err=' -- Initializing %s Start --' % name)
-		self.base_link = 'https://www4.fmovies.io'
+		self.base_link_alts = ['https://www.fmovies.io','https://www4.fmovies.io']
+		self.base_link = self.base_link_alts[0]
 		self.search_link = '/sitemap'
 		self.link_server_f1 = "https://vidnode.net/streaming.php?id=%s"
 		self.link_server_f2 = "https://player.fmovie.io/embed.php?id=%s"
@@ -66,11 +67,21 @@ class source:
 		except Exception as e:
 			log('ERROR','setNewCookies', '%s' % e)
 		
-			
 	def testSite(self):
+		for site in self.base_link_alts:
+			bool = self.testSiteAlts(site)
+			if bool == True:
+				self.base_link = site
+				return bool
+				
+		self.base_link = self.base_link_alts[0]
+		return False
+			
+	def testSiteAlts(self, site):
 		try:
 			ua = client.randomagent()
 			self.headers['User-Agent'] = ua
+			self.base_link = proxies.request(url=site, headers=self.headers, output='geturl', use_web_proxy=False, httpsskip=True)
 			x1 = time.time()
 			http_res, content = proxies.request(url=self.base_link, headers=self.headers, output='response', use_web_proxy=False, httpsskip=True)
 			self.speedtest = time.time() - x1
@@ -83,7 +94,7 @@ class source:
 				log('SUCCESS', 'testSite', 'Cookie Resp : %s for %s' % (self.cookie,self.base_link))
 				return True
 			else:
-				log('ERROR', 'testSite', 'HTTP Resp : %s for %s' % (http_res,self.base_link))
+				log('FAIL', 'testSite', 'Validation content Not Found. HTTP Resp : %s for %s' % (http_res,self.base_link))
 				x1 = time.time()
 				http_res, content = proxies.request(url=self.base_link.replace('https:','http:'), headers=self.headers, output='response', use_web_proxy=True, httpsskip=True)
 				self.speedtest = time.time() - x1
@@ -105,7 +116,8 @@ class source:
 						self.proxyrequired = True
 						log('SUCCESS', 'testSite', 'HTTP Resp : %s via proxy for %s' % (http_res,self.base_link))
 						return True
-			log('ERROR', 'testSite', 'HTTP Resp : %s via proxy for %s' % (http_res,self.base_link))
+					else:
+						log('FAIL', 'testSite', 'Validation content Not Found. HTTP Resp : %s via proxy for %s' % (http_res,self.base_link))
 			return False
 		except Exception as e:
 			log('ERROR','testSite', '%s' % e)
@@ -125,10 +137,10 @@ class source:
 				movielinks = self.get_sources(url=getmovieurl, testing=True)
 				
 				if movielinks != None and len(movielinks) > 0:
-					log('SUCCESS', 'testParser', 'links : %s' % len(movielinks))
+					log('SUCCESS', 'testParser', 'Parser is working')
 					return True
 					
-				log('ERROR', 'testParser', 'movielinks : %s' % len(movielinks))
+			log('FAIL', 'testParser', 'Parser NOT working')
 			return False
 		except Exception as e:
 			log('ERROR', 'testParser', '%s' % e)
@@ -137,7 +149,7 @@ class source:
 	def get_movie(self, imdb=None, title=None, year=None, proxy_options=None, key=None):
 		try:
 			if control.setting('Provider-%s' % name) == False:
-				log('Provider Disabled by User')
+				log('INFO','get_movie','Provider Disabled by User')
 				return None
 			title = title.replace('&','and')
 			url = {'imdb': imdb, 'title': title, 'year': year}
@@ -151,7 +163,7 @@ class source:
 	def get_show(self, imdb=None, tvdb=None, tvshowtitle=None, year=None, season=None, proxy_options=None, key=None):
 		try:
 			if control.setting('Provider-%s' % name) == False:
-				log('Provider Disabled by User')
+				log('INFO','get_show','Provider Disabled by User')
 				return None
 			url = {'imdb': imdb, 'tvdb': tvdb, 'tvshowtitle': tvshowtitle, 'year': year}
 			url = urllib.urlencode(url)
@@ -332,12 +344,27 @@ class source:
 
 			for link in links_m:
 				sources.append(link)
-			log('SUCCESS', 'get_sources','links : %s' % len(sources), dolog=False)
+				
+			try:
+				if key != None:
+					urlenc = client.b64decode(key)
+					data = urlparse.parse_qs(urlenc)
+					title = data['movtitle'][0]
+					if title == None:	
+						title = '%s S%sE%s' % (data['tvshowtitle'][0],data['season'][0],data['episode'][0])
+				else:
+					title = 'Unknown Title'
+			except:
+				title = 'Unknown Title'
+			
+			if len(sources) == 0:
+				raise Exception('Could not find a matching title: %s' % title)
+			
+			log('SUCCESS', 'get_sources','%s sources : %s' % (title, len(sources)), dolog=not testing)
 			return sources
 		except Exception as e:
-			log('ERROR', 'get_sources','%s' % e, dolog=False)
+			log('ERROR', 'get_sources', '%s' % e, dolog=not testing)
 			return sources
-
 
 	def resolve(self, url):
 		try:
@@ -346,10 +373,13 @@ class source:
 			return
 
 def log(type='INFO', method='undefined', err='', dolog=True, logToControl=False, doPrint=True):
+	try:
 		msg = '%s: %s > %s > %s : %s' % (time.ctime(time.time()), type, name, method, err)
 		if dolog == True:
 			loggertxt.append(msg)
 		if logToControl == True:
 			control.log(msg)
-		if doPrint == True:
+		if control.doPrint == True and doPrint == True:
 			print msg
+	except Exception as e:
+		control.log('Error in Logging: %s >>> %s' % (msg,e))

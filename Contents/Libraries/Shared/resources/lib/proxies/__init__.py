@@ -92,8 +92,11 @@ def request(url, proxy_name=None, proxy_url=None, close=True, redirect=True, fol
 	return None
 
 def log(err='', type='INFO', logToControl=True, doPrint=True):
+	try:
 		msg = '%s: %s > %s : %s' % (time.ctime(time.time()), type, 'proxies', err)
 		if logToControl == True:
 			control.log(msg)
-		elif doPrint == True:
+		if control.doPrint == True and doPrint == True:
 			print msg
+	except Exception as e:
+		control.log('Error in Logging: %s >>> %s' % (msg,e))

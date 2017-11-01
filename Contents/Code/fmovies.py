@@ -202,7 +202,7 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 			Log("USING SAVED COOKIE TOKEN - TO DUMP TOKEN PERFORM RESET COOKIE UNDER OPTIONS MENU")
 			Log("Retrieved Saved Cookie: %s" % cookie)
 			Log("Retrieved Saved reqkey Cookie: %s" % reqkey_cookie)
-			Log("Retrieved Saved Video-Token-Key: %s" % token_key)
+			Log("Retrieved Saved Video-Token-Key: %s" % E(token_key))
 			Log("=====================TOKEN END============================")
 	else:
 		if serverts == None:
@@ -388,7 +388,7 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 		if dump or use_debug:
 			Log("Storing Cookie: %s" % cookie)
 			Log("Storing reqkey Cookie: %s" % reqkey_cookie)
-			Log("Storing Video-Token-Key: %s" % TOKEN_KEY[0])
+			Log("Storing Video-Token-Key: %s" % E(TOKEN_KEY[0]))
 			Log("Storing Video-Token-Oper: %s" % TOKEN_OPER[0])
 			if len(TOKEN_OPER) > 1:
 				Log("Storing Video-Token-Oper2: %s" % TOKEN_OPER[1])

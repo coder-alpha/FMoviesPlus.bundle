@@ -214,12 +214,12 @@ class host:
 			urldata = createurldata(furl, quality)
 		except Exception as e:
 			online = False
-			log('ERROR', 'createMeta', '%s - %s' % (url,e))
+			log('ERROR', 'createMeta-1', '%s - %s' % (url,e))
 
 		try:
 			files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':titleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':riptype, 'provider':provider, 'durl':url, 'url':url, 'urldata':urldata, 'params':params, 'logo':logo, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'online':online, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'subdomain':self.netloc[0], 'misc':{'player':'iplayer', 'gp':False}})
 		except Exception as e:
-			print "ERROR host_mega.py > createMeta : %s" % e.args
+			log('ERROR', 'createMeta-2', '%s - %s' % (url,e))
 			files_ret.append({'source':urlhost, 'maininfo':'', 'titleinfo':titleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'durl':url, 'url':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'subdomain':self.netloc[0], 'misc':{'player':'iplayer', 'gp':False}})
 			
 		for fr in files_ret:
@@ -277,11 +277,14 @@ def createurldata(mfile, qual):
 def test(url):
 	return resolve(url)
 
-def log(type='INFO', method='undefined', err='', dolog=True, logToControl=False, doPrint=True, name=name):
+def log(type='INFO', method='undefined', err='', dolog=True, logToControl=False, doPrint=True):
+	try:
 		msg = '%s: %s > %s > %s : %s' % (time.ctime(time.time()), type, name, method, err)
 		if dolog == True:
 			loggertxt.append(msg)
 		if logToControl == True:
 			control.log(msg)
-		if doPrint == True:
+		if control.doPrint == True and doPrint == True:
 			print msg
+	except Exception as e:
+		control.log('Error in Logging: %s >>> %s' % (msg,e))

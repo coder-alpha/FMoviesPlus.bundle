@@ -88,7 +88,6 @@ class source:
 		for site in self.base_link_alts:
 			bool = self.testSiteAlts(site)
 			if bool == True:
-				self.base_link = site
 				return bool
 				
 		self.base_link = self.base_link_alts[0]
@@ -96,6 +95,7 @@ class source:
 		
 	def testSiteAlts(self, site):
 		try:
+			self.base_link = site
 			if self.disabled:
 				log('INFO','testSite', 'Plugin Disabled')
 				return False
@@ -107,7 +107,7 @@ class source:
 				log('SUCCESS', 'testSite', 'HTTP Resp : %s for %s' % (http_res,site))
 				return True
 			else:
-				log('ERROR', 'testSite', 'HTTP Resp : %s for %s' % (http_res,site))
+				log('FAIL', 'testSite', 'Validation content Not Found. HTTP Resp : %s for %s' % (http_res,site))
 			return False
 		except Exception as e:
 			log('ERROR','testSite', '%s' % e)
@@ -127,7 +127,7 @@ class source:
 			self.TOKEN_KEY = []
 			self.getVidToken()
 			if len(self.TOKEN_KEY) > 0:
-				log('SUCCESS', 'initAndSleep', 'Vid Token: %s' % self.TOKEN_KEY[0])
+				log('SUCCESS', 'initAndSleep', 'Vid Token: %s' % client.b64encode(self.TOKEN_KEY[0]))
 			else:
 				log('FAIL', 'initAndSleep', 'Vid Token Not retrieved !')
 			
@@ -184,10 +184,10 @@ class source:
 				movielinks = self.get_sources(url=getmovieurl, testing=True)
 				
 				if movielinks != None and len(movielinks) > 0:
-					log('SUCCESS', 'testParser', 'links : %s' % len(movielinks))
+					log('SUCCESS', 'testParser', 'Parser is working')
 					return True
 					
-				log('ERROR', 'testParser', 'movielinks : %s' % len(movielinks))
+			log('FAIL', 'testParser', 'Parser NOT working')
 			return False
 		except Exception as e:
 			log('ERROR', 'testParser', '%s' % e)
@@ -196,7 +196,7 @@ class source:
 	def get_movie(self, imdb, title, year, proxy_options=None, key=None):
 		try:
 			if control.setting('Provider-%s' % name) == False:
-				log('Provider Disabled by User')
+				log('INFO','get_movie','Provider Disabled by User')
 				return None
 			url = {'imdb': imdb, 'title': title, 'year': year}
 			url = urllib.urlencode(url)
@@ -209,7 +209,7 @@ class source:
 	def get_show(self, imdb=None, tvdb=None, tvshowtitle=None, year=None, season=None, proxy_options=None, key=None):
 		try:
 			if control.setting('Provider-%s' % name) == False:
-				log('Provider Disabled by User')
+				log('INFO','get_show','Provider Disabled by User')
 				return None
 			url = {'imdb': imdb, 'tvdb': tvdb, 'tvshowtitle': tvshowtitle, 'year': year}
 			url = urllib.urlencode(url)
@@ -293,7 +293,7 @@ class source:
 						url = [i for i in r if cleantitle.get(title) in cleantitle.get(i[1])]
 					
 					if len(url) == 0:
-						raise Exception()
+						raise Exception('Could not find a matching title: %s' % title)
 					
 					for urli in url:
 						url = urli[0]
@@ -301,8 +301,7 @@ class source:
 						urls.append(url)
 					
 				except Exception as e:
-					print e
-					raise Exception()
+					raise Exception(e)
 
 			for url in urls:
 				try:
@@ -332,16 +331,15 @@ class source:
 					if result != None:
 						break
 				except Exception as e:
-					print 'Error: %s for URL: %s' % (e,url)
+					log('ERROR','get_sources-3', '%s : %s' % (url,e), dolog=False)
 					
+			if result == None:
+				raise Exception('Could not find a matching title: %s' % title)
 
 			try:
-				myts = re.findall(r'data-ts="(.*?)"', resultT)[0]
-				#print myts
-				#myts = result.xpath(".//body[@class='watching']//@data-ts")[0]
+				myts = re.findall(r'data-ts="(.*?)"', result)[0]
 			except:
-				print "could not parse ts ! will use generated one."
-				print myts
+				log('INFO','get_sources-3', 'could not parse ts ! will use generated one : %s' % myts, dolog=False)
 				
 			trailers = []
 			links_m = []
@@ -475,12 +473,27 @@ class source:
 					log('ERROR', 'get_sources-7','%s' % e, dolog=False)
 
 			sources += [l for l in links_m]
-			log('SUCCESS', 'get_sources','links : %s' % len(sources), dolog=False)
+			
+			try:
+				if key != None:
+					urlenc = client.b64decode(key)
+					data = urlparse.parse_qs(urlenc)
+					title = data['movtitle'][0]
+					if title == None:	
+						title = '%s S%sE%s' % (data['tvshowtitle'][0],data['season'][0],data['episode'][0])
+				else:
+					title = 'Unknown Title'
+			except:
+				title = 'Unknown Title'
+			
+			if len(sources) == 0:
+				raise Exception('Could not find a matching title: %s' % title)
+			
+			log('SUCCESS', 'get_sources','%s sources : %s' % (title, len(sources)), dolog=not testing)
 			return sources
 		except Exception as e:
-			log('ERROR', 'get_sources','%s' % e, dolog=False)
+			log('ERROR', 'get_sources', '%s' % e, dolog=not testing)
 			return sources
-
 
 	def resolve(self, url):
 		try:
@@ -553,10 +566,13 @@ class source:
 			log('ERROR', 'getVidToken-2','%s' % e, dolog=False)
 
 def log(type='INFO', method='undefined', err='', dolog=True, logToControl=False, doPrint=True):
+	try:
 		msg = '%s: %s > %s > %s : %s' % (time.ctime(time.time()), type, name, method, err)
 		if dolog == True:
 			loggertxt.append(msg)
 		if logToControl == True:
 			control.log(msg)
-		if doPrint == True:
+		if control.doPrint == True and doPrint == True:
 			print msg
+	except Exception as e:
+		control.log('Error in Logging: %s >>> %s' % (msg,e))

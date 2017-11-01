@@ -139,7 +139,7 @@ class sources:
 				try:
 					source_name = 'Unknow source (import error)'
 					source_name = source['name']
-					log(err='Searching Episode: %s in Provider %s' % (tvshowtitle,source_name))
+					log(err='Searching Movie: %s in Provider %s' % (title,source_name))
 					thread_i = workers.Thread(self.getMovieSource, title, year, imdb, proxy_options, key, re.sub('_mv_tv$|_mv$|_tv$', '', source['name']), source['call'])
 					self.threads[key].append(thread_i)
 					thread_i.start()
@@ -159,7 +159,7 @@ class sources:
 				try:
 					source_name = 'Unknow source (import error)'
 					source_name = source['name']
-					log(err='Searching: %s S%sE%s in Provider %s' % (tvshowtitle,season,episode,source_name))
+					log(err='Searching Show: %s S%sE%s in Provider %s' % (tvshowtitle,season,episode,source_name))
 					thread_i = workers.Thread(self.getEpisodeSource, title, year, imdb, tvdb, season, episode, tvshowtitle, date, proxy_options, key, re.sub('_mv_tv$|_mv$|_tv$', '', source_name), source['call'])
 					self.threads[key].append(thread_i)
 					thread_i.start()
@@ -388,8 +388,11 @@ class sources:
 		self.hosthdfullDict = self.hostprDict + self.hosthdDict
 
 def log(err='', type='INFO', logToControl=True, doPrint=True, name='control'):
+	try:
 		msg = '%s: %s > %s : %s' % (time.ctime(time.time()), type, name, err)
 		if logToControl == True:
 			control.log(msg)
-		elif doPrint == True:
+		if control.doPrint == True and doPrint == True:
 			print msg
+	except Exception as e:
+		control.log('Error in Logging: %s >>> %s' % (msg,e))

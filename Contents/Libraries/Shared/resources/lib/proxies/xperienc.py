@@ -129,11 +129,14 @@ def requestdirect(url, close=True, redirect=True, followredirect=False, error=Fa
 		log('ERROR','requestdirect', '%s' % e)
 		return None
 
-def log(type='INFO', method='undefined', err='', dolog=True, logToControl=False, doPrint=True, name=name):
+def log(type='INFO', method='undefined', err='', dolog=True, logToControl=False, doPrint=True):
+	try:
 		msg = '%s: %s > %s > %s : %s' % (time.ctime(time.time()), type, name, method, err)
 		if dolog == True:
 			loggertxt.append(msg)
 		if logToControl == True:
 			control.log(msg)
-		if doPrint == True:
+		if control.doPrint == True and doPrint == True:
 			print msg
+	except Exception as e:
+		control.log('Error in Logging: %s >>> %s' % (msg,e))

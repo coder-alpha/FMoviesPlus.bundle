@@ -69,6 +69,8 @@ import ast
 import urllib2,HTMLParser,urlparse
 import time, cookielib
 
+import control
+
 from __builtin__ import eval
 
 def import_get(module, name, default):
@@ -923,12 +925,15 @@ def test():
 def test2():
 	fix_ssl()
 	print get_mega_dl_link('https://mega.nz/#!R6xyBBpY!JmZlf7cn7w2scbWaPYESoppAY8UDbrkXKFz0e2FZASs')
-	
-def log(type='INFO', method='undefined', err='', logToControl=False, doPrint=True, name='mega'):
-		msg = '%s: %s > %s > %s : %s' % (time.ctime(time.time()), type, name, method, err)
+
+def log(type='INFO', method='undefined', err='', logToControl=False, doPrint=True):
+	try:
+		msg = '%s: %s > %s > %s : %s' % (time.ctime(time.time()), type, 'mega.py', method, err)
 		if logToControl == True:
 			control.log(msg)
-		if doPrint == True:
+		if control.doPrint == True and doPrint == True:
 			print msg
+	except Exception as e:
+		control.log('Error in Logging: %s >>> %s' % (msg, e))
 	
 #test()

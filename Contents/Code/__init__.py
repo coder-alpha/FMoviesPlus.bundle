@@ -2989,6 +2989,7 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 	key = generatemoviekey(movtitle=movtitle, year=year, tvshowtitle=tvshowcleaned, season=season, episode=episode)
 	oc = ObjectContainer(title2='External Sources')
 	prog = common.interface.checkProgress(key)
+
 	use_prog_conc = common.SHOW_EXT_SRC_WHILE_LOADING
 	doSleepForProgress = True
 	
@@ -3009,7 +3010,6 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 			time.sleep(7)
 			doSleepForProgress = False
 		prog = common.interface.checkProgress(key)
-		
 		if use_prog_conc:
 			if prog < 100:
 				oc = ObjectContainer(title2='External Sources - Progress %s%s' % (prog, '%'), no_history=True, no_cache=True)
@@ -3018,21 +3018,17 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 					title = 'Refresh - %s%s Done' % (prog,'%'),
 					summary = 'List sources by External Providers.',
 					art = art,
-					thumb = GetThumb(R(ICON_OTHERSOURCES), session=session)
+					thumb = GetThumb(R(ICON_REFRESH), session=session)
 					)
 				)
 		else:
 			return MC.message_container('External Sources', 'Sources are being fetched ! Progress %s%s' % (prog,'%'))
-	
-	watch_title = movtitle
-	if season != None and episode != None:
-		watch_title = common.cleantitle.tvWatchTitle(tvshowtitle,season,episode,title)
 		
 	extSour = common.interface.getSources(encode=False, key=key)
 	
-	if use_prog_conc and len(extSour) == 0:
+	if use_prog_conc and prog < 100:
 		pass
-	elif len(extSour) == 0:
+	elif len(extSour) == 0 and prog == 100:
 		return MC.message_container('External Sources', 'No External Sources Available.')
 	
 	# match key
@@ -3042,12 +3038,16 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 	extSourKey = []
 	extSourKey += [i for i in filter_extSources]
 	
-	if use_prog_conc and len(extSourKey) == 0:
+	if use_prog_conc and prog < 100:
 		pass
-	if len(extSourKey) == 0:
+	if len(extSourKey) == 0 and prog == 100:
 		return MC.message_container('External Sources', 'No External Sources Available for this video.')
 		
 	internal_extSources = extSourKey
+	
+	watch_title = movtitle
+	if season != None and episode != None:
+		watch_title = common.cleantitle.tvWatchTitle(tvshowtitle,season,episode,title)
 	
 	if Prefs["use_debug"] and common.DEV_DEBUG == True:
 		Log("---------=== DEV DEBUG START ===------------")
@@ -3066,7 +3066,7 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 		
 	internal_extSources = common.FilterBasedOn(internal_extSources)
 	
-	internal_extSources = common.OrderBasedOn(internal_extSources)
+	internal_extSources = common.OrderBasedOn(internal_extSources, use_filesize=common.UsingOption(key=common.DEVICE_OPTIONS[9], session=session))
 	
 	plexservice_playback_links = []
 	plexservice_extras_playback_links = []
@@ -3178,7 +3178,7 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 				
 		for source in plexservice_extras_playback_links:
 			extExtrasSources_urlservice.append(source)
-		extExtrasSources_urlservice = common.OrderBasedOn(extExtrasSources_urlservice, use_host=False)
+		extExtrasSources_urlservice = common.OrderBasedOn(extExtrasSources_urlservice, use_host=False, use_filesize=common.UsingOption(key=common.DEVICE_OPTIONS[9], session=session))
 		cx = len(extExtrasSources_urlservice)
 		
 		for source in plexservice_playback_links:
@@ -3192,7 +3192,7 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 				dups.append(i['url'])
 		extSources_urlservice = filter_extSources
 			
-		extSources_urlservice = common.OrderBasedOn(extSources_urlservice, use_host=False)
+		extSources_urlservice = common.OrderBasedOn(extSources_urlservice, use_host=False, use_filesize=common.UsingOption(key=common.DEVICE_OPTIONS[9], session=session))
 		c = len(extSources_urlservice)
 		
 		if cx > 0:
@@ -3246,7 +3246,7 @@ def ExtSourcesDownload(title, url, summary, thumb, art, rating, duration, genre,
 					title = 'Refresh - %s%s Done' % (prog,'%'),
 					summary = 'List sources by External Providers.',
 					art = art,
-					thumb = GetThumb(R(ICON_OTHERSOURCESDOWNLOAD), session=session)
+					thumb = GetThumb(R(ICON_REFRESH), session=session)
 					)
 				)
 		else:
@@ -3258,9 +3258,9 @@ def ExtSourcesDownload(title, url, summary, thumb, art, rating, duration, genre,
 		
 	extSour = common.interface.getSources(encode=False, key=key)
 	
-	if use_prog_conc and len(extSour) == 0:
+	if use_prog_conc and prog < 100:
 		pass
-	elif len(extSour) == 0:
+	elif len(extSour) == 0 and prog == 100:
 		return MC.message_container('Download Sources', 'No External Sources Available.')
 	
 	# match key
@@ -3270,9 +3270,9 @@ def ExtSourcesDownload(title, url, summary, thumb, art, rating, duration, genre,
 	extSourKey = []
 	extSourKey += [i for i in filter_extSources]
 	
-	if use_prog_conc and len(extSourKey) == 0:
+	if use_prog_conc and prog < 100:
 		pass
-	if len(extSourKey) == 0:
+	if len(extSourKey) == 0 and prog == 100:
 		return MC.message_container('Download Sources', 'No External Sources Available for this video.')
 		
 	internal_extSources = extSourKey

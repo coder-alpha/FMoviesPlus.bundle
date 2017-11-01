@@ -78,11 +78,16 @@ def decode(url, python_dir=None, debug=False, ssl=True):
 		return str(err), False
 
 def log(err='', type='INFO', logToControl=True):
+	try:
 		msg = '%s: %s > %s : %s' % (time.ctime(time.time()), type, 'PhantomJS', err)
+		if dolog == True:
+			loggertxt.append(msg)
 		if logToControl == True:
 			control.log(msg)
-		else:
+		if control.doPrint == True and doPrint == True:
 			print msg
+	except Exception as e:
+		control.log('Error in Logging: %s >>> %s' % (msg,e))
 		
 def test():
 	resp = decode("https://openload.co/embed/kUEfGclsU9o", debug=False)

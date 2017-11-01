@@ -29,6 +29,7 @@ trakt_secret = base64.urlsafe_b64decode('Y2I4OWExYTViN2ZlYmJiMDM2NmQ3Y2EyNzJjZDc
 
 loggertxt = []
 setting_dict = {}
+doPrint = False
 
 def setting(key):
 	if key in setting_dict.keys():

@@ -97,7 +97,7 @@ class source:
 				log('SUCCESS', 'testSite', 'HTTP Resp : %s for %s' % (http_res,site))
 				return True
 			else:
-				self.log('ERROR', 'testSite', 'HTTP Resp : %s for %s' % (http_res,site))
+				log('FAIL', 'testSite', 'Validation content Not Found. HTTP Resp : %s for %s' % (http_res,site))
 				x1 = time.time()
 				http_res, content = proxies.request(url=site, output='response', use_web_proxy=True)
 				self.speedtest = time.time() - x1
@@ -115,7 +115,7 @@ class source:
 						log('SUCCESS', 'testSite', 'HTTP Resp : %s via proxy for %s' % (http_res,site))
 						return True
 					else:
-						log('ERROR', 'testSite', 'HTTP Resp : %s via proxy for %s' % (http_res,site))
+						log('FAIL', 'testSite', 'Validation content Not Found. HTTP Resp : %s via proxy for %s' % (http_res,site))
 			return False
 		except Exception as e:
 			log('ERROR','testSite', '%s' % e)
@@ -136,10 +136,10 @@ class source:
 				links = self.get_sources(url=geturl, testing=True)
 				
 				if links != None and len(links) > 0:
-					log('SUCCESS', 'testParser', 'links : %s' % len(links))
+					log('SUCCESS', 'testParser', 'Parser is working')
 					return True
 
-			log('ERROR', 'testParser', 'links : %s' % len(links))
+			log('FAIL', 'testParser', 'Parser NOT working')
 			return False
 		except Exception as e:
 			log('ERROR', 'testParser', '%s' % e)
@@ -148,7 +148,7 @@ class source:
 	def get_movie(self,imdb, title, year, proxy_options=None, key=None):
 		try:
 			if control.setting('Provider-%s' % name) == False:
-				log('Provider Disabled by User')
+				log('INFO','get_movie','Provider Disabled by User')
 				return None
 			return
 		except Exception as e: 
@@ -158,7 +158,7 @@ class source:
 	def get_show(self, tvshowtitle, season, imdb=None, tvdb=None, year=None, proxy_options=None, key=None):
 		try:
 			if control.setting('Provider-%s' % name) == False:
-				log('Provider Disabled by User')
+				log('INFO','get_show','Provider Disabled by User')
 				return None
 				
 			t = cleantitle.get(tvshowtitle)
@@ -244,22 +244,39 @@ class source:
 					pass
 					
 			for i in links: sources.append(i)
-
+			
+			try:
+				if key != None:
+					urlenc = client.b64decode(key)
+					data = urlparse.parse_qs(urlenc)
+					title = data['movtitle'][0]
+					if title == None:	
+						title = '%s S%sE%s' % (data['tvshowtitle'][0],data['season'][0],data['episode'][0])
+				else:
+					title = 'Unknown Title'
+			except:
+				title = 'Unknown Title'
+			
+			if len(sources) == 0:
+				raise Exception('Could not find a matching title: %s' % title)
+			
+			log('SUCCESS', 'get_sources','%s sources : %s' % (title, len(sources)), dolog=not testing)
 			return sources
 		except Exception as e:
-			log('ERROR', 'get_sources', '%s' % e, dolog=False)
+			log('ERROR', 'get_sources', '%s' % e, dolog=not testing)
 			return sources
 
 	def resolve(self, url):
 		return url
 		
 def log(type='INFO', method='undefined', err='', dolog=True, logToControl=False, doPrint=True):
+	try:
 		msg = '%s: %s > %s > %s : %s' % (time.ctime(time.time()), type, name, method, err)
 		if dolog == True:
 			loggertxt.append(msg)
 		if logToControl == True:
 			control.log(msg)
-		if doPrint == True:
+		if control.doPrint == True and doPrint == True:
 			print msg
-
-
+	except Exception as e:
+		control.log('Error in Logging: %s >>> %s' % (msg,e))

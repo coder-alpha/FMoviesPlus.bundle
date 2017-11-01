@@ -36,7 +36,7 @@
 import re,json,time,base64
 import os, sys
 import js2py
-from __builtin__ import ord
+from __builtin__ import ord, format
 
 import traceback
 
@@ -454,20 +454,8 @@ def openloadS(url, videoData=None, usePairing=True, session=None):
 		video_url = None
 		e = ''
 		try:
-			if USE_LOGIN_KEY == True and video_url == None:
-				log(type='INFO',method='openloadS', err=u'trying L/K API method: %s' % video_id)
-				v_url, cont, cu, dlk, ret_error = link_from_api(video_id)
-				if v_url == None:
-					raise DecodeError('%s' % ret_error)
-				else:
-					ret_error = ''
-					video_url = v_url
-					log(type='SUCCESS',method='openloadS', err=u'*L/K API* method is working: %s' % video_id)
-			else:
-				raise DecodeError('L/K method disabled via hard coded option')
-		except DecodeError as e:
 			if USE_PHANTOMJS == True and (session == None or control.setting('%s-%s' % (session, 'Use-PhantomJS')) == True) and control.setting('use_phantomjs') == True:
-				log(type='INFO',method='openloadS', err=u'%s; trying phantomjs method: %s' % (e,video_id))
+				log(type='INFO',method='openloadS', err=u'trying phantomjs method: %s' % (video_id))
 				try:
 					v_url, bool = phantomjs.decode(url)
 					if bool == False:
@@ -478,39 +466,57 @@ def openloadS(url, videoData=None, usePairing=True, session=None):
 						ret_error = ''
 						log(type='SUCCESS',method='openloadS', err=u'*PhantomJS* method is working: %s' % video_id)
 				except:
-					pass
-			if USE_DECODING1 == True and video_url == None:
-				log(type='INFO',method='openloadS', err=u'%s; falling back to decode_id method: %s' % (e,video_id))
-				try:
-					v_url = 'https://openload.co/stream/%s?mime=true'
-					decoded = decode_id(ol_id)
-					video_url = v_url % decoded
-				except DecodeError as e:
-					pass
-			if USE_DECODING2 == True and video_url == None:
-				log(type='INFO',method='openloadS', err=u'%s; falling back to method with evaluating: %s' % (e,video_id))
-				try:
-					decoded = eval_id_decoding(videoData, ol_id)
-					video_url = video_url % decoded
-				except DecodeError as e:
-					pass
-			if USE_PAIRING == True:
-				try:
-					if usePairing == True and video_url == None:
-						log(type='INFO',method='openloadS', err=u'%s; falling back to method with pairing: %s' % (e,video_id))
-						title, video_url = pairing_method(video_id)
+					raise DecodeError('phantomjs not working')
+			else:
+				raise DecodeError('phantomjs is disabled')
+		except DecodeError as e:
+			try:
+				if USE_LOGIN_KEY == True and video_url == None:
+					log(type='INFO',method='openloadS', err=u'%s; trying L/K API method: %s' % (e,video_id))
+					v_url, cont, cu, dlk, ret_error = link_from_api(video_id)
+					if v_url == None:
+						raise DecodeError('%s' % ret_error)
+					else:
 						ret_error = ''
-						log(type='SUCCESS',method='openloadS', err=u'*Pairing* method is working: %s' % video_id)
-					elif video_url == None:
-						ret_error = 'pairing is the only option available'
-						log(type='INFO',method='openloadS', err=u'%s; %s : %s' % (e,ret_error,video_id))
+						video_url = v_url
+						log(type='SUCCESS',method='openloadS', err=u'*L/K API* method is working: %s' % video_id)
+				else:
+					raise DecodeError('L/K method disabled via hard coded option')
+			except DecodeError as e:
+				if USE_DECODING1 == True and video_url == None:
+					log(type='INFO',method='openloadS', err=u'%s; falling back to decode_id method: %s' % (e,video_id))
+					try:
+						v_url = 'https://openload.co/stream/%s?mime=true'
+						decoded = decode_id(ol_id)
+						video_url = v_url % decoded
+					except DecodeError as e:
+						pass
+				if USE_DECODING2 == True and video_url == None:
+					log(type='INFO',method='openloadS', err=u'%s; falling back to method with evaluating: %s' % (e,video_id))
+					try:
+						decoded = eval_id_decoding(videoData, ol_id)
+						video_url = video_url % decoded
+					except DecodeError as e:
+						pass
+				if USE_PAIRING == True:
+					try:
+						if usePairing == True and video_url == None:
+							log(type='INFO',method='openloadS', err=u'%s; falling back to method with pairing: %s' % (e,video_id))
+							title, video_url = pairing_method(video_id)
+							if video_url == None:
+								raise DecodeError('Pairing not working')
+							ret_error = ''
+							log(type='SUCCESS',method='openloadS', err=u'*Pairing* method is working: %s' % video_id)
+						elif video_url == None:
+							ret_error = 'pairing is the only option available'
+							log(type='INFO',method='openloadS', err=u'%s; %s : %s' % (e,ret_error,video_id))
+							video_url = None
+						elif video_url != None:
+							ret_error = ''
+					except DecodeError as e:
 						video_url = None
-					elif video_url != None:
-						ret_error = ''
-				except DecodeError as e:
-					video_url = None
-					ret_error = str(e)
-					print ret_error
+						ret_error = str(e)
+						print ret_error
 
 		return (video_url, videoData, ret_error)
 	except Exception as e:
@@ -770,7 +776,7 @@ def link_from_api(fid, lk=None, test=False):
 	except Exception as e:
 		msg = str(e)
 		print e
-		log(type='FAIL',method='link_from_api', err=u"cannot handle 1st api link %s" % url)
+		log(type='FAIL', method='link_from_api', err='cannot handle 1st api link %s' % url)
 		return None, cont, captcha_url, dlticket, msg
 
 	if data["status"] == 200:
@@ -780,7 +786,7 @@ def link_from_api(fid, lk=None, test=False):
 			if captcha_url != None and captcha_url != False:
 				captcha_url = captcha_url.replace('://',':||').replace('//','/').replace(':||','://')
 				#captcha_url = 'https://rsz.io/%s?w=300&h=300' % captcha_url.split('//')[1]
-				log(type='INFO',method='link_from_api', err=u"captcha url %s" % captcha_url)
+				log(type='INFO', method='link_from_api', err='captcha url %s' % captcha_url)
 			
 		if test == True:
 			captcha_url = 'https://openload.co/dlcaptcha/QdCRoYF8wouT3YSj.png'
@@ -795,12 +801,12 @@ def link_from_api(fid, lk=None, test=False):
 			if data["status"] == 200:
 				return data['result']['url'].replace("https", "http"), cont, captcha_url, dlticket, msg
 			else:
-				log(type='FAIL',method='link_from_api', err=u"cannot handle 2nd api link %s" % data['msg'])
+				log(type='FAIL', method='link_from_api', err='cannot handle 2nd api link %s' % data['msg'])
 		except:
-			log(type='FAIL',method='link_from_api', err=u"cannot handle 2nd api link %s" % url)
+			log(type='FAIL', method='link_from_api', err='cannot handle 2nd api link %s' % url)
 	else:
 		msg = data["msg"]
-		log(type='FAIL',method='link_from_api', err=u"%s" % msg)
+		log(type='FAIL', method='link_from_api', err='>>> %s' % msg)
 
 	return None, cont, captcha_url, dlticket, msg
 	
@@ -820,9 +826,9 @@ def SolveCaptcha(captcha_response, fid, dlticket):
 		if data["status"] == 200:
 			return data['result']['url'].replace("https", "http")
 		else:
-			log(type='ERROR',method='SolveCaptcha', err=u"cannot handle 2nd api link %s" % data['msg'])
+			log(type='FAIL', method='SolveCaptcha', err='cannot handle 2nd api link >>> %s' % data['msg'])
 	except:
-		log(type='ERROR',method='SolveCaptcha', err=u"cannot handle 2nd api link %s" % url)
+		log(type='ERROR', method='SolveCaptcha', err='cannot handle 2nd api link %s' % url)
 
 	return None
 		
@@ -847,12 +853,14 @@ def persistPairing(runIndefinite=False):
 def test(url):
 	return resolve(url)
 	
-def log(type='INFO', method='undefined', err='', dolog=True, logToControl=False, doPrint=True, name=name):
+def log(type='INFO', method='undefined', err='', dolog=True, logToControl=False, doPrint=True):
+	try:
 		msg = '%s: %s > %s > %s : %s' % (time.ctime(time.time()), type, name, method, err)
 		if dolog == True:
 			loggertxt.append(msg)
 		if logToControl == True:
 			control.log(msg)
-		if doPrint == True:
+		if control.doPrint == True and doPrint == True:
 			print msg
-
+	except Exception as e:
+		control.log('Error in Logging: %s >>> %s' % (msg,e))

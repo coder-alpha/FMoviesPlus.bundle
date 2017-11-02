@@ -331,7 +331,7 @@ class source:
 					if result != None:
 						break
 				except Exception as e:
-					log('ERROR','get_sources-3', '%s : %s' % (url,e), dolog=False)
+					log('FAIL','get_sources-3', '%s : %s' % (url,e), dolog=False)
 					
 			if result == None:
 				raise Exception('Could not find a matching title: %s' % title)
@@ -475,7 +475,7 @@ class source:
 						links_m = resolvers.createMeta(target, self.name, self.logo, quality, links_m, key, riptype, sub_url=sub_url, testing=testing)
 
 				except Exception as e:
-					log('ERROR', 'get_sources-7','%s' % e, dolog=False)
+					log('FAIL', 'get_sources-7','%s' % e, dolog=False)
 
 			sources += [l for l in links_m]
 			
@@ -485,7 +485,7 @@ class source:
 					data = urlparse.parse_qs(urlenc)
 					title = data['movtitle'][0]
 					if title == None or title == 'None':	
-						title = '%s S%sE%s' % (data['tvshowtitle'][0],data['season'][0],data['episode'][0])
+						title = '%s S%sE%s' % (data['tvshowtitle'][0],str(data['season'][0]),str(data['episode'][0]))
 				else:
 					title = 'Unknown Title'
 			except:

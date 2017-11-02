@@ -1,7 +1,7 @@
 ################################################################################
 TITLE = "FMoviesPlus"
 VERSION = '0.45' # Release notation (x.y - where x is major and y is minor)
-TAG = 'dev 11-01-2017'
+TAG = 'dev 11-02-2017'
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
 ################################################################################
@@ -88,12 +88,12 @@ INTERNAL_SOURCES = []
 OPTIONS_PROVIDERS = []
 INTERNAL_SOURCES_QUALS = [{'label':'4K','enabled': 'True'},{'label':'1080p','enabled': 'True'},{'label':'720p','enabled': 'True'},{'label':'480p','enabled': 'True'},{'label':'360p','enabled': 'True'}]
 INTERNAL_SOURCES_RIPTYPE = [{'label':'BRRIP','enabled': 'True'},{'label':'PREDVD','enabled': 'True'},{'label':'CAM','enabled': 'True'},{'label':'TS','enabled': 'True'},{'label':'SCR','enabled': 'True'},{'label':'UNKNOWN','enabled': 'True'}]
-INTERNAL_SOURCES_FILETYPE = [{'label':'Movie/Show','enabled': 'True'},{'label':'Trailer','enabled': 'True'},{'label':'Behind the scenes','enabled': 'False'},{'label':'Music Video','enabled': 'False'}]
+INTERNAL_SOURCES_FILETYPE = [{'label':'Movie/Show','enabled': 'True'},{'label':'Trailer','enabled': 'True'},{'label':'Behind the scenes','enabled': 'False'},{'label':'Music Video','enabled': 'False'},{'label':'Deleted Scenes','enabled': 'False'},{'label':'Interviews','enabled': 'False'},{'label':'Misc.','enabled': 'False'}]
 INTERNAL_SOURCES_SIZES = [{'label':'> 2GB','enabled': 'True','LL':2*TO_GB,'UL':100*TO_GB},{'label':'1GB - 2GB','enabled': 'True','LL':1*TO_GB,'UL':2*TO_GB},{'label':'0.5GB - 1GB','enabled': 'True','LL':0.5*TO_GB,'UL':1*TO_GB},{'label':'0GB - 0.5GB','enabled': 'True','LL':1,'UL':0.5*TO_GB},{'label':'0GB','enabled': 'False','LL':0,'UL':0}]
 INTERNAL_SOURCES_SIZES_CONST = [{'label':'> 2GB','enabled': 'True','LL':2*TO_GB,'UL':100*TO_GB},{'label':'1GB >= 2GB','enabled': 'True','LL':1*TO_GB,'UL':2*TO_GB},{'label':'0.5GB >= 1GB','enabled': 'True','LL':0.5*TO_GB,'UL':1*TO_GB},{'label':'0GB >= 0.5GB','enabled': 'True','LL':999999,'UL':0.5*TO_GB},{'label':'0GB','enabled': 'False','LL':0,'UL':999999}]
 INTERNAL_SOURCES_QUALS_CONST = [{'label':'4K','enabled': 'True'},{'label':'1080p','enabled': 'True'},{'label':'720p','enabled': 'True'},{'label':'480p','enabled': 'True'},{'label':'360p','enabled': 'True'}]
 INTERNAL_SOURCES_RIPTYPE_CONST = [{'label':'BRRIP','enabled': 'True'},{'label':'PREDVD','enabled': 'True'},{'label':'CAM','enabled': 'True'},{'label':'TS','enabled': 'True'},{'label':'SCR','enabled': 'True'},{'label':'UNKNOWN','enabled': 'True'}]
-INTERNAL_SOURCES_FILETYPE_CONST = [{'label':'Movie/Show','enabled': 'True'},{'label':'Trailer','enabled': 'True'},{'label':'Behind the scenes','enabled': 'False'},{'label':'Music Video','enabled': 'False'},{'label':'Misc.','enabled': 'False'}]
+INTERNAL_SOURCES_FILETYPE_CONST = [{'label':'Movie/Show','enabled': 'True'},{'label':'Trailer','enabled': 'True'},{'label':'Behind the scenes','enabled': 'False'},{'label':'Music Video','enabled': 'False'},{'label':'Deleted Scenes','enabled': 'False'},{'label':'Interviews','enabled': 'False'},{'label':'Misc.','enabled': 'False'}]
 
 DEVICE_OPTIONS = ['Dumb-Keyboard','List-View','Redirector','Simple-Emoji','Vibrant-Emoji','Multi-Link-View','Full-poster display','Use-PhantomJS','No-Extra-Page-Info','Use-FileSize-Sorting']
 DEVICE_OPTION = {DEVICE_OPTIONS[0]:'The awesome Keyboard for Search impaired devices',

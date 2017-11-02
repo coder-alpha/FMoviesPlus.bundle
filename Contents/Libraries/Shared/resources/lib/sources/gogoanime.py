@@ -256,7 +256,7 @@ class source:
 					data = urlparse.parse_qs(urlenc)
 					title = data['movtitle'][0]
 					if title == None or title == 'None':	
-						title = '%s S%sE%s' % (data['tvshowtitle'][0],data['season'][0],data['episode'][0])
+						title = '%s S%sE%s' % (data['tvshowtitle'][0],str(data['season'][0]),str(data['episode'][0]))
 				else:
 					title = 'Unknown Title'
 			except:

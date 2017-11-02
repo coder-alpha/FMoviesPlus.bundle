@@ -88,6 +88,7 @@ class host:
 	def __init__(self):
 		del loggertxt[:]
 		log(type='INFO', method='init', err=' -- Initializing %s Start --' % name)
+		self.init = False
 		self.logo = 'http://i.imgur.com/OM7VzQs.png'
 		self.name = 'openload'
 		self.host = ['openload.io','openload.co','oload.tv']
@@ -108,6 +109,7 @@ class host:
 			self.captcha = True
 			self.working = True
 		self.resolver = self.testResolver()
+		self.init = True
 		log(type='INFO', method='init', err=' -- Initializing %s End --' % name)
 
 	def info(self):
@@ -196,6 +198,7 @@ class host:
 			return links
 			
 		url = url.replace('oload.tv','openload.co').replace('/embed/','/f/')
+		orig_url = url
 		durl = url
 		if testing == False:
 			log(type='INFO',method='createMeta-1', err=u'creating meta for url: %s' % url)
@@ -248,6 +251,7 @@ class host:
 		for fr in files_ret:
 			links.append(fr)
 
+		log('INFO', 'createMeta', 'Successfully processed %s link >>> %s' % (provider, orig_url), dolog=self.init)
 		return links
 
 	def resolve(self, url):

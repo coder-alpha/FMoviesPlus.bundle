@@ -1223,6 +1223,7 @@ def HostTools(title=None, host=None, header=None, message=None, **kwargs):
 			time.sleep(7)
 			message = 'UnPairing will be completed in a few seconds. Please return to previous screen.'
 		if title == 'show_dump_log':
+			oc = ObjectContainer(title2='%s Log' % host.title(), header=header, message=message)
 			items = common.interface.getHostsLoggerTxts(choice=host, dumpToLog=False)
 			if len(items) > 0:
 				Thread.Create(common.interface.getHostsLoggerTxts, {}, host, True)
@@ -1265,6 +1266,7 @@ def ProviderTools(title=None, provider=None, header=None, message=None, **kwargs
 
 	if title:
 		if title == 'show_dump_log':
+			oc = ObjectContainer(title2='%s Log' % provider.title(), header=header, message=message)
 			items = common.interface.getProvidersLoggerTxts(choice=provider, dumpToLog=False)
 			if len(items) > 0:
 				Thread.Create(common.interface.getProvidersLoggerTxts, {}, provider, True)
@@ -2987,7 +2989,8 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 	if tvshowtitle != None:
 		tvshowcleaned = tvshowtitle.replace(' ' + str(season),'')
 	key = generatemoviekey(movtitle=movtitle, year=year, tvshowtitle=tvshowcleaned, season=season, episode=episode)
-	oc = ObjectContainer(title2='External Sources')
+	oc_conc = ObjectContainer(title2='External Sources')
+	oc = []
 	prog = common.interface.checkProgress(key)
 
 	use_prog_conc = common.SHOW_EXT_SRC_WHILE_LOADING
@@ -3012,8 +3015,8 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 		prog = common.interface.checkProgress(key)
 		if use_prog_conc:
 			if prog < 100:
-				oc = ObjectContainer(title2='External Sources - Progress %s%s' % (prog, '%'), no_history=True, no_cache=True)
-				oc.add(DirectoryObject(
+				oc_conc = ObjectContainer(title2='External Sources - Progress %s%s' % (prog, '%'), no_history=True, no_cache=True)
+				oc.append(DirectoryObject(
 					key = Callback(ExtSources, movtitle=movtitle, tvshowtitle=tvshowtitle, season=season, episode=episode, title=title, url=url, summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, session=session),
 					title = 'Refresh - %s%s Done' % (prog,'%'),
 					summary = 'List sources by External Providers.',
@@ -3118,7 +3121,7 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 			else:
 				durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":vidUrl, "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "directors":directors, "roles":roles, "isTargetPlay":str(isTargetPlay), "useSSL":Prefs["use_https_alt"], "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled, 'quality':source['quality'], 'urldata':urldata, 'params':params, 'pairrequired':pair_required, "host":source['source'], "openloadApiKey":Prefs['control_openload_api_key']}))
 			try:
-				oc.add(VideoClipObject(
+				oc.append(VideoClipObject(
 					url = durl,
 					title = title_msg + source['titleinfo'] + redirector_stat,
 					thumb = GetThumb(thumb, session=session),
@@ -3156,7 +3159,7 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 			#Log(gen_play)
 			title, summary, thumb, params, duration, genres, videoUrl, videoRes, watch_title = gen_play
 			try:
-				oc.add(CreateVideoObject(url, title, summary, thumb, params, duration, genres, videoUrl, videoRes, watch_title)) # ToDo
+				oc.append(CreateVideoObject(url, title, summary, thumb, params, duration, genres, videoUrl, videoRes, watch_title)) # ToDo
 			except:
 				pass
 	
@@ -3196,16 +3199,22 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 		c = len(extSources_urlservice)
 		
 		if cx > 0:
-			ocp = DirectoryObject(title = 'Extras (%s items)' % str(cx), key = Callback(PSExtSources, con_title='Extras (%s items)' % str(cx), extSources_play=E(JSON.StringFromObject(extExtrasSources_urlservice)), session=session, watch_title=watch_title, summary=summary, thumb=thumb, art=art, url=url, duration=duration, genre=genre), thumb=R(ICON_PLEX))
-			oc.add(ocp)
+			ext_summmary = ', '.join('%s (%s)' % (x['label'],'enabled' if str(x['enabled']).lower()=='true' else 'disabled') for x in common.INTERNAL_SOURCES_FILETYPE if 'Movie/Show' not in x['label'])
+			ocp = DirectoryObject(title = 'Extras (%s items)' % str(cx), key = Callback(PSExtSources, con_title='Extras (%s items)' % str(cx), extSources_play=E(JSON.StringFromObject(extExtrasSources_urlservice)), session=session, watch_title=watch_title, summary=summary, thumb=thumb, art=art, url=url, duration=duration, genre=genre), summary=ext_summmary,thumb=R(ICON_PLEX))
+			if prog < 100:
+				oc.insert(1,ocp)
+			else:
+				oc.insert(0,ocp)
 		if c > 0:
-			ocp = DirectoryObject(title = 'External Sources (via Plex-Service) %s links' % str(c), key = Callback(PSExtSources, con_title='External Sources (via Plex-Service) %s links' % str(c), extSources_play=E(JSON.StringFromObject(extSources_urlservice)), session=session, watch_title=watch_title, summary=summary, thumb=thumb, art=art, url=url, duration=duration, genre=genre), thumb=R(ICON_PLEX))
-			oc.add(ocp)
+			ocp = DirectoryObject(title = 'External Sources (via Plex-Service) %s links' % str(c), key = Callback(PSExtSources, con_title='External Sources (via Plex-Service) %s links' % str(c), extSources_play=E(JSON.StringFromObject(extSources_urlservice)), session=session, watch_title=watch_title, summary=summary, thumb=thumb, art=art, url=url, duration=duration, genre=genre), summary='Playable via Plex services that are available and a Generic Player that tries its best to handle the rest.', thumb=R(ICON_PLEX))
+			oc.append(ocp)
 
 	if len(oc) == 0:
 		return MC.message_container('External Sources', 'No videos based on Filter Selection')
 	
-	return oc
+	for i in oc:
+		oc_conc.add(i)
+	return oc_conc
 	
 ####################################################################################################
 @route(PREFIX + "/ExtSourcesDownload")
@@ -6468,9 +6477,10 @@ def PlayVideo(videoUrl, params, retResponse, url, title, summary, thumb, watch_t
 		pass
 	elif common.client.geturlhost(videoUrl) in common.host_misc_resolvers.supported_hosts:
 		videoUrl, params_enc, b = common.host_misc_resolvers.resolve(videoUrl, Prefs["use_https_alt"])
-		params = JSON.ObjectFromString(D(params_enc))
+		#params = JSON.ObjectFromString(D(params_enc))
+		params = params_enc
 		if videoUrl != None:
-			videoUrl = videoUrl[len(videoUrl)-1]
+			videoUrl = videoUrl[len(videoUrl)-1]['file']
 	elif '.mp4' not in videoUrl and 'mime=video/mp4' not in videoUrl:
 		page_data, error = common.GetPageAsString(url=videoUrl)
 		reg_exs = [[r'\[{.*mp4.*}]',0],[r'{.*mp4.*}',0],[r'\({.*mp4.*?}\)',0]]

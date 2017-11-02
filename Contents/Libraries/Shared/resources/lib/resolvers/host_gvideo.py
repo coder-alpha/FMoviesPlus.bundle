@@ -67,6 +67,7 @@ class host:
 	def __init__(self):
 		del loggertxt[:]
 		log(type='INFO', method='init', err=' -- Initializing %s Start --' % name)
+		self.init = False
 		self.logo = 'http://i.imgur.com/KYtgDP6.png'
 		self.name = 'gvideo'
 		self.host = ['google.com','blogspot.com','googlevideo.com','googleusercontent.com','googleapis.com']
@@ -86,6 +87,7 @@ class host:
 		self.msg = ''
 		#self.checkGetLinkAPI()
 		self.UA = client.USER_AGENT
+		self.init = True
 		log(type='INFO', method='init', err=' -- Initializing %s End --' % name)
 
 	def info(self):
@@ -161,6 +163,8 @@ class host:
 		
 	def createMeta(self, url, provider, logo, quality, links, key, riptype, showsplit=False, useGetlinkAPI=True, vidtype='Movie', lang='en', sub_url=None, txt='', testing=False):
 	
+		orig_url = url
+		
 		if testing == True:
 			links.append(url)
 			return links
@@ -303,6 +307,7 @@ class host:
 			fr['resumeDownload'] = self.resumeDownload
 			links.append(fr)
 		
+		log('INFO', 'createMeta', 'Successfully processed %s link >>> %s' % (provider, orig_url), dolog=self.init)
 		return links
 		
 	def resolve(self, url):

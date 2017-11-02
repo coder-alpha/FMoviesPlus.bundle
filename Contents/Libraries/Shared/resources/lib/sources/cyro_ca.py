@@ -128,7 +128,7 @@ class source:
 			log('ERROR', 'testParser', '%s' % e)
 			return False
 
-	def get_movie(self,imdb, title, year, proxy_options=None, key=None):
+	def get_movie(self, imdb, title, year, proxy_options=None, key=None):
 		try:
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_movie','Provider Disabled by User')
@@ -140,7 +140,7 @@ class source:
 			log('ERROR', 'get_movie','%s: %s' % (title,e))
 			return
 
-	def get_show(self, imdb, tvdb, tvshowtitle, year, season, proxy_options=None, key=None):
+	def get_show(self, imdb=None, tvdb=None, tvshowtitle=None, year=None, season=None, proxy_options=None, key=None):
 		try:
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_show','Provider Disabled by User')
@@ -150,7 +150,7 @@ class source:
 			log('ERROR', 'get_show','%s: %s' % (tvshowtitle,e))
 			return
 
-	def get_episode(self, url, imdb, tvdb, title, year, season, episode, proxy_options=None, key=None):
+	def get_episode(self, url=None, imdb=None, tvdb=None, title=None, year=None, season=None, episode=None, proxy_options=None, key=None):
 		try:
 			if control.setting('Provider-%s' % name) == False:
 				return None
@@ -258,14 +258,14 @@ class source:
 						#print r
 						links = resolvers.createMeta(r, self.name, self.logo, quality, links, key, vidtype='Movie', sub_url=sub_url, testing=testing)
 					except Exception as e:
-						log('ERROR', 'get_sources-1', e , dolog=False)	
+						log('FAIL', 'get_sources-1', e , dolog=False)	
 						
 					try:
 						r = self.returnFinalLink(url)
 						if r != None:
 							links = resolvers.createMeta(r, self.name, self.logo, quality, links, key, vidtype='Movie', sub_url=sub_url, testing=testing)
 					except Exception as e:
-						log('ERROR', 'get_sources-2', e , dolog=False)	
+						log('FAIL', 'get_sources-2', e , dolog=False)	
 				
 					try:
 						r = client.parseDOM(result, 'iframe', ret='src')
@@ -324,7 +324,7 @@ class source:
 								pass
 								
 					except Exception as e:
-						log('ERROR', 'get_sources-3', e , dolog=False)
+						log('FAIL', 'get_sources-3', e , dolog=False)
 				except:
 					pass
 
@@ -336,7 +336,7 @@ class source:
 					data = urlparse.parse_qs(urlenc)
 					title = data['movtitle'][0]
 					if title == None or title == 'None':	
-						title = '%s S%sE%s' % (data['tvshowtitle'][0],data['season'][0],data['episode'][0])
+						title = '%s S%sE%s' % (data['tvshowtitle'][0],str(data['season'][0]),str(data['episode'][0]))
 				else:
 					title = 'Unknown Title'
 			except:
@@ -359,7 +359,7 @@ class source:
 			return
 			
 	def returnFinalLink(self, url):
-		site = 'http://xpau.se'
+		site = self.base_link
 		headers = {'Accept':'text/html,application/xhtml+xml,application/xml;q=0.9,*//**;q=0.8',
 					'Accept-Language':'en-US,en;q=0.8',
 					'Cache-Control':'max-age=0',
@@ -374,9 +374,6 @@ class source:
 				url = client.request(url, output='geturl')
 				
 			resp = client.request(url, headers=headers)
-			
-			#print(url)
-			#print(resp)
 			
 			if x == 0:
 				r = client.parseDOM(resp, 'a', ret='href', attrs = {'id': 'playthevid'})[0]

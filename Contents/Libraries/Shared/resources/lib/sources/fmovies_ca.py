@@ -196,8 +196,6 @@ class source:
 					data = urlparse.parse_qs(url)
 					data = dict([(i, data[i][0]) if data[i] else (i, '') for i in data])
 					
-					#print data
-
 					title = data['tvshowtitle'] if 'tvshowtitle' in data else data['title']
 
 					if 'year' in data:
@@ -208,18 +206,15 @@ class source:
 					query = {'keyword': title}
 					search_url = urlparse.urljoin(self.base_link, '/search.html')
 					search_url = search_url + '?' + urllib.urlencode(query)
-					#print search_url
 					
 					result = proxies.request(search_url, headers=self.headers, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, httpsskip=True)
 					
-					#log('GRABBER','get_sources-2', '%s' % search_url, dolog=False)
 					r = client.parseDOM(result, 'div', attrs = {'class': 'wrapper'})
 					try:
 						r = r[1]
 					except:
 						raise Exception()
 					
-					#print r
 					r1 = client.parseDOM(r, 'figure')
 					r2 = []
 					for res in r1:
@@ -229,7 +224,6 @@ class source:
 						r2.append(r)
 					
 					r = r2
-					#print data
 					
 					if 'season' in data:
 						r = [(i[0], re.sub(' \(\w*\)', '', i[1])) for i in r]
@@ -254,7 +248,7 @@ class source:
 					urls == [self.base_link]
 			
 			links_m = []
-			#print urls
+
 			page = None
 			for url in urls:
 				try:
@@ -283,12 +277,11 @@ class source:
 						atr = client.parseDOM(result, 'span', attrs = {'class': 'year'})[0]
 					except:
 						atr = ''
-					#print atr
+
 					try:
 						atr_release = client.parseDOM(result, 'div', attrs = {'class': 'meta'})[1]
 					except:
 						atr_release = ''
-					#print atr_release
 					
 					if 'season' in data:
 						pass
@@ -351,7 +344,7 @@ class source:
 					data = urlparse.parse_qs(urlenc)
 					title = data['movtitle'][0]
 					if title == None or title == 'None':	
-						title = '%s S%sE%s' % (data['tvshowtitle'][0],data['season'][0],data['episode'][0])
+						title = '%s S%sE%s' % (data['tvshowtitle'][0],str(data['season'][0]),str(data['episode'][0]))
 				else:
 					title = 'Unknown Title'
 			except:

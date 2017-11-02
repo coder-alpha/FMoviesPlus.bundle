@@ -194,7 +194,7 @@ class source:
 			log('ERROR', 'get_movie','%s: %s' % (title,e))
 			return
 
-	def get_show(self, imdb, tvdb, tvshowtitle, year, season, proxy_options=None, key=None):
+	def get_show(self, imdb=None, tvdb=None, tvshowtitle=None, year=None, season=None, proxy_options=None, key=None):
 		try:
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_show','Provider Disabled by User')
@@ -206,7 +206,7 @@ class source:
 			log('ERROR', 'get_show','%s: %s' % (tvshowtitle,e))
 			return
 
-	def get_episode(self, url, imdb, tvdb, title, year, season, episode, proxy_options=None, key=None):
+	def get_episode(self, url=None, imdb=None, tvdb=None, title=None, year=None, season=None, episode=None, proxy_options=None, key=None):
 		try:
 			if control.setting('Provider-%s' % name) == False:
 				return None
@@ -480,7 +480,7 @@ class source:
 					data = urlparse.parse_qs(urlenc)
 					title = data['movtitle'][0]
 					if title == None or title == 'None':	
-						title = '%s S%sE%s' % (data['tvshowtitle'][0],data['season'][0],data['episode'][0])
+						title = '%s S%sE%s' % (data['tvshowtitle'][0],str(data['season'][0]),str(data['episode'][0]))
 				else:
 					title = 'Unknown Title'
 			except:

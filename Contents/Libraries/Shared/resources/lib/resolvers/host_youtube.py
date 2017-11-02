@@ -49,6 +49,7 @@ class host:
 	def __init__(self):
 		del loggertxt[:]
 		log(type='INFO', method='init', err=' -- Initializing %s Start --' % name)
+		self.init = False
 		self.logo = 'http://i.imgur.com/qZUP77r.png'
 		self.name = name
 		self.host = ['youtube.com']
@@ -65,6 +66,7 @@ class host:
 		self.working = self.testWorking()[0]
 		self.resolver = self.testResolver()
 		self.msg = ''
+		self.init = True
 		log(type='INFO', method='init', err=' -- Initializing %s End --' % name)
 
 	def info(self):
@@ -135,6 +137,8 @@ class host:
 			links.append(url)
 			return links
 			
+		orig_url = url
+			
 		urldata = client.b64encode(json.dumps('', encoding='utf-8'))
 		params = client.b64encode(json.dumps('', encoding='utf-8'))
 		
@@ -151,6 +155,7 @@ class host:
 		for fr in files_ret:
 			links.append(fr)
 
+		log('INFO', 'createMeta', 'Successfully processed %s link >>> %s' % (provider, orig_url), dolog=self.init)
 		return links
 		
 	def resolve(self, url):

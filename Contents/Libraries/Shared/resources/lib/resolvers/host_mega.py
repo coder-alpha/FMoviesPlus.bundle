@@ -106,6 +106,12 @@ class host:
 	def __init__(self):
 		del loggertxt[:]
 		log(type='INFO', method='init', err=' -- Initializing %s Start --' % name)
+		self.init = False
+		if crypto_msg != None:
+			self.msg = 'Cryptodome library not found.'
+			log(type='CRITICAL', method='init', err=self.msg)
+		else:
+			log(type='SUCCESS', method='init', err='Cryptodome library loaded')
 		self.logo = 'https://i.imgur.com/FYtin8g.png'
 		self.name = name
 		self.host = ['mega.nz','mega.co.nz']
@@ -123,12 +129,9 @@ class host:
 		self.resolver = self.testResolver()
 		self.msg = ''
 		if crypto_msg != None:
-			self.msg = 'Cryptodome library not found.'
-			log(type='CRITICAL', method='init', err=self.msg)
 			self.resolver = False
 			self.working = False
-		else:
-			log(type='SUCCESS', method='init', err='Cryptodome library loaded')
+		self.init = True
 		log(type='INFO', method='init', err=' -- Initializing %s End --' % name)
 
 	def info(self):
@@ -201,7 +204,7 @@ class host:
 	
 		urldata = client.b64encode(json.dumps('', encoding='utf-8'))
 		params = client.b64encode(json.dumps('', encoding='utf-8'))
-		
+		orig_url = url
 		online = check(url)
 		files_ret = []
 		titleinfo = ''
@@ -214,7 +217,7 @@ class host:
 			urldata = createurldata(furl, quality)
 		except Exception as e:
 			online = False
-			log('ERROR', 'createMeta-1', '%s - %s' % (url,e))
+			log('FAIL', 'createMeta-1', '%s - %s' % (url,e))
 
 		try:
 			files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':titleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':riptype, 'provider':provider, 'durl':url, 'url':url, 'urldata':urldata, 'params':params, 'logo':logo, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'online':online, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'subdomain':self.netloc[0], 'misc':{'player':'iplayer', 'gp':False}})
@@ -225,6 +228,7 @@ class host:
 		for fr in files_ret:
 			links.append(fr)
 
+		log('INFO', 'createMeta', 'Successfully processed %s link >>> %s' % (provider, orig_url), dolog=self.init)
 		return links
 		
 	def resolve(self, url):

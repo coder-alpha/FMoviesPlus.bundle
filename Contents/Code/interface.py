@@ -90,16 +90,16 @@ def runGetSources(
 		except:
 			pass
 			
-	if useCached:
+	if useCached == True:
 		srcs = getSources(encode=False)
 		filter_extSources = []
 		filter_extSources += [i for i in srcs if i['key'] == key]
 		if len(filter_extSources) > 0:
 			if Prefs["use_debug"]:
 				Log("name:%s title:%s tvshowtitle:%s year:%s season:%s episode:%s imdb:%s key:%s" % (name, title, tvshowtitle, year, season, episode, imdb, key))
-				Log("Available in Cache Already. Key: %s" % key)
+				Log("Available in Cache Already. key: %s" % key)
 			return
-	
+
 	if imdb == None:
 		try:
 			#res = omdb.request(t=title, y=int(year), c=Prefs['ca_api_key'], ver=ver, r='json', timeout=10)
@@ -108,10 +108,10 @@ def runGetSources(
 			imdb = imdb_t
 		except:
 			pass
-		
+			
 	if Prefs["use_debug"]:
 		Log("name:%s title:%s tvshowtitle:%s year:%s season:%s episode:%s imdb:%s key:%s" % (name, title, tvshowtitle, year, season, episode, imdb, key))
-	
+
 	if wait_for_init() == False:
 		return
 		
@@ -213,10 +213,13 @@ def clearSources():
 		return
 	initA[0].clearSources()
 	
-def purgeSources(maxcachetimeallowed=0):
+def purgeSources(key, maxcachetimeallowed=0):
 	if wait_for_init() == False:
 		return
-	initA[0].purgeSources(maxcachetimeallowed=maxcachetimeallowed)
+	#initA[0].purgeSources(maxcachetimeallowed=maxcachetimeallowed)
+	initA[0].purgeSourcesKey(key=key, maxcachetimeallowed=maxcachetimeallowed)
+	if Prefs["use_debug"]:
+		Log('Purging source based on time-stamp. key: %s > maxcachetimeallowed: %s' % (key,maxcachetimeallowed))
 	
 def checkProgress(key, useCached=True):
 	if wait_for_init() == False:
@@ -392,7 +395,7 @@ def getExtSources(movtitle=None, year=None, tvshowtitle=None, season=None, episo
 	if wait_for_init() == False:
 		return
 		
-	purgeSources(maxcachetimeallowed=maxcachetime)
+	purgeSources(key=key, maxcachetimeallowed=maxcachetime)
 
 	if movtitle != None:
 		p = re.compile('(.())\(([^()]|())*\)')
@@ -416,16 +419,18 @@ def getExtSources(movtitle=None, year=None, tvshowtitle=None, season=None, episo
 	provider_options = provider_options,
 	key = key,
 	imdb=imdb_id,
+	useCached = True,
 	session=session)
 	
 	# if Prefs['use_debug']:
 		# Log("Movie: %s" % movtitle)
 	
-	while initA[0].checkProgress() != 100:
-		time.sleep(0.5)
+	while initA[0].checkProgress(key) != 100:
+		time.sleep(2)
 		#os.system('cls')
-		print 'Threads progress: %s' % initA[0].checkProgress()
-		# Log('Threads progress: %s' % initA[0].checkProgress())
+		#print 'Threads progress: %s' % initA[0].checkProgress()
+		#if Prefs["use_debug"]:
+		#	Log('Threads key: %s progress: %s' % (key,initA[0].checkProgress(key)))
 		
 		
 	InterfaceThreadLastQuery['LastQuery'] = key

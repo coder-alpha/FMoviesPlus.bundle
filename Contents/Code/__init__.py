@@ -254,7 +254,6 @@ def SleepAndUpdateThread(update=True, startthread=True, session=None, **kwargs):
 
 		Log("%s on %s !" % (ret, time.ctime(x2)))
 		Log("Interface Initialization took %s sec. !" % (x2-x1))
-		PreCacheStuff()
 			
 	if session == None:
 		session = common.getSession()
@@ -359,7 +358,10 @@ def SleepAndUpdateThread(update=True, startthread=True, session=None, **kwargs):
 		
 	if doSave == True:
 		Dict.Save()
-			
+		
+	if update == True:
+		PreCacheStuff()
+		
 	Thread.Create(download.DownloadInit)
 		
 	# time.sleep(120)
@@ -3103,8 +3105,13 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 			file_size = '? GB'
 			
 		if source['vidtype'] in 'Movie/Show':
+			if source['titleinfo'] != '':
+				titleinfo = ' | ' + source['titleinfo']
+			else:
+				titleinfo = ''
 			title_msg = "%s %s| %s | %s | %s | %s | %s" % (status, source['maininfo'], source['rip'], source['quality'], file_size, source['source']+':'+source['subdomain'] if source['source']=='gvideo' else source['source'], source['provider'])
 		else:
+			titleinfo = source['titleinfo']
 			title_msg = "%s %s| %s | %s | %s | %s | %s | %s" % (status, source['maininfo'], source['vidtype'], source['rip'], source['quality'], file_size, source['source'], source['provider'])
 			
 		if common.DEV_DEBUG == True:
@@ -3123,7 +3130,7 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 			try:
 				oc.append(VideoClipObject(
 					url = durl,
-					title = title_msg + source['titleinfo'] + redirector_stat,
+					title = title_msg + titleinfo + redirector_stat,
 					thumb = GetThumb(thumb, session=session),
 					art = art,
 					summary = summary,
@@ -3324,7 +3331,8 @@ def ExtSourcesDownload(title, url, summary, thumb, art, rating, duration, genre,
 			fs = None
 		
 		if source['vidtype'] in 'Movie/Show':
-			title_msg = "%s %s| %s | %s | %s | %s | %s | Subtitles: %s" % (status, source['maininfo'], source['rip'], source['quality'], fs, source['source']+':'+source['subdomain'] if source['source']=='gvideo' else source['source'], source['provider'], common.GetEmoji(type=True if source['sub_url'] != None else False, session=session))
+			titleinfo = source['titleinfo'] + ' | ' if source['titleinfo'] != '' else ''
+			title_msg = "%s %s| %s | %s | %s | %s | %s | %sSubtitles: %s" % (status, source['maininfo'], source['rip'], source['quality'], fs, source['source']+':'+source['subdomain'] if source['source']=='gvideo' else source['source'], source['provider'], titleinfo, common.GetEmoji(type=True if source['sub_url'] != None else False, session=session))
 		else:
 			title_msg = "%s %s| %s | %s | %s | %s | %s | %s" % (status, source['maininfo'], source['vidtype'], source['rip'], source['quality'], fs, source['source'], source['provider'])
 			
@@ -4941,16 +4949,16 @@ def Search(query=None, surl=None, page_count='1', mode='default', thumb=None, su
 		pass
 			
 	if Prefs['disable_extsources'] == False and common.interface.isInitialized() and page_count=='1' and mode == 'default':
-		if True:
+		if common.SEARCH_EXT_SOURCES_FROM_SEARCH_MENU == True:
 			try:
-				oc_ext = SearchExt(query=query, query2=query2, append=True, session = session)
+				oc_ext = SearchExt(query=query, query2=query2, append='true', session=session)
 				for o in oc_ext:
 					oc.add(o)
 			except:
 				pass
 		else:
 			oc.add(DirectoryObject(
-					key = Callback(SearchExt, query=query, session = session),
+					key = Callback(SearchExt, query=query, session=session),
 					title = 'Search in External Sources',
 					summary = 'Search for a possible match in External Sources',
 					thumb = R(ICON_SEARCH)
@@ -5015,13 +5023,60 @@ def Search(query=None, surl=None, page_count='1', mode='default', thumb=None, su
 	
 ####################################################################################################
 @route(PREFIX + "/SearchExt")
-def SearchExt(query=None, query2=None, session=None, append=False, **kwargs):
+def SearchExt(query=None, query2=None, session=None, xtitle=None, xyear=None, xtype=None, ximdbid=None, xsummary=None, xthumb=None, xitem=None, append='false', final='false', **kwargs):
 
-	if append == False:
+	if str(append).lower() == 'false' and str(final).lower() == 'false' and xtitle == None:
 		oc = ObjectContainer(title2='Search In External Sources', no_cache=common.isForceNoCache())
+	elif xtitle != None:
+		oc = ObjectContainer(title2='%s (%s)' % (xtitle, xyear), no_cache=common.isForceNoCache())
+		if xtype == 'movie':
+			key = generatemoviekey(movtitle=xtitle, year=xyear, tvshowtitle=None, season=None, episode=None)
+			if common.interface.getExtSourcesThreadStatus(key=key) == False:
+				try:
+					CACHE_EXPIRY = 60 * int(Prefs["cache_expiry_time"])
+				except:
+					CACHE_EXPIRY = common.CACHE_EXPIRY_TIME
+					
+				Thread.Create(common.interface.getExtSources, {}, movtitle=xtitle, year=xyear, tvshowtitle=None, season=None, episode=None, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY, ver=common.VERSION, session=session)
+		else:
+			xitem = None
+	
+		dobj = DirectoryObject(
+			key = Callback(DoIMDBExtSources, title=xtitle, year=xyear, type=xtype, imdbid=ximdbid, summary=xsummary, item=xitem, thumb=xthumb, session=session), 
+			title = '%s (%s) - Sources' % (xtitle, xyear),
+			summary = xsummary,
+			thumb = GetThumb(R(ICON_OTHERSOURCES), session=session))
+		oc.add(dobj)
+		
+		if xtype == 'movie':
+			if Prefs['disable_downloader'] == False and AuthTools.CheckAdmin() == True:
+				dobj = DirectoryObject(
+					key = Callback(DoIMDBExtSources, title=xtitle, year=xyear, type=xtype, imdbid=ximdbid, summary=xsummary, item=xitem, thumb=xthumb, session=session, extype='download'), 
+					title = '%s (%s) - Download Sources' % (xtitle, xyear),
+					summary = xsummary,
+					thumb = GetThumb(R(ICON_OTHERSOURCESDOWNLOAD), session=session))
+				oc.add(dobj)
+			elif Prefs['disable_downloader'] == False:
+				dobj = DirectoryObject(
+					key = Callback(DoIMDBExtSources, title=xtitle, year=xyear, type=xtype, imdbid=ximdbid, summary=xsummary, item=xitem, thumb=xthumb, session=session, extype='download'), 
+					title = '%s (%s) - Request Download' % (xtitle, xyear),
+					summary = xsummary,
+					thumb = GetThumb(R(ICON_REQUESTS), session=session))
+				oc.add(dobj)
+			
+		oc.add(DirectoryObject(
+			key = Callback(MainMenu),
+			title = '<< Main Menu',
+			thumb = R(ICON)
+			)
+		)
+			
+		return oc
+		#else:
+		#return MC.message_container('Search Results', 'No Videos Available in External Sources - Please refine your Search term')	
 	else:
 		oc = []
-	
+
 	try:
 		extSearches = []
 		if query != None:
@@ -5133,23 +5188,33 @@ def SearchExt(query=None, query2=None, session=None, append=False, **kwargs):
 			
 			summary = unicode(summary.replace('–','-'))
 			
+			xthumb = GetThumb(thumb, session=session)
+			
+			xitem = E(JSON.StringFromObject(item))
+			
 			if '–' in year:
 				y = year.split('–')
 				year = str(y[0]).strip()
 			
-			if type == 'movie':
-				key = generatemoviekey(movtitle=mtitle, year=year, tvshowtitle=tvtitle, season=season, episode=episode)
-				if common.interface.getExtSourcesThreadStatus(key=key) == False:
-					Thread.Create(common.interface.getExtSources, {}, movtitle=mtitle, year=year, tvshowtitle=tvtitle, season=season, episode=episode, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY, ver=common.VERSION, session=session)
-			
-			thumb = GetThumb(thumb, session=session)
-			dobj = DirectoryObject(
-				key = Callback(DoIMDBExtSources, title=title, year=year, type=type, imdbid=imdbid, summary=summary, thumb=thumb, session=session), 
-				title = '*'+watch_title,
-				summary = summary,
-				thumb = thumb)
+			if str(final).lower() == 'true':
+				if type == 'movie':
+					key = generatemoviekey(movtitle=mtitle, year=year, tvshowtitle=tvtitle, season=season, episode=episode)
+					if common.interface.getExtSourcesThreadStatus(key=key) == False:
+						Thread.Create(common.interface.getExtSources, {}, movtitle=mtitle, year=year, tvshowtitle=tvtitle, season=season, episode=episode, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY, ver=common.VERSION, session=session)
 				
-			if append == True:
+				dobj = DirectoryObject(
+					key = Callback(DoIMDBExtSources, title=title, year=year, type=type, imdbid=imdbid, summary=summary, thumb=xthumb, session=session), 
+					title = '*'+watch_title,
+					summary = summary,
+					thumb = xthumb)
+			else:
+				dobj = DirectoryObject(
+					key = Callback(SearchExt, query=query, query2=query2, session=session, xtitle=title, xyear=year, xtype=type, ximdbid=imdbid, xsummary=summary, xthumb=xthumb, xitem=xitem, append='false', final='false'), 
+					title = '*'+watch_title,
+					summary = summary,
+					thumb = xthumb)
+				
+			if str(append).lower() == 'true':
 				oc.append(dobj)
 			else:
 				oc.add(dobj)
@@ -5164,14 +5229,18 @@ def SearchExt(query=None, query2=None, session=None, append=False, **kwargs):
 	
 ####################################################################################################
 @route(PREFIX + "/DoIMDBExtSources")
-def DoIMDBExtSources(title, year, type, imdbid, season=None, episode=None, episodeNr='1', summary=None, simpleSummary=False, thumb=None, item=None, session=None, final=False, **kwargs):
+def DoIMDBExtSources(title, year, type, imdbid, season=None, episode=None, episodeNr='1', summary=None, simpleSummary=False, thumb=None, item=None, session=None, final=False, extype='source', doSearch=None, **kwargs):
 
 	if type == 'movie':
-		res = common.interface.searchOMDB(title, year, ver=common.VERSION)
-		try:
-			item = json.loads(res.content)
-		except:
-			item = None
+	
+		if item == None or doSearch == None:
+			res = common.interface.searchOMDB(title, year, ver=common.VERSION)
+			try:
+				item = json.loads(res.content)
+			except:
+				item = None
+		else:
+			item = JSON.ObjectFromString(D(item))
 		
 		title = item['Title']
 		year = item['Year']
@@ -5206,9 +5275,15 @@ def DoIMDBExtSources(title, year, type, imdbid, season=None, episode=None, episo
 		summary += 'Genre: ' + genre + '\n '
 		summary += 'IMDB rating: ' + rating + '\n '
 		
-		summary = unicode(summary)
+		summary = unicode(common.ascii_only(summary))
 
-		return ExtSources(movtitle=title, year=year, title=title, url=None, summary=summary, thumb=thumb, art=None, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, season=season, episode=episode, session=session)
+		if extype == 'source':
+			return ExtSources(movtitle=title, year=year, title=title, url=None, summary=summary, thumb=thumb, art=None, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, season=season, episode=episode, session=session)
+		else:
+			if Prefs['disable_downloader'] == False and AuthTools.CheckAdmin() == True:
+				return ExtSourcesDownload(movtitle=title, year=year, title=title, url=None, summary=summary, thumb=thumb, art=None, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, season=season, episode=episode, session=session, mode=common.DOWNLOAD_MODE[0])
+			elif Prefs['disable_downloader'] == False:
+				return ExtSourcesDownload(movtitle=title, year=year, title=title, url=None, summary=summary, thumb=thumb, art=None, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, season=season, episode=episode, session=session, mode=common.DOWNLOAD_MODE[1])
 	else:
 	
 		if season != None:
@@ -5468,7 +5543,10 @@ def DoIMDBExtSources(title, year, type, imdbid, season=None, episode=None, episo
 			
 			return ExtSources(tvshowtitle=title, year=year, title=title, url=None, summary=summary, thumb=thumb, art=None, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, season=season, episode=episode, session=session)
 			
-			return ExtSourcesDownload(tvshowtitle=title, year=year, title=title, url=None, summary=summary, thumb=thumb, art=None, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, season=season, episode=episode, session=session)
+			if Prefs['disable_downloader'] == False and AuthTools.CheckAdmin() == True:
+				return ExtSourcesDownload(tvshowtitle=title, year=year, title=title, url=None, summary=summary, thumb=thumb, art=None, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, season=season, episode=episode, session=session, mode=common.DOWNLOAD_MODE[0])
+			elif Prefs['disable_downloader'] == False:
+				return ExtSourcesDownload(tvshowtitle=title, year=year, title=title, url=None, summary=summary, thumb=thumb, art=None, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, season=season, episode=episode, session=session, mode=common.DOWNLOAD_MODE[1])
 			
 		return oc
 			

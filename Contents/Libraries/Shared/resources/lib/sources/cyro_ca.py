@@ -34,6 +34,7 @@ class source:
 	def __init__(self):
 		del loggertxt[:]
 		log(type='INFO', method='init', err=' -- Initializing %s Start --' % name)
+		self.init = False
 		self.base_link = 'http://xpau.se'
 		self.MainPageValidatingContent = 'movies'
 		self.type_filter = ['movie', 'show']
@@ -53,6 +54,7 @@ class source:
 		self.testparser = 'Unknown'
 		self.testparser = self.testParser()
 		self.msg = ''
+		self.init = True
 		log(type='INFO', method='init', err=' -- Initializing %s End --' % name)
 		
 	def info(self):
@@ -330,22 +332,11 @@ class source:
 
 			for i in links: sources.append(i)		
 			
-			try:
-				if key != None:
-					urlenc = client.b64decode(key)
-					data = urlparse.parse_qs(urlenc)
-					title = data['movtitle'][0]
-					if title == None or title == 'None':	
-						title = '%s S%sE%s' % (data['tvshowtitle'][0],str(data['season'][0]),str(data['episode'][0]))
-				else:
-					title = 'Unknown Title'
-			except:
-				title = 'Unknown Title'
-			
 			if len(sources) == 0:
-				raise Exception('Could not find a matching title: %s' % title)
+				log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key))
+				return sources
 			
-			log('SUCCESS', 'get_sources','%s sources : %s' % (title, len(sources)), dolog=not testing)
+			log('SUCCESS', 'get_sources','%s sources : %s' % (cleantitle.title_from_key(key), len(sources)), dolog=not testing)
 			return sources
 		except Exception as e:
 			log('ERROR', 'get_sources', '%s' % e, dolog=not testing)

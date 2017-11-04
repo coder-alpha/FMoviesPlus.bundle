@@ -124,7 +124,7 @@ def testLink(url):
 	except:
 		return 'Unknown'
 		
-def createMeta(url, provider, logo, quality, links, key, riptype=None, vidtype='Movie', lang='en', sub_url=None, txt='', testing=False):
+def createMeta(url, provider, logo, quality, links, key, riptype=None, vidtype='Movie', lang='en', sub_url=None, txt='', file_ext='.mp4', testing=False):
 
 	if url == None or url == '':
 		return links
@@ -156,12 +156,9 @@ def createMeta(url, provider, logo, quality, links, key, riptype=None, vidtype='
 		for host in sourceHostsCall:
 			log("Searching %s in %s" % (urlhost, host['host']), logToControl=False)
 
-			if urlhost in host['host'] and control.setting('Host-%s' % host['name']) != False:
+			if urlhost in host['host']:
 				log("Found %s in %s" % (urlhost, host['host']))
-				return host['call'].createMeta(url, provider, logo, quality, links, key, riptype_def, vidtype=vidtype, lang=lang, sub_url=sub_url, txt=txt, testing=testing)
-			elif urlhost in host['host']:
-				log("Found %s in %s but host disabled by User !" % (urlhost, host['host']))
-				return links
+				return host['call'].createMeta(url, provider, logo, quality, links, key, riptype_def, vidtype=vidtype, lang=lang, sub_url=sub_url, txt=txt, file_ext=file_ext, testing=testing)
 				
 		log("urlhost '%s' not found in host/resolver plugins - creating generic meta for external services" % urlhost)
 				
@@ -172,7 +169,7 @@ def createMeta(url, provider, logo, quality, links, key, riptype=None, vidtype='
 		else:
 			type = riptype
 		
-		links_m.append({'source':urlhost, 'maininfo':'', 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':type, 'provider':provider, 'url':url, 'durl':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':'Unknown', 'allowsDownload':False, 'resumeDownload':False, 'allowsStreaming':True, 'key':key, 'enabled':True, 'fs':int(0), 'file_ext':'.mp4', 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'subdomain':client.geturlhost(url), 'misc':{'player':'eplayer', 'gp':False}})
+		links_m.append({'source':urlhost, 'maininfo':'', 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':type, 'provider':provider, 'url':url, 'durl':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':'Unknown', 'allowsDownload':False, 'resumeDownload':False, 'allowsStreaming':True, 'key':key, 'enabled':True, 'fs':int(0), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'subdomain':client.geturlhost(url), 'misc':{'player':'eplayer', 'gp':False}})
 	except Exception as e:
 		log(type='ERROR', err="createMeta : %s url: %s" % (e.args, url))
 		

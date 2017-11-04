@@ -181,9 +181,9 @@ class Downloader(object):
 			# abs_path = Core.storage.join_path(path, fname)
 		
 		if 'openload' in source.lower():
-			furl, error = common.host_openload.resolve(furl)
+			furl, error, sub_url = common.host_openload.resolve(furl)
 			if error != '' or furl == None:
-				furl, error = common.host_openload.resolve(durl)
+				furl, error, sub_url = common.host_openload.resolve(durl)
 			if error != '' or furl == None:
 				Log('OpenLoad URL: %s' % furl)
 				Log('OpenLoad Error: %s' % error)

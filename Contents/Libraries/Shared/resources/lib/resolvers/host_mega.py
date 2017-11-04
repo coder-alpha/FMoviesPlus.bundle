@@ -196,10 +196,14 @@ class host:
 	def testUrl(self):
 		return ['https://mega.nz/#!R6xyBBpY!JmZlf7cn7w2scbWaPYESoppAY8UDbrkXKFz0e2FZASs']
 		
-	def createMeta(self, url, provider, logo, quality, links, key, riptype, vidtype='Movie', lang='en', sub_url=None, txt='', testing=False):
+	def createMeta(self, url, provider, logo, quality, links, key, riptype, vidtype='Movie', lang='en', sub_url=None, txt='', file_ext = '.mp4', testing=False):
 	
 		if testing == True:
 			links.append(url)
+			return links
+			
+		if control.setting('Host-%s' % name) == False:
+			log('INFO','createMeta','Host Disabled by User')
 			return links
 	
 		urldata = client.b64encode(json.dumps('', encoding='utf-8'))
@@ -207,9 +211,9 @@ class host:
 		orig_url = url
 		online = check(url)
 		files_ret = []
-		titleinfo = ''
+		titleinfo = txt
 		fs = 0
-		file_ext = '.mp4'
+
 		try:
 			furl, fs, file_ext = mega.get_mega_dl_link(url)
 			if int(fs) == 0:

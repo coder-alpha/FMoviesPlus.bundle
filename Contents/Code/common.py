@@ -1,7 +1,7 @@
 ################################################################################
 TITLE = "FMoviesPlus"
 VERSION = '0.45' # Release notation (x.y - where x is major and y is minor)
-TAG = 'dev 11-02-2017'
+TAG = 'dev 11-04-2017'
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
 ################################################################################
@@ -138,6 +138,7 @@ ALT_PLAYBACK = True
 DEV_BM_CONVERSION = False
 NO_MOVIE_INFO = False
 USE_CUSTOM_TIMEOUT = False
+SEARCH_EXT_SOURCES_FROM_SEARCH_MENU = True
 DEV_DEBUG = False
 WBH = 'aHR0cHM6Ly9ob29rLmlvL2NvZGVyLWFscGhhL3Rlc3Q='
 
@@ -494,7 +495,7 @@ def ResolveFinalUrl(isTargetPlay, data, pair_required=False, params=None, host=N
 		
 	if vidurl != None:
 		if isTargetPlay and 'openload' in host and pair_required == False:
-			vidurl, err = host_openload.resolve(vidurl)
+			vidurl, err, sub_url = host_openload.resolve(vidurl)
 		else:
 			pass
 

@@ -68,6 +68,8 @@ USE_PAIRING = True
 USE_DECODING1 = False
 USE_DECODING2 = False
 
+USE_OPENLOAD_SUB = False
+
 openloadhdr = {
 	'User-Agent': client.USER_AGENT,
 	'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -144,10 +146,10 @@ class host:
 			retmsg = ''
 			for testUrl in testUrls:
 				x1 = time.time()
-				bool, p, retmsg, fs, r1 = check(testUrl, usePairing = False, embedpage=True)
+				bool, p, retmsg, fs, r1, sub_url = check(testUrl, usePairing = False, embedpage=True)
 				self.speedtest = time.time() - x1
 				if bool == True:
-					vidurl, err = resolve(testUrl)
+					vidurl, err, sub_url = resolve(testUrl)
 					#vidurl = testUrl
 					if vidurl != None or err != None and 'pair' in err.lower():
 						#print vidurl
@@ -191,10 +193,14 @@ class host:
 			testUrls.append('http://openload.co/f/%s' % v)
 		return testUrls
 		
-	def createMeta(self, url, provider, logo, quality, links, key, riptype, vidtype='Movie', lang='en', sub_url=None, txt='', testing=False):
+	def createMeta(self, url, provider, logo, quality, links, key, riptype, vidtype='Movie', lang='en', sub_url=None, txt='', file_ext = '.mp4', testing=False):
 	
 		if testing == True:
 			links.append(url)
+			return links
+			
+		if control.setting('Host-%s' % name) == False:
+			log('INFO','createMeta','Host Disabled by User')
 			return links
 			
 		url = url.replace('oload.tv','openload.co').replace('/embed/','/f/')
@@ -218,7 +224,9 @@ class host:
 		if a1 != None:
 			vidurl = a1
 		else:
-			vidurl, err = resolve(url, usePairing=False)
+			vidurl, err, sub_url_t = resolve(url, usePairing=False)
+			if sub_url == None:
+				sub_url = sub_url_t
 			
 		if vidurl != None:
 			isPairRequired = False
@@ -233,11 +241,12 @@ class host:
 		if vidurl == None:
 			vidurl = url
 			
-		online, r1, r2, fs, r3 = check(vidurl, usePairing=False, embedpage=True)
+		online, r1, r2, fs, r3, sub_url_t = check(vidurl, usePairing=False, embedpage=True)
+		if sub_url == None:
+			sub_url = sub_url_t
 		
 		files_ret = []
-		titleinfo = ''
-		file_ext = '.mp4'
+		titleinfo = txt
 		
 		if testing == False:
 			log(type='INFO',method='createMeta-2', err=u'pair: %s online: %s resolved url: %s' % (isPairRequired,online,vidurl))
@@ -278,32 +287,33 @@ def getVideoMetaData(url):
 def resolve(url, embedpage=False, usePairing=True, session=None):
 
 	try:
-		bool, videoData, msg, fs, result = check(url, usePairing=usePairing, session=session) 
+		bool, videoData, msg, fs, result, sub_url = check(url, usePairing=usePairing, session=session) 
 		if bool == False: 
-			return (None, msg)
+			return (None, msg, sub_url)
 		if '/stream/' in url or '.oloadcdn.' in url:
-			return (url, msg)
+			return (url, msg, sub_url)
 		if result != None and '/stream/' in result or '.oloadcdn.' in result:
-			return (result, msg)
+			return (result, msg, sub_url)
 
 		id = re.compile('//.+?/(?:embed|f)/([0-9a-zA-Z-_]+)').findall(url)[0]
 		embedpageURL = 'https://openload.co/embed/%s' % id
 		
 		if embedpage == True:
-			return (embedpageURL, msg)
+			return (embedpageURL, msg, sub_url)
 
 		videourl, videoData, msg = openloadS(embedpageURL, videoData=videoData, usePairing=usePairing, session=session)
 
-		return (videourl, msg)
+		return (videourl, msg, sub_url)
 	except Exception as e:
 		e = '{}'.format(e)
-		return (None, e)
+		return (None, e, None)
 
 def check(url, videoData=None, skipPageCheck=False, usePairing=True, embedpage=False, headers=None, cookie=None, session=None):
 	try:
 		retmsg = ''
 		fs = 0
 		result = None
+		sub_url = None
 		
 		#ifstream = re.search('//.+?/(?:embed|f)/([0-9a-zA-Z-_]+)',(url)[0])
 		#if ifstream:
@@ -323,16 +333,26 @@ def check(url, videoData=None, skipPageCheck=False, usePairing=True, embedpage=F
 				if videoData == None:
 					print '%s : File not found' % url
 					log(type='FAIL', method='check', err='File deleted by the owner or was removed. : %s' % url)
-					return (False, videoData, 'File not found', fs, None)
+					return (False, videoData, 'File not found', fs, None, sub_url)
 				if 'File not found' in videoData or 'deleted by the owner' in videoData or 'Sorry!' in videoData: 
 					print '%s : File not found' % url
 					log(type='FAIL', method='check', err='File deleted by the owner or was removed. : %s' % url)
-					return (False, videoData, 'File not found', fs, None)
+					return (False, videoData, 'File not found', fs, None, sub_url)
 					
 				try:
 					fs = re.findall(r'window.filesize=(.*?);', videoData)[0]
 				except:
 					pass
+					
+				if USE_OPENLOAD_SUB == True:
+					try:
+						sub_url_t = re.findall(r'suburl = \"(.*?)\";', videoData)[0]
+						sub_url_t = sub_url_t.replace('\\','')
+						sub_url_t = client.request(sub_url_t, headers=openloadhdrx, cookie=cookie)
+						if len(sub_url_t) > 50:
+							sub_url = sub_url_t
+					except:
+						sub_url = None
 					
 				try:
 					if fs == 0:
@@ -349,7 +369,7 @@ def check(url, videoData=None, skipPageCheck=False, usePairing=True, embedpage=F
 					pass
 					
 				if embedpage == True:
-					return (True, videoData, retmsg, fs, None)
+					return (True, videoData, retmsg, fs, None, sub_url)
 
 			# if openloadS is success then the stream would be available
 			result, videoData, retmsg = openloadS(url, videoData, usePairing=usePairing, session=session)
@@ -363,14 +383,14 @@ def check(url, videoData=None, skipPageCheck=False, usePairing=True, embedpage=F
 		if result == None:
 			if retmsg != '':
 				log(type='FAIL', method='check', err='%s : %s' % (retmsg, url))
-			return (False, videoData, retmsg, fs, result)
+			return (False, videoData, retmsg, fs, result, sub_url)
 		
 		if fs > 0:
-			return (True, videoData, retmsg, fs, result)
+			return (True, videoData, retmsg, fs, result, sub_url)
 		else:
-			return (checkVidPresence(result), videoData, retmsg, fs, result)
+			return (checkVidPresence(result), videoData, retmsg, fs, result, sub_url)
 	except:
-		return (False, videoData, retmsg, fs, result)
+		return (False, videoData, retmsg, fs, result, sub_url)
 		
 def checkVidPresence(streamurl, headers=None, cookie=None):
 	http_res = client.request(url=streamurl, output='responsecode', headers=headers, cookie=cookie)
@@ -381,7 +401,7 @@ def checkVidPresence(streamurl, headers=None, cookie=None):
 def urldata(url, qual):
 
 	try:
-		mfile, err = resolve(url)
+		mfile, err, sub_url = resolve(url)
 		files = []
 		jsondata = {
 					"label": qual,
@@ -696,7 +716,7 @@ def match_id(url):
 	return m.group('id')
 	
 def isPairingRequired(url, session=None):
-	resolved_url, err = resolve(url=url, usePairing=False, session=session)
+	resolved_url, err, sub_url = resolve(url=url, usePairing=False, session=session)
 	
 	if resolved_url != None:
 		return False, resolved_url

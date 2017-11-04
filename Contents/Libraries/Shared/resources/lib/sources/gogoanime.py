@@ -35,6 +35,7 @@ class source:
 	def __init__(self):
 		del loggertxt[:]
 		log(type='INFO', method='init', err=' -- Initializing %s Start --' % name)
+		self.init = False
 		self.priority = 1
 		self.disabled = False
 		self.language = ['en']
@@ -59,6 +60,7 @@ class source:
 		self.testparser = 'Unknown'
 		self.testparser = self.testParser()
 		self.msg = ''
+		self.init = True
 		log(type='INFO', method='init', err=' -- Initializing %s End --' % name)
 
 	def info(self):
@@ -151,7 +153,7 @@ class source:
 				log('INFO','get_movie','Provider Disabled by User')
 				return None
 				
-			raise Exception('Could not find a matching movie title: %s' % title)
+			return None
 		except Exception as e: 
 			log('ERROR', 'get_movie','%s' % e)
 			return
@@ -211,7 +213,9 @@ class source:
 	def get_sources(self, url, hosthdDict=None, hostDict=None, locDict=None, proxy_options=None, key=None, testing=False):
 		try:
 			sources = []
-			if url == None: return sources
+			if url == None: 
+				log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key))
+				return sources
 
 			url = urlparse.urljoin(self.base_link, url)
 			
@@ -250,22 +254,11 @@ class source:
 					
 			for i in links: sources.append(i)
 			
-			try:
-				if key != None:
-					urlenc = client.b64decode(key)
-					data = urlparse.parse_qs(urlenc)
-					title = data['movtitle'][0]
-					if title == None or title == 'None':	
-						title = '%s S%sE%s' % (data['tvshowtitle'][0],str(data['season'][0]),str(data['episode'][0]))
-				else:
-					title = 'Unknown Title'
-			except:
-				title = 'Unknown Title'
-			
 			if len(sources) == 0:
-				raise Exception('Could not find a matching title: %s' % title)
+				log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key))
+				return sources
 			
-			log('SUCCESS', 'get_sources','%s sources : %s' % (title, len(sources)), dolog=not testing)
+			log('SUCCESS', 'get_sources','%s sources : %s' % (cleantitle.title_from_key(key), len(sources)), dolog=not testing)
 			return sources
 		except Exception as e:
 			log('ERROR', 'get_sources', '%s' % e, dolog=not testing)

@@ -261,8 +261,8 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 					setIP6()
 				return
 		except Exception as e:
-			control.log('Error client.py>request : %s' % url)
-			control.log('Error client.py>request : %s' % (e.args))
+			control.log('ERROR client.py>request : %s' % url)
+			control.log('ERROR client.py>request : %s' % e.args)
 			if IPv4 == True:
 				setIP6()
 			if output == 'response':

@@ -19,7 +19,7 @@
 '''
 
 
-import re,unicodedata
+import re,unicodedata,base64,urlparse
 
 
 def movie(title):
@@ -107,7 +107,20 @@ def onlytitle(title):
 
 	return title
 	
-	
+def title_from_key(key):
+	try:
+		if key != None:
+			urlenc = base64.b64decode(key)
+			data = urlparse.parse_qs(urlenc)
+			title = '%s (%s)' % (data['movtitle'][0],str(data['year'][0])) 
+			if data['season'][0] != None and data['season'][0] != 'None':	
+				title = '%s S%sE%s (%s)' % (data['tvshowtitle'][0],str(data['season'][0]),str(data['episode'][0]), str(data['year'][0]))
+		else:
+			title = 'Unknown Title'
+	except:
+		title = 'Unknown Title'
+	return title
+
 def get(title):
     if title == None: return
     title = re.sub('(&#[0-9]+)([^;^0-9]+)', '\\1;\\2', title)

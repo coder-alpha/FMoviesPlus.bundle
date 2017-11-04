@@ -139,7 +139,7 @@ class sources:
 				try:
 					source_name = 'Unknow source (import error)'
 					source_name = source['name']
-					log(err='Searching Movie: %s in Provider %s' % (title,source_name))
+					log(err='Searching Movie: %s (%s) in Provider %s' % (title,year,source_name))
 					thread_i = workers.Thread(self.getMovieSource, title, year, imdb, proxy_options, key, re.sub('_mv_tv$|_mv$|_tv$', '', source['name']), source['call'])
 					self.threads[key].append(thread_i)
 					thread_i.start()
@@ -185,10 +185,13 @@ class sources:
 					c += 1
 					
 			if len(self.threads[key]) == 0:
-				return 0
+				return 100
 						
 			return float(int(float((float(c)/float(len(self.threads[key])))*100.0))*100)/100.0
 		else:
+			filtered = [i for i in self.sources if i['key'] == key]
+			if len(filtered) > 0:
+				return 100
 			return 0
 			
 	def checkKeyInThread(self, key=None):
@@ -258,14 +261,15 @@ class sources:
 			if override == True:
 				pass
 			else:
-				if maxcachetimeallowed < 15*60:
-					maxcachetimeallowed = 15*60
+				# if cache time < 2min; then get the sources from last 2min. otherwise it will always return 0 sources
+				if maxcachetimeallowed < 2*60:
+					maxcachetimeallowed = 2*60
 				for i in self.sources:
 					if (i['ts'] + float(maxcachetimeallowed)) >= curr_time:
 						filtered.append(i)
 				for k in self.threads:
 					if self.checkKeyInThread(k) == True and self.checkProgress(k) == 100:
-						self.threads[k] = []
+						del self.threads[k]
 
 			del self.sources[:]
 			for i in filtered:
@@ -273,21 +277,25 @@ class sources:
 		except Exception as e:
 			log(type='ERROR', err='clearSources : %s' % e)
 			
-	def purgeSourcesKey(self, key=None):
+	def purgeSourcesKey(self, key=None, maxcachetimeallowed=0):
 		try:
 			filtered = []
+			curr_time = time.time()
 			if key == None:
 				return
 			else:
-				filtered += [i for i in self.sources if i['key'] != key]
-				for k in self.threads:
-					if self.checkKeyInThread(k) == True and self.checkProgress(k) == 100:
-						self.threads[key] = []
-						break
+				# if cache time < 2min; then get the sources from last 2min. otherwise it will always return 0 sources
+				if maxcachetimeallowed < 2*60:
+					maxcachetimeallowed = 2*60
+				for i in self.sources:
+					if (i['ts'] + float(maxcachetimeallowed)) >= curr_time:
+						pass
+					else:
+						self.sources.remove(i)
+				
+				if self.checkKeyInThread(key) == True and self.checkProgress(key) == 100:
+					del self.threads[key]
 
-			del self.sources[:]
-			for i in filtered:
-				self.sources.append(i)
 		except Exception as e:
 			log(type='ERROR', err='purgeSourcesKey : %s' % e)
 
@@ -304,8 +312,7 @@ class sources:
 						filter_extSources.append(i)
 						dups.append(i['url'])
 					
-			self.sources = filter_extSources
-			return self.sources
+			return filter_extSources
 		except Exception as e:
 			log(type='ERROR', err='sourcesFilter : %s' % e)
 	

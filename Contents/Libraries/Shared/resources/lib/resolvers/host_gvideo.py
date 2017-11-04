@@ -161,12 +161,16 @@ class host:
 	def testUrl(self):
 		return ['https://drive.google.com/file/d/0B0JMGMGgxp9WMEdWb1hyQUhlOWs/view','https://drive.google.com/file/d/0B1XiKAQcEMeHc2ZIXzB4RDJ6Z1k/view']
 		
-	def createMeta(self, url, provider, logo, quality, links, key, riptype, showsplit=False, useGetlinkAPI=True, vidtype='Movie', lang='en', sub_url=None, txt='', testing=False):
+	def createMeta(self, url, provider, logo, quality, links, key, riptype, showsplit=False, useGetlinkAPI=True, vidtype='Movie', lang='en', sub_url=None, txt='', file_ext = '.mp4', testing=False):
 	
 		orig_url = url
 		
 		if testing == True:
 			links.append(url)
+			return links
+			
+		if control.setting('Host-%s' % name) == False:
+			log('INFO','createMeta','Host Disabled by User')
 			return links
 	
 		if 'http' not in url and 'google.com/file' in url:
@@ -214,13 +218,11 @@ class host:
 		#print "createMeta : %s %s %s %s" % (url, provider, logo, quality)
 		titleinfo = txt
 		if txt != '':
-			titleinfo = ' | ' + txt
+			titleinfo = txt
 		ntitleinfo = titleinfo
 		
 		files_ret = []
 		
-		file_ext = '.mp4'
-
 		enabled = True
 		try:
 			#udata = urldata(url, videoData=videoData, usevideoData=True)			

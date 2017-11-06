@@ -287,15 +287,14 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 					all_js_url = urlparse.urljoin(BASE_URL, ALL_JS)
 					all_js_pack_code = common.interface.request_via_proxy_as_backup(all_js_url, httpsskip=use_https_alt, hideurl=True)
 					unpacked_code = common.jsunpack.unpack(all_js_pack_code)
-					
 					try:
 						cch = re.findall(r'%s' % common.client.b64decode('ZnVuY3Rpb25cKHQsaSxuXCl7XCJ1c2Ugc3RyaWN0XCI7ZnVuY3Rpb24gZVwoXCl7cmV0dXJuICguKj8pfWZ1bmN0aW9uIHJcKHRcKQ=='), unpacked_code)[0]
 						token_key = re.findall(r'%s=.*?\"(.*?)\"' % cch, unpacked_code)[0]
 						if token_key !=None and token_key != '':
 							#cookie_dict.update({'token_key':token_key})
 							TOKEN_KEY.append(token_key)
-					except:
-						pass
+					except Exception as e:
+						Log('ERROR fmovies.py>Token-fetch-1.1a: %s' % e)
 						
 					if len(TOKEN_KEY) == 0:
 						try:
@@ -304,14 +303,14 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 							if token_key !=None and token_key != '':
 								#cookie_dict.update({'token_key':token_key})
 								TOKEN_KEY.append(token_key)
-						except:
-							pass
+						except Exception as e:
+							Log('ERROR fmovies.py>Token-fetch-1.2a: %s' % e)
 				except Exception as e:
 					Log('ERROR fmovies.py>Token-fetch-1a: %s' % e)
 					
 				try:
 					token_oper = re.findall(r'%s' % common.client.b64decode('blwrPXRcWy4qP11cKGlcKS4qPyguKj8pOw=='), unpacked_code)[0]
-					if token_oper !=None and token_oper != '':
+					if token_oper !=None and token_oper != '' and len(token_oper) < 3:
 						#cookie_dict.update({'token_oper':token_oper})
 						token_oper = token_oper.replace('i','e')
 						TOKEN_OPER.append(token_oper)
@@ -336,7 +335,7 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 			cookie_dict.update({'token_key':token_key})
 			
 		try:
-			if len(TOKEN_OPER) == 0 or common.DOWNLOAD_BACKUP_OPER == True:
+			if len(TOKEN_OPER) == 0 and common.DOWNLOAD_BACKUP_OPER == True:
 				token_oper = common.interface.request_via_proxy_as_backup(TOKEN_OPER_PASTEBIN_URL, httpsskip=use_https_alt, hideurl=True)
 				if token_oper !=None and token_oper != '':
 					#cookie_dict.update({'token_oper':token_oper})

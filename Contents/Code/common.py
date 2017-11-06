@@ -1,6 +1,6 @@
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.45' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.46' # Release notation (x.y - where x is major and y is minor)
 TAG = ''
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
@@ -712,7 +712,7 @@ def GetPageAsString(url, headers=None, timeout=15, referer=None):
 			headers['User-Agent'] = CACHE_COOKIE[0]['UA']
 
 			if use_debug:
-				Log("Using Cookie retrieved at: %s" % CACHE_COOKIE[0]['ts'])
+				Log("Using Cookie retrieved at: %s" % time.ctime(CACHE_COOKIE[0]['ts']))
 				Log("Using Cookie: %s" % (cookies))
 
 	try:

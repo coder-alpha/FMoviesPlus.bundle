@@ -66,6 +66,7 @@ ICON_VIDTYPE = "icon-videotype.png"
 ICON_PLEX = "icon-plex.png"
 ICON_DOWNLOADS = "icon-downloads.png"
 ICON_REQUESTS = "icon-requests.png"
+ICON_TOOLS = "icon-tools.png"
 
 MC = common.NewMessageContainer(common.PREFIX, common.TITLE)
 
@@ -404,7 +405,7 @@ def Options(session, **kwargs):
 	
 	oc.add(DirectoryObject(key = Callback(ResetCookies), title = "Reset Cookies", summary='Reset Session, CF, etc. cookies', thumb = R(ICON_CLEAR)))
 	
-	oc.add(DirectoryObject(key = Callback(tools.DevToolsC), title = "Tools", summary='Tools - Save/Load Bookmarks', thumb = R(tools.ICON_TOOLS)))
+	oc.add(DirectoryObject(key = Callback(tools.DevToolsC), title = "Tools", summary='Tools - Save/Load Bookmarks', thumb = R(ICON_TOOLS)))
 	
 	oc.add(DirectoryObject(key = Callback(DownloadOptions, title="Download Options", session = session), title = "Download Options", thumb = R(ICON_DOWNLOADS)))
 	
@@ -975,7 +976,7 @@ def SetProviderOptions(session, refresh=False, n=None, curr_prov=None, option='0
 		
 	oc.add(DirectoryObject(key = Callback(ExtProviders, session=session, n=E(JSON.StringFromObject(provider)), curr_prov=curr_prov), title = 'Move to Top in Provider List', summary = title_msg, thumb = R(ICON_UPARROW)))
 	
-	oc.add(DirectoryObject(key = Callback(ProviderTools, title=None, provider=provider['name']), title = "Tools", summary='Tools for providers', thumb = R(tools.ICON_TOOLS)))
+	oc.add(DirectoryObject(title = "Tools", summary='Tools for providers', key = Callback(IntProviderTools, choice=None, provider=provider['name']), thumb = R(ICON_TOOLS)))
 	
 	oc.add(DirectoryObject(
 		key = Callback(MainMenu, update = MakeSelectionProviders()),
@@ -1119,7 +1120,7 @@ def SetHostOptions(session, refresh=False, n=None, curr_sources=None, option='0'
 		
 	oc.add(DirectoryObject(key = Callback(ExtHosts, session=session, n=E(JSON.StringFromObject(host)), curr_sources=curr_sources), title = 'Move to Top in Host List', summary = title_msg, thumb = R(ICON_UPARROW)))
 	
-	oc.add(DirectoryObject(key = Callback(HostTools, title=None, host=host['name']), title = "Tools", summary='Tools for hosts', thumb = R(tools.ICON_TOOLS)))
+	oc.add(DirectoryObject(title = "Tools", summary='Tools for hosts', key = Callback(IntHostTools, choice=None, myhost=host['name']), thumb = R(ICON_TOOLS)))
 	
 	oc.add(DirectoryObject(
 		key = Callback(MainMenu, update = MakeSelectionHosts()),
@@ -1214,83 +1215,79 @@ def MakeSelectionProxies(**kwargs):
 	Dict.Save()
 
 ####################################################################################################
-@route(PREFIX + "/HostTools")
-def HostTools(title=None, host=None, header=None, message=None, **kwargs):
+@route(PREFIX + "/IntHostTools")
+def IntHostTools(choice=None, myhost=None, mssg=None):
 	
-	oc = ObjectContainer(title2='%s Tools' % host.title(), header=header, message=message)
+	oc = ObjectContainer(title2='%s Tools' % myhost.title())
 
-	if title:
-		if title == 'openload_unpair':
+	if choice != None:
+		if choice == 'openload_unpair':
 			Thread.Create(common.OpenLoadUnpair)
 			time.sleep(7)
-			message = 'UnPairing will be completed in a few seconds. Please return to previous screen.'
-		if title == 'show_dump_log':
-			oc = ObjectContainer(title2='%s Log' % host.title(), header=header, message=message)
-			items = common.interface.getHostsLoggerTxts(choice=host, dumpToLog=False)
+			mssg = 'UnPairing will be completed in a few seconds. Please return to previous screen.'
+		if choice == 'show_dump_log':
+			oc = ObjectContainer(title2='%s Log' % myhost.title())
+			items = common.interface.getHostsLoggerTxts(choice=myhost, dumpToLog=False)
 			if len(items) > 0:
-				Thread.Create(common.interface.getHostsLoggerTxts, {}, host, True)
+				Thread.Create(common.interface.getHostsLoggerTxts, {}, myhost, True)
 				if len(items) > 100:
-					msg = '%s Log has too many entries to display (last 100 shown here), full-text will be written to Channel Log !' % host.title()
-					oc.add(DirectoryObject(title=msg))
+					msg = '%s Log has too many entries to display (last 100 shown here), full-text will be written to Channel Log !' % myhost.title()
+					oc.add(DirectoryObject(title=msg, summary=msg, key=Callback(MyMessage, title='Info', msg=msg), thumb=R(ICON_INFO)))
 					for i in range(0,100):
-						oc.add(DirectoryObject(title=items[i]))
+						oc.add(DirectoryObject(title=items[i], summary=items[i], key=Callback(MyMessage, title='Info', msg=items[i]), thumb=R(ICON_ALERT) if 'ERROR' in items[i] else R(ICON_INFO)))
 				elif len(items) > 0:
 					for i in items:
-						oc.add(DirectoryObject(title=i))
+						oc.add(DirectoryObject(title=i, summary=i, key=Callback(MyMessage, title='Info', msg=i), thumb=R(ICON_ALERT) if 'ERROR' in i else R(ICON_INFO)))
 			else:
-				message = '%s Log has no entries !' % host.title()
+				mssg = '%s Log has no entries !' % myhost.title()
 			
-		if message != None:
-			return MC.message_container('Info', message)
-			
+		if mssg != None:
+			return MC.message_container('Info', mssg)	
 	else:
-	
-		oc.add(DirectoryObject(key=Callback(HostTools, title='show_dump_log', host=host),
+		oc.add(DirectoryObject(key=Callback(IntHostTools, choice='show_dump_log', myhost=myhost),
 			title=u'Show/Dump log',
-			thumb = R(tools.ICON_TOOLS),
+			thumb = R(ICON_TOOLS),
 			summary=u'List the logged events and dumps to Channel log'))
-		if host == 'openload':
-			oc.add(DirectoryObject(key=Callback(HostTools, title='openload_unpair', host=host),
+		if myhost == 'openload':
+			oc.add(DirectoryObject(key=Callback(IntHostTools, choice='openload_unpair', myhost=myhost),
 				title=u'*Paired* - UnPair OpenLoad' if common.host_openload.isPairingDone() == True else u'*Not Paired*',
-				thumb = R(tools.ICON_TOOLS),
+				thumb = R(ICON_TOOLS),
 				summary=u'UnPair with OpenLoad'))
 
 	if len(oc) == 0:
-		return MC.message_container('Info', 'No tools available for %s' % host)
+		return MC.message_container('Info', 'No tools available for %s' % myhost)
 
 	return oc
 	
 ####################################################################################################
-@route(PREFIX + "/ProviderTools")
-def ProviderTools(title=None, provider=None, header=None, message=None, **kwargs):
+@route(PREFIX + "/IntProviderTools")
+def IntProviderTools(choice=None, provider=None, mssg=None):
 	
-	oc = ObjectContainer(title2='%s Tools' % provider.title(), header=header, message=message)
+	oc = ObjectContainer(title2='%s Tools' % provider.title())
 
-	if title:
-		if title == 'show_dump_log':
-			oc = ObjectContainer(title2='%s Log' % provider.title(), header=header, message=message)
+	if choice != None:
+		if choice == 'show_dump_log':
+			oc = ObjectContainer(title2='%s Log' % provider.title())
 			items = common.interface.getProvidersLoggerTxts(choice=provider, dumpToLog=False)
 			if len(items) > 0:
 				Thread.Create(common.interface.getProvidersLoggerTxts, {}, provider, True)
 				if len(items) > 100:
 					msg = '%s Log has too many entries to display (last 100 shown here), full-text will be written to Channel Log !' % provider.title()
-					oc.add(DirectoryObject(title=msg))
+					oc.add(DirectoryObject(title=msg, summary=msg, key=Callback(MyMessage, title='Info', msg=msg), thumb=R(ICON_INFO)))
 					for i in range(0,100):
-						oc.add(DirectoryObject(title=items[i]))
+						oc.add(DirectoryObject(title=items[i], summary=items[i], key=Callback(MyMessage, title='Info', msg=items[i]), thumb=R(ICON_ALERT) if 'ERROR' in items[i] else R(ICON_INFO)))
 				elif len(items) > 0:
 					for i in items:
-						oc.add(DirectoryObject(title=i))
+						oc.add(DirectoryObject(title=i, summary=i, key=Callback(MyMessage, title='Info', msg=i), thumb=R(ICON_ALERT) if 'ERROR' in i else R(ICON_INFO)))
 			else:
-				message = '%s Log has no entries !' % provider.title()
+				mssg = '%s Log has no entries !' % provider.title()
 			
-		if message != None:
-			return MC.message_container('Info', message)
-			
+		if mssg != None:
+			return MC.message_container('Info', mssg)	
 	else:
-	
-		oc.add(DirectoryObject(key=Callback(ProviderTools, title='show_dump_log', provider=provider),
+		oc.add(DirectoryObject(key=Callback(IntProviderTools, choice='show_dump_log', provider=provider),
 			title=u'Show/Dump log',
-			thumb = R(tools.ICON_TOOLS),
+			thumb = R(ICON_TOOLS),
 			summary=u'List the logged events and dumps to Channel log'))
 
 	if len(oc) == 0:
@@ -5324,11 +5321,15 @@ def DoIMDBExtSources(title, year, type, imdbid, season=None, episode=None, episo
 			except Exception as e:
 				item = None
 			
+			genre = None
+			rating = None
+			duration = None
+			
 			if item!=None and len(item) > 0:
 				try:
-					genres = item['genre']
+					genre = item['genre']
 				except:
-					genres = None
+					genre = None
 				try:
 					rating = item['imdb_rating']
 				except:
@@ -5338,7 +5339,7 @@ def DoIMDBExtSources(title, year, type, imdbid, season=None, episode=None, episo
 				except:
 					duration = None
 			
-			DumbKeyboard(PREFIX, oc, DoIMDBExtSourcesEpisode, dktitle = 'Input Episode No.', dkthumb=R(ICON_DK_ENABLE), dkNumOnly=True, dkHistory=False, title=title, year=year, type=type, imdbid=imdbid, thumb=thumb, season=season, summary=summary, session=session, genres=genres, rating=rating, runtime=duration)
+			DumbKeyboard(PREFIX, oc, DoIMDBExtSourcesEpisode, dktitle = 'Input Episode No.', dkthumb=R(ICON_DK_ENABLE), dkNumOnly=True, dkHistory=False, title=title, year=year, type=type, imdbid=imdbid, thumb=thumb, season=season, summary=summary, session=session, genres=genre, rating=rating, runtime=duration)
 			
 			for e in range(int(episodeNr),1000):
 				time.sleep(1.0)

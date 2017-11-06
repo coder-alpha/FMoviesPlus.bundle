@@ -1,4 +1,16 @@
 import time, sys, os, json, re
+
+# try:
+	# try:
+		# PATH_R = os.path.dirname(os.path.abspath(__file__)).split('Code')[0]
+	# except:
+		# PATH_R = os.path.dirname(os.path.abspath('__file__')).split('Code')[0]
+		
+	# PATH = os.path.join(PATH_R, 'Libraries/Shared')
+	# sys.path.insert(0,PATH)
+# except:
+	# pass
+
 import omdb
 from resources.lib.sources import sources
 from resources.lib import resolvers
@@ -60,7 +72,8 @@ def runGetSources(
 	proxy_options = None,
 	provider_options = None,
 	key = None,
-	useCached = True):
+	useCached = True,
+	session = None):
 	
 	# fix stuff
 	if episode != None:
@@ -77,16 +90,16 @@ def runGetSources(
 		except:
 			pass
 			
-	if useCached:
+	if useCached == True:
 		srcs = getSources(encode=False)
 		filter_extSources = []
 		filter_extSources += [i for i in srcs if i['key'] == key]
 		if len(filter_extSources) > 0:
 			if Prefs["use_debug"]:
 				Log("name:%s title:%s tvshowtitle:%s year:%s season:%s episode:%s imdb:%s key:%s" % (name, title, tvshowtitle, year, season, episode, imdb, key))
-				Log("Available in Cache Already. Key: %s" % key)
+				Log("Available in Cache Already. key: %s" % key)
 			return
-	
+
 	if imdb == None:
 		try:
 			#res = omdb.request(t=title, y=int(year), c=Prefs['ca_api_key'], ver=ver, r='json', timeout=10)
@@ -95,14 +108,14 @@ def runGetSources(
 			imdb = imdb_t
 		except:
 			pass
-		
+			
 	if Prefs["use_debug"]:
 		Log("name:%s title:%s tvshowtitle:%s year:%s season:%s episode:%s imdb:%s key:%s" % (name, title, tvshowtitle, year, season, episode, imdb, key))
-	
+
 	if wait_for_init() == False:
 		return
 		
-	initA[0].getSources(name, title, year, imdb, tmdb, tvdb, tvrage, season, episode, tvshowtitle, alter, date, proxy_options, provider_options, key)
+	initA[0].getSources(name, title, year, imdb, tmdb, tvdb, tvrage, season, episode, tvshowtitle, alter, date, proxy_options, provider_options, key, session)
 	
 	# while initA[0].checkProgress() != 100:
 		# time.sleep(1)
@@ -200,10 +213,13 @@ def clearSources():
 		return
 	initA[0].clearSources()
 	
-def purgeSources(maxcachetimeallowed=0):
+def purgeSources(key, maxcachetimeallowed=0):
 	if wait_for_init() == False:
 		return
-	initA[0].purgeSources(maxcachetimeallowed=maxcachetimeallowed)
+	#initA[0].purgeSources(maxcachetimeallowed=maxcachetimeallowed)
+	initA[0].purgeSourcesKey(key=key, maxcachetimeallowed=maxcachetimeallowed)
+	if Prefs["use_debug"]:
+		Log('Purging source based on time-stamp. key: %s > maxcachetimeallowed: %s' % (key,maxcachetimeallowed))
 	
 def checkProgress(key, useCached=True):
 	if wait_for_init() == False:
@@ -241,14 +257,14 @@ def getCacheSize():
 		
 	return 0
 	
-def getSources(encode=True):
+def getSources(key=None, encode=True):
 	if wait_for_init() == False:
 		return
 
 	if encode:
-		return E(JSON.StringFromObject(initA[0].sourcesFilter()))
+		return E(JSON.StringFromObject(initA[0].sourcesFilter(key=key)))
 		
-	return initA[0].sourcesFilter()
+	return initA[0].sourcesFilter(key=key)
 	
 def getProxies():
 	if wait_for_init() == False:
@@ -282,25 +298,83 @@ def getProviders(encode=True):
 		
 	return E(JSON.StringFromObject(initA[0].getProviders()))
 	
-def getProvidersLoggerTxts():
+def getProvidersLoggerTxts(choice=None, dumpToLog=True):
+	if wait_for_init() == False:
+		return
+	loggertxt = []
+	if Prefs["use_debug"] or choice != None:
+		#Log(" === LOGGER txt START === ")
+		for provider in initA[0].providersCaller:
+			try:
+				if choice == None:
+					if dumpToLog == True:
+						Log(" === Provider: %s Start ===" % provider['name'])
+					provider['call'].getLog()
+					for txt in provider['call'].loggertxt:
+						loggertxt.append(txt)
+						if dumpToLog == True:
+							Log(txt)
+					if dumpToLog == True:
+						Log(" === Provider: %s End ===" % provider['name'])
+				elif choice == provider['name']:
+					if dumpToLog == True:
+						Log(" === Provider: %s Start ===" % provider['name'])
+					provider['call'].getLog()
+					for txt in provider['call'].loggertxt:
+						loggertxt.append(txt)
+						if dumpToLog == True:
+							Log(txt)
+					if dumpToLog == True:
+						Log(" === Provider: %s End ===" % provider['name'])
+			except Exception as e:
+				Log(e)	
+		#Log(" === LOGGER txt END === ")
+	return list(reversed(loggertxt))
+
+	
+def getHostsLoggerTxts(choice=None, dumpToLog=True):
+	if wait_for_init() == False:
+		return
+	loggertxt = []
+	if Prefs["use_debug"] or choice != None:
+		#Log(" === LOGGER txt START === ")
+		for host in initA[0].hostsCaller():
+			try:
+				if choice == None:
+					if dumpToLog == True:
+						Log(" === Host: %s Start ===" % host['name'])
+					host['call'].getLog()
+					for txt in host['call'].loggertxt:
+						loggertxt.append(txt)
+						if dumpToLog == True:
+							Log(txt)
+					if dumpToLog == True:
+						Log(" === Host: %s End ===" % host['name'])
+				elif choice == host['name']:
+					if dumpToLog == True:
+						Log(" === Host: %s Start ===" % host['name'])
+					host['call'].getLog()
+					for txt in host['call'].loggertxt:
+						loggertxt.append(txt)
+						if dumpToLog == True:
+							Log(txt)
+					if dumpToLog == True:
+						Log(" === Host: %s End ===" % host['name'])
+			except Exception as e:
+				Log(e)				
+		#Log(" === LOGGER txt END === ")
+	return list(reversed(loggertxt))
+	
+def getControlLoggerTxts():
 	if wait_for_init() == False:
 		return
 	loggertxt = []
 	if Prefs["use_debug"]:
-		Log(" === LOGGER txt START === ")
-		for provider in initA[0].providersCaller:
-			Log(" === Provider: %s Start ===" % provider['name'])
-			for txt in provider['call'].loggertxt:
-				loggertxt.append(txt)
-				Log(txt)
-			Log(" === Provider: %s Start End ===" % provider['name'])
-			
-			Log(" === CONTROL txt Start ===")
-			for txt in control.loggertxt:
-				loggertxt.append(txt)
-				Log(txt)
-			Log(" === CONTROL txt End ===")
-		Log(" === LOGGER txt END === ")
+		Log(" === CONTROL txt Start ===")
+		for txt in control.loggertxt:
+			loggertxt.append(txt)
+			Log(txt)
+		Log(" === CONTROL txt End ===")
 	return loggertxt
 	
 def getExtSourcesThreadStatus(key=None):
@@ -314,14 +388,14 @@ def checkKeyInThread(key=None):
 	
 	return initA[0].checkKeyInThread(key=key)
 		
-def getExtSources(movtitle=None, year=None, tvshowtitle=None, season=None, episode=None, proxy_options=None, provider_options=None, key=None, maxcachetime=0, ver=None, imdb_id=None):
+def getExtSources(movtitle=None, year=None, tvshowtitle=None, season=None, episode=None, proxy_options=None, provider_options=None, key=None, maxcachetime=0, ver=None, imdb_id=None, session=None):
 
 	InterfaceThread[key] = True
 	
 	if wait_for_init() == False:
 		return
 		
-	purgeSources(maxcachetimeallowed=maxcachetime)
+	purgeSources(key=key, maxcachetimeallowed=maxcachetime)
 
 	if movtitle != None:
 		p = re.compile('(.())\(([^()]|())*\)')
@@ -344,22 +418,25 @@ def getExtSources(movtitle=None, year=None, tvshowtitle=None, season=None, episo
 	proxy_options = proxy_options,
 	provider_options = provider_options,
 	key = key,
-	imdb=imdb_id)
+	imdb=imdb_id,
+	useCached = True,
+	session=session)
 	
 	# if Prefs['use_debug']:
 		# Log("Movie: %s" % movtitle)
 	
-	while initA[0].checkProgress() != 100:
-		time.sleep(0.5)
+	while initA[0].checkProgress(key) != 100:
+		time.sleep(2)
 		#os.system('cls')
-		print 'Threads progress: %s' % initA[0].checkProgress()
-		# Log('Threads progress: %s' % initA[0].checkProgress())
+		#print 'Threads progress: %s' % initA[0].checkProgress()
+		#if Prefs["use_debug"]:
+		#	Log('Threads key: %s progress: %s' % (key,initA[0].checkProgress(key)))
 		
 		
 	InterfaceThreadLastQuery['LastQuery'] = key
 	InterfaceThread[key] = False
 	
-	return E(JSON.StringFromObject(initA[0].sourcesFilter()))
+	return E(JSON.StringFromObject(initA[0].sourcesFilter(key=key)))
 	
 def request(url, close=True, redirect=True, followredirect=False, error=False, proxy=None, post=None, headers=None, mobile=False, limit=None, referer=None, cookie=None, output='', timeout='30', httpsskip=False, use_web_proxy=False, XHR=False, IPv4=False, hideurl=False):
 
@@ -401,4 +478,7 @@ def request_via_proxy_as_backup(url, close=True, redirect=True, followredirect=F
 	use_web_proxy_as_backup=True
 	return initA[0].request_via_proxy(url=url, proxy_name=None, proxy_url=None, close=close, redirect=redirect, followredirect=followredirect, error=error, proxy=proxy, post=post, headers=headers, mobile=mobile, limit=limit, referer=referer, cookie=cookie, output=output, timeout=timeout, httpsskip=httpsskip, XHR=XHR, use_web_proxy=use_web_proxy, use_web_proxy_as_backup=use_web_proxy_as_backup, IPv4=IPv4)
 
+def test():
+	print init()
 	
+#test()

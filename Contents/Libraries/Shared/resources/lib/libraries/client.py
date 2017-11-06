@@ -22,6 +22,8 @@ import re,sys,urllib2,HTMLParser,urllib,urlparse
 import random, time, cookielib
 import base64
 import traceback
+import httplib
+import requests
 
 from resources.lib.libraries import cache
 from resources.lib.libraries import control
@@ -46,6 +48,30 @@ def getAddrInfoWrapper(host, port, family=0, socktype=0, proto=0, flags=0):
 # socket.has_ipv6 = False
 #-------------------------------------------------------------------------------------------------------------
 
+# --- SSL fixes.
+
+def fix_ssl():
+	# This solves the HTTP connection problem on Ubuntu Lucid (10.04):
+	#	 SSLError: [Errno 1] _ssl.c:480: error:140770FC:SSL routines:SSL23_GET_SERVER_HELLO:unknown protocol
+	# It also fixes the following problem with StaticPython ob some systems:
+	#	 SSLError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed (_ssl.c:590)
+	#
+	# This fix works with Python version 2.4--2.7, with the bundled and the new
+	# (1.16) ssl module.
+	class fake_ssl:
+		import ssl	# Needed, the MEGA API is https:// only.
+		def partial(func, *args, **kwds):	# Emulate functools.partial for 2.4.
+			return lambda *fargs, **fkwds: func(*(args+fargs), **dict(kwds, **fkwds))
+		wrap_socket = staticmethod(partial(
+				ssl.wrap_socket, ssl_version=ssl.PROTOCOL_TLSv1))
+		# Prevent staticpython from trying to load /usr/local/ssl/cert.pem .
+		# `export PYTHONHTTPSVERIFY=1' would also work from the shell.
+		if getattr(ssl, '_create_unverified_context', None):
+			_create_default_https_context = staticmethod(
+					ssl._create_unverified_context)
+		del ssl, partial
+	httplib.ssl = fake_ssl
+
 def shrink_host(url):
 	u = urlparse.urlparse(url)[1].split('.')
 	u = u[-2] + '.' + u[-1]
@@ -53,6 +79,7 @@ def shrink_host(url):
 
 GLOBAL_TIMEOUT_FOR_HTTP_REQUEST = 15
 HTTP_GOOD_RESP_CODES = ['200','206']
+GOOGLE_HTTP_GOOD_RESP_CODES_1 = ['429']
 	
 USER_AGENT = "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:48.0) Gecko/20100101 Firefox/48.0"
 IE_USER_AGENT = 'Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; AS; rv:11.0) like Gecko'
@@ -74,7 +101,7 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 		
 		if IPv4 == True:
 			setIP4()
-		
+			
 		if error==False and not proxy == None:
 			handlers += [urllib2.ProxyHandler({'http':'%s' % (proxy)}), urllib2.HTTPHandler]
 			opener = urllib2.build_opener(*handlers)
@@ -114,7 +141,13 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 		if 'Referer' in headers:
 			pass
 		elif referer == None:
-			headers['Referer'] = '%s://%s/' % (urlparse.urlparse(url).scheme, urlparse.urlparse(url).netloc)
+			try:
+				headers['Referer'] = '%s://%s/' % (urlparse.urlparse(url).scheme, urlparse.urlparse(url).netloc)
+			except:
+				try:
+					headers['Referer'] = url
+				except:
+					pass
 		else:
 			headers['Referer'] = referer
 		if not 'Accept-Language' in headers:
@@ -228,8 +261,8 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 					setIP6()
 				return
 		except Exception as e:
-			control.log('Error client.py>request : %s' % url)
-			control.log('Error client.py>request : %s' % (e.args))
+			control.log('ERROR client.py>request : %s' % url)
+			control.log('ERROR client.py>request : %s' % e.args)
 			if IPv4 == True:
 				setIP6()
 			if output == 'response':
@@ -311,6 +344,72 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 		if IPv4 == True:
 			setIP6()
 		return
+		
+def getFileSize(link, retError=False, retry429=False, cl=3):
+	try:
+		r = requests.get(link, stream=True, verify=False, allow_redirects=True)
+		
+		if retry429 == True:
+			c = 0
+			while r.status_code == 429 and c < cl:
+				time.sleep(5)
+				r = requests.get(link, stream=True, verify=False, allow_redirects=True)
+				c += 1
+		
+		if str(r.status_code) not in HTTP_GOOD_RESP_CODES and str(r.status_code) not in GOOGLE_HTTP_GOOD_RESP_CODES_1:
+			raise Exception('HTTP Response: %s' % str(r.status_code))
+		size = r.headers['Content-length']
+		r.close()
+		
+		#site = urllib.urlopen(link)
+		#meta = site.info()
+		#size = meta.getheaders("Content-Length")[0]
+		
+		if retError == True:
+			return size, ''
+		else:
+			return size
+	except Exception as e:
+		if retError == True:
+			return 0, '{}'.format(e)
+		else:
+			return 0
+		
+def send_http_request(url, data=None, timeout=None, fix_ssl=True):
+	"""Return a httplib.HTTPResponse object."""
+	#print url
+	#print data
+	if fix_ssl == True:
+		fix_ssl()
+		pass
+		
+	match = URL_RE.match(url)
+	if not match:
+		raise ValueError('Bad URL: %s' % url)
+	schema = match.group(1)
+	if schema not in ('http', 'https'):
+		raise ValueError('Unknown schema: %s' % schema)
+	host = match.group(2)
+	if match.group(3):
+		port = int(match.group(3))
+	else:
+		port = (80, 443)[schema == 'https']
+	path = url[match.end():] or '/'
+
+	#print host
+	ipaddr = socket.gethostbyname(host)	# Force IPv4. Needed by Mega.
+	#print ipaddr
+	hc_cls = (httplib.HTTPConnection, httplib.HTTPSConnection)[schema == 'https']
+	# TODO(pts): Cleanup: Call hc.close() eventually.
+	if sys.version_info < (2, 6):	# Python 2.5 doesn't support timeout.
+		hc = hc_cls(ipaddr, port)
+	else:
+		hc = hc_cls(ipaddr, port, timeout=timeout)
+	if data is None:
+		hc.request('GET', path)
+	else:
+		hc.request('POST', path, data)
+	return hc.getresponse()	# HTTPResponse.
 		
 def getPageDataBasedOnOutput(res, output):
 

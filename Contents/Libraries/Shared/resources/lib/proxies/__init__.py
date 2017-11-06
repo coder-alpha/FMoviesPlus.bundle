@@ -1,7 +1,7 @@
 
 
 
-import re,urllib,urlparse,pkgutil
+import re,urllib,urlparse,pkgutil,time
 
 from resources.lib.libraries import client
 from resources.lib.libraries import control
@@ -17,12 +17,11 @@ def init():
 	for package, name, is_pkg in pkgutil.walk_packages(__path__):	
 		try:
 			c = __import__(name, globals(), locals(), [], -1).proxy()
-			print "Adding Proxy %s : %s to Interface" % (c.name, c.base_link)
+			log("Adding Proxy %s : %s to Interface" % (c.name, c.base_link))
 			sourceProxies.append({'name': c.name, 'url': c.base_link, 'captcha':c.captcha, 'SSL':c.ssl, 'working':c.working, 'speed':round(c.speedtest,3)})
 			sourceProxiesCaller.append({'name': c.name, 'url': c.base_link, 'captcha':c.captcha, 'working':c.working, 'speed':round(c.speedtest,3), 'call': c})
 		except Exception as e:
-			print "Error: %s - %s" % (name, e)
-			pass
+			log(type='CRITICAL', err='Could not import %s > %s' % (name,e))
 			
 def info():
 	return sourceProxies
@@ -62,26 +61,26 @@ def request(url, proxy_name=None, proxy_url=None, close=True, redirect=True, fol
 	if checkRet(ret, output):
 		return ret
 	elif use_web_proxy == True and proxy_options == None and proxy_name != None and proxy_url != None:
-		print "Trying 1-proxy_options == None. len(sourceProxiesCaller) = %s" % len(sourceProxiesCaller)
+		log("Trying 1-proxy_options == None. len(sourceProxiesCaller) = %s" % len(sourceProxiesCaller), logToControl=False)
 		for proxy in sourceProxiesCaller:
 			if proxy_name == proxy['name'] and proxy_url == proxy['url']:
-				print "Trying %s for %s" % (proxy['name'], url)
+				log("Trying %s for %s" % (proxy['name'], url), logToControl=False)
 				ret = proxy['call'].request(url=url, close=close, redirect=redirect, followredirect=followredirect, error=error, proxy=proxy, post=post, headers=headers, mobile=mobile, limit=limit, referer=referer, cookie=cookie, output=output, timeout=timeout, httpsskip=httpsskip, use_web_proxy=use_web_proxy, XHR=XHR, IPv4=IPv4)
 				if checkRet(ret, output):
 					return ret
 	elif use_web_proxy == True and proxy_options != None:
-		print "Trying 2-proxy_options != None. len(sourceProxiesCaller) = %s" % len(sourceProxiesCaller)
+		log("Trying 2-proxy_options != None. len(sourceProxiesCaller) = %s" % len(sourceProxiesCaller), logToControl=False)
 		for proxyo in proxy_options:
 			for proxy in sourceProxiesCaller:
 				if proxyo['name'] == proxy['name'] and proxyo['url'] == proxy['url']:
-					print "Trying %s for %s" % (proxy['name'], url)
+					log("Trying %s for %s" % (proxy['name'], url), logToControl=False)
 					ret = proxy['call'].request(url=url, close=close, redirect=redirect, followredirect=followredirect, error=error, proxy=proxy, post=post, headers=headers, mobile=mobile, limit=limit, referer=referer, cookie=cookie, output=output, timeout=timeout, httpsskip=httpsskip, use_web_proxy=use_web_proxy, XHR=XHR, IPv4=IPv4)
 					if checkRet(ret, output):
 						return ret
 	elif (use_web_proxy == True and proxy_options == None and proxy_name==None and proxy_url==None) or use_web_proxy_as_backup == True:
-		print "Trying 3-proxy_options == None. len(sourceProxiesCaller) = %s" % len(sourceProxiesCaller)
+		log("Trying 3-proxy_options == None. len(sourceProxiesCaller) = %s" % len(sourceProxiesCaller), logToControl=False)
 		for proxy in sourceProxiesCaller:
-			print "Trying %s for %s" % (proxy['name'], url)
+			log("Trying %s for %s" % (proxy['name'], url), logToControl=False)
 			ret = proxy['call'].request(url=url, close=close, redirect=redirect, followredirect=followredirect, error=error, proxy=proxy, post=post, headers=headers, mobile=mobile, limit=limit, referer=referer, cookie=cookie, output=output, timeout=timeout, httpsskip=httpsskip, use_web_proxy=use_web_proxy, XHR=XHR, IPv4=IPv4)
 			if checkRet(ret, output):
 				return ret
@@ -91,6 +90,13 @@ def request(url, proxy_name=None, proxy_url=None, close=True, redirect=True, fol
 	elif output == 'response' or output == 'responsecodeext':
 		return (None, None)
 	return None
-	# except Exception as e:
-		# print ('ERROR proxies request > %s url %s' % (e.args, url))
-		# return None
+
+def log(err='', type='INFO', logToControl=True, doPrint=True):
+	try:
+		msg = '%s: %s > %s : %s' % (time.ctime(time.time()), type, 'proxies', err)
+		if logToControl == True:
+			control.log(msg)
+		if control.doPrint == True and doPrint == True:
+			print msg
+	except Exception as e:
+		control.log('Error in Logging: %s >>> %s' % (msg,e))

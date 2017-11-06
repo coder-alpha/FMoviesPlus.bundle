@@ -63,6 +63,9 @@ class sources:
 		hosts = resolvers.info()
 		return hosts
 		
+	def hostsCaller(self):
+		return resolvers.sourceHostsCall
+		
 	def getHostsPlaybackSupport(self):
 		hostsplaybacksupport = resolvers.hostsplaybacksupport()
 		return hostsplaybacksupport
@@ -87,27 +90,35 @@ class sources:
 			for package, name, is_pkg in pkgutil.walk_packages(__path__):
 				try:
 					c = __import__(name, globals(), locals(), [], -1).source()
-					print "Adding Provider %s : %s to Interface" % (c.info()['name'], c.info()['url'])
+					log("Adding Provider %s : %s to Interface" % (c.info()['name'], c.info()['url']),name='providers')
 					self.providersCaller.append({'name':c.info()['name'], 'url':c.info()['url'], 'call':c})
 					self.providers.append(c.info())
 				except Exception as e:
-					control.log('Error: Loading File %s' % name)
-					error_info = {
-						'url': 'Unknown',
-						'name': "%s.py - Loading Error: %s" % (name, e),
-						'speed': 0.0,
-						'logo': 'Unknown',
-						'ssl': 'Unknown',
-						'online': 'Unknown',
-						'online_via_proxy' : 'Unknown',
-						'parser': 'Unknown'
-					}
-					self.providers.append(error_info)
+					log(type='CRITICAL', err='Could not import %s > %s (Retrying)' % (name,e))
+					try:
+						c = __import__(name, globals(), locals(), [], -1).source()
+						log("Adding Provider %s : %s to Interface" % (c.info()['name'], c.info()['url']),name='providers')
+						self.providersCaller.append({'name':c.info()['name'], 'url':c.info()['url'], 'call':c})
+						self.providers.append(c.info())
+					except Exception as e:
+						log(type='CRITICAL', err='Could not import %s > %s (Retrying-Failed)' % (name,e))
+						error_info = {
+							'url': 'Unknown',
+							'name': "%s.py" % name,
+							'msg': "Loading Error: %s" % e,
+							'speed': 0.0,
+							'logo': 'Unknown',
+							'ssl': 'Unknown',
+							'online': 'Unknown',
+							'online_via_proxy' : 'Unknown',
+							'parser': 'Unknown'
+						}
+						self.providers.append(error_info)
 		except:
 			pass
 		self.isProvThreadRunning = False
 
-	def getSources(self, name, title, year, imdb, tmdb, tvdb, tvrage, season, episode, tvshowtitle, alter, date, proxy_options, provider_options, key):
+	def getSources(self, name, title, year, imdb, tmdb, tvdb, tvrage, season, episode, tvshowtitle, alter, date, proxy_options, provider_options, key, session):
 		#try:
 		sourceDict = []
 		self.getSourcesAlive = True
@@ -118,23 +129,24 @@ class sources:
 		else:
 			myProviders = self.providersCaller
 		
-		content = 'movie' if tvshowtitle == None else 'episode'
+		content = 'movie' if tvshowtitle == None else 'show'
 		
 		self.threads[key] = []
 		if content == 'movie':
-			print 'Searching Movie'
+			log(err='Searching Movie: %s' % title)
 			title = cleantitle.normalize(title)
 			for source in myProviders:
 				try:
+					source_name = 'Unknow source (import error)'
+					source_name = source['name']
+					log(err='Searching Movie: %s (%s) in Provider %s' % (title,year,source_name))
 					thread_i = workers.Thread(self.getMovieSource, title, year, imdb, proxy_options, key, re.sub('_mv_tv$|_mv$|_tv$', '', source['name']), source['call'])
 					self.threads[key].append(thread_i)
 					thread_i.start()
 				except Exception as e:
-					print ('Source getSources %s ERROR %s' % (source,e))
-					control.log('Source getSources %s ERROR %s' % (source,e))
-					pass
+					log(type='ERROR', err='getSources %s - %s' % (source_name,e))
 		else:
-			print 'Searching Episode'
+			log(err='Searching Show: %s' % tvshowtitle)
 			try:
 				tvshowtitle = cleantitle.normalize(tvshowtitle)
 			except:
@@ -145,14 +157,14 @@ class sources:
 				pass
 			for source in myProviders:
 				try:
-					thread_i = workers.Thread(self.getEpisodeSource, title, year, imdb, tvdb, season, episode, tvshowtitle, date, proxy_options, key, re.sub('_mv_tv$|_mv$|_tv$', '', source['name']), source['call'])
+					source_name = 'Unknow source (import error)'
+					source_name = source['name']
+					log(err='Searching Show: %s S%sE%s in Provider %s' % (tvshowtitle,season,episode,source_name))
+					thread_i = workers.Thread(self.getEpisodeSource, title, year, imdb, tvdb, season, episode, tvshowtitle, date, proxy_options, key, re.sub('_mv_tv$|_mv$|_tv$', '', source_name), source['call'])
 					self.threads[key].append(thread_i)
 					thread_i.start()
 				except Exception as e:
-					print ('Source getSources %s ERROR %s' % (source, e))
-					control.log('Source getSources %s ERROR %s' % (source, e))
-					pass
-
+					log(type='ERROR', err='getSources %s - %s' % (source_name,e))
 
 		#sourceLabel = [re.sub('_mv_tv$|_mv$|_tv$', '', i) for i in sourceDict]
 		#sourceLabel = [re.sub('v\d+$', '', i).upper() for i in sourceLabel]
@@ -173,10 +185,13 @@ class sources:
 					c += 1
 					
 			if len(self.threads[key]) == 0:
-				return 0
+				return 100
 						
 			return float(int(float((float(c)/float(len(self.threads[key])))*100.0))*100)/100.0
 		else:
+			filtered = [i for i in self.sources if i['key'] == key]
+			if len(filtered) > 0:
+				return 100
 			return 0
 			
 	def checkKeyInThread(self, key=None):
@@ -216,7 +231,7 @@ class sources:
 		
 		try:
 			if episode == None: raise Exception()
-			if ep_url == None: ep_url = call.get_episode(url=url, imdb=imdb, tvdb=tvdb, title=title, year=year, season=season, episode=episode, proxy_options=proxy_options, key=key)
+			if ep_url == None: ep_url = call.get_episode(url=url, imdb=imdb, tvdb=tvdb, title=tvshowtitle, year=year, season=season, episode=episode, proxy_options=proxy_options, key=key)
 			if ep_url == None: raise Exception()
 		except:
 			pass
@@ -235,54 +250,83 @@ class sources:
 			self.sources = []
 			self.threads.clear()
 			self.threads = {}
-		except:
-			pass
+		except Exception as e:
+			log(type='ERROR', err='clearSources : %s' % e)
 			
-	def purgeSources(self, maxcachetimeallowed=0):
-		filtered = []
-		curr_time = time.time()
-		filtered += [i for i in self.sources if (i['ts'] + maxcachetimeallowed) >= curr_time]
-		del self.sources[:]
-		for i in filtered:
-			self.sources.append(i)
-			
-	def purgeSourcesKey(self, key=None):
-		filtered = []
-		filtered += [i for i in self.sources if i['key'] != key]
-		del self.sources[:]
-		for i in filtered:
-			self.sources.append(i)
+	def purgeSources(self, maxcachetimeallowed=0, override=False):
+		try:
+			filtered = []
+			maxcachetimeallowed = float(maxcachetimeallowed)
+			curr_time = time.time()
+			if override == True:
+				pass
+			else:
+				# if cache time < 2min; then get the sources from last 2min. otherwise it will always return 0 sources
+				if maxcachetimeallowed < 2*60:
+					maxcachetimeallowed = 2*60
+				for i in self.sources:
+					if (i['ts'] + float(maxcachetimeallowed)) >= curr_time:
+						filtered.append(i)
+				for k in self.threads:
+					if self.checkKeyInThread(k) == True and self.checkProgress(k) == 100:
+						del self.threads[k]
 
-	def sourcesFilter(self):
-	
-		filter_extSources = []
-		dups = []
-		for i in self.sources:
-			if i['url'] not in dups:
-				filter_extSources.append(i)
-				dups.append(i['url'])
-		self.sources = filter_extSources
-	
-		return self.sources
+			del self.sources[:]
+			for i in filtered:
+				self.sources.append(i)
+		except Exception as e:
+			log(type='ERROR', err='clearSources : %s' % e)
+			
+	def purgeSourcesKey(self, key=None, maxcachetimeallowed=0):
+		try:
+			filtered = []
+			curr_time = time.time()
+			if key == None:
+				return
+			else:
+				# if cache time < 2min; then get the sources from last 2min. otherwise it will always return 0 sources
+				if maxcachetimeallowed < 2*60:
+					maxcachetimeallowed = 2*60
+				for i in self.sources:
+					if (i['ts'] + float(maxcachetimeallowed)) >= curr_time:
+						pass
+					else:
+						self.sources.remove(i)
+				
+				if self.checkKeyInThread(key) == True and self.checkProgress(key) == 100:
+					del self.threads[key]
+
+		except Exception as e:
+			log(type='ERROR', err='purgeSourcesKey : %s' % e)
+
+	def sourcesFilter(self, key=None):
+		try:
+			filter_extSources = []
+			dups = []
+			for i in self.sources:
+				if i['url'] not in dups:
+					if key == None:
+						filter_extSources.append(i)
+						dups.append(i['url'])
+					elif i['key'] == key:
+						filter_extSources.append(i)
+						dups.append(i['url'])
+					
+			return filter_extSources
+		except Exception as e:
+			log(type='ERROR', err='sourcesFilter : %s' % e)
 	
 
 	def sourcesReset(self):
-		
 		return
-
 
 	def sourcesResolve(self, url, provider):
-
 		return
-
 
 	def sourcesDialog(self):
-		
 		return
 
-
 	def sourcesDirect(self):
-		
 		return
 		
 	def sourcesDictionary(self):
@@ -349,3 +393,13 @@ class sources:
 		#self.hostsdfullDict = self.hostDict
 
 		self.hosthdfullDict = self.hostprDict + self.hosthdDict
+
+def log(err='', type='INFO', logToControl=True, doPrint=True, name='control'):
+	try:
+		msg = '%s: %s > %s : %s' % (time.ctime(time.time()), type, name, err)
+		if logToControl == True:
+			control.log(msg)
+		if control.doPrint == True and doPrint == True:
+			print msg
+	except Exception as e:
+		control.log('Error in Logging: %s >>> %s' % (msg,e))

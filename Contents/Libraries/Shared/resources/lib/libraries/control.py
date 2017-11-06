@@ -29,6 +29,7 @@ trakt_secret = base64.urlsafe_b64decode('Y2I4OWExYTViN2ZlYmJiMDM2NmQ3Y2EyNzJjZDc
 
 loggertxt = []
 setting_dict = {}
+doPrint = False
 
 def setting(key):
 	if key in setting_dict.keys():
@@ -37,9 +38,11 @@ def setting(key):
 		return None
 
 def set_setting(key, value):
-	if key == base64.b64decode('Y29udHJvbF9hbGxfdWNfYXBpX2tleQ==') and value == None or value == '':
-		value = base64.b64decode(base64.b64decode('WmpGak5XUTNPVGRsWVdNM1lUSTJPR0l5TURGbU16QXlNalEzTm1RMFpqTT0='))
-
+	if key == base64.b64decode('Y29udHJvbF9hbGxfdWNfYXBpX2tleQ==') and (value == None or value == '' or len(value) == 0):
+		value = base64.b64decode(base64.b64decode('WXpFeE1qZzROV0k0WTJWall6Rm1aR1ZtWlRNNU1tVXdaR1E1WlRneVlqRT0='))
+	elif key == base64.b64decode('Y29udHJvbF9vcGVubG9hZF9hcGlfa2V5') and (value == None or value == '' or len(value) == 0 or ':' not in value):
+		value = base64.b64decode(base64.b64decode('WW1ReU9USmxNalkzTjJZd016RTFOenBmWjNnMU5GTkROUT09'))
+	
 	setting_dict[key] = value
 
 def log(msg):
@@ -48,7 +51,7 @@ def log(msg):
 			msg = msg.encode('utf-8')
 			
 		loggertxt.append(msg)
-		print('[FMovies]: %s' % (msg))
+		print('%s' % msg)
 	except Exception as e:
 		pass  # just give up
 
@@ -57,3 +60,6 @@ set_setting('use_openload_pairing', True)
 set_setting('is_uss_installed', False)
 set_setting('use_https_alt', True)
 set_setting('control_all_uc_api_key', None)
+set_setting('control_openload_api_key',None)
+set_setting('use_phantomjs', False)
+set_setting('%s-%s' % (None,'Use-PhantomJS'), False)

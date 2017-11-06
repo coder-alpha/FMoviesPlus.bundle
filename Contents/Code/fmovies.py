@@ -46,6 +46,7 @@ def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web
 		pass
 	
 	res = None
+	res_subtitle = None
 	error = ''
 	myts = time.time()
 	
@@ -58,6 +59,7 @@ def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web
 		if use_debug:
 			Log("Using Movie Link from Cache")
 		res = common.CACHE[key]['res']
+		res_subtitle = common.CACHE[key]['res_subtitle']
 		isTargetPlay = common.CACHE[key]['isTargetPlay']
 		host = common.CACHE[key]['host']
 		if isTargetPlay == 'True':
@@ -75,7 +77,7 @@ def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web
 		if use_debug:
 			Log("Retrieving Fresh Movie Link")
 			
-		ret, isTargetPlay, error, host = get_sources(url=url, key=key, use_debug=use_debug, serverts=serverts, myts=myts, use_https_alt=use_https_alt, use_web_proxy=use_web_proxy)
+		ret, isTargetPlay, error, host, res_subtitle = get_sources(url=url, key=key, use_debug=use_debug, serverts=serverts, myts=myts, use_https_alt=use_https_alt, use_web_proxy=use_web_proxy)
 		if use_debug:
 			Log("get_sources url: %s, key: %s" % (url,key))
 			Log("get_sources ret: %s" % ret)
@@ -91,7 +93,7 @@ def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web
 				Log("Using Second Request due to token error")
 				Log("CACHE cleared due to null response from API - maybe cookie issue for %s" % url)
 			time.sleep(1.0)
-			ret, isTargetPlay, error, host = get_sources(url=url, key=key, use_debug=use_debug, serverts=serverts, myts=myts, use_https_alt=use_https_alt, use_web_proxy=use_web_proxy, token_error=token_error)
+			ret, isTargetPlay, error, host, res_subtitle = get_sources(url=url, key=key, use_debug=use_debug, serverts=serverts, myts=myts, use_https_alt=use_https_alt, use_web_proxy=use_web_proxy, token_error=token_error)
 			if use_debug:
 				Log("API - attempt 2nd")
 				Log("get_sources url: %s, key: %s" % (url,key))
@@ -100,12 +102,13 @@ def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web
 		if ret == None:
 			if use_debug:
 				Log("null response from API (possible file deleted) - for %s" % url)
-			return res, isTargetPlay, error, host
+			return res, isTargetPlay, error, host, res_subtitle
 		else:
 			if isTargetPlay:
 				res = ret
 				common.CACHE[key] = {}
 				common.CACHE[key]['res'] = res
+				common.CACHE[key]['res_subtitle'] = res_subtitle
 				common.CACHE[key]['host'] = host
 				common.CACHE[key]['serverts'] = serverts
 				common.CACHE[key]['myts'] = myts
@@ -126,18 +129,19 @@ def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web
 				headersS['Cookie'] = common.CACHE_COOKIE[0]['cookie']
 				try:
 					time.sleep(1.0)
-					data = common.interface.request_via_proxy_as_backup(ret, limit='0', headers=headersS, httpsskip=use_https_alt)
+					data = common.interface.request_via_proxy_as_backup(ret, limit='0', headers=headersS, httpsskip=use_https_alt, hideurl=not use_debug)
 					data = json.loads(data)
 				except Exception as e:
 					Log('ERROR fmovies.py>GetApiUrl-1: ARGS:%s, URL:%s' % (e,ret))
 					pass
 
 				if data == None:
-					return None, isTargetPlay, error, host
+					return None, isTargetPlay, error, host, res_subtitle
 				if data['error'] == None:
 					res = JSON.StringFromObject(data['data'])
 					common.CACHE[key] = {}
 					common.CACHE[key]['res'] = res
+					common.CACHE[key]['res_subtitle'] = res_subtitle
 					common.CACHE[key]['host'] = host
 					common.CACHE[key]['serverts'] = serverts
 					common.CACHE[key]['myts'] = myts
@@ -150,7 +154,7 @@ def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web
 				else:
 					error = 'Unknown error'
 
-	return res, isTargetPlay, error, host
+	return res, isTargetPlay, error, host, res_subtitle
 		
 def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quiet=False):
 
@@ -198,7 +202,7 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 			Log("USING SAVED COOKIE TOKEN - TO DUMP TOKEN PERFORM RESET COOKIE UNDER OPTIONS MENU")
 			Log("Retrieved Saved Cookie: %s" % cookie)
 			Log("Retrieved Saved reqkey Cookie: %s" % reqkey_cookie)
-			Log("Retrieved Saved Video-Token-Key: %s" % token_key)
+			Log("Retrieved Saved Video-Token-Key: %s" % E(token_key))
 			Log("=====================TOKEN END============================")
 	else:
 		if serverts == None:
@@ -211,6 +215,17 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 		headersS['User-Agent'] = UA
 		
 		result, headers, content, cookie1 = common.interface.request_via_proxy_as_backup(BASE_URL, headers=headersS, limit='0', output='extended', httpsskip=use_https_alt, hideurl=True)
+		Log(cookie1)
+		
+		try:
+			if '__cfduid' in cookie1:
+				cfd = cookie1.split(';')
+				for cfdd in cfd:
+					if '__cfduid' in cfdd:
+						cookie1 = cfdd.strip()
+		except:
+			pass
+		
 		page_data_elems = HTML.ElementFromString(result)
 		ALL_JS =  page_data_elems.xpath(".//script[@src[contains(.,'all.js')]]//@src")[0]
 		
@@ -272,17 +287,30 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 					all_js_url = urlparse.urljoin(BASE_URL, ALL_JS)
 					all_js_pack_code = common.interface.request_via_proxy_as_backup(all_js_url, httpsskip=use_https_alt, hideurl=True)
 					unpacked_code = common.jsunpack.unpack(all_js_pack_code)
-					cch = re.findall(r'%s' % common.client.b64decode('ZnVuY3Rpb25cKHQsaSxuXCl7XCJ1c2Ugc3RyaWN0XCI7ZnVuY3Rpb24gZVwoXCl7cmV0dXJuICguKj8pfWZ1bmN0aW9uIHJcKHRcKQ=='), unpacked_code)[0]
-					token_key = re.findall(r'%s=.*?\"(.*?)\"' % cch, unpacked_code)[0]
-					if token_key !=None and token_key != '':
-						#cookie_dict.update({'token_key':token_key})
-						TOKEN_KEY.append(token_key)
+					try:
+						cch = re.findall(r'%s' % common.client.b64decode('ZnVuY3Rpb25cKHQsaSxuXCl7XCJ1c2Ugc3RyaWN0XCI7ZnVuY3Rpb24gZVwoXCl7cmV0dXJuICguKj8pfWZ1bmN0aW9uIHJcKHRcKQ=='), unpacked_code)[0]
+						token_key = re.findall(r'%s=.*?\"(.*?)\"' % cch, unpacked_code)[0]
+						if token_key !=None and token_key != '':
+							#cookie_dict.update({'token_key':token_key})
+							TOKEN_KEY.append(token_key)
+					except Exception as e:
+						Log('ERROR fmovies.py>Token-fetch-1.1a: %s' % e)
+						
+					if len(TOKEN_KEY) == 0:
+						try:
+							cch = re.findall(r'%s' % common.client.b64decode('ZnVuY3Rpb25cKFthLXpdLFthLXpdLFthLXpdXCl7XCJ1c2Ugc3RyaWN0XCI7ZnVuY3Rpb24gW2Etel1cKFwpe3JldHVybiAoLio/KX1mdW5jdGlvbiBbYS16XVwoW2Etel1cKQ=='), unpacked_code)[0]
+							token_key = re.findall(r'%s=.*?\"(.*?)\"' % cch, unpacked_code)[0]
+							if token_key !=None and token_key != '':
+								#cookie_dict.update({'token_key':token_key})
+								TOKEN_KEY.append(token_key)
+						except Exception as e:
+							Log('ERROR fmovies.py>Token-fetch-1.2a: %s' % e)
 				except Exception as e:
 					Log('ERROR fmovies.py>Token-fetch-1a: %s' % e)
 					
 				try:
 					token_oper = re.findall(r'%s' % common.client.b64decode('blwrPXRcWy4qP11cKGlcKS4qPyguKj8pOw=='), unpacked_code)[0]
-					if token_oper !=None and token_oper != '':
+					if token_oper !=None and token_oper != '' and len(token_oper) < 3:
 						#cookie_dict.update({'token_oper':token_oper})
 						token_oper = token_oper.replace('i','e')
 						TOKEN_OPER.append(token_oper)
@@ -307,7 +335,7 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 			cookie_dict.update({'token_key':token_key})
 			
 		try:
-			if len(TOKEN_OPER) == 0 or common.DOWNLOAD_BACKUP_OPER == True:
+			if len(TOKEN_OPER) == 0 and common.DOWNLOAD_BACKUP_OPER == True:
 				token_oper = common.interface.request_via_proxy_as_backup(TOKEN_OPER_PASTEBIN_URL, httpsskip=use_https_alt, hideurl=True)
 				if token_oper !=None and token_oper != '':
 					#cookie_dict.update({'token_oper':token_oper})
@@ -325,12 +353,25 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 		hash_url = hash_url + '?' + urllib.urlencode(query)
 
 		r1, headers, content, cookie2 = common.interface.request_via_proxy_as_backup(hash_url, headers=headersS, limit='0', output='extended', httpsskip=use_https_alt, hideurl=True)
-		
-		if '__cfduid' in cookie2:
-			cfd = cookie2.split(';')
-			for cfdd in cfd:
-				if '__cfduid' in cfdd:
-					cookie1 = cfdd
+		Log(cookie2)
+		try:
+			if '__cfduid' in cookie2:
+				cookie2w = []
+				cfd = cookie2.split(';')
+				skip = False
+				for cfdd in cfd:
+					if '__cfduid' in cfdd and not skip:
+						cookie1 = cfdd
+						skip = True
+					else:
+						cookie2w.append(cfdd)
+						
+				try:
+					cookie2 = ('; '.join(x for x in sorted(cookie2w)))
+				except:
+					pass
+		except:
+			pass
 		
 		common.CACHE['cookie'] = {}
 		common.CACHE['cookie']['cookie1'] = cookie1
@@ -346,7 +387,7 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 		if dump or use_debug:
 			Log("Storing Cookie: %s" % cookie)
 			Log("Storing reqkey Cookie: %s" % reqkey_cookie)
-			Log("Storing Video-Token-Key: %s" % TOKEN_KEY[0])
+			Log("Storing Video-Token-Key: %s" % E(TOKEN_KEY[0]))
 			Log("Storing Video-Token-Oper: %s" % TOKEN_OPER[0])
 			if len(TOKEN_OPER) > 1:
 				Log("Storing Video-Token-Oper2: %s" % TOKEN_OPER[1])
@@ -491,10 +532,11 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 		error = None
 		host_type = None
 		magic_url = None
+		subtitle = None
 		isTargetPlay = False
 		if url == None:
 			error = 'No url'
-			return magic_url, isTargetPlay, error, host_type
+			return magic_url, isTargetPlay, error, host_type, subtitle
 		referer = url
 		serverts = str(serverts)
 		T_BASE_URL = BASE_URL
@@ -534,8 +576,11 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 			#print hash_url
 			if use_debug:
 				Log("get_sources Request-3: %s" % hash_url)
-			result = common.interface.request_via_proxy_as_backup(hash_url, headers=headers, httpsskip=use_https_alt)
-			Log("Request-3 result: %s" % result)
+				
+			result = common.interface.request_via_proxy_as_backup(hash_url, headers=headers, httpsskip=use_https_alt, hideurl=not use_debug)
+			
+			if use_debug:
+				Log("Request-3 result: %s" % result)
 			#print result
 			result = json.loads(result)
 
@@ -545,13 +590,18 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 			elif result['target'] != "":
 				grabber = result['target']
 				isTargetPlay = True
+				subtitle = result['subtitle']
 			else:
 				query = {'id':result['params']['id'], 'token':result['params']['token']}
-				grabber = result['grabber'] 
+				grabber = result['grabber']
+				subtitle = result['subtitle']
 				if '?' in grabber:
 					grabber += '&' + urllib.urlencode(query)
 				else:
 					grabber += '?' + urllib.urlencode(query)
+					
+			if subtitle == None or len(subtitle) == 0:
+				subtitle = None
 				
 			if grabber!=None and not grabber.startswith('http'):
 				grabber = 'http:'+grabber
@@ -565,11 +615,11 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 			Log('ERROR fmovies.py>get_sources-1 %s, %s' % (e.args,url))
 			pass
 
-		return magic_url, isTargetPlay, error, host_type
+		return magic_url, isTargetPlay, error, host_type, subtitle
 	except Exception as e:
 		error = e
 		Log('ERROR fmovies.py>get_sources-2 %s, %s' % (e.args,url))
-		return magic_url, isTargetPlay, error, host_type
+		return magic_url, isTargetPlay, error, host_type, subtitle
 		
 def r01(t, e, token_error=False):
 	i = 0

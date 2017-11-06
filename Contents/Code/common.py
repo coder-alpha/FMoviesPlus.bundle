@@ -1,6 +1,6 @@
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.44' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.45' # Release notation (x.y - where x is major and y is minor)
 TAG = ''
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
@@ -8,7 +8,7 @@ PREFIX = "/video/fmoviesplus"
 
 import time, base64, unicodedata, re, random, string
 from resources.lib.libraries import control, client, cleantitle, jsfdecoder, jsunpack
-from resources.lib.resolvers import host_openload, host_gvideo
+from resources.lib.resolvers import host_openload, host_gvideo, host_mega
 import interface
 from __builtin__ import ord, format, eval
 
@@ -42,6 +42,12 @@ try:
 except Exception as e:
 	Log.Error('Failed to import execjs >>> {}'.format(e))
 	execjs = None
+	
+try:
+	from Cryptodome.Cipher import AES
+	Log('Cryptodome loaded successfully')
+except Exception as e:
+	Log.Error('Failed to import Cryptodome >>> {}. Please install PyCryptodome (https://github.com/Legrandin/pycryptodome) and copy the library to FMoviesPlus.bundle\Contents\Libraries\Shared\ location'.format(e))
 
 CACHE = {}
 CACHE_META = {}
@@ -49,6 +55,8 @@ CACHE_EXPIRY_TIME = 3600 # 1 Hour
 CACHE_EXPIRY = 3600
 CACHE_COOKIE = []
 TOKEN_CODE = []
+TO_GB = float(1024*1024*1024)
+DOWNLOAD_CHUNK_SIZE = 1.0 # in MB
 
 # Help videos on Patebin
 Help_Videos = "https://pastebin.com/raw/BMMHQund"
@@ -73,41 +81,64 @@ EMOJI_TXT_POS = u'(v)'
 EMOJI_TXT_NEG = u'(x)'
 EMOJI_TXT_QUES = u'(?)'
 
+INTERFACE_OPTIONS_LABELS = {'Provider':'Provider', 'Host':'Host', 'Proxy':'Proxy'}
+
 OPTIONS_PROXY = []
 INTERNAL_SOURCES = []
 OPTIONS_PROVIDERS = []
 INTERNAL_SOURCES_QUALS = [{'label':'4K','enabled': 'True'},{'label':'1080p','enabled': 'True'},{'label':'720p','enabled': 'True'},{'label':'480p','enabled': 'True'},{'label':'360p','enabled': 'True'}]
 INTERNAL_SOURCES_RIPTYPE = [{'label':'BRRIP','enabled': 'True'},{'label':'PREDVD','enabled': 'True'},{'label':'CAM','enabled': 'True'},{'label':'TS','enabled': 'True'},{'label':'SCR','enabled': 'True'},{'label':'UNKNOWN','enabled': 'True'}]
-INTERNAL_SOURCES_FILETYPE = [{'label':'Movie/Show','enabled': 'True'},{'label':'Trailer','enabled': 'False'},{'label':'Behind the scenes','enabled': 'False'},{'label':'Music Video','enabled': 'False'}]
-
+INTERNAL_SOURCES_FILETYPE = [{'label':'Movie/Show','enabled': 'True'},{'label':'Trailer','enabled': 'True'},{'label':'Behind the scenes','enabled': 'False'},{'label':'Music Video','enabled': 'False'},{'label':'Deleted Scenes','enabled': 'False'},{'label':'Interviews','enabled': 'False'},{'label':'Misc.','enabled': 'False'}]
+INTERNAL_SOURCES_SIZES = [{'label':'> 2GB','enabled': 'True','LL':2*TO_GB,'UL':100*TO_GB},{'label':'1GB - 2GB','enabled': 'True','LL':1*TO_GB,'UL':2*TO_GB},{'label':'0.5GB - 1GB','enabled': 'True','LL':0.5*TO_GB,'UL':1*TO_GB},{'label':'0GB - 0.5GB','enabled': 'True','LL':1,'UL':0.5*TO_GB},{'label':'0GB','enabled': 'False','LL':0,'UL':0}]
+INTERNAL_SOURCES_SIZES_CONST = [{'label':'> 2GB','enabled': 'True','LL':2*TO_GB,'UL':100*TO_GB},{'label':'1GB >= 2GB','enabled': 'True','LL':1*TO_GB,'UL':2*TO_GB},{'label':'0.5GB >= 1GB','enabled': 'True','LL':0.5*TO_GB,'UL':1*TO_GB},{'label':'0GB >= 0.5GB','enabled': 'True','LL':999999,'UL':0.5*TO_GB},{'label':'0GB','enabled': 'False','LL':0,'UL':999999}]
 INTERNAL_SOURCES_QUALS_CONST = [{'label':'4K','enabled': 'True'},{'label':'1080p','enabled': 'True'},{'label':'720p','enabled': 'True'},{'label':'480p','enabled': 'True'},{'label':'360p','enabled': 'True'}]
 INTERNAL_SOURCES_RIPTYPE_CONST = [{'label':'BRRIP','enabled': 'True'},{'label':'PREDVD','enabled': 'True'},{'label':'CAM','enabled': 'True'},{'label':'TS','enabled': 'True'},{'label':'SCR','enabled': 'True'},{'label':'UNKNOWN','enabled': 'True'}]
-INTERNAL_SOURCES_FILETYPE_CONST = [{'label':'Movie/Show','enabled': 'True'},{'label':'Trailer','enabled': 'False'},{'label':'Behind the scenes','enabled': 'False'},{'label':'Music Video','enabled': 'False'},{'label':'Misc.','enabled': 'False'}]
+INTERNAL_SOURCES_FILETYPE_CONST = [{'label':'Movie/Show','enabled': 'True'},{'label':'Trailer','enabled': 'True'},{'label':'Behind the scenes','enabled': 'False'},{'label':'Music Video','enabled': 'False'},{'label':'Deleted Scenes','enabled': 'False'},{'label':'Interviews','enabled': 'False'},{'label':'Misc.','enabled': 'False'}]
 
-DEVICE_OPTIONS = ['Dumb-Keyboard','List-View','Redirector','Simple-Emoji','Vibrant-Emoji','Multi-Link-View','Full-poster display']
+DEVICE_OPTIONS = ['Dumb-Keyboard','List-View','Redirector','Simple-Emoji','Vibrant-Emoji','Multi-Link-View','Full-poster display','Use-PhantomJS','No-Extra-Page-Info','Use-FileSize-Sorting']
 DEVICE_OPTION = {DEVICE_OPTIONS[0]:'The awesome Keyboard for Search impaired devices',
 				DEVICE_OPTIONS[1]:'Force List-View of Playback page listing sources',
 				DEVICE_OPTIONS[2]:'Required in certain cases - *Experimental (refer forum)',
 				DEVICE_OPTIONS[3]:'Enable Simple Emoji Icons (%s|%s - Supported by Most Clients)' % (EMOJI_TICK,EMOJI_CROSS),
 				DEVICE_OPTIONS[4]:'Enable Vibrant Emoji Icons (%s|%s - Supported by Limited Clients)' % (EMOJI_GREEN_HEART,EMOJI_BROKEN_HEART),
 				DEVICE_OPTIONS[5]:'Shows All Video Items in single container - makes many requests to server',
-				DEVICE_OPTIONS[6]:'Shows Uncropped Poster - client compatibility is untested'}
+				DEVICE_OPTIONS[6]:'Shows Uncropped Poster - client compatibility is untested',
+				DEVICE_OPTIONS[7]:'Use PhantomJS - For parsing links. Binary download required',
+				DEVICE_OPTIONS[8]:'No-Extra-Page-Info - Speeds up navigation by not downloading detailed item info',
+				DEVICE_OPTIONS[9]:'Use-FileSize-Sorting - Uses FileSize instead of Resolution info provided by site which can be inaccurate'}
 DEVICE_OPTION_CONSTRAINTS = {DEVICE_OPTIONS[2]:[{'Pref':'use_https_alt','Desc':'Use Alternate SSL/TLS','ReqValue':'disabled'}]}
 DEVICE_OPTION_CONSTRAINTS2 = {DEVICE_OPTIONS[5]:[{'Option':6,'ReqValue':False}], DEVICE_OPTIONS[6]:[{'Option':5,'ReqValue':False}]}
+DEVICE_OPTION_PROPOGATE_TO_CONTROL = {DEVICE_OPTIONS[7]:True}
+
+DOWNLOAD_OPTIONS = {'movie':[], 'show':[]}
+DOWNLOAD_OPTIONS_SECTION_TEMP = {}
+DOWNLOAD_MODE = ['Add','Request']
+Dict['DOWNLOAD_OPTIONS_SECTION_TEMP'] = {}
+DOWNLOAD_STATUS = ['Queued','Downloading','Completed','Failed','Requested','All']
+DOWNLOAD_ACTIONS = ['Cancel Download','Pause Download','Resume Download','Postpone Download','Start Download']
+DOWNLOAD_ACTIONS_K = {'Cancel Download':'Cancelled','Pause Download':'Paused','Resume Download':'Resumed','Postpone Download':'Postponed','Start Download':'Started','Done':'Done','Limbo':'Limbo','Live':'Live','Throttling':'Throttling','Waiting':'Waiting'}
+DOWNLOAD_ACTIONS_INFO = ['Cancels the Download and removes its entry and temporary file from disk.','Pauses the current Download and let it be Resumed.','Resume the currently Paused Download.','Postpones the current Download for 2 hours by adding it to Queue List','Starts the Postponed Download.']
+DOWNLOAD_PROPS = ['Done','Limbo','Throttling','Waiting']
+DOWNLOAD_STATS = {}
+DOWNLOAD_TEMP = {}
+DOWNLOAD_FMP_EXT = '.FMPTemp'
 
 # Golbal Overrides - to disable
 SHOW_EXT_SRC_WHILE_LOADING = True
+USE_DOWNLOAD_RESUME_GEN = True
+USE_DOWNLOAD_RESUME_MEGA = True
 USE_EXT_URLSERVICES = True
 USE_COOKIES = True
 DOWNLOAD_BACKUP_OPER = True
-NoMovieInfo = False
-USE_CUSTOM_TIMEOUT = False
 USE_SECOND_REQUEST = True
 USE_JSFDECODER = True
 USE_JSENGINE = True
 USE_JSWEBHOOK = True
 ALT_PLAYBACK = True
 DEV_BM_CONVERSION = False
+NO_MOVIE_INFO = False
+USE_CUSTOM_TIMEOUT = False
+SEARCH_EXT_SOURCES_FROM_SEARCH_MENU = True
 DEV_DEBUG = False
 WBH = 'aHR0cHM6Ly9ob29rLmlvL2NvZGVyLWFscGhhL3Rlc3Q='
 
@@ -118,7 +149,7 @@ def GetEmoji(type, mode='vibrant', session=None):
 
 	# modes = ['simple','vibrant'] - enforce mode to override Prefs for Search Filter
 
-	type = str(type).lower()
+	type = str(type).strip().lower()
 	
 	if session == None:
 		session = getSession()
@@ -157,9 +188,9 @@ def GetKeyFromVal(list, val_look):
 		if val == val_look:
 			return key
 
-def set_control_settings():
+def set_control_settings(session=None):
 
-	keys = ['use_https_alt','control_all_uc_api_key','use_openload_pairing']
+	keys = ['use_https_alt','control_all_uc_api_key','control_openload_api_key','use_openload_pairing','use_phantomjs']
 	for i in range(0,len(keys)):
 		try:
 			key = keys[i]
@@ -167,15 +198,52 @@ def set_control_settings():
 			
 		except Exception as e:
 			Log('ERROR common.py-1>set_control_settings: %s' % e)
-			
-	
+
 	try:
 		control.set_setting('is_uss_installed', is_uss_installed())
 	except Exception as e:
-		Log('ERROR common.py-2>set_control_settings: %s' % e)
+		Log.Error('ERROR common.py-2>set_control_settings: %s' % e)
+		
+	try:
+		key = DEVICE_OPTIONS[7]
+		
+		if key in DEVICE_OPTION_PROPOGATE_TO_CONTROL.keys() and DEVICE_OPTION_PROPOGATE_TO_CONTROL[key] != None and DEVICE_OPTION_PROPOGATE_TO_CONTROL[key] == True:
+			control.set_setting('%s-%s' % (session,key), UsingOption(key, session=session))
+	except Exception as e:
+		Log.Error('ERROR common.py-3>set_control_settings: %s' % e)
+		
+	try:
+		control_all_uc_api_key = Prefs['control_all_uc_api_key']
+		if control_all_uc_api_key == None or len(control_all_uc_api_key) == 0:
+			is_control_all_uc_api_key = False
+		else:
+			is_control_all_uc_api_key = True
+		control.set_setting('is_control_all_uc_api_key', is_control_all_uc_api_key)
+	except Exception as e:
+		Log.Error('ERROR common.py-2>set_control_settings: %s' % e)
+		
+	try:
+		control_openload_api_key = Prefs['control_openload_api_key']
+		if control_openload_api_key == None or len(control_openload_api_key) == 0:
+			is_control_openload_api_key = False
+		else:
+			is_control_openload_api_key = True
+		control.set_setting('is_control_openload_api_key', is_control_openload_api_key)
+	except Exception as e:
+		Log.Error('ERROR common.py-2>set_control_settings: %s' % e)
 			
 	if Prefs["use_debug"]:
 		Log("User Preferences have been set to Control")
+		
+def set_settings_to_control(key, val):
+
+	try:
+		control.set_setting(key, val)
+	except Exception as e:
+		Log.Error('ERROR common.py>set_settings_to_control: %s' % e)
+	
+	if Prefs["use_debug"]:
+		Log("User Setting %s:%s set to Control" % (key,val))
 			
 ####################################################################################################
 # Gets a client specific identifier
@@ -250,8 +318,11 @@ def setDictVal(key, val, session=None):
 				
 	if session == None:
 		session = getSession()
+		
+	if key in DEVICE_OPTION_PROPOGATE_TO_CONTROL.keys() and DEVICE_OPTION_PROPOGATE_TO_CONTROL[key] != None and DEVICE_OPTION_PROPOGATE_TO_CONTROL[key] == True:
+		control.set_setting('%s-%s' % (session,key), True if val=='enabled' else False)
 
-	Dict['Toggle'+key+session] = val
+	Dict['Toggle%s%s' % (key,session)] = val
 	Dict.Save()
 	if Prefs["use_debug"]:
 		Log("%s status: %s" % (key,val))
@@ -262,28 +333,44 @@ def setDictVal(key, val, session=None):
 def UsingOption(key, session=None):
 	if session == None:
 		session = getSession()
-	if Dict['Toggle'+key+session] == None or Dict['Toggle'+key+session] == 'disabled':
+	if Dict['Toggle%s%s' % (key,session)] == None or Dict['Toggle%s%s' % (key,session)] == 'disabled':
 		return False
 	else:
 		return True
+		
+######################################################################################
+@route(PREFIX + "/isForceNoCache")
+def isForceNoCache(**kwargs):
+	# no_cache=isForceNoCache()
+	
+	if CACHE_EXPIRY == 0:
+		return True
+		
+	return False
 
 ####################################################################################################
-def OrderBasedOn(srcs, use_host=True):
+def OrderBasedOn(srcs, use_host=True, use_filesize=False):
 	# order sources based on sequence of INTERNAL_SOURCES / quality
 	#Log(INTERNAL_SOURCES)
 	filter_extSources = []
-	if use_host == True:
-		for host in INTERNAL_SOURCES: filter_extSources += [i for i in srcs if i['quality'] == '4K' and i['source'].lower() == host['name']]
-		for host in INTERNAL_SOURCES: filter_extSources += [i for i in srcs if i['quality'] == '1080p' and i['source'].lower() == host['name']]
-		for host in INTERNAL_SOURCES: filter_extSources += [i for i in srcs if i['quality'] == '720p' and i['source'].lower() == host['name']]
-		for host in INTERNAL_SOURCES: filter_extSources += [i for i in srcs if i['quality'] == '480p' and i['source'].lower() == host['name']]
-		for host in INTERNAL_SOURCES: filter_extSources += [i for i in srcs if i['quality'] == '360p' and i['source'].lower() == host['name']]
+	
+	if use_filesize == True:
+		#Log(srcs)
+		filter_extSources = sorted(srcs, key=lambda k: k['fs'], reverse=True)
 	else:
-		filter_extSources += [i for i in srcs if i['quality'] == '4K']
-		filter_extSources += [i for i in srcs if i['quality'] == '1080p']
-		filter_extSources += [i for i in srcs if i['quality'] == '720p']
-		filter_extSources += [i for i in srcs if i['quality'] == '480p']
-		filter_extSources += [i for i in srcs if i['quality'] == '360p']
+		if use_host == True:
+			for host in INTERNAL_SOURCES: filter_extSources += [i for i in srcs if i['quality'] == '4K' and i['source'].lower() == host['name']]
+			for host in INTERNAL_SOURCES: filter_extSources += [i for i in srcs if i['quality'] == '1080p' and i['source'].lower() == host['name']]
+			for host in INTERNAL_SOURCES: filter_extSources += [i for i in srcs if i['quality'] == '720p' and i['source'].lower() == host['name']]
+			for host in INTERNAL_SOURCES: filter_extSources += [i for i in srcs if i['quality'] == '480p' and i['source'].lower() == host['name']]
+			for host in INTERNAL_SOURCES: filter_extSources += [i for i in srcs if i['quality'] == '360p' and i['source'].lower() == host['name']]
+		else:
+			filter_extSources += [i for i in srcs if i['quality'] == '4K']
+			filter_extSources += [i for i in srcs if i['quality'] == '1080p']
+			filter_extSources += [i for i in srcs if i['quality'] == '720p']
+			filter_extSources += [i for i in srcs if i['quality'] == '480p']
+			filter_extSources += [i for i in srcs if i['quality'] == '360p']
+	
 	srcs = filter_extSources
 	
 	# order sources based on sequence of INTERNAL_SOURCES_FILETYPE / video type
@@ -299,7 +386,7 @@ def OrderBasedOn(srcs, use_host=True):
 	return srcs
 	
 ####################################################################################################
-def FilterBasedOn(srcs, use_quality=True, use_riptype=True, use_vidtype=True, use_provider=True, use_host=True):
+def FilterBasedOn(srcs, use_quality=True, use_riptype=True, use_vidtype=True, use_provider=True, use_host=True, use_filesize=True):
 
 	# filter sources based on host enabled in INTERNAL_SOURCES
 	#Log(INTERNAL_SOURCES)
@@ -320,6 +407,13 @@ def FilterBasedOn(srcs, use_quality=True, use_riptype=True, use_vidtype=True, us
 	if use_quality == True:
 		filter_extSources = []
 		for qual in INTERNAL_SOURCES_QUALS: filter_extSources += [i for i in srcs if i['quality'].lower() == qual['label'].lower() and str(qual['enabled'])=='True']
+		srcs = filter_extSources
+		
+	# filter sources based on enabled file size in INTERNAL_SOURCES_SIZES
+	#Log(INTERNAL_SOURCES_SIZES)
+	if use_filesize == True:
+		filter_extSources = []
+		for fs in INTERNAL_SOURCES_SIZES: filter_extSources += [i for i in srcs if (i['vidtype'].lower() in 'movie/show' and i['fs'] >= fs['LL'] and i['fs'] < fs['UL'] and str(fs['enabled'])=='True') or (i['vidtype'].lower() not in 'movie/show')]
 		srcs = filter_extSources
 	
 	# filter sources based on enabled rip-type in INTERNAL_SOURCES_RIPTYPE
@@ -401,7 +495,7 @@ def ResolveFinalUrl(isTargetPlay, data, pair_required=False, params=None, host=N
 		
 	if vidurl != None:
 		if isTargetPlay and 'openload' in host and pair_required == False:
-			vidurl, err = host_openload.resolve(vidurl)
+			vidurl, err, sub_url = host_openload.resolve(vidurl)
 		else:
 			pass
 
@@ -453,17 +547,34 @@ def isItemVidAvailable(isTargetPlay, data, params=None, host=None, **kwargs):
 				if host_openload.check(vidurl, embedpage=True, headers=headers, cookie=cookie)[0] == True:
 						isVideoOnline = 'true'
 			elif isTargetPlay and host in host_misc_resolvers.supported_hosts:
-				resolved_url = host_misc_resolvers.resolve(vidurl)
+				resolved_url, params, udp = host_misc_resolvers.resolve(vidurl, httpsskip)
+				
 				if resolved_url != None:
-					resolved_url = resolved_url[len(resolved_url)-1]
-					http_res = client.request(url=resolved_url, output='responsecode', headers=headers, cookie=cookie, IPv4=True)
-					if http_res in client.HTTP_GOOD_RESP_CODES:
-						isVideoOnline = 'true'
+					# params = JSON.ObjectFromString(D(params))
+					# headers = params['headers']
+					# hls_url = resolved_url[len(resolved_url)-1]['file']
+					
+					# Log(hls_url)
+					# Log(headers)
+					
+					# if httpsskip == True:
+						# http_res = request(hls_url, headers=headers, httpsskip=True)
+					# else:
+						# http_res = HTTP.Request(hls_url, headers=headers).content
+					
+					# Log(http_res)
+					# if http_res == None:
+						# isVideoOnline = 'unknown'
+					# if http_res in client.HTTP_GOOD_RESP_CODES or http_res in client.GOOGLE_HTTP_GOOD_RESP_CODES_1 or 'EXTM3U' in http_res:
+						# isVideoOnline = 'true'
+					hls_url = resolved_url[len(resolved_url)-1]['file']
+					isVideoOnline = 'true'
+						
 			elif isTargetPlay:
 				isVideoOnline = 'unknown'
 			else:
 				if host_gvideo.check(vidurl, headers=headers, cookie=cookie, httpsskip=httpsskip)[0] == True:
-						isVideoOnline = 'true'
+					isVideoOnline = 'true'
 
 		except Exception as e:
 			Log('ERROR common.py>isItemVidAvailable %s, %s:' % (e.args,vidurl))
@@ -521,7 +632,7 @@ def make_cookie_str():
 			if user_defined_reqkey_cookie != None and user_defined_reqkey_cookie != '':
 				reqCookie = user_defined_reqkey_cookie
 
-			p_cookie = CACHE_COOKIE[0]['cookie'] + ';' + reqCookie
+			p_cookie = CACHE_COOKIE[0]['cookie'] + '; ' + reqCookie
 			p_cookie = p_cookie.replace(';;',';')
 			p_cookie_s = p_cookie.split(';')
 			cookie_string_arr = []
@@ -674,6 +785,18 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 		
 	return page_data_string
 	
+####################################################################################################
+def OpenLoadUnpair(**kwargs):
+	msg = host_openload.unpair()
+	if Prefs["use_debug"]:
+		for m in msg:
+			Log('OpenLoad UnPair: %s' % m)
+
+######################################################################################
+
+def id_generator(size=9, chars=string.ascii_uppercase + string.digits):
+	return ''.join(random.choice(chars) for _ in range(size))
+	
 def makeid(N,arr):
 
 	r = ''
@@ -781,11 +904,14 @@ def removeAccents(text):
 	:returns: The processed String.
 	:rtype: String.
 	"""
-	text = strip_accents(text.lower())
-	text = re.sub('[ ]+', '_', text)
-	text = re.sub('[^0-9a-zA-Z]', ' ', text)
-	text = text.title()
-	return text
+	try:
+		text = strip_accents(text.lower())
+		text = re.sub('[ ]+', '_', text)
+		text = re.sub('[^0-9a-zA-Z]', ' ', text)
+		text = text.title()
+		return text
+	except:
+		return text
 
 def strip_accents(text):
 	"""
@@ -806,6 +932,9 @@ def strip_accents(text):
 	text = text.decode("utf-8")
 	return str(text)
 
+def ascii_only(my_s):
+	printable = set(string.printable)
+	return filter(lambda x: x in printable, my_s)
 
 ####################################################################################################
 @route(PREFIX + "/MakeStringLength")
@@ -828,23 +957,27 @@ def ArrayItemsInString(arr, mystr):
 	
 ####################################################################################################
 class PageError(Exception):
-    pass
+	pass
 	
 ####################################################################################################
 
 # checks if USS is installed or not
 def is_uss_installed():
-    """Check install state of UnSupported Services"""
+	"""Check install state of UnSupported Services"""
+	
+	try:
+		identifiers = list()
+		plugins_list = XML.ElementFromURL('http://127.0.0.1:32400/:/plugins', cacheTime=0)
 
-    identifiers = list()
-    plugins_list = XML.ElementFromURL('http://127.0.0.1:32400/:/plugins', cacheTime=0)
+		for plugin_el in plugins_list.xpath('//Plugin'):
+			identifiers.append(plugin_el.get('identifier'))
 
-    for plugin_el in plugins_list.xpath('//Plugin'):
-        identifiers.append(plugin_el.get('identifier'))
-
-    if 'com.plexapp.system.unsupportedservices' in identifiers:
-        return True
-    return False
+		if 'com.plexapp.system.unsupportedservices' in identifiers:
+			return True
+		return False
+	except Exception as e:
+		Log.Error("common.is_uss_installed > Error: %s" % e)
+	return False
 	
 ####################################################################################################
 

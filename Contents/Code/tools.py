@@ -10,6 +10,9 @@ import shutil
 import json
 import common, fmovies
 
+TITLE = common.TITLE
+PREFIX = common.PREFIX
+
 ICON_TOOLS = "icon-tools.png"
 
 # general
@@ -32,13 +35,13 @@ support_path = os.path.join(app_support_path, 'Plug-in Support')
 data_path = os.path.join(support_path, 'Data', identifier)
 caches_path = os.path.join(support_path, 'Caches', identifier)
 
-MC = common.NewMessageContainer(common.PREFIX, common.TITLE)
+MC = common.NewMessageContainer(PREFIX, TITLE)
 
 ES_API_URL = 'http://movies-v2.api-fetch.website'
 	
 ####################################################################################################
-@route(common.PREFIX + '/devtools-cache')
-def DevToolsC(title=None, header=None, message=None):
+@route(PREFIX + "/DevToolsC")
+def DevToolsC(title=None, header=None, message=None, **kwargs):
 	"""Tools to Remove all Covers/URLs cached files"""
 
 	oc = ObjectContainer(title2='Tools', header=header, message=message)
@@ -77,14 +80,15 @@ def DevToolsC(title=None, header=None, message=None):
 	return oc
 	
 ####################################################################################################
-def ClearCache(itemname, timeout=None):
+def ClearCache(itemname, timeout=None, **kwargs):
 	"""Clear old Cached URLs depending on input timeout"""
 
 	if timeout==None:
 		timeout = Datetime.Delta()
 	cachetime = Datetime.Now()
 	count = 0
-	Log.Debug('* Clearing \'{}\' items older than {}'.format(itemname, str(cachetime - timeout)))
+	if Prefs["use_debug"]:
+		Log.Debug('* Clearing \'{}\' items older than {}'.format(itemname, str(cachetime - timeout)))
 	path = Core.storage.data_item_path(itemname)
 	Core.storage.ensure_dirs(path)
 	
@@ -97,7 +101,8 @@ def ClearCache(itemname, timeout=None):
 				Core.storage.remove_data_item(filepath)
 				count += 1
 
-	Log.Debug('* Cleaned {} Cached files from {} : {}'.format(count, itemname, path))
+	if Prefs["use_debug"]:
+		Log.Debug('* Cleaned {} Cached files from {} : {}'.format(count, itemname, path))
 	return count
 	
 ######################################################################################

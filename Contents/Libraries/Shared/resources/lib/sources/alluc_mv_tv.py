@@ -25,17 +25,27 @@ from resources.lib.libraries import control
 from resources.lib import resolvers
 from resources.lib import proxies
 
+name = 'ALL-UC'
+loggertxt = []
+
+USE_ALL_HOST_SEARCH = True
+USE_MEGA_SPECIFIC_SEARCH = True
+USE_OPENLOAD_SPECIFIC_SEARCH = True
+USE_GDRIVE_SPECIFIC_SEARCH = False
 
 class source:
 	def __init__(self):
-		print " -- Initializing AllUc Start --"
+		del loggertxt[:]
+		log(type='INFO', method='init', err=' -- Initializing %s Start --' % name)
+		self.init = False
 		self.domains = ['alluc.ee','alluc.com']
 		self.base_link = 'https://www.alluc.ee'
 		self.moviesearch_link = ''
 		self.MainPageValidatingContent = 'Video Link Search Engine - Alluc'
 		self.type_filter = ['movie', 'show','anime']
 		self.ssl = False
-		self.name = 'ALL-UC'
+		self.disabled = False
+		self.name = name
 		self.loggertxt = []
 		self.logo = 'https://www.alluc.ee/img/alluc_plus_logo.png'
 		self.speedtest = 0
@@ -45,12 +55,18 @@ class source:
 		self.siteonline = self.testSite()
 		self.testparser = 'Unknown'
 		self.testparser = self.testParser()
-		print " -- Initializing AllUc End --"
+		self.msg = ''
+		self.fetchedtoday = 0
+		self.init = True
+		log(type='INFO', method='init', err=' -- Initializing %s End --' % name)
 		
 	def info(self):
+		if self.fetchedtoday > 0:
+			self.msg = 'Fetched today: %s' % str(self.fetchedtoday)
 		return {
 			'url': self.base_link,
 			'name': self.name,
+			'msg' : self.msg,
 			'speed': round(self.speedtest,3),
 			'logo': self.logo,
 			'ssl' : self.ssl,
@@ -59,12 +75,9 @@ class source:
 			'parser': self.testparser
 		}
 		
-	def log(self, type, method, err, dolog=False, disp=True):
-		msg = '%s : %s>%s - : %s' % (type, self.name, method, err)
-		if dolog == True:
-			self.loggertxt.append(msg)
-		if disp == True:
-			logger(msg)
+	def getLog(self):
+		self.loggertxt = loggertxt
+		return self.loggertxt
 		
 	def testSite(self):
 		try:
@@ -72,16 +85,16 @@ class source:
 			http_res, content = proxies.request(url=self.base_link, output='response', use_web_proxy=False)
 			self.speedtest = time.time() - x1
 			if content != None and content.find(self.MainPageValidatingContent) >-1:
-				self.log('SUCCESS', 'testSite', 'HTTP Resp : %s for %s' % (http_res,self.base_link), dolog=True)
+				log('SUCCESS', 'testSite', 'HTTP Resp : %s for %s' % (http_res,self.base_link))
 				return True
 			else:
-				self.log('ERROR', 'testSite', 'HTTP Resp : %s for %s' % (http_res,self.base_link), dolog=True)
+				log('FAIL', 'testSite', 'Validation content Not Found. HTTP Resp : %s for %s' % (http_res,self.base_link))
 				x1 = time.time()
 				http_res, content = proxies.request(url=self.base_link, output='response', use_web_proxy=True)
 				self.speedtest = time.time() - x1
 				if content != None and content.find(self.MainPageValidatingContent) >-1:
 					self.proxyrequired = True
-					self.log('SUCCESS', 'testSite', 'HTTP Resp : %s via proxy for %s' % (http_res,self.base_link), dolog=True)
+					log('SUCCESS', 'testSite', 'HTTP Resp : %s via proxy for %s' % (http_res,self.base_link))
 					return True
 				else:
 					time.sleep(2.0)
@@ -90,41 +103,46 @@ class source:
 					self.speedtest = time.time() - x1
 					if content != None and content.find(self.MainPageValidatingContent) >-1:
 						self.proxyrequired = True
-						self.log('SUCCESS', 'testSite', 'HTTP Resp : %s via proxy for %s' % (http_res,self.base_link), dolog=True)
+						log('SUCCESS', 'testSite', 'HTTP Resp : %s via proxy for %s' % (http_res,self.base_link))
 						return True
 					else:
-						self.log('ERROR', 'testSite', 'HTTP Resp : %s via proxy for %s' % (http_res,self.base_link), dolog=True)
-						self.log('ERROR', 'testSite', content, dolog=True)
+						log('FAIL', 'testSite', 'Validation content Not Found. HTTP Resp : %s via proxy for %s' % (http_res,self.base_link))
 			return False
 		except Exception as e:
-			self.log('ERROR','testSite', '%s' % e, dolog=True)
+			log('ERROR','testSite', '%s' % e)
 			return False
 		
 	def testParser(self):
 		try:
+			if self.disabled == True:
+				log('INFO','testParser', 'Plugin Disabled - cannot test parser')
+				return False
 			if self.siteonline == False:
-				self.log('ERROR', 'testParser', 'testSite returned False', dolog=True)
+				log('INFO', 'testParser', '%s is offline - cannot test parser' % self.base_link)
 				return False
 		
 			for movie in testparams.test_movies:
-				getmovieurl = self.get_movie(title=movie['title'], year=movie['year'], imdb=movie['imdb'], testing=True)
+				getmovieurl = self.get_movie(title=movie['title'], year=movie['year'], imdb=movie['imdb'])
 				movielinks = self.get_sources(url=getmovieurl, testing=True)
 				
 				if movielinks != None and len(movielinks) > 0:
-					self.log('SUCCESS', 'testParser', 'links : %s' % len(movielinks), dolog=True)
+					log('SUCCESS', 'testParser', 'Parser is working')
 					return True
-				else:
-					self.log('ERROR', 'testParser', 'getmovieurl : %s' % getmovieurl, dolog=True)
-					self.log('ERROR', 'testParser', 'movielinks : %s' % movielinks, dolog=True)
+					
+			log('FAIL', 'testParser', 'Parser NOT working')
 			return False
 		except Exception as e:
-			self.log('ERROR', 'testParser', '%s' % e, dolog=True)
+			log('ERROR', 'testParser', '%s' % e)
 			return False
 
 
-	def get_movie(self, imdb, title, year, proxy_options=None, key=None, testing=False):
+	def get_movie(self, imdb, title, year, proxy_options=None, key=None):
 		try:
+			if control.setting('Provider-%s' % name) == False:
+				log('INFO','get_movie','Provider Disabled by User')
+				return None
 			stream_url = []
+			
 			if control.setting('control_all_uc_api_key'):
 				if control.setting('realdebrid_token') or control.setting('premiumize_user'):
 					self.moviesearch_link = '/api/search/download?user=%s&password=%s&query=%s+%s'
@@ -133,49 +151,114 @@ class source:
 				
 				url = self.moviesearch_link % (control.setting('control_all_uc_api_key'),cleantitle.geturl(title), year)
 				r = urlparse.urljoin(self.base_link, url)
-				r = r + "+%23newlinks"
-				rr = proxies.request(r, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
-				r1 = json.loads(rr)
-
-				for item in r1['result']:
-					if len(item['hosterurls']) == 1:
-						lang = item['lang'].encode('utf-8')
-						tmp = item['hosterurls'][0]['url']
-						tmp = client.replaceHTMLCodes(tmp)
-						tmp = tmp.encode('utf-8')
-						title = item['title'].encode('utf-8')
-						stream_url.append({'url': tmp, 'hoster': item['hostername'], 'title': title, 'lang':lang})
+				xr = r + "+%23newlinks"
+				
+				if USE_ALL_HOST_SEARCH == True:
+					rr = proxies.request(xr, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
+					r1 = json.loads(rr)
+					self.fetchedtoday = r1['fetchedtoday']
+					
+					for item in r1['result']:
+						if len(item['hosterurls']) == 1:
+							src = item['sourcename'].encode('utf-8')
+							ext = item['extension'].encode('utf-8')
+							lang = item['lang'].encode('utf-8')
+							tmp = item['hosterurls'][0]['url']
+							tmp = client.replaceHTMLCodes(tmp)
+							tmp = tmp.encode('utf-8')
+							if ext == '':
+								tmp_e = tmp.split('.')
+								ext = tmp_e[len(tmp_e)-1]
+							xtitle = item['title'].encode('utf-8')
+							stream_url.append({'url': tmp, 'hoster': item['hostername'], 'title': xtitle, 'lang':lang, 'src':src, 'ext':ext})
 						
-				r = r + "&host%3Agoogle.com"
-				rr = proxies.request(r, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
-				r1 = json.loads(rr)
+				if USE_GDRIVE_SPECIFIC_SEARCH == True and self.init == True and control.setting('Host-gvideo') != False:
+					r = xr + "+host%3Adrive.google.com"
+					rr = proxies.request(r, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
+					r1 = json.loads(rr)
+					self.fetchedtoday = r1['fetchedtoday']
 
-				for item in r1['result']:
-					if len(item['hosterurls']) == 1:
-						lang = item['lang'].encode('utf-8')
-						tmp = item['hosterurls'][0]['url']
-						tmp = client.replaceHTMLCodes(tmp)
-						tmp = tmp.encode('utf-8')
-						title = item['title'].encode('utf-8')
-						stream_url.append({'url': tmp, 'hoster': item['hostername'], 'title': title, 'lang':lang})
+					for item in r1['result']:
+						if len(item['hosterurls']) == 1:
+							src = item['sourcename'].encode('utf-8')
+							ext = item['extension'].encode('utf-8')
+							lang = item['lang'].encode('utf-8')
+							tmp = item['hosterurls'][0]['url']
+							tmp = client.replaceHTMLCodes(tmp)
+							tmp = tmp.encode('utf-8')
+							if ext == '':
+								tmp_e = tmp.split('.')
+								ext = tmp_e[len(tmp_e)-1]
+							xtitle = item['title'].encode('utf-8')
+							stream_url.append({'url': tmp, 'hoster': item['hostername'], 'title': xtitle, 'lang':lang, 'src':src, 'ext':ext})
+									
+				if USE_OPENLOAD_SPECIFIC_SEARCH == True and self.init == True and control.setting('Host-openload') != False:
+					r = xr + "+host%3Aopenload.co"
+					rr = proxies.request(r, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
+					r1 = json.loads(rr)
+					self.fetchedtoday = r1['fetchedtoday']
+
+					for item in r1['result']:
+						if len(item['hosterurls']) == 1:
+							src = item['sourcename'].encode('utf-8')
+							ext = item['extension'].encode('utf-8')
+							lang = item['lang'].encode('utf-8')
+							tmp = item['hosterurls'][0]['url']
+							tmp = client.replaceHTMLCodes(tmp)
+							tmp = tmp.encode('utf-8')
+							if ext == '':
+								tmp_e = tmp.split('.')
+								ext = tmp_e[len(tmp_e)-1]
+							xtitle = item['title'].encode('utf-8')
+							stream_url.append({'url': tmp, 'hoster': item['hostername'], 'title': xtitle, 'lang':lang, 'src':src, 'ext':ext})
+							
+				if USE_MEGA_SPECIFIC_SEARCH == True and self.init == True and control.setting('Host-mega') != False:
+					self.moviesearch_link = '/api/search/download?apikey=%s&query=%s+%s'
+					url = self.moviesearch_link % (control.setting('control_all_uc_api_key'),cleantitle.geturl(title), year)
+					r = urlparse.urljoin(self.base_link, url)
+					r = r + "+host%3Amega.nz"
+					r = r + "+%23newlinks"
+					rr = proxies.request(r, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
+					r1 = json.loads(rr)
+					self.fetchedtoday = r1['fetchedtoday']
+
+					for item in r1['result']:
+						if len(item['hosterurls']) == 1:
+							src = item['sourcename'].encode('utf-8')
+							ext = item['extension'].encode('utf-8')
+							lang = item['lang'].encode('utf-8')
+							tmp = item['hosterurls'][0]['url']
+							tmp = client.replaceHTMLCodes(tmp)
+							tmp = tmp.encode('utf-8')
+							if ext == '':
+								tmp_e = tmp.split('.')
+								ext = tmp_e[len(tmp_e)-1]
+							xtitle = item['title'].encode('utf-8')
+							stream_url.append({'url': tmp, 'hoster': item['hostername'], 'title': xtitle, 'lang':lang, 'src':src, 'ext':ext})
 						
 			return stream_url
 		except Exception as e: 
-			control.log(e)
+			log('ERROR', 'get_movie','%s: %s' % (title,e))
 			return
 
-	def get_show(self, imdb, tvdb, tvshowtitle, year, season, proxy_options=None, key=None):
+	def get_show(self, imdb=None, tvdb=None, tvshowtitle=None, year=None, season=None, proxy_options=None, key=None):
 		try:
+			if control.setting('Provider-%s' % name) == False:
+				log('INFO','get_show','Provider Disabled by User')
+				return None
 			url = '%s (%s)' % (tvshowtitle, year)
 			url = client.replaceHTMLCodes(url)
 			url = url.encode('utf-8')
 			return url
-		except:
+		except Exception as e: 
+			log('ERROR', 'get_show','%s: %s' % (tvshowtitle,e))
 			return
 
 
-	def get_episode(self, url, imdb, tvdb, title, date, season, episode, proxy_options=None, key=None):
+	def get_episode(self, url=None, imdb=None, tvdb=None, title=None, year=None, season=None, episode=None, proxy_options=None, key=None):
 		try:
+			if control.setting('Provider-%s' % name) == False:
+				return None
 			stream_url = []
 			if control.setting('control_all_uc_api_key'):
 				if control.setting('realdebrid_token') or control.setting('premiumize_user'):
@@ -184,49 +267,108 @@ class source:
 					self.moviesearch_link = '/api/search/stream/?apikey=%s&query=%s'
 
 			tvshowtitle, year = re.compile('(.+?) [(](\d{4})[)]$').findall(url)[0]
+			season = str(season)
+			episode = str(episode)
 			season, episode = season.zfill(2), episode.zfill(2)
 			query = '%s s%se%s' % (tvshowtitle, season, episode)
 			query = self.moviesearch_link % (control.setting('control_all_uc_api_key'), urllib.quote_plus(query))
 			r = urlparse.urljoin(self.base_link, query)
-			r = r + "+%23newlinks"
+			xr = r + "+%23newlinks"
 			#r = requests.get(r).json()
-			rr = proxies.request(r, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
-			rr = json.loads(rr)
-
-			for item in rr['result']:   
-				if len(item['hosterurls']) == 1:
-					lang = item['lang'].encode('utf-8')
-					tmp = item['hosterurls'][0]['url']
-					tmp = client.replaceHTMLCodes(tmp)
-					tmp = tmp.encode('utf-8')
-					title = item['title'].encode('utf-8')
-					stream_url.append({'url': tmp, 'hoster': item['hostername'], 'title': title, 'lang':lang})
 			
-			r = r + "&host%3Agoogle.com"
-			r = proxies.request(r, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
-			r = json.loads(r)
+			if USE_ALL_HOST_SEARCH == True:
+				rr = proxies.request(xr, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
+				rr = json.loads(rr)
+				self.fetchedtoday = rr['fetchedtoday']
+				
+				for item in rr['result']:   
+					if len(item['hosterurls']) == 1:
+						src = item['sourcename'].encode('utf-8')
+						ext = item['extension'].encode('utf-8')
+						lang = item['lang'].encode('utf-8')
+						tmp = item['hosterurls'][0]['url']
+						tmp = client.replaceHTMLCodes(tmp)
+						tmp = tmp.encode('utf-8')
+						if ext == '':
+							tmp_e = tmp.split('.')
+							ext = tmp_e[len(tmp_e)-1]
+						xtitle = item['title'].encode('utf-8')
+						stream_url.append({'url': tmp, 'hoster': item['hostername'], 'title': xtitle, 'lang':lang, 'src':src, 'ext':ext})
+			
+			if USE_GDRIVE_SPECIFIC_SEARCH == True and self.init == True and control.setting('Host-gvideo') != False:
+				r = xr + "+host%3Adrive.google.com"
+				rr = proxies.request(r, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
+				rr = json.loads(rr)
+				self.fetchedtoday = rr['fetchedtoday']
 
-			for item in r['result']:   
-				if len(item['hosterurls']) == 1:
-					lang = item['lang'].encode('utf-8')
-					tmp = item['hosterurls'][0]['url']
-					tmp = client.replaceHTMLCodes(tmp)
-					tmp = tmp.encode('utf-8')
-					title = item['title'].encode('utf-8')
-					stream_url.append({'url': tmp, 'hoster': item['hostername'], 'title': title, 'lang':lang})
+				for item in rr['result']:   
+					if len(item['hosterurls']) == 1:
+						src = item['sourcename'].encode('utf-8')
+						ext = item['extension'].encode('utf-8')
+						lang = item['lang'].encode('utf-8')
+						tmp = item['hosterurls'][0]['url']
+						tmp = client.replaceHTMLCodes(tmp)
+						tmp = tmp.encode('utf-8')
+						if ext == '':
+							tmp_e = tmp.split('.')
+							ext = tmp_e[len(tmp_e)-1]
+						xtitle = item['title'].encode('utf-8')
+						stream_url.append({'url': tmp, 'hoster': item['hostername'], 'title': xtitle, 'lang':lang, 'src':src, 'ext':ext})
+					
+			if USE_OPENLOAD_SPECIFIC_SEARCH == True and self.init == True and control.setting('Host-openload') != False:
+				r = xr + "+host%3Aopenload.co"
+				rr = proxies.request(r, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
+				rr = json.loads(rr)
+				self.fetchedtoday = rr['fetchedtoday']
+
+				for item in rr['result']:   
+					if len(item['hosterurls']) == 1:
+						src = item['sourcename'].encode('utf-8')
+						ext = item['extension'].encode('utf-8')
+						lang = item['lang'].encode('utf-8')
+						tmp = item['hosterurls'][0]['url']
+						tmp = client.replaceHTMLCodes(tmp)
+						tmp = tmp.encode('utf-8')
+						if ext == '':
+							tmp_e = tmp.split('.')
+							ext = tmp_e[len(tmp_e)-1]
+						xtitle = item['title'].encode('utf-8')
+						stream_url.append({'url': tmp, 'hoster': item['hostername'], 'title': xtitle, 'lang':lang, 'src':src, 'ext':ext})
+						
+			if USE_MEGA_SPECIFIC_SEARCH == True and self.init == True and control.setting('Host-mega') != False:
+				self.moviesearch_link = '/api/search/download?apikey=%s&query=%s'
+				query = '%s s%se%s' % (tvshowtitle, season, episode)
+				query = self.moviesearch_link % (control.setting('control_all_uc_api_key'), urllib.quote_plus(query))
+				r = urlparse.urljoin(self.base_link, query)
+				xr = r + "+%23newlinks"
+				r = xr + "+host%3Amega.nz"
+				rr = proxies.request(r, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
+				rr = json.loads(rr)
+				self.fetchedtoday = rr['fetchedtoday']
+
+				for item in rr['result']:
+					if len(item['hosterurls']) == 1:
+						src = item['sourcename'].encode('utf-8')
+						ext = item['extension'].encode('utf-8')
+						lang = item['lang'].encode('utf-8')
+						tmp = item['hosterurls'][0]['url']
+						tmp = client.replaceHTMLCodes(tmp)
+						tmp = tmp.encode('utf-8')
+						if ext == '':
+							tmp_e = tmp.split('.')
+							ext = tmp_e[len(tmp_e)-1]
+						xtitle = item['title'].encode('utf-8')
+						stream_url.append({'url': tmp, 'hoster': item['hostername'], 'title': xtitle, 'lang':lang, 'src':src, 'ext':ext})
 					
 			return stream_url
 		except Exception as e: 
-			control.log('alluc error tv')
-			control.log(e)
+			log('ERROR', 'get_episode','%s: %s' % (title,e))
 			return
 
 	def get_sources(self, url, hosthdDict=None, hostDict=None, locDict=None, proxy_options=None, key=None, testing=False):
 		try:
-			#sources = []
-			links = []
-
-			if url == None: return links
+			sources = []
+			if url == None: return sources
 			
 			for link in url:
 				if re.match('((?!\.part[0-9]).)*$', link['url'], flags=re.IGNORECASE) and '://' in link['url']:
@@ -241,18 +383,46 @@ class source:
 							else:
 								quality = 'SD'
 							#sources.append({ 'source' : host, 'quality' : quality, 'provider': 'alluc', 'url': link['url'] })
-							links = resolvers.createMeta(link['url'], self.name, self.logo, quality, links, key, lang=link['lang'])
-							if testing and len(links) > 0:
-								break
-			#return sources
-			return links
+							
+							file_ext = '.mp4'
+							if len(link['ext']) > 0 and len(link['ext']) < 4 and len(link['src']) > 0:
+								txt = '%s (.%s)' % (link['src'],link['ext'])
+								file_ext = '.%s' % link['ext']
+							elif len(link['ext']) > 0 and len(link['ext']) < 4 and len(link['src']) == 0:
+								txt = '%s (.%s)' % (link['src'],link['ext'])
+								file_ext = '.%s' % link['ext']
+							elif (len(link['ext']) == 0 or len(link['ext']) > 3) and len(link['src']) > 0:
+								txt = '%s' % link['src']
+							else:
+								txt = ''
+							sources = resolvers.createMeta(link['url'], self.name, self.logo, quality, sources, key, lang=link['lang'], txt=txt, file_ext=file_ext, testing=testing)
+
+			if self.fetchedtoday > 0:
+				self.msg = 'Fetched today: %s' % str(self.fetchedtoday)
+				log('INFO', 'get_sources', self.msg, dolog=not testing)
+				
+			if len(sources) == 0:
+				log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key))
+				return sources
+			
+			log('SUCCESS', 'get_sources','%s sources : %s' % (cleantitle.title_from_key(key), len(sources)), dolog=not testing)
+			return sources
 		except Exception as e:
-			control.log('ERROR ALLUC %s' % e)
-			return links
+			log('ERROR', 'get_sources', '%s' % e, dolog=not testing)
+			return sources
 
 	def resolve(self, url):
 		control.log('>>>>>>>>>>>>>>>>>> Resolve ALLUC %s' % url)
 		return resolvers.request(url)
 		
-def logger(msg):
-	control.log(msg)
+def log(type='INFO', method='undefined', err='', dolog=True, logToControl=False, doPrint=True):
+	try:
+		msg = '%s: %s > %s > %s : %s' % (time.ctime(time.time()), type, name, method, err)
+		if dolog == True:
+			loggertxt.append(msg)
+		if logToControl == True:
+			control.log(msg)
+		if control.doPrint == True and doPrint == True:
+			print msg
+	except Exception as e:
+		control.log('Error in Logging: %s >>> %s' % (msg,e))

@@ -22,12 +22,12 @@ class proxy:
 		
 	def testSite(self, disabled=False):
 		try:
+			if disabled == True:
+				return False
+			
 			x1 = time.time()
 			http_res = client.request(url=self.base_link, output='responsecode')
 			self.speedtest = time.time() - x1
-			
-			if disabled == True:
-				return False
 			
 			if http_res not in client.HTTP_GOOD_RESP_CODES:
 				return False

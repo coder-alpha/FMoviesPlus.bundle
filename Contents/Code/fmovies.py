@@ -28,6 +28,8 @@ TOKEN_OPER_PASTEBIN_URL = "https://pastebin.com/raw/9zFcNJuP"
 TOKEN_KEY = []
 TOKEN_OPER = []
 
+CACHE_IGNORELIST = ['apidata.googleusercontent.com']
+
 newmarketgidstorage = 'MarketGidStorage=%7B%220%22%3A%7B%22svspr%22%3A%22%22%2C%22svsds%22%3A15%2C%22TejndEEDj%22%3A%22MTQ5MzIxMTc0OTQ0NDExMDAxNDc3NDE%3D%22%7D%2C%22C110014%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493215038742%7D%2C%22C110025%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493216772437%7D%2C%22C110023%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493216771928%7D%7D'
 
 ####################################################################################################
@@ -118,7 +120,7 @@ def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web
 				#surl = common.host_openload.resolve(url=res, embedpage=True)
 				surl = ret
 				if use_debug:
-					Log("Openload Stream URL %s from %s" % (surl,ret))
+					Log("Target-Play Stream URL %s from %s" % (surl,ret))
 				res = surl
 			else:
 				# fix api url to https
@@ -132,23 +134,39 @@ def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web
 					data = common.interface.request_via_proxy_as_backup(ret, limit='0', headers=headersS, httpsskip=use_https_alt, hideurl=not use_debug)
 					data = json.loads(data)
 				except Exception as e:
-					Log('ERROR fmovies.py>GetApiUrl-1: ARGS:%s, URL:%s' % (e,ret))
+					Log.Error('ERROR fmovies.py>GetApiUrl-1: ARGS:%s, URL:%s' % (e,ret))
 					pass
 
 				if data == None:
 					return None, isTargetPlay, error, host, res_subtitle
 				if data['error'] == None:
 					res = JSON.StringFromObject(data['data'])
-					common.CACHE[key] = {}
-					common.CACHE[key]['res'] = res
-					common.CACHE[key]['res_subtitle'] = res_subtitle
-					common.CACHE[key]['host'] = host
-					common.CACHE[key]['serverts'] = serverts
-					common.CACHE[key]['myts'] = myts
-					common.CACHE[key]['isTargetPlay'] = str(isTargetPlay)
-					if use_debug:
-						Log("Added " + key + " to CACHE")
-						Log("Added " + res + " to " + key)
+					
+					add_bool = True
+					try:
+						for ign in CACHE_IGNORELIST:
+							for res_file in data['data']:
+								if ign in res_file['file']:
+									add_bool = False
+									break
+					except Exception as e:
+						Log.Error("ERROR: %s" % e)
+					
+					if add_bool == True:
+						common.CACHE[key] = {}
+						common.CACHE[key]['res'] = res
+						common.CACHE[key]['res_subtitle'] = res_subtitle
+						common.CACHE[key]['host'] = host
+						common.CACHE[key]['serverts'] = serverts
+						common.CACHE[key]['myts'] = myts
+						common.CACHE[key]['isTargetPlay'] = str(isTargetPlay)
+						if use_debug:
+							Log("Added " + key + " to CACHE")
+							Log("Added " + res + " to " + key)
+					else:
+						if use_debug:
+							Log("*IgnoreList URL* Not Added " + key + " to CACHE")
+							Log("*IgnoreList URL* Not Added " + res + " to " + key)
 				elif data['error'] != None:
 					error = data['error']
 				else:

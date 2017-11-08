@@ -974,7 +974,7 @@ def SetProviderOptions(session, refresh=False, n=None, curr_prov=None, option='0
 	else:
 		oc.add(DirectoryObject(key = Callback(SetProviderOptions, session=session, n=E(JSON.StringFromObject(provider)), curr_prov=curr_prov, option='2'), title = 'Enable Provider', summary = title_msg, thumb = R(ICON_NOTOK)))
 		
-	oc.add(DirectoryObject(key = Callback(ExtProviders, session=session, n=E(JSON.StringFromObject(provider)), curr_prov=curr_prov), title = 'Move to Top in Provider List', summary = title_msg, thumb = R(ICON_UPARROW)))
+	oc.add(DirectoryObject(key = Callback(ExtProviders, session=session, n=E(JSON.StringFromObject(provider)), curr_prov=curr_prov), title = 'Move to Top in Provider List', summary = title_msg if provider['msg'] == '' else '%s - %s' % (provider['msg'],title_msg), thumb = R(ICON_UPARROW)))
 	
 	oc.add(DirectoryObject(title = "Tools", summary='Tools for providers', key = Callback(IntProviderTools, choice=None, provider=provider['name']), thumb = R(ICON_TOOLS)))
 	
@@ -1374,6 +1374,7 @@ def ResetAllOptions(session, doReset=False, **kwargs):
 	
 	if doReset == False:
 		oc = ObjectContainer(title2 = 'Confirm Factory Reset', no_cache=common.isForceNoCache())
+		oc.add(DirectoryObject(key = Callback(tools.DevToolsC, title='save_config'), title = 'INFO - Make a Backup', summary = 'Make a Backup Config. of your Channel Options.', thumb = R(ICON_SAVE)))
 		oc.add(DirectoryObject(key = Callback(Options, session=session), title = 'No', summary = 'Return to Options Menu', thumb = R(ICON_NOTOK)))
 		oc.add(DirectoryObject(key = Callback(ResetAllOptions, session=session, doReset=True), title = 'Yes', summary = 'This will erase all information stored in the Plugin Dictionary (Bookmarks, Recent Watchlist, Searches, Device Options, etc.)', thumb = R(ICON_OK)))
 		oc.add(DirectoryObject(key = Callback(MainMenu),title = '<< Main Menu',thumb = R(ICON)))
@@ -1384,8 +1385,19 @@ def ResetAllOptions(session, doReset=False, **kwargs):
 	Dict.Reset()
 	Dict.Save()
 	
+	del common.OPTIONS_PROVIDERS[:]
+	del common.OPTIONS_PROXY[:]
+	del common.INTERNAL_SOURCES[:]
+	common.DOWNLOAD_OPTIONS = {'movie':[], 'show':[]}
+	common.INTERNAL_SOURCES_QUALS = [{'label':'4K','enabled': 'True'},{'label':'1080p','enabled': 'True'},{'label':'720p','enabled': 'True'},{'label':'480p','enabled': 'True'},{'label':'360p','enabled': 'True'}]
+	common.INTERNAL_SOURCES_RIPTYPE = [{'label':'BRRIP','enabled': 'True'},{'label':'PREDVD','enabled': 'True'},{'label':'CAM','enabled': 'True'},{'label':'TS','enabled': 'True'},{'label':'SCR','enabled': 'True'},{'label':'UNKNOWN','enabled': 'True'}]
+	common.INTERNAL_SOURCES_FILETYPE = [{'label':'Movie/Show','enabled': 'True'},{'label':'Trailer','enabled': 'True'},{'label':'Behind the scenes','enabled': 'False'},{'label':'Music Video','enabled': 'False'},{'label':'Deleted Scenes','enabled': 'False'},{'label':'Interviews','enabled': 'False'},{'label':'Misc.','enabled': 'False'}]
+	common.INTERNAL_SOURCES_SIZES = [{'label':'> 2GB','enabled': 'True','LL':2*common.TO_GB,'UL':100*common.TO_GB},{'label':'1GB - 2GB','enabled': 'True','LL':1*common.TO_GB,'UL':2*common.TO_GB},{'label':'0.5GB - 1GB','enabled': 'True','LL':0.5*common.TO_GB,'UL':1*common.TO_GB},{'label':'0GB - 0.5GB','enabled': 'True','LL':1,'UL':0.5*common.TO_GB},{'label':'0GB','enabled': 'False','LL':0,'UL':0}]
+	
 	FilterExt_Search.clear()
 	FilterExt.clear()
+	
+	Thread.Create(SleepAndUpdateThread, {}, session=session)
 	
 	return MC.message_container('Reset All Options', 'All Dictionary stored Options have been Reset to Factory Defaults !')
 	
@@ -3846,7 +3858,9 @@ def AddToDownloadsListPre(title, year, url, durl, purl, summary, thumb, quality,
 		try:
 			if 'openload' in source:
 				isPairDone = common.host_openload.isPairingDone()
-				online, r1, err, fs_i, furl2 =  common.host_openload.check(url, usePairing = False, embedpage=True)
+				online, r1, err, fs_i, furl2, sub_url_t =  common.host_openload.check(url, usePairing = False, embedpage=True)
+				if sub_url == None:
+					sub_url = sub_url_t
 			else:
 				fs_i, err = common.client.getFileSize(url, retError=True, retry429=True, cl=2)
 
@@ -4070,7 +4084,7 @@ def Downloads(title, session = None, status = None, refresh = 0, **kwargs):
 						if longstringObjs['status'] == dstatus  or dstatus == common.DOWNLOAD_STATUS[5]:
 							c += 1
 					except Exception as e:
-						pass
+						Log('ERROR: Downloads >> %s' % e)
 			N_status[dstatus] = c
 		for statusx in common.DOWNLOAD_STATUS:
 			oc.add(DirectoryObject(
@@ -4469,6 +4483,8 @@ def DownloadingFilesMenu(title, uid, choice=None, session=None, status=None, con
 			
 			time.sleep(2)
 			
+			if choice == common.DOWNLOAD_ACTIONS[3]:
+				return MC.message_container('%s' % choice, '%s (by 2 hrs.) applied to %s' % (choice, title))
 			return MC.message_container('%s' % choice, '%s applied to %s' % (choice, title))
 		else:
 			return MC.message_container('Unavailable', 'Item removed or no longer available')
@@ -4617,7 +4633,7 @@ def PostponeDownloadingDownloads(session):
 				EncTxt = E(JSON.StringFromObject(longstringObjs))
 				Dict[uid] = EncTxt
 	
-	return MC.message_container('Postpone Downloads', 'All Current Downloads have been Postponed')
+	return MC.message_container('Postpone Downloads', 'All Current Downloads have been Postponed (by 2hrs.)')
 	
 ######################################################################################
 @route(PREFIX + "/RetryFailedDownloads")

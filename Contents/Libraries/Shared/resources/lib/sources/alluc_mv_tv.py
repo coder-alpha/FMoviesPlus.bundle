@@ -56,17 +56,19 @@ class source:
 		self.testparser = 'Unknown'
 		self.testparser = self.testParser()
 		self.msg = ''
+		self.error = ''
 		self.fetchedtoday = 0
 		self.init = True
 		log(type='INFO', method='init', err=' -- Initializing %s End --' % name)
 		
 	def info(self):
+		msg = self.error
 		if self.fetchedtoday > 0:
-			self.msg = 'Fetched today: %s' % str(self.fetchedtoday)
+			msg = '%sFetched today: %s' % (msg, str(self.fetchedtoday))
 		return {
 			'url': self.base_link,
 			'name': self.name,
-			'msg' : self.msg,
+			'msg' : msg,
 			'speed': round(self.speedtest,3),
 			'logo': self.logo,
 			'ssl' : self.ssl,
@@ -129,7 +131,10 @@ class source:
 					log('SUCCESS', 'testParser', 'Parser is working')
 					return True
 					
-			log('FAIL', 'testParser', 'Parser NOT working')
+			if self.error != '':
+				log('ERROR', 'testParser', 'Parser NOT working. %s' % self.error)
+			else:
+				log('FAIL', 'testParser', 'Parser NOT working')
 			return False
 		except Exception as e:
 			log('ERROR', 'testParser', '%s' % e)
@@ -155,7 +160,13 @@ class source:
 				
 				if USE_ALL_HOST_SEARCH == True:
 					rr = proxies.request(xr, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
+					if rr == None or str(rr).strip() == '403':
+						self.error = 'Invalid Key or rate limit exceeded. '
+						raise Exception(self.error)
 					r1 = json.loads(rr)
+					if r1['status'] != 'success':
+						self.error = '%s ' % r1['message']
+						raise Exception(self.error)
 					self.fetchedtoday = r1['fetchedtoday']
 					
 					for item in r1['result']:
@@ -175,7 +186,13 @@ class source:
 				if USE_GDRIVE_SPECIFIC_SEARCH == True and self.init == True and control.setting('Host-gvideo') != False:
 					r = xr + "+host%3Adrive.google.com"
 					rr = proxies.request(r, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
+					if rr == None or str(rr).strip() == '403':
+						self.error = 'Invalid Key or rate limit exceeded. '
+						raise Exception(self.error)
 					r1 = json.loads(rr)
+					if r1['status'] != 'success':
+						self.error = '%s ' % r1['message']
+						raise Exception(self.error)
 					self.fetchedtoday = r1['fetchedtoday']
 
 					for item in r1['result']:
@@ -195,7 +212,13 @@ class source:
 				if USE_OPENLOAD_SPECIFIC_SEARCH == True and self.init == True and control.setting('Host-openload') != False:
 					r = xr + "+host%3Aopenload.co"
 					rr = proxies.request(r, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
+					if rr == None or str(rr).strip() == '403':
+						self.error = 'Invalid Key or rate limit exceeded. '
+						raise Exception(self.error)
 					r1 = json.loads(rr)
+					if r1['status'] != 'success':
+						self.error = '%s ' % r1['message']
+						raise Exception(self.error)
 					self.fetchedtoday = r1['fetchedtoday']
 
 					for item in r1['result']:
@@ -219,7 +242,13 @@ class source:
 					r = r + "+host%3Amega.nz"
 					r = r + "+%23newlinks"
 					rr = proxies.request(r, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
+					if rr == None or str(rr).strip() == '403':
+						self.error = 'Invalid Key or rate limit exceeded. '
+						raise Exception(self.error)
 					r1 = json.loads(rr)
+					if r1['status'] != 'success':
+						self.error = '%s ' % r1['message']
+						raise Exception(self.error)
 					self.fetchedtoday = r1['fetchedtoday']
 
 					for item in r1['result']:
@@ -238,7 +267,7 @@ class source:
 						
 			return stream_url
 		except Exception as e: 
-			log('ERROR', 'get_movie','%s: %s' % (title,e))
+			log('ERROR', 'get_movie','%s: %s' % (title,e), dolog=self.init)
 			return
 
 	def get_show(self, imdb=None, tvdb=None, tvshowtitle=None, year=None, season=None, proxy_options=None, key=None):
@@ -251,7 +280,7 @@ class source:
 			url = url.encode('utf-8')
 			return url
 		except Exception as e: 
-			log('ERROR', 'get_show','%s: %s' % (tvshowtitle,e))
+			log('ERROR', 'get_show','%s: %s' % (tvshowtitle,e), dolog=self.init)
 			return
 
 
@@ -278,7 +307,13 @@ class source:
 			
 			if USE_ALL_HOST_SEARCH == True:
 				rr = proxies.request(xr, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
+				if rr == None or str(rr).strip() == '403':
+					self.error = 'Invalid Key or rate limit exceeded. '
+					raise Exception(self.error)
 				rr = json.loads(rr)
+				if rr['status'] != 'success':
+					self.error = '%s ' % rr['message']
+					raise Exception(self.error)
 				self.fetchedtoday = rr['fetchedtoday']
 				
 				for item in rr['result']:   
@@ -298,7 +333,13 @@ class source:
 			if USE_GDRIVE_SPECIFIC_SEARCH == True and self.init == True and control.setting('Host-gvideo') != False:
 				r = xr + "+host%3Adrive.google.com"
 				rr = proxies.request(r, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
+				if rr == None or str(rr).strip() == '403':
+					self.error = 'Invalid Key or rate limit exceeded. '
+					raise Exception(self.error)
 				rr = json.loads(rr)
+				if rr['status'] != 'success':
+					self.error = '%s ' % rr['message']
+					raise Exception(self.error)
 				self.fetchedtoday = rr['fetchedtoday']
 
 				for item in rr['result']:   
@@ -318,7 +359,13 @@ class source:
 			if USE_OPENLOAD_SPECIFIC_SEARCH == True and self.init == True and control.setting('Host-openload') != False:
 				r = xr + "+host%3Aopenload.co"
 				rr = proxies.request(r, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
+				if rr == None or str(rr).strip() == '403':
+					self.error = 'Invalid Key or rate limit exceeded. '
+					raise Exception(self.error)
 				rr = json.loads(rr)
+				if rr['status'] != 'success':
+					self.error = '%s ' % rr['message']
+					raise Exception(self.error)
 				self.fetchedtoday = rr['fetchedtoday']
 
 				for item in rr['result']:   
@@ -343,7 +390,13 @@ class source:
 				xr = r + "+%23newlinks"
 				r = xr + "+host%3Amega.nz"
 				rr = proxies.request(r, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
+				if rr == None or str(rr).strip() == '403':
+					self.error = 'Invalid Key or rate limit exceeded. '
+					raise Exception(self.error)
 				rr = json.loads(rr)
+				if rr['status'] != 'success':
+					self.error = '%s ' % rr['message']
+					raise Exception(self.error)
 				self.fetchedtoday = rr['fetchedtoday']
 
 				for item in rr['result']:
@@ -362,13 +415,15 @@ class source:
 					
 			return stream_url
 		except Exception as e: 
-			log('ERROR', 'get_episode','%s: %s' % (title,e))
+			log('ERROR', 'get_episode','%s: %s' % (title,e), dolog=self.init)
 			return
 
 	def get_sources(self, url, hosthdDict=None, hostDict=None, locDict=None, proxy_options=None, key=None, testing=False):
 		try:
 			sources = []
-			if url == None: return sources
+			if url == None: 
+				log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key), dolog=not testing)
+				return sources
 			
 			for link in url:
 				if re.match('((?!\.part[0-9]).)*$', link['url'], flags=re.IGNORECASE) and '://' in link['url']:

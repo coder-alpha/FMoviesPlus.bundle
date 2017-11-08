@@ -193,7 +193,7 @@ class source:
 				except:
 					pass
 		except Exception as e: 
-			log('ERROR', 'get_movie','%s: %s' % (title,e))
+			log('ERROR', 'get_movie','%s: %s' % (title,e), dolog=self.init)
 			return
 
 	def get_show(self, imdb=None, tvdb=None, tvshowtitle=None, year=None, season=None, proxy_options=None, key=None):
@@ -205,7 +205,7 @@ class source:
 			url = urllib.urlencode(url)
 			return url
 		except Exception as e: 
-			log('ERROR', 'get_show','%s: %s' % (tvshowtitle,e))
+			log('ERROR', 'get_show','%s: %s' % (tvshowtitle,e), dolog=self.init)
 			return
 
 	def get_episode(self, url=None, imdb=None, tvdb=None, title=None, year=None, season=None, episode=None, proxy_options=None, key=None):
@@ -305,7 +305,7 @@ class source:
 					pass		
 			return
 		except Exception as e: 
-			log('ERROR', 'get_episode','%s: %s' % (title,e))
+			log('ERROR', 'get_episode','%s: %s' % (title,e), dolog=self.init)
 			return
 
 	def ymovies_info_season(self, title, season):
@@ -358,7 +358,9 @@ class source:
 		#try:
 		try:
 			sources = []
-			if url == None: return sources
+			if url == None: 
+				log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key), dolog=not testing)
+				return sources
 			
 			base_link = self.base_link
 			

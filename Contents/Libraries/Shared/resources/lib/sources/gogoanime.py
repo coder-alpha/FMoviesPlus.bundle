@@ -155,7 +155,7 @@ class source:
 				
 			return None
 		except Exception as e: 
-			log('ERROR', 'get_movie','%s' % e)
+			log('ERROR', 'get_movie','%s: %s' % (title,e), dolog=self.init)
 			return
 		
 	def get_show(self, tvshowtitle, season, imdb=None, tvdb=None, year=None, proxy_options=None, key=None):
@@ -190,7 +190,7 @@ class source:
 			
 			return url
 		except Exception as e:
-			log('ERROR', 'get_show', '%s' % e)
+			log('ERROR', 'get_show','%s: %s' % (tvshowtitle,e), dolog=self.init)
 			return
 
 
@@ -206,7 +206,7 @@ class source:
 			
 			return url
 		except Exception as e:
-			log('ERROR', 'get_episode', '%s' % e)
+			log('ERROR', 'get_episode','%s: %s' % (title,e), dolog=self.init)
 			return
 
 
@@ -214,7 +214,7 @@ class source:
 		try:
 			sources = []
 			if url == None: 
-				log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key))
+				log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key), dolog=not testing)
 				return sources
 
 			url = urlparse.urljoin(self.base_link, url)

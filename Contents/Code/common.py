@@ -1,6 +1,6 @@
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.48' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.49' # Release notation (x.y - where x is major and y is minor)
 TAG = ''
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
@@ -21,6 +21,7 @@ except:
 	Log('Error disabling IPv6 and setting IPv4 as default')
 	pass
 
+BASE_URL = "https://bmovies.to"
 	
 JSEngines_ALLowed = ['Node']
 Engine_OK = False
@@ -139,6 +140,7 @@ DEV_BM_CONVERSION = False
 NO_MOVIE_INFO = False
 USE_CUSTOM_TIMEOUT = False
 SEARCH_EXT_SOURCES_FROM_SEARCH_MENU = True
+CHECK_BASE_URL_REDIRECTION = False
 DEV_DEBUG = False
 WBH = 'aHR0cHM6Ly9ob29rLmlvL2NvZGVyLWFscGhhL3Rlc3Q='
 
@@ -705,7 +707,7 @@ def GetPageAsString(url, headers=None, timeout=15, referer=None):
 	else:
 		headers['Referer'] = url
 	
-	if USE_COOKIES and 'fmovies' in url:
+	if USE_COOKIES and ('fmovies' in url or 'bmovies' in url):
 		cookies, error = make_cookie_str()
 		if error == '':
 			headers['Cookie'] = cookies
@@ -861,7 +863,7 @@ def cleanJSS2(str):
 		code = code.replace('){var','){var %s=%s; var' % (new_c,new_c2))
 		code = code.replace('returnreturn','return')
 		code = code[1:-1]
-		code = 'var R1,R2; var jssuckit="";var window = global; var document = this; location = "https://fmovies.to/"; %s; jssuckit = document.cookie; return jssuckit' % (code)
+		code = 'var R1,R2; var jssuckit="";var window = global; var document = this; location = "%s/"; %s; jssuckit = document.cookie; return jssuckit' % (BASE_URL, code)
 	elif len(occurances) == 1:
 		if '_=' in fncode1:
 			new_c = makeid(2,replaced.keys())
@@ -874,7 +876,7 @@ def cleanJSS2(str):
 			code = fn + fncode1 + fncode2 + fnvars
 			code = code.replace('){var','){var %s=%s; var' % (new_c,new_c2))
 			code = code[1:-1]
-			d = 'var R1,R2; var jssuckit="";var window = global; var document = this; location = "https://fmovies.to/"; %s; jssuckit = document.cookie; jssuckit=jssuckit.replace(R1,R2); return jssuckit' % (code)
+			d = 'var R1,R2; var jssuckit="";var window = global; var document = this; location = "%s/"; %s; jssuckit = document.cookie; jssuckit=jssuckit.replace(R1,R2); return jssuckit' % (BASE_URL, code)
 			code = d.replace('}; xy(',';R1=%s; R2=%s}; xy(')
 			code = code % (new_c2,new_c)
 		else:
@@ -882,12 +884,12 @@ def cleanJSS2(str):
 			replaced[new_c] = '_'
 			code = code.replace('_', new_c)
 			code = code[1:-1]
-			d = 'var jssuckit="";var window = global; var document = this; location = "https://fmovies.to/"; %s; jssuckit = document.cookie; return jssuckit'
-			code = (d % code)
+			d = 'var jssuckit="";var window = global; var document = this; location = "%s/"; %s; jssuckit = document.cookie; return jssuckit'
+			code = (d % (BASE_URL,code))
 	else:
 		code = code[1:-1]
-		d = 'var jssuckit="";var window = global; var document = this; location = "https://fmovies.to/"; %s; jssuckit = document.cookie; return jssuckit'
-		code = (d % code)
+		d = 'var jssuckit="";var window = global; var document = this; location = "%s/"; %s; jssuckit = document.cookie; return jssuckit'
+		code = (d % (BASE_URL,code))
 	code = code.replace('returnreturn','return')
 	code = code.encode('utf-8')
 	return code, replaced

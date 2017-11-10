@@ -10,7 +10,6 @@ import common, updater, fmovies, tools, download
 from DumbTools import DumbKeyboard
 import AuthTools
 
-SITE = "FMovies"
 TITLE = common.TITLE
 PREFIX = common.PREFIX
 ART = "art-default.jpg"
@@ -67,6 +66,7 @@ ICON_PLEX = "icon-plex.png"
 ICON_DOWNLOADS = "icon-downloads.png"
 ICON_REQUESTS = "icon-requests.png"
 ICON_TOOLS = "icon-tools.png"
+ICON_WARNING = "icon-warning.png"
 
 MC = common.NewMessageContainer(common.PREFIX, common.TITLE)
 
@@ -124,8 +124,14 @@ def Start():
 	Log.Debug("HTTP Cache Time set to %s min." % int(CACHE_EXPIRY/60))
 	
 	HTTP.Headers['User-Agent'] = common.client.randomagent()
-	fmovies.BASE_URL = Prefs["base_url"]
+	fmovies.BASE_URL = Prefs["new_base_url"]
+	if common.CHECK_BASE_URL_REDIRECTION == True:
+		RED_URL = common.client.request(fmovies.BASE_URL, output='geturl', timeout=7)
+		if RED_URL != None and fmovies.BASE_URL not in RED_URL:
+			Log("***Base URL has been overridden and set based on redirection: %s ***" % RED_URL[:-1])
+			fmovies.BASE_URL = RED_URL[:-1]
 	HTTP.Headers['Referer'] = fmovies.BASE_URL
+	common.BASE_URL = fmovies.BASE_URL
 	
 	DumpPrefs()
 	ValidateMyPrefs()
@@ -140,8 +146,14 @@ def Start():
 @route(PREFIX + "/MainMenu")
 def MainMenu(**kwargs):
 
-	fmovies.BASE_URL = Prefs["base_url"]
+	fmovies.BASE_URL = Prefs["new_base_url"]
+	if common.CHECK_BASE_URL_REDIRECTION == True:
+		RED_URL = common.client.request(fmovies.BASE_URL, output='geturl', timeout=7)
+		if RED_URL != None and fmovies.BASE_URL not in RED_URL:
+			Log("*** Base URL has been overridden and set based on redirection: %s ***" % RED_URL[:-1])
+			fmovies.BASE_URL = RED_URL[:-1]
 	HTTP.Headers['Referer'] = fmovies.BASE_URL
+	common.BASE_URL = fmovies.BASE_URL
 	
 	session = common.getSession()
 	common.set_control_settings(session=session)
@@ -1234,10 +1246,20 @@ def IntHostTools(choice=None, myhost=None, mssg=None):
 					msg = '%s Log has too many entries to display (last 100 shown here), full-text will be written to Channel Log !' % myhost.title()
 					oc.add(DirectoryObject(title=msg, summary=msg, key=Callback(MyMessage, title='Info', msg=msg), thumb=R(ICON_INFO)))
 					for i in range(0,100):
-						oc.add(DirectoryObject(title=items[i], summary=items[i], key=Callback(MyMessage, title='Info', msg=items[i]), thumb=R(ICON_ALERT) if 'ERROR' in items[i] else R(ICON_INFO)))
+						if 'ERROR' in items[i]:
+							oc.add(DirectoryObject(title=items[i], summary=items[i], key=Callback(MyMessage, title='Error', msg=items[i]), thumb=R(ICON_ALERT)))
+						elif 'FAIL' in items[i]:
+							oc.add(DirectoryObject(title=items[i], summary=items[i], key=Callback(MyMessage, title='Fail', msg=items[i]), thumb=R(ICON_WARNING)))
+						else:
+							oc.add(DirectoryObject(title=items[i], summary=items[i], key=Callback(MyMessage, title='Info', msg=items[i]), thumb=R(ICON_INFO)))
 				elif len(items) > 0:
 					for i in items:
-						oc.add(DirectoryObject(title=i, summary=i, key=Callback(MyMessage, title='Info', msg=i), thumb=R(ICON_ALERT) if 'ERROR' in i else R(ICON_INFO)))
+						if 'ERROR' in i:
+							oc.add(DirectoryObject(title=i, summary=i, key=Callback(MyMessage, title='Error', msg=i), thumb=R(ICON_ALERT)))
+						elif 'FAIL' in i:
+							oc.add(DirectoryObject(title=i, summary=i, key=Callback(MyMessage, title='Fail', msg=i), thumb=R(ICON_WARNING)))
+						else:
+							oc.add(DirectoryObject(title=i, summary=i, key=Callback(MyMessage, title='Info', msg=i), thumb=R(ICON_INFO)))
 			else:
 				mssg = '%s Log has no entries !' % myhost.title()
 			
@@ -1275,10 +1297,20 @@ def IntProviderTools(choice=None, provider=None, mssg=None):
 					msg = '%s Log has too many entries to display (last 100 shown here), full-text will be written to Channel Log !' % provider.title()
 					oc.add(DirectoryObject(title=msg, summary=msg, key=Callback(MyMessage, title='Info', msg=msg), thumb=R(ICON_INFO)))
 					for i in range(0,100):
-						oc.add(DirectoryObject(title=items[i], summary=items[i], key=Callback(MyMessage, title='Info', msg=items[i]), thumb=R(ICON_ALERT) if 'ERROR' in items[i] else R(ICON_INFO)))
+						if 'ERROR' in items[i]:
+							oc.add(DirectoryObject(title=items[i], summary=items[i], key=Callback(MyMessage, title='Error', msg=items[i]), thumb=R(ICON_ALERT)))
+						elif 'FAIL' in items[i]:
+							oc.add(DirectoryObject(title=items[i], summary=items[i], key=Callback(MyMessage, title='Fail', msg=items[i]), thumb=R(ICON_WARNING)))
+						else:
+							oc.add(DirectoryObject(title=items[i], summary=items[i], key=Callback(MyMessage, title='Info', msg=items[i]), thumb=R(ICON_INFO)))
 				elif len(items) > 0:
 					for i in items:
-						oc.add(DirectoryObject(title=i, summary=i, key=Callback(MyMessage, title='Info', msg=i), thumb=R(ICON_ALERT) if 'ERROR' in i else R(ICON_INFO)))
+						if 'ERROR' in i:
+							oc.add(DirectoryObject(title=i, summary=i, key=Callback(MyMessage, title='Error', msg=i), thumb=R(ICON_ALERT)))
+						elif 'FAIL' in i:
+							oc.add(DirectoryObject(title=i, summary=i, key=Callback(MyMessage, title='Fail', msg=i), thumb=R(ICON_WARNING)))
+						else:
+							oc.add(DirectoryObject(title=i, summary=i, key=Callback(MyMessage, title='Info', msg=i), thumb=R(ICON_INFO)))
 			else:
 				mssg = '%s Log has no entries !' % provider.title()
 			
@@ -1463,9 +1495,28 @@ def ShowMenu(title, session=None, **kwargs):
 
 		notices_all = []
 		try:
+			# Developer Notice
+			try:
+				notice_txt = ""
+				for notice in fmovies.DEV_NOTICE:
+					notice_txt += notice
+				if notice_txt != "":
+					notices_all.append(notice_txt.strip())
+			except:
+				pass
+			
 			# Main page news
 			try:
 				notices_m = page_data.xpath(".//*[@id='body-wrapper']/div/div[@class='alert alert-primary notice']/text()")
+				notice_txt = ""
+				for notice in notices_m:
+					notice_txt += notice
+				if notice_txt != "":
+					notices_all.append(notice_txt.strip())
+			except:
+				pass
+			try:
+				notices_m = page_data.xpath(".//*[@id='body-wrapper']/div/div[@class='alert alert-default notice']/p[1]/text()[1]")
 				notice_txt = ""
 				for notice in notices_m:
 					notice_txt += notice
@@ -3654,7 +3705,7 @@ def RecentWatchList(title, session=None, **kwargs):
 	for each in Dict:
 		longstring = str(Dict[each])
 		
-		if ('fmovies.' in longstring or ES_API_URL.lower() in longstring.lower()) and 'RR44SS' in longstring:
+		if (('fmovies.' in longstring or 'bmovies.' in longstring) or ES_API_URL.lower() in longstring.lower()) and 'RR44SS' in longstring:
 			longstringsplit = longstring.split('RR44SS')
 			urls_list.append({'key': each, 'time': longstringsplit[4], 'val': longstring})
 				
@@ -3690,8 +3741,10 @@ def RecentWatchList(title, session=None, **kwargs):
 			items_to_del.append(each['key'])
 		elif url.replace('fmovies.is',fmovies_base) in items_in_recent or c > NO_OF_ITEMS_IN_RECENT_LIST:
 			items_to_del.append(each['key'])
+		elif url.replace('bmovies.to',fmovies_base) in items_in_recent or c > NO_OF_ITEMS_IN_RECENT_LIST:
+			items_to_del.append(each['key'])
 		else:
-			if 'fmovies.' in longstring:
+			if 'fmovies.' in longstring or 'bmovies.' in longstring:
 				url = url.replace(common.client.geturlhost(url),fmovies_base)
 			items_in_recent.append(url)
 				
@@ -3732,9 +3785,7 @@ def ClearRecentWatchList(**kwargs):
 	for each in Dict:
 		try:
 			longstring = Dict[each]
-			if longstring.find(SITE.lower()) != -1 and 'http' in longstring and 'RR44SS' in longstring:
-				remove_list.append(each)
-			elif ('fmovies.' in longstring or ES_API_URL.lower() in longstring) and 'RR44SS' in longstring:
+			if (('fmovies.' in longstring or 'bmovies.' in longstring) or ES_API_URL.lower() in longstring) and 'RR44SS' in longstring:
 				remove_list.append(each)
 		except:
 			continue
@@ -3768,7 +3819,7 @@ def Bookmarks(title, session = None, **kwargs):
 	for each in Dict:
 		longstring = str(Dict[each])
 		
-		if ('fmovies.' in longstring or ES_API_URL.lower() in longstring.lower()) and 'Key5Split' in longstring:	
+		if (('fmovies.' in longstring or 'bmovies.' in longstring) or ES_API_URL.lower() in longstring.lower()) and 'Key5Split' in longstring:	
 			stitle = unicode(longstring.split('Key5Split')[0])
 			url = longstring.split('Key5Split')[1]
 			summary = unicode(longstring.split('Key5Split')[2])
@@ -3778,6 +3829,8 @@ def Bookmarks(title, session = None, **kwargs):
 			
 			if 'fmovies.to' in url:
 				url = url.replace('fmovies.to',fmovies_base)
+			elif 'bmovies.to' in url:
+				url = url.replace('bmovies.to',fmovies_base)
 			elif 'fmovies.se' in url:
 				url = url.replace('fmovies.se',fmovies_base)
 			elif 'fmovies.is' in url:
@@ -4725,22 +4778,27 @@ def Check(title, url, **kwargs):
 	if longstring != None and (longstring.lower()).find(ES_API_URL.lower()) != -1:
 		return True
 	
-	if longstring != None and (longstring.lower()).find(SITE.lower()) != -1 and url in longstring:
+	if longstring != None and url in longstring:
 		return True
 
 	surl = url.replace(fmovies_urlhost,'fmovies.to')
 	longstring = Dict[title+'-'+E(surl)]
-	if longstring != None and (longstring.lower()).find(SITE.lower()) != -1 and surl in longstring:
+	if longstring != None and surl in longstring:
+		return True
+		
+	surl = url.replace(fmovies_urlhost,'bmovies.to')
+	longstring = Dict[title+'-'+E(surl)]
+	if longstring != None and surl in longstring:
 		return True
 	
 	surl = url.replace(fmovies_urlhost,'fmovies.se')
 	longstring = Dict[title+'-'+E(surl)]
-	if longstring != None and (longstring.lower()).find(SITE.lower()) != -1 and surl in longstring:
+	if longstring != None and surl in longstring:
 		return True
 		
 	surl = url.replace(fmovies_urlhost,'fmovies.is')
 	longstring = Dict[title+'-'+E(surl)]
-	if longstring != None and (longstring.lower()).find(SITE.lower()) != -1 and surl in longstring:
+	if longstring != None and surl in longstring:
 		return True
 		
 	
@@ -4776,6 +4834,10 @@ def RemoveBookmark(title, url, **kwargs):
 	except:
 		pass
 	try:
+		del Dict[title+'-'+E(url.replace(fmovies_urlhost,'bmovies.to'))]
+	except:
+		pass
+	try:
 		del Dict[title+'-'+E(url.replace(fmovies_urlhost,'fmovies.se'))]
 	except:
 		pass
@@ -4796,9 +4858,7 @@ def ClearBookmarks(**kwargs):
 	for each in Dict:
 		try:
 			url = Dict[each]
-			if url.find(SITE.lower()) != -1 and 'http' in url and 'RR44SS' not in url:
-				remove_list.append(each)
-			elif url.find(ES_API_URL.lower()) != -1 and 'http' in url and 'RR44SS' not in url:
+			if url.find(ES_API_URL.lower()) != -1 and 'http' in url and 'RR44SS' not in url:
 				remove_list.append(each)
 		except:
 			continue
@@ -4821,7 +4881,7 @@ def ClearSearches(**kwargs):
 	remove_list = []
 	for each in Dict:
 		try:
-			if each.find(SITE.lower()) != -1 and 'MyCustomSearch' in each:
+			if (each.find('fmovies') != -1 or each.find('bmovies') != -1 or each.find(common.TITLE.lower()) != -1) and 'MyCustomSearch' in each:
 				remove_list.append(each)
 			elif each.find(ES_API_URL.lower()) != -1 and 'MyCustomSearch' in each:
 				remove_list.append(each)
@@ -4856,7 +4916,7 @@ def Search(query=None, surl=None, page_count='1', mode='default', thumb=None, su
 	else:
 		if mode == 'default':
 			timestr = str(int(time.time()))
-			Dict[SITE.lower() +'MyCustomSearch'+query] = query + 'MyCustomSearch' + timestr
+			Dict[common.TITLE.lower() +'MyCustomSearch'+query] = query + 'MyCustomSearch' + timestr
 			Dict.Save()
 			url = fmovies.BASE_URL + fmovies.SEARCH_PATH + '?page=%s&keyword=%s' % (str(page_count), String.Quote(query, usePlus=True))
 		elif mode == 'other seasons':
@@ -5659,24 +5719,41 @@ def SearchQueueMenu(title, session = None, **kwargs):
 	oc = ObjectContainer(title2='Search Using Term', no_cache=common.isForceNoCache())
 	
 	urls_list = []
+	items_to_delete = []
+	items_to_convert = []
 	
 	for each in Dict:
 		query = Dict[each]
 		try:
-			if each.find(SITE.lower()) != -1 and 'MyCustomSearch' in each and query != 'removed':
+			if (each.find('fmovies') != -1 or each.find('bmovies') != -1 or each.find(common.TITLE.lower()) != -1) and 'MyCustomSearch' in each and query != 'removed':
 				timestr = '1483228800'
 				if 'MyCustomSearch' in query:
 					split_query = query.split('MyCustomSearch')
 					query = split_query[0]
 					timestr = split_query[1]
+					if (each.find('fmovies') != -1 or each.find('bmovies') != -1):
+						items_to_delete.append(each)
+						items_to_convert.append({'key': query, 'time': timestr})
 					
 				urls_list.append({'key': query, 'time': timestr})
 				
+			elif (each.find('fmovies') != -1 or each.find('bmovies') != -1 or each.find(common.TITLE.lower()) != -1) and 'MyCustomSearch' in each and query == 'removed':
+				items_to_delete.append(each)
 		except:
 			pass
 			
 	if len(urls_list) == 0:
 		return MC.message_container(title, 'No Items Available')
+		
+	if len(items_to_delete) > 0:
+		for i in items_to_delete:
+			Dict[i] = None
+		for i in items_to_convert:
+			query = i['key']
+			timestr = i['time']
+			Dict[common.TITLE.lower() +'MyCustomSearch'+query] = query + 'MyCustomSearch' + timestr
+			
+		Dict.Save()
 		
 	newlist = sorted(urls_list, key=lambda k: k['time'], reverse=True)
 		
@@ -6412,10 +6489,18 @@ def ValidatePrefs(changed=True, **kwargs):
 	if changed == True:
 		Log("Your Channel Preferences have changed !")
 	
-	if fmovies.BASE_URL != Prefs["base_url"]:
+	RED_URL = None
+	if fmovies.BASE_URL != Prefs["new_base_url"]:
+		if common.CHECK_BASE_URL_REDIRECTION == True:
+			RED_URL = common.client.request(fmovies.BASE_URL, output='geturl', timeout=7)
+		if RED_URL != None and fmovies.BASE_URL not in RED_URL:
+			Log("***Base URL has been overridden and set based on redirection: %s ***" % RED_URL)
+			fmovies.BASE_URL = RED_URL
+		else:
+			fmovies.BASE_URL = Prefs["new_base_url"]
 		del common.CACHE_COOKIE[:]
-		fmovies.BASE_URL = Prefs["base_url"]
 		HTTP.Headers['Referer'] = fmovies.BASE_URL
+		common.BASE_URL = fmovies.BASE_URL
 	
 	try:
 		common.CACHE_EXPIRY = 60 * int(Prefs["cache_expiry_time"])

@@ -12,7 +12,7 @@ import urllib, urlparse, json, time, re, datetime, calendar
 import common
 from __builtin__ import ord, format, eval
 
-BASE_URL = "https://fmovies.to"
+BASE_URL = "https://bmovies.to"
 HASH_PATH_MENU = "/user/ajax/menu-bar"
 HASH_PATH_INFO = "/ajax/episode/info"
 TOKEN_PATH = "/token"
@@ -26,8 +26,10 @@ SITE_MAP_HTML_ELEMS = []
 ALL_JS = "/assets/min/public/all.js"
 TOKEN_KEY_PASTEBIN_URL = "https://pastebin.com/raw/VNn1454k"
 TOKEN_OPER_PASTEBIN_URL = "https://pastebin.com/raw/9zFcNJuP"
+DEV_NOTICE_URL = "https://pastebin.com/raw/1HDhMggt"
 TOKEN_KEY = []
 TOKEN_OPER = []
+DEV_NOTICE = []
 
 CACHE_IGNORELIST = ['apidata.googleusercontent.com']
 
@@ -215,6 +217,8 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 			TOKEN_OPER.append(token_oper)
 		except:
 			setTokenCookie(use_debug=use_debug, reset=True)
+			
+		Thread.Create(fetch_dev_notice)
 		
 		if dump or use_debug and quiet == False:
 			Log("=====================TOKEN START============================")
@@ -526,6 +530,15 @@ def get_reqkey_cookie(token, use_debug=False, use_https_alt=False, quiet=True):
 			Log.Exception("fmovies.py >> : Cannot handle token cookie >>> {}".format(e))
 			Log.Debug("No method available to decode JSF code - use manual method")
 	return ''
+	
+def fetch_dev_notice():
+	try:
+		dev_notice = common.interface.request_via_proxy_as_backup(DEV_NOTICE_URL, httpsskip=True, hideurl=True)
+		if dev_notice !=None and dev_notice != '':
+			del DEV_NOTICE[:]
+			DEV_NOTICE.append(dev_notice)
+	except Exception as e:
+		Log('ERROR fmovies.py>fetch_dev_notice: %s' % e)
 
 def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=False, use_web_proxy=False, token_error=False, **kwargs):
 

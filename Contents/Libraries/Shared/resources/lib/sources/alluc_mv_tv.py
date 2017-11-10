@@ -162,7 +162,7 @@ class source:
 					rc, rr = proxies.request(xr, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True, output='response')
 					r1 = json.loads(rr)
 					self.fetchedtoday = r1['fetchedtoday']
-					if r1['status'] != 'success':
+					if r1['status'] != 'success' and str(rc) not in client.HTTP_GOOD_RESP_CODES:
 						self.error = '%s ' % r1['message']
 						raise Exception(self.error)
 					
@@ -185,7 +185,7 @@ class source:
 					rc, rr = proxies.request(r, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True, output='response')
 					r1 = json.loads(rr)
 					self.fetchedtoday = r1['fetchedtoday']
-					if r1['status'] != 'success':
+					if r1['status'] != 'success' and str(rc) not in client.HTTP_GOOD_RESP_CODES:
 						self.error = '%s ' % r1['message']
 						raise Exception(self.error)
 					
@@ -208,7 +208,7 @@ class source:
 					rc, rr = proxies.request(r, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True, output='response')
 					r1 = json.loads(rr)
 					self.fetchedtoday = r1['fetchedtoday']
-					if r1['status'] != 'success':
+					if r1['status'] != 'success' and str(rc) not in client.HTTP_GOOD_RESP_CODES:
 						self.error = '%s ' % r1['message']
 						raise Exception(self.error)
 
@@ -235,7 +235,7 @@ class source:
 					rc, rr = proxies.request(r, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True, output='response')
 					r1 = json.loads(rr)
 					self.fetchedtoday = r1['fetchedtoday']
-					if r1['status'] != 'success':
+					if r1['status'] != 'success' and str(rc) not in client.HTTP_GOOD_RESP_CODES:
 						self.error = '%s ' % r1['message']
 						raise Exception(self.error)
 
@@ -297,7 +297,7 @@ class source:
 				rc, rr = proxies.request(xr, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True, output='response')
 				rr = json.loads(rr)
 				self.fetchedtoday = rr['fetchedtoday']
-				if rr['status'] != 'success':
+				if rr['status'] != 'success' and str(rc) not in client.HTTP_GOOD_RESP_CODES:
 					self.error = '%s ' % rr['message']
 					raise Exception(self.error)
 				
@@ -320,7 +320,7 @@ class source:
 				rc, rr = proxies.request(r, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True, output='response')
 				rr = json.loads(rr)
 				self.fetchedtoday = rr['fetchedtoday']
-				if rr['status'] != 'success':
+				if rr['status'] != 'success' and str(rc) not in client.HTTP_GOOD_RESP_CODES:
 					self.error = '%s ' % rr['message']
 					raise Exception(self.error)
 
@@ -343,7 +343,7 @@ class source:
 				rc, rr = proxies.request(r, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True, output='response')
 				rr = json.loads(rr)
 				self.fetchedtoday = rr['fetchedtoday']
-				if rr['status'] != 'success':
+				if rr['status'] != 'success' and str(rc) not in client.HTTP_GOOD_RESP_CODES:
 					self.error = '%s ' % rr['message']
 					raise Exception(self.error)
 
@@ -371,7 +371,7 @@ class source:
 				rc, rr = proxies.request(r, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True, output='response')
 				rr = json.loads(rr)
 				self.fetchedtoday = rr['fetchedtoday']
-				if rr['status'] != 'success':
+				if rr['status'] != 'success' and str(rc) not in client.HTTP_GOOD_RESP_CODES:
 					self.error = '%s ' % rr['message']
 					raise Exception(self.error)
 

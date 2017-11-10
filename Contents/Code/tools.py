@@ -12,7 +12,6 @@ import common, fmovies, AuthTools
 
 TITLE = common.TITLE
 PREFIX = common.PREFIX
-SITE = "FMovies"
 
 ICON_TOOLS = "icon-tools.png"
 
@@ -148,7 +147,7 @@ def SaveBookmarks(**kwargs):
 	for each in Dict:
 		longstring = str(Dict[each])
 		
-		if ('fmovies.' in longstring or ES_API_URL.lower() in longstring) and 'Key5Split' in longstring:	
+		if (('fmovies.' in longstring or 'bmovies.' in longstring) or ES_API_URL.lower() in longstring) and 'Key5Split' in longstring:	
 			stitle = unicode(longstring.split('Key5Split')[0])
 			url = longstring.split('Key5Split')[1]
 			summary = unicode(longstring.split('Key5Split')[2])
@@ -158,6 +157,8 @@ def SaveBookmarks(**kwargs):
 			
 			if 'fmovies.to' in url:
 				url = url.replace('fmovies.to',fmovies_base)
+			elif 'bmovies.to' in url:
+				url = url.replace('bmovies.to',fmovies_base)
 			elif 'fmovies.se' in url:
 				url = url.replace('fmovies.se',fmovies_base)
 			elif 'fmovies.is' in url:
@@ -224,7 +225,7 @@ def SaveConfig(**kwargs):
 	for each in Dict:
 		longstring = str(Dict[each])
 		
-		if ('fmovies.' in longstring or ES_API_URL.lower() in longstring) and 'Key5Split' in longstring:	
+		if (('fmovies.' in longstring or 'bmovies.' in longstring) or ES_API_URL.lower() in longstring) and 'Key5Split' in longstring:	
 			stitle = unicode(longstring.split('Key5Split')[0])
 			url = longstring.split('Key5Split')[1]
 			summary = unicode(longstring.split('Key5Split')[2])
@@ -234,6 +235,8 @@ def SaveConfig(**kwargs):
 			
 			if 'fmovies.to' in url:
 				url = url.replace('fmovies.to',fmovies_base)
+			elif 'bmovies.to' in url:
+				url = url.replace('bmovies.to',fmovies_base)
 			elif 'fmovies.se' in url:
 				url = url.replace('fmovies.se',fmovies_base)
 			elif 'fmovies.is' in url:
@@ -250,7 +253,7 @@ def SaveConfig(**kwargs):
 	for each in Dict:
 		longstring = str(Dict[each])
 		
-		if ('fmovies.' in longstring or ES_API_URL.lower() in longstring.lower()) and 'RR44SS' in longstring:
+		if (('fmovies.' in longstring or 'bmovies.' in longstring) or ES_API_URL.lower() in longstring.lower()) and 'RR44SS' in longstring:
 			longstringsplit = longstring.split('RR44SS')
 			urls_list.append({'key': each, 'time': longstringsplit[4], 'val': longstring})
 				
@@ -279,6 +282,8 @@ def SaveConfig(**kwargs):
 				ES = '*'
 			
 			if url.replace('fmovies.to',fmovies_base) in items_in_recent:
+				items_to_del.append(each['key'])
+			elif url.replace('bmovies.to',fmovies_base) in items_in_recent:
 				items_to_del.append(each['key'])
 			elif url.replace('fmovies.se',fmovies_base) in items_in_recent:
 				items_to_del.append(each['key'])
@@ -380,7 +385,7 @@ def LoadConfig(**kwargs):
 			for item in items_in_searchque:
 				query = item['key']
 				timestr = item['time']
-				Dict[SITE.lower() +'MyCustomSearch'+query] = query + 'MyCustomSearch' + timestr
+				Dict[common.TITLE.lower() +'MyCustomSearch'+query] = query + 'MyCustomSearch' + timestr
 				
 			for item in items_device_opts:
 				key = item['key']

@@ -41,7 +41,7 @@ class source:
 		self.init = False
 		self.disabled = False
 		self.TOKEN_KEY = []
-		self.base_link_alts = ['https://fmovies.to','https://fmovies.is','https://fmovies.se']
+		self.base_link_alts = ['https://bmovies.to'] #['https://fmovies.to','https://fmovies.is','https://fmovies.se']
 		self.base_link = self.base_link_alts[0]
 		self.grabber_api = "grabber-api/"
 		self.search_link = '/sitemap'
@@ -50,7 +50,7 @@ class source:
 		self.hash_link = '/ajax/episode/info'
 		self.hash_menu_link = "/user/ajax/menu-bar"
 		self.token_link = "/token"
-		self.MainPageValidatingContent = 'FMovies'
+		self.MainPageValidatingContent = ['bmovies','fmovies']
 		self.type_filter = ['movie', 'show', 'anime']
 		self.ssl = False
 		self.name = name
@@ -106,11 +106,11 @@ class source:
 			x1 = time.time()
 			http_res, content = proxies.request(url=site, headers=self.headers, output='response', use_web_proxy=False, httpsskip=True)
 			self.speedtest = time.time() - x1
-			if content != None and content.find(self.MainPageValidatingContent) >-1:
-				log('SUCCESS', 'testSite', 'HTTP Resp : %s for %s' % (http_res,site))
-				return True
-			else:
-				log('FAIL', 'testSite', 'Validation content Not Found. HTTP Resp : %s for %s' % (http_res,site))
+			for valcon in self.MainPageValidatingContent:
+				if content != None and content.find(valcon) >-1:
+					log('SUCCESS', 'testSite', 'HTTP Resp : %s for %s' % (http_res,site))
+					return True
+			log('FAIL', 'testSite', 'Validation content Not Found. HTTP Resp : %s for %s' % (http_res,site))
 			return False
 		except Exception as e:
 			log('ERROR','testSite', '%s' % e)

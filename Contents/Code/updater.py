@@ -25,7 +25,7 @@ def menu(title):
 	
 	dev_url = 'https://github.com/{0}/archive/{1}.zip'.format(common.GITHUB_REPOSITORY, 'dev')
 	if GetHttpStatus(dev_url) == '200':
-		oc.add(DirectoryObject(key=Callback(update, url=dev_url, ver='/dev branch'), title='Plugin version: /dev', summary='Update plugin to /dev branch', thumb=R(ICON_DEV)))
+		oc.add(DirectoryObject(key=Callback(update, url=dev_url, ver='/dev branch'), title='Update to /dev', summary='Update plugin to /dev branch', thumb=R(ICON_DEV)))
 	
 	return oc
 

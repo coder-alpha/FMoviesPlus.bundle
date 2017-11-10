@@ -107,6 +107,7 @@ class host:
 		del loggertxt[:]
 		log(type='INFO', method='init', err=' -- Initializing %s Start --' % name)
 		self.init = False
+		self.msg = ''
 		if crypto_msg != None:
 			self.msg = 'Cryptodome library not found.'
 			log(type='CRITICAL', method='init', err=self.msg)
@@ -127,7 +128,6 @@ class host:
 		self.speedtest = 0
 		self.working = self.testWorking()[0]
 		self.resolver = self.testResolver()
-		self.msg = ''
 		if crypto_msg != None:
 			self.resolver = False
 			self.working = False

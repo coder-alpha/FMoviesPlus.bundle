@@ -235,6 +235,11 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 					return
 				elif error == True:
 					return '%s: %s' % (response.code, response.reason), content
+			elif response.code == 403:
+				if output == 'response':
+					return response.code, content
+				else:
+					return
 			elif response.code == 307:
 				#Log("AAAA- Response read: %s" % response.read(5242880))
 				#Log("AAAA- Location: %s" % (response.headers['Location'].rstrip()))

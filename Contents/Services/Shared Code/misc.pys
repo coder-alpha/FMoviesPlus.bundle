@@ -65,7 +65,7 @@ def resolve(url, https_skip, test=False, strip_url=True):
 	try:
 		myParams = {}
 		myheaders = {}
-		myheaders['User-Agent'] = 'Mozilla5'
+		myheaders['User-Agent'] = 'Mozilla'
 		myheaders['Referer'] = 'http://mycloud.to'
 		myParams['headers'] = myheaders
 		

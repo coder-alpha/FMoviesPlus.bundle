@@ -36,9 +36,9 @@ class source:
 		if len(proxies.sourceProxies)==0:
 			proxies.init()
 		self.proxyrequired = False
+		self.msg = ''
 		self.siteonline = self.testSite()
 		self.testparser = 'Unknown'
-		self.msg = ''
 		self.testparser = self.testParser()
 		self.init = True
 		log(type='INFO', method='init', err=' -- Initializing %s End --' % name)

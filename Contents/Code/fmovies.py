@@ -21,6 +21,7 @@ FILTER_PATH = "/filter"
 KEYWORD_PATH = "/tag/"
 STAR_PATH = "/star/"
 SITE_MAP = "/sitemap"
+GRABBER_API = "grabber-api/"
 SITE_MAP_HTML_ELEMS = []
 ALL_JS = "/assets/min/public/all.js"
 TOKEN_KEY_PASTEBIN_URL = "https://pastebin.com/raw/VNn1454k"
@@ -353,7 +354,7 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 			cookie_dict.update({'token_key':token_key})
 			
 		try:
-			if len(TOKEN_OPER) == 0 and common.DOWNLOAD_BACKUP_OPER == True:
+			if len(TOKEN_OPER) == 0 or common.DOWNLOAD_BACKUP_OPER == True:
 				token_oper = common.interface.request_via_proxy_as_backup(TOKEN_OPER_PASTEBIN_URL, httpsskip=use_https_alt, hideurl=True)
 				if token_oper !=None and token_oper != '':
 					#cookie_dict.update({'token_oper':token_oper})
@@ -576,7 +577,7 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 				headers['User-Agent'] = common.client.randomagent()
 			
 			hash_url = urlparse.urljoin(T_BASE_URL, HASH_PATH_INFO)
-			query = {'ts': serverts, 'id': key, 'update':'0'}
+			query = {'ts': serverts, 'id': key, 'update':'0', 'server':'36'}
 			tk = get_token(query, token_error)
 			if tk == None:
 				raise ValueError('video token algo')
@@ -607,11 +608,43 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 				error = result['error']
 			elif result['target'] != "":
 				grabber = result['target']
+				b, resp = decode_t(grabber, -18)
+				if b == False:
+					raise ValueError(resp)
+				grabber = resp
 				isTargetPlay = True
 				subtitle = result['subtitle']
 			else:
-				query = {'id':result['params']['id'], 'token':result['params']['token']}
 				grabber = result['grabber']
+				grab_data = grabber
+				grabber_url = urlparse.urljoin(BASE_URL, GRABBER_API)
+				
+				if '?' in grabber:
+					grab_data = grab_data.split('?')
+					grabber_url = grab_data[0]
+					grab_data = grab_data[1]
+					
+				grab_server = str(urlparse.parse_qs(grab_data)['server'][0])
+				
+				b, resp = decode_t(result['params']['token'], -18)
+				if b == False:
+					raise ValueError(resp)
+				token = resp
+				b, resp = decode_t(result['params']['options'], -18)
+				if b == False:
+					raise ValueError(resp)
+				options = resp
+				
+				grab_query = {'ts':serverts, grabber_url:'','id':result['params']['id'],'server':grab_server,'mobile':'0','token':token,'options':options}
+				tk = get_token(grab_query, token_error)
+
+				if tk == None:
+					raise ValueError('video token algo')
+				grab_info = {'token':token,'options':options}
+				del query['server']
+				query.update(grab_info)
+				query.update(tk)
+				
 				subtitle = result['subtitle']
 				if '?' in grabber:
 					grabber += '&' + urllib.urlencode(query)
@@ -661,7 +694,32 @@ def a01(t, token_error=False):
 			except:
 				i += eval('ord(t[%s]) %s' % (e, TOKEN_OPER[1]))
 	return i
+	
+#6856
+def decode_t(t, i):
+	n = [] 
+	e = []
+	r = ''
 
+	try:
+		for n in range(0, len(t)):
+			if n==0 and t[n] == '.':
+				pass
+			else:
+				c = ord(t[n])
+				if c >= 97 and c <= 122:
+					e.append((c - 71 + i) % 26 + 97)
+				elif c >= 65 and c <= 90:
+					e.append((c - 39 + i) % 26 + 65)
+				else:
+					e.append(c)
+		for ee in e:
+			r += chr(ee)
+			
+		return True, r
+	except Exception as e:
+		Log("fmovies.py > decode_t > %s" % e)
+	return False, 'Error in decoding val'
 
 def get_token(n, token_error=False, **kwargs):
 	try:

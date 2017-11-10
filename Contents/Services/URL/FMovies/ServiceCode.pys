@@ -333,16 +333,14 @@ def PlayVideo(url, isTargetPlay=False, useRedirect=False, refUrl=None, params=No
 			
 	if useRedirect and refUrl != None:
 		url = GetRedirect(url, 10, ref=refUrl, headers=http_headers, cookie=http_cookies)
+		
 	if refUrl != None:
 		http_headers['Referer'] = refUrl
 		
 	if 'blogspot.com' in url:
 		time.sleep(3)
 
-	if '.m3u8' in url:
-		return IndirectResponse(VideoClipObject, key=HTTPLiveStreamURL(url), http_headers=http_headers, http_cookies=http_cookies)
-	else:
-		return IndirectResponse(VideoClipObject, key=url, http_headers=http_headers, http_cookies=http_cookies)
+	return IndirectResponse(VideoClipObject, key=url, http_headers=http_headers, post_headers=http_headers, http_cookies=http_cookies)
 
 ####################################################################################################
 def get_data(url, **kwargs):

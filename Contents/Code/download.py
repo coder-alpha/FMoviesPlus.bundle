@@ -23,18 +23,21 @@ QUEUE_RUN_ITEMS = {}
 WAIT_AND_RETRY_ON_429 = True
 CONNECTION_TIMEOUT = 60
 
-def query_pms(path): return 'http://127.0.0.1:32400%s' % path
+def query_pms(path):
+	return 'http://127.0.0.1:32400%s' % path
 
 def refresh_section(section_title, section_key):
 	
 	if Prefs['use_debug']:
 		Log("** Refreshing User Library Section Title: %s Section Key: %s **" % (section_title, section_key))
-	#HTTP.Request(query_pms('/library/sections/%s/refresh' % section_key), immediate = True)
-	try:
-		s = requests.Session()
-		s.get(query_pms('/library/sections/%s/refresh' % section_key))
-	except Exception as e:
-		Log(e)
+	
+	HTTP.Request(query_pms('/library/sections/%s/refresh' % section_key), immediate = True)
+	
+	# try:
+		# s = requests.Session()
+		# s.get(query_pms('/library/sections/%s/refresh' % section_key))
+	# except Exception as e:
+		# Log(e)
 
 # params: movie, show
 def section_info(section):

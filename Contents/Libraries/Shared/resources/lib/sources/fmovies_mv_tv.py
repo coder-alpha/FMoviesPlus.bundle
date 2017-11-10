@@ -43,6 +43,7 @@ class source:
 		self.TOKEN_KEY = []
 		self.base_link_alts = ['https://fmovies.to','https://fmovies.is','https://fmovies.se']
 		self.base_link = self.base_link_alts[0]
+		self.grabber_api = "grabber-api/"
 		self.search_link = '/sitemap'
 		self.ALL_JS = "/assets/min/public/all.js"
 		self.TOKEN_KEY_PASTEBIN_URL = "https://pastebin.com/raw/VNn1454k"
@@ -61,11 +62,11 @@ class source:
 		if len(proxies.sourceProxies)==0:
 			proxies.init()
 		self.proxyrequired = False
+		self.msg = ''
 		self.siteonline = self.testSite()
 		self.testparser = 'Unknown'
 		self.testparser = self.testParser()
 		self.initAndSleepThread()
-		self.msg = ''
 		self.init = True
 		log(type='INFO', method='init', err=' -- Initializing %s End --' % name)
 		
@@ -243,7 +244,7 @@ class source:
 			
 			myts = str(((int(time.time())/3600)*3600))
 			log('INFO','get_sources-1', 'url: %s' % url, dolog=False)
-			
+			token_error = False
 			urls = []
 			
 			if not str(url).startswith('http'):
@@ -403,7 +404,7 @@ class source:
 
 					headers = {'X-Requested-With': 'XMLHttpRequest'}
 					hash_url = urlparse.urljoin(self.base_link, self.hash_link)
-					query = {'ts': myts, 'id': s[0], 'update': '0'}
+					query = {'ts': myts, 'id': s[0], 'update': '0', 'server':'36'}
 
 					query.update(self.__get_token(query))
 					hash_url = hash_url + '?' + urllib.urlencode(query)
@@ -415,16 +416,18 @@ class source:
 					result = json.loads(result)
 					
 					if 'error' in result and result['error'] == True:
-						query.update(self.__get_token(query, token_error=True))
+						token_error = True
+						query.update(self.__get_token(query, token_error=token_error))
 						hash_url = hash_url + '?' + urllib.urlencode(query)
 						result = proxies.request(hash_url, headers=headers, limit='0', proxy_options=proxy_options, use_web_proxy=self.proxyrequired, httpsskip=True)
 						result = json.loads(result)
 						
 						query = {'id': s[0], 'update': '0'}
-						query.update(self.__get_token(query, token_error=True))
+						query.update(self.__get_token(query, token_error=token_error))
 					else:
-						query = {'id': s[0], 'update': '0'}
-						query.update(self.__get_token(query))
+						token_error = False
+						queryx = {'id': s[0], 'update': '0'}
+						query.update(self.__get_token(queryx))
 					
 					url = url + '?' + urllib.urlencode(query)
 					#result = client2.http_get(url, headers=headers)
@@ -451,8 +454,37 @@ class source:
 					if result['target'] != "":
 						pass
 					else:
-						query = {'id':result['params']['id'], 'token':result['params']['token']}
 						grabber = result['grabber']
+						grab_data = grabber
+						grabber_url = urlparse.urljoin(self.base_link, self.grabber_api)
+						
+						if '?' in grabber:
+							grab_data = grab_data.split('?')
+							grabber_url = grab_data[0]
+							grab_data = grab_data[1]
+							
+						print grab_data
+						grab_server = str(urlparse.parse_qs(grab_data)['server'][0])
+						
+						b, resp = self.decode_t(result['params']['token'], -18)
+						if b == False:
+							raise Exception(resp)
+						token = resp
+						b, resp = self.decode_t(result['params']['options'], -18)
+						if b == False:
+							raise Exception(resp)
+						options = resp
+						
+						grab_query = {'ts':myts, grabber_url:'','id':result['params']['id'],'server':grab_server,'mobile':'0','token':token,'options':options}
+						tk = self.__get_token(grab_query, token_error)
+
+						if tk == None:
+							raise Exception('video token algo')
+						grab_info = {'token':token,'options':options}
+						del query['server']
+						query.update(grab_info)
+						query.update(tk)
+						
 						sub_url = result['subtitle']
 						if sub_url==None or len(sub_url) == 0:
 							sub_url = None
@@ -478,6 +510,10 @@ class source:
 							links_m = resolvers.createMeta(i, self.name, self.logo, quality, links_m, key, riptype, sub_url=sub_url, testing=testing)
 					else:
 						target = result['target']
+						b, resp = self.decode_t(target, -18)
+						if b == False:
+							raise Exception(resp)
+						target = resp
 						sub_url = result['subtitle']
 						if sub_url==None or len(sub_url) == 0:
 							sub_url = None
@@ -528,6 +564,29 @@ class source:
 				i += ord(t[e]) * e + e
 		return i
 
+	def decode_t(self, t, i):
+		n = [] 
+		e = []
+		r = ''
+		try:
+			for n in range(0, len(t)):
+				if n == 0 and t[n] == '.':
+					pass
+				else:
+					c = ord(t[n])
+					if c >= 97 and c <= 122:
+						e.append((c - 71 + i) % 26 + 97)
+					elif c >= 65 and c <= 90:
+						e.append((c - 39 + i) % 26 + 65)
+					else:
+						e.append(c)
+			for ee in e:
+				r += chr(ee)
+				
+			return True, r
+		except Exception as e:
+			log('ERROR', 'decode_t','%s' % e, dolog=False)
+			False, 'Error in decoding'
 
 	def __get_token(self, n, token_error=False):
 		try:

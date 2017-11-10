@@ -6656,9 +6656,9 @@ def PlayVideo(videoUrl, params, retResponse, url, title, summary, thumb, watch_t
 	#Log(common.client.request(videoUrl, headers=http_headers, output='chunk')[0:20])
 	
 	if '.m3u8' in videoUrl:
-		return IndirectResponse(VideoClipObject, key=HTTPLiveStreamURL(url=PlayAndAdd(url=url, title=title, summary=summary, thumb=thumb, videoUrl=videoUrl, watch_title=watch_title)), http_headers=http_headers, http_cookies=http_cookies)
+		return IndirectResponse(VideoClipObject, key=HTTPLiveStreamURL(url=PlayAndAdd(url=url, title=title, summary=summary, thumb=thumb, videoUrl=videoUrl, watch_title=watch_title)), http_headers=http_headers, post_headers=http_headers, http_cookies=http_cookies)
 	else:
-		return IndirectResponse(VideoClipObject, key=PlayAndAdd(url=url, title=title, summary=summary, thumb=thumb, videoUrl=videoUrl, watch_title=watch_title), http_headers=http_headers, http_cookies=http_cookies)
+		return IndirectResponse(VideoClipObject, key=PlayAndAdd(url=url, title=title, summary=summary, thumb=thumb, videoUrl=videoUrl, watch_title=watch_title), http_headers=http_headers, post_headers=http_headers, http_cookies=http_cookies)
 	
 ####################################################################################################
 @route(common.PREFIX+'/PlayAndAdd')

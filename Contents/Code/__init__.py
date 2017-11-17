@@ -1719,7 +1719,7 @@ def SortMenu(title, session=None, **kwargs):
 				title_eps_no = ''
 				
 				if is9anime == 'False':
-					name = elem.xpath(".//a//text()")[0]
+					name = elem.xpath(".//a[@class='name']//text()")[0]
 					loc = fmovies.BASE_URL + elem.xpath(".//a[@class='name']//@href")[0]
 					thumb_t = elem.xpath(".//a[@class='poster']//@src")[0]
 					thumb = thumb_t if 'url' not in thumb_t else thumb_t.split('url=')[1]

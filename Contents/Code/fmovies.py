@@ -12,7 +12,7 @@ import urllib, urlparse, json, time, re, datetime, calendar
 import common
 from __builtin__ import ord, format, eval
 
-BASE_URL = "https://fmovies.to"
+BASE_URL = "https://bmovies.to"
 HASH_PATH_MENU = "/user/ajax/menu-bar"
 HASH_PATH_INFO = "/ajax/episode/info"
 TOKEN_PATH = "/token"
@@ -21,12 +21,17 @@ FILTER_PATH = "/filter"
 KEYWORD_PATH = "/tag/"
 STAR_PATH = "/star/"
 SITE_MAP = "/sitemap"
+GRABBER_API = "grabber-api/"
 SITE_MAP_HTML_ELEMS = []
 ALL_JS = "/assets/min/public/all.js"
 TOKEN_KEY_PASTEBIN_URL = "https://pastebin.com/raw/VNn1454k"
 TOKEN_OPER_PASTEBIN_URL = "https://pastebin.com/raw/9zFcNJuP"
+DEV_NOTICE_URL = "https://pastebin.com/raw/1HDhMggt"
 TOKEN_KEY = []
 TOKEN_OPER = []
+DEV_NOTICE = []
+
+CACHE_IGNORELIST = ['apidata.googleusercontent.com']
 
 newmarketgidstorage = 'MarketGidStorage=%7B%220%22%3A%7B%22svspr%22%3A%22%22%2C%22svsds%22%3A15%2C%22TejndEEDj%22%3A%22MTQ5MzIxMTc0OTQ0NDExMDAxNDc3NDE%3D%22%7D%2C%22C110014%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493215038742%7D%2C%22C110025%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493216772437%7D%2C%22C110023%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493216771928%7D%7D'
 
@@ -74,71 +79,40 @@ def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web
 				res = None
 			isTargetPlay = False
 	else:
-		if use_debug:
-			Log("Retrieving Fresh Movie Link")
-			
-		ret, isTargetPlay, error, host, res_subtitle = get_sources(url=url, key=key, use_debug=use_debug, serverts=serverts, myts=myts, use_https_alt=use_https_alt, use_web_proxy=use_web_proxy)
-		if use_debug:
-			Log("get_sources url: %s, key: %s" % (url,key))
-			Log("get_sources ret: %s" % ret)
-		token_error = False
-		if error != None and 'token' in error:
-			token_error = True
-		
-		# if the request ever fails - clear CACHE right away and make 2nd attempt
-		# if token error make 2nd attempt using modified code
-		if common.USE_SECOND_REQUEST == True and (ret == None or token_error == True):
-			common.CACHE.clear()
+		try:
 			if use_debug:
-				Log("Using Second Request due to token error")
-				Log("CACHE cleared due to null response from API - maybe cookie issue for %s" % url)
-			time.sleep(1.0)
-			ret, isTargetPlay, error, host, res_subtitle = get_sources(url=url, key=key, use_debug=use_debug, serverts=serverts, myts=myts, use_https_alt=use_https_alt, use_web_proxy=use_web_proxy, token_error=token_error)
+				Log("Retrieving Fresh Movie Link")
+				
+			ret, isTargetPlay, error, host, res_subtitle = get_sources(url=url, key=key, use_debug=use_debug, serverts=serverts, myts=myts, use_https_alt=use_https_alt, use_web_proxy=use_web_proxy)
 			if use_debug:
-				Log("API - attempt 2nd")
 				Log("get_sources url: %s, key: %s" % (url,key))
 				Log("get_sources ret: %s" % ret)
+				Log("get_sources error: %s" % error)
+			token_error = False
+			if error != None and 'token' in error:
+				token_error = True
+			
+			# if the request ever fails - clear CACHE right away and make 2nd attempt
+			# if token error make 2nd attempt using modified code
+			if common.USE_SECOND_REQUEST == True and (ret == None or token_error == True):
+				common.CACHE.clear()
+				if use_debug:
+					Log("Using Second Request due to token error")
+					Log("CACHE cleared due to null response from API - maybe cookie issue for %s" % url)
+				time.sleep(1.0)
+				ret, isTargetPlay, error, host, res_subtitle = get_sources(url=url, key=key, use_debug=use_debug, serverts=serverts, myts=myts, use_https_alt=use_https_alt, use_web_proxy=use_web_proxy, token_error=token_error)
+				if use_debug:
+					Log("API - attempt 2nd")
+					Log("get_sources url: %s, key: %s" % (url,key))
+					Log("get_sources ret: %s" % ret)
 
-		if ret == None:
-			if use_debug:
-				Log("null response from API (possible file deleted) - for %s" % url)
-			return res, isTargetPlay, error, host, res_subtitle
-		else:
-			if isTargetPlay:
-				res = ret
-				common.CACHE[key] = {}
-				common.CACHE[key]['res'] = res
-				common.CACHE[key]['res_subtitle'] = res_subtitle
-				common.CACHE[key]['host'] = host
-				common.CACHE[key]['serverts'] = serverts
-				common.CACHE[key]['myts'] = myts
-				common.CACHE[key]['isTargetPlay'] = str(isTargetPlay)
+			if ret == None:
 				if use_debug:
-					Log("Added " + key + " to CACHE")
-				#surl = common.host_openload.resolve(url=res, embedpage=True)
-				surl = ret
-				if use_debug:
-					Log("Openload Stream URL %s from %s" % (surl,ret))
-				res = surl
+					Log("null response from API (possible file deleted) - for %s" % url)
+				return res, isTargetPlay, error, host, res_subtitle
 			else:
-				# fix api url to https
-				ret = ret.replace('http://','https://')
-				data = None
-				headersS = {'X-Requested-With': 'XMLHttpRequest'}
-				headersS['Referer'] = '%s/%s' % (url, key)
-				headersS['Cookie'] = common.CACHE_COOKIE[0]['cookie']
-				try:
-					time.sleep(1.0)
-					data = common.interface.request_via_proxy_as_backup(ret, limit='0', headers=headersS, httpsskip=use_https_alt, hideurl=not use_debug)
-					data = json.loads(data)
-				except Exception as e:
-					Log('ERROR fmovies.py>GetApiUrl-1: ARGS:%s, URL:%s' % (e,ret))
-					pass
-
-				if data == None:
-					return None, isTargetPlay, error, host, res_subtitle
-				if data['error'] == None:
-					res = JSON.StringFromObject(data['data'])
+				if isTargetPlay:
+					res = ret
 					common.CACHE[key] = {}
 					common.CACHE[key]['res'] = res
 					common.CACHE[key]['res_subtitle'] = res_subtitle
@@ -148,11 +122,69 @@ def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web
 					common.CACHE[key]['isTargetPlay'] = str(isTargetPlay)
 					if use_debug:
 						Log("Added " + key + " to CACHE")
-						Log("Added " + res + " to " + key)
-				elif data['error'] != None:
-					error = data['error']
+					#surl = common.host_openload.resolve(url=res, embedpage=True)
+					surl = ret
+					if use_debug:
+						Log("Target-Play Stream URL %s from %s" % (surl,ret))
+					res = surl
 				else:
-					error = 'Unknown error'
+					# fix api url to https
+					ret = ret.replace('http://','https://')
+					data = None
+					headersS = {'X-Requested-With': 'XMLHttpRequest'}
+					headersS['Referer'] = '%s/%s' % (url, key)
+					headersS['Cookie'] = common.CACHE_COOKIE[0]['cookie']
+					try:
+						time.sleep(1.0)
+						data = common.interface.request_via_proxy_as_backup(ret, limit='0', headers=headersS, httpsskip=use_https_alt, hideurl=not use_debug)
+						if 'Warning' in data or 'Notice' in data:
+							Log('**Fixing requested page error responses**')
+							data = re.findall(r'{.*}',data)[0]
+							subdata = re.findall(r'<a.*\/a>', data)
+							if len(subdata) > 0:
+								data = data.replace(subdata[0],'')
+						data = json.loads(data)
+					except Exception as e:
+						Log.Error('ERROR fmovies.py>GetApiUrl-1: ARGS:%s, URL:%s' % (e,ret))
+						res = None
+						raise Exception('Site returned unknown response')
+
+					if data == None:
+						return None, isTargetPlay, error, host, res_subtitle
+					if data['error'] == None:
+						res = JSON.StringFromObject(data['data'])
+						
+						add_bool = True
+						try:
+							for ign in CACHE_IGNORELIST:
+								for res_file in data['data']:
+									if ign in res_file['file']:
+										add_bool = False
+										break
+						except Exception as e:
+							Log.Error("ERROR: %s" % e)
+						
+						if add_bool == True:
+							common.CACHE[key] = {}
+							common.CACHE[key]['res'] = res
+							common.CACHE[key]['res_subtitle'] = res_subtitle
+							common.CACHE[key]['host'] = host
+							common.CACHE[key]['serverts'] = serverts
+							common.CACHE[key]['myts'] = myts
+							common.CACHE[key]['isTargetPlay'] = str(isTargetPlay)
+							if use_debug:
+								Log("Added " + key + " to CACHE")
+								Log("Added " + res + " to " + key)
+						else:
+							if use_debug:
+								Log("*IgnoreList URL* Not Added " + key + " to CACHE")
+								Log("*IgnoreList URL* Not Added " + res + " to " + key)
+					elif data['error'] != None:
+						error = data['error']
+					else:
+						error = 'Unknown error'
+		except Exception as e:
+			error = e
 
 	return res, isTargetPlay, error, host, res_subtitle
 		
@@ -196,6 +228,8 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 			TOKEN_OPER.append(token_oper)
 		except:
 			setTokenCookie(use_debug=use_debug, reset=True)
+			
+		Thread.Create(fetch_dev_notice)
 		
 		if dump or use_debug and quiet == False:
 			Log("=====================TOKEN START============================")
@@ -245,7 +279,7 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 				time.sleep(0.1)
 				del common.TOKEN_CODE[:]
 				
-				if r in common.client.HTTP_GOOD_RESP_CODES and '503 Service Unavailable' not in r1:
+				if r in common.client.HTTP_GOOD_RESP_CODES and '503 Service Unavailable' not in r1 and 'NotFoundHttpException' not in r1:
 					token_enc = common.client.b64encode(r1)
 					common.TOKEN_CODE.append(token_enc)
 					
@@ -335,7 +369,7 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 			cookie_dict.update({'token_key':token_key})
 			
 		try:
-			if len(TOKEN_OPER) == 0 and common.DOWNLOAD_BACKUP_OPER == True:
+			if len(TOKEN_OPER) == 0 or common.DOWNLOAD_BACKUP_OPER == True:
 				token_oper = common.interface.request_via_proxy_as_backup(TOKEN_OPER_PASTEBIN_URL, httpsskip=use_https_alt, hideurl=True)
 				if token_oper !=None and token_oper != '':
 					#cookie_dict.update({'token_oper':token_oper})
@@ -507,6 +541,15 @@ def get_reqkey_cookie(token, use_debug=False, use_https_alt=False, quiet=True):
 			Log.Exception("fmovies.py >> : Cannot handle token cookie >>> {}".format(e))
 			Log.Debug("No method available to decode JSF code - use manual method")
 	return ''
+	
+def fetch_dev_notice():
+	try:
+		dev_notice = common.interface.request_via_proxy_as_backup(DEV_NOTICE_URL, httpsskip=True, hideurl=True)
+		if dev_notice !=None and dev_notice != '':
+			del DEV_NOTICE[:]
+			DEV_NOTICE.append(dev_notice)
+	except Exception as e:
+		Log('ERROR fmovies.py>fetch_dev_notice: %s' % e)
 
 def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=False, use_web_proxy=False, token_error=False, **kwargs):
 
@@ -540,7 +583,8 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 		referer = url
 		serverts = str(serverts)
 		T_BASE_URL = BASE_URL
-		#T_BASE_URL = "https://fmovies.unlockpro.top"
+		T_BASE_URL = 'https://%s' % common.client.geturlhost(url)
+		is9Anime = True if common.ANIME_KEY in url else False
 		
 		time.sleep(0.5)
 		
@@ -558,8 +602,8 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 				headers['User-Agent'] = common.client.randomagent()
 			
 			hash_url = urlparse.urljoin(T_BASE_URL, HASH_PATH_INFO)
-			query = {'ts': serverts, 'id': key, 'update':'0'}
-			tk = get_token(query, token_error)
+			query = {'ts': serverts, 'id': key, 'update':'0', 'server':'36'}
+			tk = get_token(query, token_error, is9Anime)
 			if tk == None:
 				raise ValueError('video token algo')
 			
@@ -589,11 +633,43 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 				error = result['error']
 			elif result['target'] != "":
 				grabber = result['target']
+				b, resp = decode_t(grabber, -18, is9Anime)
+				if b == False:
+					raise ValueError(resp)
+				grabber = resp
 				isTargetPlay = True
 				subtitle = result['subtitle']
 			else:
-				query = {'id':result['params']['id'], 'token':result['params']['token']}
 				grabber = result['grabber']
+				grab_data = grabber
+				grabber_url = urlparse.urljoin(BASE_URL, GRABBER_API)
+				
+				if '?' in grabber:
+					grab_data = grab_data.split('?')
+					grabber_url = grab_data[0]
+					grab_data = grab_data[1]
+					
+				grab_server = str(urlparse.parse_qs(grab_data)['server'][0])
+				
+				b, resp = decode_t(result['params']['token'], -18, is9Anime)
+				if b == False:
+					raise ValueError(resp)
+				token = resp
+				b, resp = decode_t(result['params']['options'], -18, is9Anime)
+				if b == False:
+					raise ValueError(resp)
+				options = resp
+				
+				grab_query = {'ts':serverts, grabber_url:'','id':result['params']['id'],'server':grab_server,'mobile':'0','token':token,'options':options}
+				tk = get_token(grab_query, token_error, is9Anime)
+
+				if tk == None:
+					raise ValueError('video token algo')
+				grab_info = {'token':token,'options':options}
+				del query['server']
+				query.update(grab_info)
+				query.update(tk)
+				
 				subtitle = result['subtitle']
 				if '?' in grabber:
 					grabber += '&' + urllib.urlencode(query)
@@ -632,25 +708,59 @@ def r01(t, e, token_error=False):
 	h = format(int(hex(n),16),'x')
 	return h
 
-def a01(t, token_error=False):
+def a01(t, token_error=False, is9Anime=False):
 	i = 0
 	for e in range(0, len(t)):
 		if token_error == False:
-			i += ord(t[e]) + e
+			if is9Anime == False:
+				i += ord(t[e]) + e
+			else:
+				i += ord(t[e]) * e
 		else:
 			try:
 				i += eval('ord(t[%s]) %s' % (e, TOKEN_OPER[0]))
 			except:
 				i += eval('ord(t[%s]) %s' % (e, TOKEN_OPER[1]))
 	return i
+	
+#6856
+def decode_t(t, i, is9Anime=False, **kwargs):
+	n = [] 
+	e = []
+	r = ''
 
-
-def get_token(n, token_error=False, **kwargs):
 	try:
-		d = TOKEN_KEY[0]
-		s = a01(d, token_error)
+		if is9Anime == True:
+			return True, t
+		for n in range(0, len(t)):
+			if n==0 and t[n] == '.':
+				pass
+			else:
+				c = ord(t[n])
+				if c >= 97 and c <= 122:
+					e.append((c - 71 + i) % 26 + 97)
+				elif c >= 65 and c <= 90:
+					e.append((c - 39 + i) % 26 + 65)
+				else:
+					e.append(c)
+		for ee in e:
+			r += chr(ee)
+			
+		return True, r
+	except Exception as e:
+		Log("fmovies.py > decode_t > %s" % e)
+	return False, 'Error in decoding val'
+
+def get_token(n, token_error=False, is9Anime=False, **kwargs):
+	try:
+		if is9Anime == False:
+			d = TOKEN_KEY[0]
+		else:
+			d = common.control.setting('9animeVidToken')
+		
+		s = a01(d, token_error, is9Anime)
 		for i in n: 
-			s += a01(r01(d + i, n[i]), token_error)
+			s += a01(r01(d + i, n[i]), token_error, is9Anime)
 		return {'_': str(s)}
 	except Exception as e:
 		Log("fmovies.py > get_token > %s" % e)

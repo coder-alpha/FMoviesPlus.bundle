@@ -52,6 +52,8 @@ def init():
 				log(type='CRITICAL', err='Could not import %s > %s (Retry-Failed)' % (name,e))
 				error_info = {
 					'name': name,
+					'ver': '0.0.0',
+					'date': 'Jan. 01, 2000',
 					'class': name,
 					'speed': 0,
 					'netloc': name,

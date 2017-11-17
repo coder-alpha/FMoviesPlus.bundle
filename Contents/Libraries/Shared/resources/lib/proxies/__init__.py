@@ -18,8 +18,8 @@ def init():
 		try:
 			c = __import__(name, globals(), locals(), [], -1).proxy()
 			log("Adding Proxy %s : %s to Interface" % (c.name, c.base_link))
-			sourceProxies.append({'name': c.name, 'url': c.base_link, 'captcha':c.captcha, 'SSL':c.ssl, 'working':c.working, 'speed':round(c.speedtest,3)})
-			sourceProxiesCaller.append({'name': c.name, 'url': c.base_link, 'captcha':c.captcha, 'working':c.working, 'speed':round(c.speedtest,3), 'call': c})
+			sourceProxies.append({'name': c.name, 'url': c.base_link, 'captcha':c.captcha, 'SSL':c.ssl, 'working':c.working, 'speed':round(c.speedtest,3), 'ver':c.ver, 'date':c.update_date})
+			sourceProxiesCaller.append({'name': c.name, 'url': c.base_link, 'captcha':c.captcha, 'working':c.working, 'speed':round(c.speedtest,3), 'ver':c.ver, 'date':c.update_date, 'call': c})
 		except Exception as e:
 			log(type='CRITICAL', err='Could not import %s > %s' % (name,e))
 			

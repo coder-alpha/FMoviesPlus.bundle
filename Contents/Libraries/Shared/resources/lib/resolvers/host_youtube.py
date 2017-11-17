@@ -48,7 +48,9 @@ loggertxt = []
 class host:
 	def __init__(self):
 		del loggertxt[:]
-		log(type='INFO', method='init', err=' -- Initializing %s Start --' % name)
+		self.ver = '0.0.1'
+		self.update_date = 'Nov. 13, 2017'
+		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
 		self.logo = 'http://i.imgur.com/qZUP77r.png'
 		self.name = name
@@ -67,11 +69,13 @@ class host:
 		self.resolver = self.testResolver()
 		self.msg = ''
 		self.init = True
-		log(type='INFO', method='init', err=' -- Initializing %s End --' % name)
+		log(type='INFO', method='init', err=' -- Initializing %s %s %s End --' % (name, self.ver, self.update_date))
 
 	def info(self):
 		return {
 			'name': self.name,
+			'ver': self.ver,
+			'date': self.update_date,
 			'class': self.name,
 			'speed': round(self.speedtest,3),
 			'netloc': self.netloc,

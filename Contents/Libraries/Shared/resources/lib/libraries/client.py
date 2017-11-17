@@ -235,6 +235,11 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 					return
 				elif error == True:
 					return '%s: %s' % (response.code, response.reason), content
+			elif response.code == 403:
+				if output == 'response':
+					return response.code, content
+				else:
+					return
 			elif response.code == 307:
 				#Log("AAAA- Response read: %s" % response.read(5242880))
 				#Log("AAAA- Location: %s" % (response.headers['Location'].rstrip()))
@@ -344,6 +349,41 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 		if IPv4 == True:
 			setIP6()
 		return
+		
+def simpleCheck(link, headers={}, cookie={}, retError=False, retry429=False, cl=3):
+	try:
+		code = '0'
+		size = '0'
+		red_url = None 
+		r = requests.get(link, headers=headers, cookies=cookie, stream=True, verify=False, allow_redirects=True)
+		
+		if retry429 == True:
+			c = 0
+			while r.status_code == 429 and c < cl:
+				time.sleep(5)
+				r = requests.get(link, stream=True, verify=False, allow_redirects=True)
+				c += 1
+		
+		if str(r.status_code) not in HTTP_GOOD_RESP_CODES and str(r.status_code) not in GOOGLE_HTTP_GOOD_RESP_CODES_1:
+			raise Exception('HTTP Response: %s' % str(r.status_code))
+		size = r.headers['Content-length']
+		red_url = r.url
+		code = str(r.status_code)
+		r.close()
+		
+		#site = urllib.urlopen(link)
+		#meta = site.info()
+		#size = meta.getheaders("Content-Length")[0]
+		
+		if retError == True:
+			return code, red_url, size, ''
+		else:
+			return code, red_url, size
+	except Exception as e:
+		if retError == True:
+			return code, red_url, size, '{}'.format(e)
+		else:
+			return code, red_url, size
 		
 def getFileSize(link, retError=False, retry429=False, cl=3):
 	try:

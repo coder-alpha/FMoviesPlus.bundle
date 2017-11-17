@@ -15,7 +15,9 @@ loggertxt = []
 class source:
 	def __init__(self):
 		del loggertxt[:]
-		log(type='INFO', method='init', err=' -- Initializing %s Start --' % name)
+		self.ver = '0.0.1'
+		self.update_date = 'Nov. 13, 2017'
+		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
 		self.base_link_alts = ['https://www.fmovies.io','https://www4.fmovies.io']
 		self.base_link = self.base_link_alts[0]
@@ -36,12 +38,12 @@ class source:
 		if len(proxies.sourceProxies)==0:
 			proxies.init()
 		self.proxyrequired = False
+		self.msg = ''
 		self.siteonline = self.testSite()
 		self.testparser = 'Unknown'
-		self.msg = ''
 		self.testparser = self.testParser()
 		self.init = True
-		log(type='INFO', method='init', err=' -- Initializing %s End --' % name)
+		log(type='INFO', method='init', err=' -- Initializing %s %s %s End --' % (name, self.ver, self.update_date))
 		
 	def info(self):
 		return {
@@ -159,7 +161,7 @@ class source:
 			#X - Requested - With:"XMLHttpRequest"
 			return url
 		except Exception as e: 
-			log('ERROR', 'get_movie','%s: %s' % (title,e))
+			log('ERROR', 'get_movie','%s: %s' % (title,e), dolog=self.init)
 			return
 
 	def get_show(self, imdb=None, tvdb=None, tvshowtitle=None, year=None, season=None, proxy_options=None, key=None):
@@ -171,7 +173,7 @@ class source:
 			url = urllib.urlencode(url)
 			return url
 		except Exception as e: 
-			log('ERROR', 'get_show','%s: %s' % (tvshowtitle,e))
+			log('ERROR', 'get_show','%s: %s' % (tvshowtitle,e), dolog=self.init)
 			return
 
 
@@ -183,13 +185,15 @@ class source:
 			url = urllib.urlencode(url)
 			return url
 		except Exception as e: 
-			log('ERROR', 'get_episode','%s: %s' % (title,e))
+			log('ERROR', 'get_episode','%s: %s' % (title,e), dolog=self.init)
 			return
 
 	def get_sources(self, url, hosthdDict=None, hostDict=None, locDict=None, proxy_options=None, key=None, testing=False):
 		try:
 			sources = []
-			if url == None: return sources
+			if url == None: 
+				log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key), dolog=not testing)
+				return sources
 			
 			urls = []
 			

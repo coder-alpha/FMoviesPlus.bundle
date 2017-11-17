@@ -31,7 +31,7 @@ from resources.lib import resolvers
 from resources.lib import proxies
 from __builtin__ import ord, format, eval
 
-name = 'FMovies'
+name = '9anime'
 loggertxt = []
 
 class source:
@@ -43,23 +43,23 @@ class source:
 		self.init = False
 		self.disabled = False
 		self.TOKEN_KEY = []
-		self.base_link_alts = ['https://bmovies.to','https://bmovies.pro'] #['https://fmovies.to','https://fmovies.is','https://fmovies.se']
+		self.base_link_alts = ['https://9anime.is','https://9anime.to']
 		self.base_link = self.base_link_alts[0]
 		self.grabber_api = "grabber-api/"
 		self.search_link = '/sitemap'
-		self.ALL_JS = "/assets/min/public/all.js"
+		self.ALL_JS = "/assets/min/frontend/all.js"
 		self.TOKEN_KEY_PASTEBIN_URL = "https://pastebin.com/raw/VNn1454k"
 		self.hash_link = '/ajax/episode/info'
 		self.hash_menu_link = "/user/ajax/menu-bar"
 		self.token_link = "/token"
-		self.MainPageValidatingContent = ['bmovies','fmovies']
-		self.type_filter = ['movie', 'show', 'anime']
+		self.MainPageValidatingContent = ['9anime']
+		self.type_filter = ['anime']
 		self.ssl = False
 		self.name = name
 		self.headers = {}
 		self.cookie = None
 		self.loggertxt = []
-		self.logo = 'http://i.imgur.com/li8Skjf.jpg'
+		self.logo = 'https://i.imgur.com/6PsTdOZ.png'
 		self.speedtest = 0
 		if len(proxies.sourceProxies)==0:
 			proxies.init()
@@ -184,11 +184,13 @@ class source:
 			if self.siteonline == False:
 				log('INFO', 'testParser', '%s is offline - cannot test parser' % self.base_link)
 				return False
-			for movie in testparams.test_movies:
-				getmovieurl = self.get_movie(title=movie['title'], year=movie['year'], imdb=movie['imdb'])
-				movielinks = self.get_sources(url=getmovieurl, testing=True)
 				
-				if movielinks != None and len(movielinks) > 0:
+			for show in testparams.test_shows:
+				geturl = self.get_show(tvshowtitle=show['title'], season=show['season'], year=show['year'])
+				geturl = self.get_episode(geturl, season=show['season'], episode=show['episode'])
+				links = self.get_sources(url=geturl, testing=True)
+				
+				if links != None and len(links) > 0:
 					log('SUCCESS', 'testParser', 'Parser is working')
 					return True
 					
@@ -216,7 +218,7 @@ class source:
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_show','Provider Disabled by User')
 				return None
-			url = {'imdb': imdb, 'tvdb': tvdb, 'tvshowtitle': tvshowtitle, 'year': year}
+			url = {'imdb': imdb, 'tvdb': tvdb, 'tvshowtitle': tvshowtitle, 'year': year, 'season': season}
 			url = urllib.urlencode(url)
 			return url
 		except Exception as e: 
@@ -248,7 +250,7 @@ class source:
 			log('INFO','get_sources-1', 'url: %s' % url, dolog=False)
 			token_error = False
 			urls = []
-			
+
 			if not str(url).startswith('http'):
 				try:
 					data = urlparse.parse_qs(url)
@@ -273,7 +275,7 @@ class source:
 					
 					log('INFO','get_sources-2', '%s' % search_url, dolog=False)
 					
-					rs = client.parseDOM(result, 'div', attrs = {'class': '[^"]*movie-list[^"]*'})[0]
+					rs = client.parseDOM(result, 'div', attrs = {'class': '[^"]*row[^"]*'})[0]
 					r = client.parseDOM(rs, 'div', attrs = {'class': 'item'})
 					r = [(client.parseDOM(i, 'a', ret='href'), client.parseDOM(i, 'a', attrs = {'class': 'name'})) for i in r]
 					r = [(i[0][0], i[1][0]) for i in r if len(i[0]) > 0 and  len(i[1]) > 0]
@@ -512,10 +514,10 @@ class source:
 							links_m = resolvers.createMeta(i, self.name, self.logo, quality, links_m, key, riptype, sub_url=sub_url, testing=testing)
 					else:
 						target = result['target']
-						b, resp = self.decode_t(target, -18)
-						if b == False:
-							raise Exception(resp)
-						target = resp
+						# b, resp = self.decode_t(target, -18)
+						# if b == False:
+							# raise Exception(resp)
+						# target = resp
 						sub_url = result['subtitle']
 						if sub_url==None or len(sub_url) == 0:
 							sub_url = None
@@ -561,9 +563,9 @@ class source:
 		i = 0
 		for e in range(0, len(t)):
 			if token_error == False:
-				i += ord(t[e]) + e
+				i += ord(t[e]) * e
 			else:
-				i += ord(t[e]) * e + e
+				i += ord(t[e]) + e
 		return i
 
 	def decode_t(self, t, i):
@@ -571,20 +573,20 @@ class source:
 		e = []
 		r = ''
 		try:
-			for n in range(0, len(t)):
-				if n == 0 and t[n] == '.':
-					pass
-				else:
-					c = ord(t[n])
-					if c >= 97 and c <= 122:
-						e.append((c - 71 + i) % 26 + 97)
-					elif c >= 65 and c <= 90:
-						e.append((c - 39 + i) % 26 + 65)
+			if t[0] == '.':
+				for n in range(0, len(t)):
+					if n == 0 and t[n] == '.':
+						pass
 					else:
-						e.append(c)
-			for ee in e:
-				r += chr(ee)
-				
+						c = ord(t[n])
+						if c >= 97 and c <= 122:
+							e.append((c - 71 + i) % 26 + 97)
+						elif c >= 65 and c <= 90:
+							e.append((c - 39 + i) % 26 + 65)
+						else:
+							e.append(c)
+				for ee in e:
+					r += chr(ee)
 			return True, r
 		except Exception as e:
 			log('ERROR', 'decode_t','%s' % e, dolog=False)
@@ -619,6 +621,7 @@ class source:
 				token_key = re.findall(r'%s=.*?\"(.*?)\"' % cch, unpacked_code)[0]
 				if token_key !=None and token_key != '':
 					self.TOKEN_KEY.append(token_key)
+					control.set_setting(name+'VidToken', token_key)
 		except Exception as e:
 			log('ERROR', 'getVidToken-1','%s' % e, dolog=False)
 			log('ERROR', 'getVidToken-1','%s' % unpacked_code, dolog=False)
@@ -630,6 +633,7 @@ class source:
 				if token_key !=None and token_key != '':
 					#cookie_dict.update({'token_key':token_key})
 					self.TOKEN_KEY.append(token_key)
+					control.set_setting(name+'VidToken', token_key)
 		except Exception as e:
 			log('ERROR', 'getVidToken-2','%s' % e, dolog=False)
 

@@ -23,18 +23,21 @@ QUEUE_RUN_ITEMS = {}
 WAIT_AND_RETRY_ON_429 = True
 CONNECTION_TIMEOUT = 60
 
-def query_pms(path): return 'http://127.0.0.1:32400%s' % path
+def query_pms(path):
+	return 'http://127.0.0.1:32400%s' % path
 
 def refresh_section(section_title, section_key):
 	
 	if Prefs['use_debug']:
 		Log("** Refreshing User Library Section Title: %s Section Key: %s **" % (section_title, section_key))
-	#HTTP.Request(query_pms('/library/sections/%s/refresh' % section_key), immediate = True)
-	try:
-		s = requests.Session()
-		s.get(query_pms('/library/sections/%s/refresh' % section_key))
-	except Exception as e:
-		Log(e)
+	
+	HTTP.Request(query_pms('/library/sections/%s/refresh' % section_key), immediate = True)
+	
+	# try:
+		# s = requests.Session()
+		# s.get(query_pms('/library/sections/%s/refresh' % section_key))
+	# except Exception as e:
+		# Log(e)
 
 # params: movie, show
 def section_info(section):
@@ -175,20 +178,21 @@ class Downloader(object):
 		abs_path = Core.storage.join_path(path, fname)
 		file_meta['temp_file'] = abs_path
 		
-		# c = 1
-		# while Core.storage.file_exists(abs_path):
-			# fname = '%s (%s)-%s%s%s' % (file_meta['title'], file_meta['year'], str(c), file_ext, fid +'.'+ common.DOWNLOAD_FMP_EXT)
-			# abs_path = Core.storage.join_path(path, fname)
+		startPos = verifyStartPos(startPos, abs_path)
 		
+		sub_url_t = None
 		if 'openload' in source.lower():
-			furl, error, sub_url = common.host_openload.resolve(furl)
+			furl, error, sub_url_t = common.host_openload.resolve(furl)
 			if error != '' or furl == None:
-				furl, error, sub_url = common.host_openload.resolve(durl)
+				furl, error, sub_url_t = common.host_openload.resolve(durl)
 			if error != '' or furl == None:
 				Log('OpenLoad URL: %s' % furl)
 				Log('OpenLoad Error: %s' % error)
 				download_failed(url, error, progress, startPos, purgeKey)
 				return
+		
+		if sub_url_t != None:
+			file_meta['sub_url'] = sub_url_t
 		
 		if Prefs['use_debug']:
 			Log('Save path: %s' % abs_path)
@@ -548,7 +552,7 @@ def download_failed(url, error, progress, startPos, purgeKey):
 	
 	Dict.Save()
 	
-	Thread.Create(trigger_que_run)
+	Thread.Create(trigger_que_run,{},[purgeKey])
 	
 def end_download_by_user(title, url, purgeKey):
 
@@ -574,7 +578,7 @@ def end_download_by_user(title, url, purgeKey):
 		Log('Download Cancelled by User: %s' % title)
 		Log('Download Cancelled: URL - %s' % url)
 	
-	Thread.Create(trigger_que_run)
+	Thread.Create(trigger_que_run,{},[purgeKey])
 	
 def postpone_download_by_user(title, url, progress, startPos, purgeKey):
 
@@ -602,7 +606,7 @@ def postpone_download_by_user(title, url, progress, startPos, purgeKey):
 	Thread.Create(trigger_que_run)
 	
 	
-def trigger_que_run():
+def trigger_que_run(skip = []):
 
 	time.sleep(3)
 	items_for_que_run = []
@@ -611,10 +615,11 @@ def trigger_que_run():
 		if 'Down5Split' in each:
 			try:
 				file_meta = JSON.ObjectFromString(D(Dict[each]))
-				if file_meta['status'] == common.DOWNLOAD_STATUS[0] and file_meta['action'] == common.DOWNLOAD_ACTIONS[4] and (time.time() - float(file_meta['timeAdded'])) > 0:
-					Dict_Temp[each] = Dict[each]
-				elif file_meta['status'] == common.DOWNLOAD_STATUS[0] and file_meta['action'] == common.DOWNLOAD_ACTIONS[3] and (time.time() - float(file_meta['timeAdded'])) > 0:
-					Dict_Temp[each] = Dict[each]
+				if file_meta['uid'] not in skip:
+					if file_meta['status'] == common.DOWNLOAD_STATUS[0] and file_meta['action'] == common.DOWNLOAD_ACTIONS[4] and (time.time() - float(file_meta['timeAdded'])) > 0:
+						Dict_Temp[each] = Dict[each]
+					elif file_meta['status'] == common.DOWNLOAD_STATUS[0] and file_meta['action'] == common.DOWNLOAD_ACTIONS[3] and (time.time() - float(file_meta['timeAdded'])) > 0:
+						Dict_Temp[each] = Dict[each]
 			except Exception as e:
 				Log(e)
 				
@@ -705,6 +710,18 @@ def move_unfinished_to_failed():
 		del Dict['DOWNLOAD_TEMP']
 		common.DOWNLOAD_TEMP = {}
 		Dict.Save()
+		
+def verifyStartPos(startPos, filepath):
+	try:
+		if filepath != None and Core.storage.file_exists(filepath):
+			bytes_read = os.path.getsize(filepath)
+			if startPos != bytes_read:
+				if Prefs['use_debug']:
+					Log('Using start pos based on current file-size: %s. Old was: %s. File: %s' % (bytes_read, startPos, filepath))
+				startPos = bytes_read
+	except:
+		pass
+	return startPos
 	
 def DownloadInit():
 	move_unfinished_to_failed()

@@ -7,8 +7,8 @@
 
 import os, io
 import shutil
-import json
-import common, fmovies
+import json, time
+import common, fmovies, AuthTools
 
 TITLE = common.TITLE
 PREFIX = common.PREFIX
@@ -37,12 +37,18 @@ caches_path = os.path.join(support_path, 'Caches', identifier)
 
 MC = common.NewMessageContainer(PREFIX, TITLE)
 
-ES_API_URL = 'http://movies-v2.api-fetch.website'
+BACKUP_KEYS = ['DOWNLOAD_OPTIONS','INTERNAL_SOURCES_QUALS', 'INTERNAL_SOURCES_SIZES', 'INTERNAL_SOURCES_RIPTYPE', 'INTERNAL_SOURCES_FILETYPE', 'OPTIONS_PROVIDERS', 'OPTIONS_PROXY', 'INTERNAL_SOURCES']
 	
 ####################################################################################################
 @route(PREFIX + "/DevToolsC")
 def DevToolsC(title=None, header=None, message=None, **kwargs):
 	"""Tools to Remove all Covers/URLs cached files"""
+	
+	if not common.interface.isInitialized():
+		return MC.message_container("Please wait..", "Please wait a few seconds for the Interface to Load & Initialize plugins")
+		
+	if AuthTools.CheckAdmin() == False:
+		return MC.message_container('Admin Access Only', 'Only the Admin can perform this action !')
 
 	oc = ObjectContainer(title2='Tools', header=header, message=message)
 
@@ -62,6 +68,21 @@ def DevToolsC(title=None, header=None, message=None, **kwargs):
 			else:
 				message = 'Loaded {} Bookmarks'.format(count)
 			Log(u'\n----------Loaded {} Bookmarks from {}----------'.format(count, resources_path))
+		elif title == 'save_config':
+			bool = SaveConfig()
+			if bool == True:
+				message = 'Saved Config file'
+				Log(u'\n----------Saved Config to {}----------'.format(resources_path))
+			else:
+				message = 'Error: Could not Save Config file (config.json)'
+		elif title == 'load_config':
+			bool = LoadConfig()
+			if bool == True:
+				message = 'Loaded Config file'
+				Log(u'\n----------Loaded Config from {}----------'.format(resources_path))
+			else:
+				message='Error: Could not Load Config file (config.json)'
+			
 		return MC.message_container('Info', message)
 
 	# oc.add(DirectoryObject(key=Callback(DevToolsC, title='plex_cache'),
@@ -76,6 +97,14 @@ def DevToolsC(title=None, header=None, message=None, **kwargs):
 		title=u'Load Bookmarks',
 		thumb = R(ICON_TOOLS),
 		summary=u'Load Bookmarks from the Resource dir. (file: bookmarks.json)'))
+	oc.add(DirectoryObject(key=Callback(DevToolsC, title='save_config'),
+		title=u'Save Config',
+		thumb = R(ICON_TOOLS),
+		summary=u'Save Config to the Resource dir. (file: config.json). Device Options (all clients), Bookmarks, Recent WatchList, SearchQue, Downloads and Interface Options can be saved and restored using Config file.'))
+	oc.add(DirectoryObject(key=Callback(DevToolsC, title='load_config'),
+		title=u'Load Config',
+		thumb = R(ICON_TOOLS),
+		summary=u'Load Config from the Resource dir. (file: config.json). Device Options (all clients), Bookmarks, Recent WatchList, SearchQue, Downloads and Interface Options can be saved and restored using Config file.'))
 
 	return oc
 	
@@ -116,7 +145,7 @@ def SaveBookmarks(**kwargs):
 	for each in Dict:
 		longstring = str(Dict[each])
 		
-		if ('fmovies.' in longstring or ES_API_URL.lower() in longstring) and 'Key5Split' in longstring:	
+		if (('fmovies.' in longstring or 'bmovies.' in longstring) or common.ES_API_URL.lower() in longstring) and 'Key5Split' in longstring:	
 			stitle = unicode(longstring.split('Key5Split')[0])
 			url = longstring.split('Key5Split')[1]
 			summary = unicode(longstring.split('Key5Split')[2])
@@ -126,6 +155,8 @@ def SaveBookmarks(**kwargs):
 			
 			if 'fmovies.to' in url:
 				url = url.replace('fmovies.to',fmovies_base)
+			elif 'bmovies.to' in url:
+				url = url.replace('bmovies.to',fmovies_base)
 			elif 'fmovies.se' in url:
 				url = url.replace('fmovies.se',fmovies_base)
 			elif 'fmovies.is' in url:
@@ -175,3 +206,241 @@ def LoadBookmarks(**kwargs):
 	else:
 		return -1
 	
+######################################################################################
+def SaveConfig(**kwargs):
+		
+	fmovies_base = fmovies.BASE_URL.replace('https://www.','')
+	fmovies_base = fmovies_base.replace('https://','')
+	
+	config = {}
+	items_in_recent = []
+	items_in_recentlisting = []
+	items_in_bm = []
+	items_in_downloads = []
+	items_in_searchque = []
+	items_device_opts = []
+	
+	for each in Dict:
+		longstring = str(Dict[each])
+		
+		if (('fmovies.' in longstring or 'bmovies.' in longstring) or common.ES_API_URL.lower() in longstring) and 'Key5Split' in longstring:	
+			stitle = unicode(longstring.split('Key5Split')[0])
+			url = longstring.split('Key5Split')[1]
+			summary = unicode(longstring.split('Key5Split')[2])
+			thumb = longstring.split('Key5Split')[3]
+			
+			url = url.replace('www.','')
+			
+			if 'fmovies.to' in url:
+				url = url.replace('fmovies.to',fmovies_base)
+			elif 'bmovies.to' in url:
+				url = url.replace('bmovies.to',fmovies_base)
+			elif 'fmovies.se' in url:
+				url = url.replace('fmovies.se',fmovies_base)
+			elif 'fmovies.is' in url:
+				url = url.replace('fmovies.is',fmovies_base)
+				
+			#Log("BM : %s" % url)
+				
+			if url not in items_in_bm:
+				items_in_bm.append({'title':stitle,'url':url,'summary':summary,'thumb':thumb})
+				
+	urls_list = []
+	items_to_del = []
+	
+	for each in Dict:
+		longstring = str(Dict[each])
+		
+		if (('fmovies.' in longstring or 'bmovies.' in longstring) or common.ES_API_URL.lower() in longstring.lower()) and 'RR44SS' in longstring:
+			longstringsplit = longstring.split('RR44SS')
+			urls_list.append({'key': each, 'time': longstringsplit[4], 'val': longstring})
+				
+	if len(urls_list) > 0:
+		
+		newlist = sorted(urls_list, key=lambda k: k['time'], reverse=True)
+
+		fmovies_base = fmovies.BASE_URL.replace('https://www.','')
+		fmovies_base = fmovies_base.replace('https://','')
+		
+		for each in newlist:
+		
+			longstring = each['val']
+			longstringsplit = longstring.split('RR44SS')
+			stitle = unicode(longstringsplit[0])
+			url = longstringsplit[1]
+			summary = unicode(longstringsplit[2])
+			thumb = longstringsplit[3]
+			timestr = longstringsplit[4]
+			
+			#Log("%s %s" % (stitle, url))
+			url = url.replace('www.','')
+			
+			ES = ''
+			if common.ES_API_URL.lower() in longstring.lower():
+				ES = '*'
+			
+			if url.replace('fmovies.to',fmovies_base) in items_in_recent:
+				items_to_del.append(each['key'])
+			elif url.replace('bmovies.to',fmovies_base) in items_in_recent:
+				items_to_del.append(each['key'])
+			elif url.replace('fmovies.se',fmovies_base) in items_in_recent:
+				items_to_del.append(each['key'])
+			elif url.replace('fmovies.is',fmovies_base) in items_in_recent:
+				items_to_del.append(each['key'])
+			else:
+				if 'fmovies.' in longstring:
+					url = url.replace(common.client.geturlhost(url),fmovies_base)
+				items_in_recent.append(url)
+				items_in_recentlisting.append({'title':stitle, 'url':url, 'summary':summary, 'thumb':thumb, 'time':timestr})
+
+	for each in Dict:
+		longstring = str(Dict[each])
+		
+		if 'Down5Split' in each:	
+			items_in_downloads.append({'uid': each.replace('Down5Split',''), 'val': JSON.ObjectFromString(D(longstring))})
+			
+		if 'MyCustomSearch' in each and 'removed' not in longstring and 'MyCustomSearch' in longstring:
+			split_query = longstring.split('MyCustomSearch')
+			query = split_query[0]
+			timestr = split_query[1]	
+			items_in_searchque.append({'key': query, 'time': timestr})
+		
+		for dev_opt in common.DEVICE_OPTIONS:
+			if dev_opt in each:
+				items_device_opts.append({'key':each, 'val':longstring})
+
+	config['bookmarks'] = items_in_bm
+	config['recent'] = items_in_recentlisting
+	config['downloads'] = items_in_downloads
+	config['searchque'] = items_in_searchque
+	config['device_options'] = items_device_opts
+	config['channelinfo'] = {'title':common.TITLE, 'version':common.VERSION, 'tag':common.TAG, 'repo':common.GITHUB_REPOSITORY, 'prefix':common.PREFIX}
+		
+	for key in BACKUP_KEYS:
+		if Dict[key] != None:
+			config[key] = JSON.ObjectFromString(D(Dict[key]))
+	
+	try:
+		bkup_file = Core.storage.join_path(resources_path, 'config.json')
+		
+		with io.open(bkup_file, 'wb') as f:
+			json.dump(config, f, indent=4, sort_keys=True, separators=(',', ': '))
+		return True
+	except Exception as e:
+		Log.Exception("tools.py>SaveConfig >> : >>> %s" % (e))
+	return False
+		
+######################################################################################
+def LoadConfig(**kwargs):
+	
+	items_in_bm = []
+	items_in_recent = []
+	items_in_downloads = []
+	items_in_searchque = []
+	items_device_opts = []
+	file_read = None
+	config = {}
+	
+	try:
+		bkup_file = Core.storage.join_path(resources_path, 'config.json')
+		if Core.storage.file_exists(bkup_file) and (Core.storage.file_size(bkup_file) != 0):
+			with io.open(bkup_file, 'r') as f:
+				file_read = f.read()
+				
+			if file_read != None:
+				try:
+					config = json.loads(file_read)
+				except:
+					raise Exception('Config file seems invalid !')
+					
+				items_in_bm = config['bookmarks']
+				items_in_recent = config['recent']
+				items_in_downloads = config['downloads']
+				items_in_searchque = config['searchque']
+				items_device_opts = config['device_options']
+				
+			if len(config.keys()) == 0:
+				raise Exception('Config file seems invalid !')
+			
+			for item in items_in_bm:
+				title = item['title']
+				url = item['url']
+				summary = item['summary']
+				thumb = item['thumb']
+				Dict[title+'-'+E(url)] = (title + 'Key5Split' + url +'Key5Split'+ summary + 'Key5Split' + thumb)
+				
+			for item in items_in_recent:
+				title = item['title']
+				url = item['url']
+				summary = item['summary']
+				thumb = item['thumb']
+				timestr = item['time']
+				Dict[timestr+'RR44SS'+title+'RR44SS'] = title + 'RR44SS' + url +'RR44SS'+ summary + 'RR44SS' + thumb + 'RR44SS' + timestr
+				
+			for item in items_in_downloads:
+				Dict['Down5Split'+item['uid']] = E(JSON.StringFromObject(item['val']))
+				
+			for item in items_in_searchque:
+				query = item['key']
+				timestr = item['time']
+				Dict[common.TITLE.lower() +'MyCustomSearch'+query] = query + 'MyCustomSearch' + timestr
+				
+			for item in items_device_opts:
+				key = item['key']
+				val = item['val']
+				Dict[key] = val
+			
+			for key in BACKUP_KEYS:
+				if key in config:
+					Dict[key] = E(JSON.StringFromObject(config[key]))
+					
+			Dict.Save()
+			
+			try:
+				common.DOWNLOAD_OPTIONS = JSON.ObjectFromString(D(Dict['DOWNLOAD_OPTIONS']))
+			except:
+				pass
+				
+			try:
+				common.INTERNAL_SOURCES_QUALS = JSON.ObjectFromString(D(Dict['INTERNAL_SOURCES_QUALS']))
+			except:
+				pass
+				
+			try:
+				common.INTERNAL_SOURCES_SIZES = JSON.ObjectFromString(D(Dict['INTERNAL_SOURCES_SIZES']))
+			except:
+				pass
+				
+			try:
+				common.INTERNAL_SOURCES_RIPTYPE = JSON.ObjectFromString(D(Dict['INTERNAL_SOURCES_RIPTYPE']))
+			except:
+				pass
+				
+			try:
+				common.INTERNAL_SOURCES_FILETYPE = JSON.ObjectFromString(D(Dict['INTERNAL_SOURCES_FILETYPE']))
+			except:
+				pass
+				
+			try:
+				common.OPTIONS_PROVIDERS = JSON.ObjectFromString(D(Dict['OPTIONS_PROVIDERS']))
+			except:
+				pass
+				
+			try:
+				common.OPTIONS_PROXY = JSON.ObjectFromString(D(Dict['OPTIONS_PROXY']))
+			except:
+				pass
+				
+			try:
+				common.INTERNAL_SOURCES = JSON.ObjectFromString(D(Dict['INTERNAL_SOURCES']))
+			except:
+				pass
+			
+			return True
+		else:
+			return False
+	except Exception as e:
+		Log.Exception("tools.py>LoadConfig >> : >>> %s" % (e))
+	return False
+	
+######################################################################################

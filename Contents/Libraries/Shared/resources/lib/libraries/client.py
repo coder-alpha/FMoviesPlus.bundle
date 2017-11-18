@@ -219,8 +219,8 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 			if response.code == 503:
 				#Log("AAAA- CODE %s|%s " % (url, response.code))
 				if 'cf-browser-verification' in content:
-					print("CF-OK")
-
+					control.log('cf-browser-verification: CF-OK')
+					
 					netloc = '%s://%s' % (urlparse.urlparse(url).scheme, urlparse.urlparse(url).netloc)
 					#cf = cache.get(cfcookie, 168, netloc, headers['User-Agent'], timeout)
 					cfc = cfcookie()

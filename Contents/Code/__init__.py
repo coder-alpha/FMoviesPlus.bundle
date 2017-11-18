@@ -440,7 +440,7 @@ def DeviceOptions(session, **kwargs):
 	oc = ObjectContainer(title2='Device Options', no_cache=common.isForceNoCache())
 	
 	c = 1
-	for key in common.DEVICE_OPTIONS:
+	for key in sorted(common.DEVICE_OPTIONS):
 		summary = common.DEVICE_OPTION[key]
 		bool = False if (Dict['Toggle'+key+session] == None or Dict['Toggle'+key+session] == 'disabled') else True
 		title_msg = "%02d). %s %s | %s" % (c, common.GetEmoji(type=bool, mode='simple', session=session), key, summary)
@@ -4017,8 +4017,10 @@ def MoviesWithTag(tags, session, is9anime='False', **kwargs):
 @route(PREFIX + "/getmovieinfo")
 def GetMovieInfo(summary, urlPath, referer=None, session=None, is9anime='False', **kwargs):
 
-	if common.NO_MOVIE_INFO == True or urlPath == None and (summary == None or summary == '') or Prefs['use_web_proxy'] or common.UsingOption(common.DEVICE_OPTIONS[8], session=session) == True:
+	if common.NO_MOVIE_INFO == True or urlPath == None and (summary == None or summary == '') or Prefs['use_web_proxy']:
 		return 'Plot Summary on Item Page'
+	elif (is9anime == 'False' and common.UsingOption(common.DEVICE_OPTIONS[8], session=session) == True) or (is9anime == 'True' and common.UsingOption(common.DEVICE_OPTIONS[11], session=session) == True):
+		return 'Plot Summary on Item Page. Disabled via Device Options.'
 	elif summary != None and Prefs["dont_fetch_more_info"]:
 		return summary
 	elif urlPath == None:

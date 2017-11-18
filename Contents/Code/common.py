@@ -1,6 +1,6 @@
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.49' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.50' # Release notation (x.y - where x is major and y is minor)
 TAG = ''
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
@@ -70,6 +70,8 @@ EMOJI_VIDEO_CAMERA = u'\U0001F3A5'
 EMOJI_CASSETTE = u'\U0001F4FC'
 EMOJI_CINEMA = u'\U0001F3A6'
 EMOJI_TV = u'\U0001F4FA'
+EMOJI_ANIME = u'\u2318'
+EMOJI_EXT = u'*'
 
 # Simple Emoji's
 EMOJI_HEART = u'\u2665'
@@ -96,7 +98,7 @@ INTERNAL_SOURCES_QUALS_CONST = [{'label':'4K','enabled': 'True'},{'label':'1080p
 INTERNAL_SOURCES_RIPTYPE_CONST = [{'label':'BRRIP','enabled': 'True'},{'label':'PREDVD','enabled': 'True'},{'label':'CAM','enabled': 'True'},{'label':'TS','enabled': 'True'},{'label':'SCR','enabled': 'True'},{'label':'UNKNOWN','enabled': 'True'}]
 INTERNAL_SOURCES_FILETYPE_CONST = [{'label':'Movie/Show','enabled': 'True'},{'label':'Trailer','enabled': 'True'},{'label':'Behind the scenes','enabled': 'False'},{'label':'Music Video','enabled': 'False'},{'label':'Deleted Scenes','enabled': 'False'},{'label':'Interviews','enabled': 'False'},{'label':'Misc.','enabled': 'False'}]
 
-DEVICE_OPTIONS = ['Dumb-Keyboard','List-View','Redirector','Simple-Emoji','Vibrant-Emoji','Multi-Link-View','Full-poster display','Use-PhantomJS','No-Extra-Page-Info','Use-FileSize-Sorting']
+DEVICE_OPTIONS = ['Dumb-Keyboard','List-View','Redirector','Simple-Emoji','Vibrant-Emoji','Multi-Link-View','Full-poster display','Use-PhantomJS','No-Extra-Page-Info','Use-FileSize-Sorting','Force-Transcoding','No-Extra-Page-Info (Anime)']
 DEVICE_OPTION = {DEVICE_OPTIONS[0]:'The awesome Keyboard for Search impaired devices',
 				DEVICE_OPTIONS[1]:'Force List-View of Playback page listing sources',
 				DEVICE_OPTIONS[2]:'Required in certain cases - *Experimental (refer forum)',
@@ -106,7 +108,9 @@ DEVICE_OPTION = {DEVICE_OPTIONS[0]:'The awesome Keyboard for Search impaired dev
 				DEVICE_OPTIONS[6]:'Shows Uncropped Poster - client compatibility is untested',
 				DEVICE_OPTIONS[7]:'Use PhantomJS - For parsing links. Binary download required',
 				DEVICE_OPTIONS[8]:'No-Extra-Page-Info - Speeds up navigation by not downloading detailed item info',
-				DEVICE_OPTIONS[9]:'Use-FileSize-Sorting - Uses FileSize instead of Resolution info provided by site which can be inaccurate'}
+				DEVICE_OPTIONS[9]:'Use-FileSize-Sorting - Uses FileSize instead of Resolution info provided by site which can be inaccurate',
+				DEVICE_OPTIONS[10]:'Force-Transcoding - Sets the item\'s container property to null in order to force transcoding by PMS',
+				DEVICE_OPTIONS[11]:'No-Extra-Page-Info (Anime) - Speeds up navigation by not downloading detailed item info'}
 DEVICE_OPTION_CONSTRAINTS = {DEVICE_OPTIONS[2]:[{'Pref':'use_https_alt','Desc':'Use Alternate SSL/TLS','ReqValue':'disabled'}]}
 DEVICE_OPTION_CONSTRAINTS2 = {DEVICE_OPTIONS[5]:[{'Option':6,'ReqValue':False}], DEVICE_OPTIONS[6]:[{'Option':5,'ReqValue':False}]}
 DEVICE_OPTION_PROPOGATE_TO_CONTROL = {DEVICE_OPTIONS[7]:True}
@@ -123,6 +127,14 @@ DOWNLOAD_PROPS = ['Done','Limbo','Throttling','Waiting']
 DOWNLOAD_STATS = {}
 DOWNLOAD_TEMP = {}
 DOWNLOAD_FMP_EXT = '.FMPTemp'
+
+ANIME_SEARCH = []
+ANIME_KEY = '9anime'
+ANIME_URL = 'https://%s.is' % ANIME_KEY
+ANIME_SEARCH_URL = ANIME_URL + '/search?keyword=%s'
+ES_API_URL = 'http://movies-v2.api-fetch.website'
+
+EXT_SITE_URLS = [ANIME_URL, ES_API_URL]
 
 # Golbal Overrides - to disable
 SHOW_EXT_SRC_WHILE_LOADING = True
@@ -296,6 +308,18 @@ def getHighestQualityLabel(strr, q_label):
 	else:
 		return q_label
 	
+#######################################################################################################
+def isArrayValueInString(arr, mystr, toLowercase=True):
+
+	for a in arr:
+		if toLowercase == True:
+			if a.lower() in mystr.lower():
+				return True
+		else:
+			if a in mystr:
+				return True
+			
+	return False
 
 #######################################################################################################
 @route(PREFIX + "/setDictVal")
@@ -602,6 +626,7 @@ def GetPageElements(url, headers=None, referer=None, timeout=15):
 				CACHE_EXPIRY = 60 * int(Prefs["cache_expiry_time"])
 			except:
 				CACHE_EXPIRY = CACHE_EXPIRY_TIME
+				
 			if CACHE_META[url]['ts'] + CACHE_EXPIRY > time.time():
 				page_data_string = D(CACHE_META[url]['data'])
 				
@@ -611,12 +636,13 @@ def GetPageElements(url, headers=None, referer=None, timeout=15):
 		if page_data_string == None:
 			raise PageError('Request returned None.')
 
-		page_data_elems = HTML.ElementFromString(page_data_string)
+		try:
+			page_data_elems = HTML.ElementFromString(page_data_string)
+		except Exception as e:
+			if url in CACHE_META.keys():
+				del CACHE_META[url]
+			raise Exception(e)
 		
-		CACHE_META[url] = {}
-		CACHE_META[url]['ts'] = time.time()
-		CACHE_META[url]['data'] = E(page_data_string)
-	
 	except Exception as e:
 		Log('ERROR common.py>GetPageElements: %s URL: %s DATA: %s' % (error,url,page_data_string))
 
@@ -746,6 +772,12 @@ def GetPageAsString(url, headers=None, timeout=15, referer=None):
 				pass
 			if page_data_string == None:
 				error, page_data_string = interface.request(url = url, headers=headers, timeout=str(timeout), error=True)
+				
+		if url not in CACHE_META.keys() and page_data_string != None and error == '':
+			CACHE_META[url] = {}
+			CACHE_META[url]['ts'] = time.time()
+			CACHE_META[url]['data'] = E(page_data_string)
+				
 	except Exception as e:
 		Log('ERROR common.py>GetPageAsString: %s URL: %s' % (e.args,url))
 		pass

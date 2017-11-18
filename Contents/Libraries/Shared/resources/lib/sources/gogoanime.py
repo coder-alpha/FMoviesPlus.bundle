@@ -34,7 +34,9 @@ loggertxt = []
 class source:
 	def __init__(self):
 		del loggertxt[:]
-		log(type='INFO', method='init', err=' -- Initializing %s Start --' % name)
+		self.ver = '0.0.1'
+		self.update_date = 'Nov. 13, 2017'
+		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
 		self.priority = 1
 		self.disabled = False
@@ -61,7 +63,7 @@ class source:
 		self.testparser = 'Unknown'
 		self.testparser = self.testParser()
 		self.init = True
-		log(type='INFO', method='init', err=' -- Initializing %s End --' % name)
+		log(type='INFO', method='init', err=' -- Initializing %s %s %s End --' % (name, self.ver, self.update_date))
 
 	def info(self):
 		return {
@@ -165,7 +167,7 @@ class source:
 				return None
 				
 			t = cleantitle.get(tvshowtitle)
-
+			year = '%s' % year
 			q = urlparse.urljoin(self.base_link, self.search_link)
 			q = q % urllib.quote_plus(tvshowtitle)
 			
@@ -220,35 +222,44 @@ class source:
 			url = urlparse.urljoin(self.base_link, url)
 			
 			#r = client.request(url)
-			r = proxies.request(url, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
+			req = proxies.request(url, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
 
-			r = client.parseDOM(r, 'iframe', ret='src')
-			
+			r = client.parseDOM(req, 'iframe', ret='src')
+			try:
+				r2 = re.findall('data-video=\"(.*?)\"', req)
+				for r2_i in r2:
+					r.append(r2_i)
+			except:
+				pass
+				
 			links = []
 
 			for u in r:
 				try:
 					if 'http' not in u:
 						u = 'http:' + u
-					if not u.startswith('http') and not 'vidstreaming' in u: raise Exception()
 
-					#url = client.request(u)
-					url = proxies.request(u, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
-					
-					url = client.parseDOM(url, 'source', ret='src')
+					if u.startswith('http') == True:
+						if 'vidstreaming' in u:
+							#url = client.request(u)
+							url = proxies.request(u, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
+							
+							url = client.parseDOM(url, 'source', ret='src')
+						else:
+							url = [u]
 
-					for i in url:
-						#try: sources.append({'source': 'gvideo', 'quality': directstream.googletag(i)[0]['quality'], 'language': 'en', 'url': i, 'direct': True, 'debridonly': False})
-						#except: pass
-						
-						try:
-							qualityt = client.googletag(i)[0]['quality']
-						except:
-							qualityt = u'720p'
-						try:
-							links = resolvers.createMeta(i, self.name, self.logo, qualityt, links, key, vidtype='Show', testing=testing)
-						except:
-							pass
+						for i in url:
+							#try: sources.append({'source': 'gvideo', 'quality': directstream.googletag(i)[0]['quality'], 'language': 'en', 'url': i, 'direct': True, 'debridonly': False})
+							#except: pass
+							
+							try:
+								qualityt = client.googletag(i)[0]['quality']
+							except:
+								qualityt = u'720p'
+							try:
+								links = resolvers.createMeta(i, self.name, self.logo, qualityt, links, key, vidtype='Show', testing=testing)
+							except:
+								pass
 				except:
 					pass
 					

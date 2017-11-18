@@ -36,8 +36,11 @@ USE_GDRIVE_SPECIFIC_SEARCH = False
 class source:
 	def __init__(self):
 		del loggertxt[:]
-		log(type='INFO', method='init', err=' -- Initializing %s Start --' % name)
+		self.ver = '0.0.1'
+		self.update_date = 'Nov. 14, 2017'
+		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
+		self.count = 2
 		self.domains = ['alluc.ee','alluc.com']
 		self.base_link = 'https://www.alluc.ee'
 		self.moviesearch_link = ''
@@ -59,7 +62,13 @@ class source:
 		self.siteonline = self.testSite()
 		self.testparser = self.testParser()
 		self.init = True
-		log(type='INFO', method='init', err=' -- Initializing %s End --' % name)
+		if control.setting('control_all_uc_api_key') == control.base64.b64decode(control.base64.b64decode(control.all_uc_api)):
+			log(type='INFO', method='init', err='Using Plugin (Non-User) Set API Key - Count is set at 2')
+			self.count = 2
+		else:
+			log(type='INFO', method='init', err='Using User Set API Key - Count is set at 10')
+			self.count = 10
+		log(type='INFO', method='init', err=' -- Initializing %s %s %s End --' % (name, self.ver, self.update_date))
 		
 	def info(self):
 		msg = self.error
@@ -150,11 +159,11 @@ class source:
 			
 			if control.setting('control_all_uc_api_key'):
 				if control.setting('realdebrid_token') or control.setting('premiumize_user'):
-					self.moviesearch_link = '/api/search/download?user=%s&password=%s&query=%s+%s'
+					self.moviesearch_link = '/api/search/download?user=%s&password=%s&query=%s+%s&count=%s'
 				else:
-					self.moviesearch_link = '/api/search/stream/?apikey=%s&query=%s+%s'
+					self.moviesearch_link = '/api/search/stream/?apikey=%s&query=%s+%s&count=%s'
 				
-				url = self.moviesearch_link % (control.setting('control_all_uc_api_key'),cleantitle.geturl(title), year)
+				url = self.moviesearch_link % (control.setting('control_all_uc_api_key'),cleantitle.geturl(title), year, str(self.count))
 				r = urlparse.urljoin(self.base_link, url)
 				xr = r + "+%23newlinks"
 				
@@ -227,8 +236,8 @@ class source:
 							stream_url.append({'url': tmp, 'hoster': item['hostername'], 'title': xtitle, 'lang':lang, 'src':src, 'ext':ext})
 							
 				if USE_MEGA_SPECIFIC_SEARCH == True and self.init == True and control.setting('Host-mega') != False:
-					self.moviesearch_link = '/api/search/download?apikey=%s&query=%s+%s'
-					url = self.moviesearch_link % (control.setting('control_all_uc_api_key'),cleantitle.geturl(title), year)
+					self.moviesearch_link = '/api/search/download?apikey=%s&query=%s+%s&count=%s'
+					url = self.moviesearch_link % (control.setting('control_all_uc_api_key'),cleantitle.geturl(title), year, str(self.count))
 					r = urlparse.urljoin(self.base_link, url)
 					r = r + "+host%3Amega.nz"
 					r = r + "+%23newlinks"
@@ -279,16 +288,16 @@ class source:
 			stream_url = []
 			if control.setting('control_all_uc_api_key'):
 				if control.setting('realdebrid_token') or control.setting('premiumize_user'):
-					self.moviesearch_link = '/api/search/download?user=%s&password=%s&query=%s'
+					self.moviesearch_link = '/api/search/download?user=%s&password=%s&query=%s&count=%s'
 				else:
-					self.moviesearch_link = '/api/search/stream/?apikey=%s&query=%s'
+					self.moviesearch_link = '/api/search/stream/?apikey=%s&query=%s&count=%s'
 
 			tvshowtitle, year = re.compile('(.+?) [(](\d{4})[)]$').findall(url)[0]
 			season = str(season)
 			episode = str(episode)
 			season, episode = season.zfill(2), episode.zfill(2)
 			query = '%s s%se%s' % (tvshowtitle, season, episode)
-			query = self.moviesearch_link % (control.setting('control_all_uc_api_key'), urllib.quote_plus(query))
+			query = self.moviesearch_link % (control.setting('control_all_uc_api_key'), urllib.quote_plus(query), str(self.count))
 			r = urlparse.urljoin(self.base_link, query)
 			xr = r + "+%23newlinks"
 			#r = requests.get(r).json()
@@ -362,9 +371,9 @@ class source:
 						stream_url.append({'url': tmp, 'hoster': item['hostername'], 'title': xtitle, 'lang':lang, 'src':src, 'ext':ext})
 						
 			if USE_MEGA_SPECIFIC_SEARCH == True and self.init == True and control.setting('Host-mega') != False:
-				self.moviesearch_link = '/api/search/download?apikey=%s&query=%s'
+				self.moviesearch_link = '/api/search/download?apikey=%s&query=%s&count=%s'
 				query = '%s s%se%s' % (tvshowtitle, season, episode)
-				query = self.moviesearch_link % (control.setting('control_all_uc_api_key'), urllib.quote_plus(query))
+				query = self.moviesearch_link % (control.setting('control_all_uc_api_key'), urllib.quote_plus(query), str(self.count))
 				r = urlparse.urljoin(self.base_link, query)
 				xr = r + "+%23newlinks"
 				r = xr + "+host%3Amega.nz"
@@ -401,20 +410,20 @@ class source:
 				log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key), dolog=not testing)
 				return sources
 			
+			processed = []
 			for link in url:
-				if re.match('((?!\.part[0-9]).)*$', link['url'], flags=re.IGNORECASE) and '://' in link['url']:
+				if re.match('((?!\.part[0-9]).)*$', link['url'], flags=re.IGNORECASE) and '://' in link['url'] and link['url'] not in processed:
 						host = re.findall('([\w]+[.][\w]+)$', urlparse.urlparse(link['url'].strip().lower()).netloc)[0].split('.')[0]
 						scheme = urlparse.urlparse(link['url']).scheme
 						#if host in hostDict and scheme:	
 						if scheme:
-							if '1080' in link["url"] or '1080' in link['url']: 
-								quality = "1080p"
+							if '1080' in link['title'] or '1080' in link['url']: 
+								quality = '1080p'
 							elif '720' in link['title'] or '720' in link['url']: 
 								quality = 'HD'
 							else:
 								quality = 'SD'
-							#sources.append({ 'source' : host, 'quality' : quality, 'provider': 'alluc', 'url': link['url'] })
-							
+								
 							file_ext = '.mp4'
 							if len(link['ext']) > 0 and len(link['ext']) < 4 and len(link['src']) > 0:
 								txt = '%s (.%s)' % (link['src'],link['ext'])
@@ -426,7 +435,13 @@ class source:
 								txt = '%s' % link['src']
 							else:
 								txt = ''
-							sources = resolvers.createMeta(link['url'], self.name, self.logo, quality, sources, key, lang=link['lang'], txt=txt, file_ext=file_ext, testing=testing)
+								
+							if 'trailer' in link['title'].lower():
+								sources = resolvers.createMeta(link['url'], self.name, self.logo, quality, sources, key, lang=link['lang'], txt=txt, file_ext=file_ext, vidtype='Trailer', testing=testing)
+							else:
+								sources = resolvers.createMeta(link['url'], self.name, self.logo, quality, sources, key, lang=link['lang'], txt=txt, file_ext=file_ext, testing=testing)
+								
+							processed.append(link['url'])
 
 			if self.fetchedtoday > 0:
 				self.msg = 'Fetched today: %s' % str(self.fetchedtoday)

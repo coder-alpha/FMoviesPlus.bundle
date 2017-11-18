@@ -100,12 +100,14 @@ http_hdrs = {
 	'Connection': 'keep-alive'}
 	
 name = 'mega'
+ver = '0.0.1'
+update_date = 'Nov. 13, 2017'
 loggertxt = []
 	
 class host:
 	def __init__(self):
 		del loggertxt[:]
-		log(type='INFO', method='init', err=' -- Initializing %s Start --' % name)
+		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name,ver,update_date))
 		self.init = False
 		self.msg = ''
 		if crypto_msg != None:
@@ -132,7 +134,7 @@ class host:
 			self.resolver = False
 			self.working = False
 		self.init = True
-		log(type='INFO', method='init', err=' -- Initializing %s End --' % name)
+		log(type='INFO', method='init', err=' -- Initializing %s %s %s End --' % (name,ver,update_date))
 
 	def info(self):
 		return {

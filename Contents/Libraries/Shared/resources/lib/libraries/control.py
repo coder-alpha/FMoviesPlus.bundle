@@ -26,6 +26,8 @@ tvdb_key = base64.urlsafe_b64decode('MUQ2MkYyRjkwMDMwQzQ0NA==')
 fanarttv_key = base64.urlsafe_b64decode('YTc4YzhmZWRjN2U3NTE1MjRkMzkyNmNhMmQyOTU3OTg=')
 trakt_key = base64.urlsafe_b64decode('NDFjYzI1NjY5Y2Y2OTc0NTg4ZjA0MTMxYjcyZjc4MjEwMzdjY2I1ZTdlMjMzNDVjN2MxZTk3NGI4MGI5ZjI1NQ==')
 trakt_secret = base64.urlsafe_b64decode('Y2I4OWExYTViN2ZlYmJiMDM2NmQ3Y2EyNzJjZDc4YTU5MWQ1ODI2Y2UyMTQ1NWVmYzE1ZDliYzQ1ZWNjY2QyZQ==')
+all_uc_api = 'WXpFeE1qZzROV0k0WTJWall6Rm1aR1ZtWlRNNU1tVXdaR1E1WlRneVlqRT0='
+openload_api = 'WW1ReU9USmxNalkzTjJZd016RTFOenBmWjNnMU5GTkROUT09'
 
 loggertxt = []
 setting_dict = {}
@@ -39,9 +41,9 @@ def setting(key):
 
 def set_setting(key, value):
 	if key == base64.b64decode('Y29udHJvbF9hbGxfdWNfYXBpX2tleQ==') and (value == None or value == '' or len(value) == 0):
-		value = base64.b64decode(base64.b64decode('WXpFeE1qZzROV0k0WTJWall6Rm1aR1ZtWlRNNU1tVXdaR1E1WlRneVlqRT0='))
+		value = base64.b64decode(base64.b64decode(all_uc_api))
 	elif key == base64.b64decode('Y29udHJvbF9vcGVubG9hZF9hcGlfa2V5') and (value == None or value == '' or len(value) == 0 or ':' not in value):
-		value = base64.b64decode(base64.b64decode('WW1ReU9USmxNalkzTjJZd016RTFOenBmWjNnMU5GTkROUT09'))
+		value = base64.b64decode(base64.b64decode(openload_api))
 	
 	setting_dict[key] = value
 

@@ -37,8 +37,6 @@ caches_path = os.path.join(support_path, 'Caches', identifier)
 
 MC = common.NewMessageContainer(PREFIX, TITLE)
 
-ES_API_URL = 'http://movies-v2.api-fetch.website'
-
 BACKUP_KEYS = ['DOWNLOAD_OPTIONS','INTERNAL_SOURCES_QUALS', 'INTERNAL_SOURCES_SIZES', 'INTERNAL_SOURCES_RIPTYPE', 'INTERNAL_SOURCES_FILETYPE', 'OPTIONS_PROVIDERS', 'OPTIONS_PROXY', 'INTERNAL_SOURCES']
 	
 ####################################################################################################
@@ -147,7 +145,7 @@ def SaveBookmarks(**kwargs):
 	for each in Dict:
 		longstring = str(Dict[each])
 		
-		if (('fmovies.' in longstring or 'bmovies.' in longstring) or ES_API_URL.lower() in longstring) and 'Key5Split' in longstring:	
+		if (('fmovies.' in longstring or 'bmovies.' in longstring) or common.isArrayValueInString(common.EXT_SITE_URLS, longstring) == True) and 'Key5Split' in longstring:	
 			stitle = unicode(longstring.split('Key5Split')[0])
 			url = longstring.split('Key5Split')[1]
 			summary = unicode(longstring.split('Key5Split')[2])
@@ -225,7 +223,7 @@ def SaveConfig(**kwargs):
 	for each in Dict:
 		longstring = str(Dict[each])
 		
-		if (('fmovies.' in longstring or 'bmovies.' in longstring) or ES_API_URL.lower() in longstring) and 'Key5Split' in longstring:	
+		if (('fmovies.' in longstring or 'bmovies.' in longstring) or common.isArrayValueInString(common.EXT_SITE_URLS, longstring) == True) and 'Key5Split' in longstring:	
 			stitle = unicode(longstring.split('Key5Split')[0])
 			url = longstring.split('Key5Split')[1]
 			summary = unicode(longstring.split('Key5Split')[2])
@@ -253,7 +251,7 @@ def SaveConfig(**kwargs):
 	for each in Dict:
 		longstring = str(Dict[each])
 		
-		if (('fmovies.' in longstring or 'bmovies.' in longstring) or ES_API_URL.lower() in longstring.lower()) and 'RR44SS' in longstring:
+		if (('fmovies.' in longstring or 'bmovies.' in longstring) or common.isArrayValueInString(common.EXT_SITE_URLS, longstring) == True) and 'RR44SS' in longstring:
 			longstringsplit = longstring.split('RR44SS')
 			urls_list.append({'key': each, 'time': longstringsplit[4], 'val': longstring})
 				
@@ -278,8 +276,10 @@ def SaveConfig(**kwargs):
 			url = url.replace('www.','')
 			
 			ES = ''
-			if ES_API_URL.lower() in longstring.lower():
-				ES = '*'
+			if common.ES_API_URL.lower() in longstring.lower():
+				ES = common.EMOJI_EXT
+			if common.ANIME_URL.lower() in longstring.lower():
+				ES = common.EMOJI_ANIME
 			
 			if url.replace('fmovies.to',fmovies_base) in items_in_recent:
 				items_to_del.append(each['key'])

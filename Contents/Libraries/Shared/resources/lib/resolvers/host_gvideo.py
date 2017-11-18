@@ -56,9 +56,9 @@ FORMATS_EXT = {
         '59': 'mp4'
     }
 	
-CONTAINER_KEYS = ['flv','mp4','3gp','webm','mkv','ftypisom','matroska']
+CONTAINER_KEYS = ['flv','mp4','3gp','webm','mkv','ftypisom','matroska','ftypmp42', 'isommp42', 'lmvhd']
 
-FMOVIES_SERVER_MAP = {'Server F4':' Google-F4 (blogspot.com)', 'Server G1':'Google-G1 (googleapis.com)', 'Server G2':'Google-G2 (googleapis.com)', 'Server G3':'Google-G3 (googleapis.com)', 'Server G4':'Google-G4 (googleapis.com)'}
+FMOVIES_SERVER_MAP = {'Server F1':' Google-F1 (blogspot.com)','Server F2':' Google-F2 (blogspot.com)','Server F3':' Google-F3 (blogspot.com)','Server F4':' Google-F4 (blogspot.com)', 'Server G1':'Google-G1 (googleapis.com)', 'Server G2':'Google-G2 (googleusercontent.com)', 'Server G3':'Google-G3 (googleusercontent.com)', 'Server G4':'Google-G4 (googleapis.com)'}
 
 name = 'gvideo'
 loggertxt = []
@@ -66,7 +66,9 @@ loggertxt = []
 class host:
 	def __init__(self):
 		del loggertxt[:]
-		log(type='INFO', method='init', err=' -- Initializing %s Start --' % name)
+		self.ver = '0.0.1'
+		self.update_date = 'Nov. 13, 2017'
+		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
 		self.logo = 'http://i.imgur.com/KYtgDP6.png'
 		self.name = 'gvideo'
@@ -88,11 +90,13 @@ class host:
 		#self.checkGetLinkAPI()
 		self.UA = client.USER_AGENT
 		self.init = True
-		log(type='INFO', method='init', err=' -- Initializing %s End --' % name)
+		log(type='INFO', method='init', err=' -- Initializing %s %s %s End --' % (name, self.ver, self.update_date))
 
 	def info(self):
 		return {
 			'name': self.name,
+			'ver': self.ver,
+			'date': self.update_date,
 			'class': self.name,
 			'speed': round(self.speedtest,3),
 			'netloc': self.netloc,
@@ -346,7 +350,7 @@ def getVideoMetaData(url, httpsskip=False):
 		print 'ERROR: %s' % e
 		return res
 	
-def check(url, videoData=None, headers=None, cookie=None, doPrint=False, httpsskip=False):
+def check(url, videoData=None, headers=None, cookie=None, doPrint=True, httpsskip=False):
 	try:
 		if 'google.com/file' in url:
 			if videoData==None:
@@ -363,27 +367,40 @@ def check(url, videoData=None, headers=None, cookie=None, doPrint=False, httpssk
 						log('FAIL', 'check', 'status == fail')
 						return (False, videoData)
 		else:
-			http_res, red_url = client.request(url=url, output='responsecodeext', followredirect=True, headers=headers, cookie=cookie, IPv4=True, httpsskip=httpsskip)
-			key_found = False
-			if http_res in client.HTTP_GOOD_RESP_CODES or http_res in client.GOOGLE_HTTP_GOOD_RESP_CODES_1:
-				chunk = client.request(url=red_url, output='chunk', headers=headers, cookie=cookie, IPv4=True, httpsskip=httpsskip) # dont use web-proxy when retrieving chunk
-				if doPrint:
-					print "url --- %s" % red_url
-					print "chunk --- %s" % chunk[0:20]
-				
-				for key in CONTAINER_KEYS:
-					if key.lower() in str(chunk[0:20]).lower():
-						key_found = True
-						break
-			else:
-				log('FAIL', 'check', 'HTTP Resp:%s for url: %s' % (http_res, url))
-				return (False, videoData)
-			if key_found == False:
-				log('FAIL', 'check', 'keyword in chunk not found : %s --- Chunk: %s' % (url,chunk[0:20]))
-				return (False, videoData)
+			try:
+				key_found = False
+				http_res, red_url = client.request(url=url, output='responsecodeext', followredirect=True, headers=headers, cookie=cookie, IPv4=True, httpsskip=httpsskip)
+				if http_res in client.HTTP_GOOD_RESP_CODES or http_res in client.GOOGLE_HTTP_GOOD_RESP_CODES_1:
+					chunk = client.request(url=red_url, output='chunk', headers=headers, cookie=cookie, IPv4=True, httpsskip=httpsskip) # dont use web-proxy when retrieving chunk
+					if doPrint:
+						print "url --- %s" % red_url
+						print "chunk --- %s" % chunk[0:50]
+					
+					for key in CONTAINER_KEYS:
+						try:
+							if key.lower() in str(chunk[0:20]).lower():
+								key_found = True
+								break
+							if key.lower() in str(chunk[0:50]).lower():
+								key_found = True
+								break
+						except:
+							pass
+				else:
+					log('FAIL', 'check', 'HTTP Resp:%s for url: %s' % (http_res, url))
+					return (False, videoData)
+				if key_found == False:
+					log('FAIL', 'check', 'keyword in chunk not found : %s --- Chunk: %s' % (url,chunk[0:20]))
+					return (False, videoData)
+			except:
+				http_res, red_url, sz = client.simpleCheck(url, headers=headers, cookie=cookie)
+				if http_res not in client.HTTP_GOOD_RESP_CODES and http_res not in client.GOOGLE_HTTP_GOOD_RESP_CODES_1:
+					log('FAIL', 'check', 'HTTP Resp:%s for url: %s' % (http_res, url))
+					return (False, videoData)
 
 		return (True, videoData)
-	except:
+	except Exception as e:
+		log('ERROR', 'check', '%s' % e, dolog=doPrint)
 		return (False, videoData)
 				
 def getFileLink(id, httpsskip=False):

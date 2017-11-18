@@ -9,6 +9,7 @@ import re, urllib, urllib2, json, sys, time, random
 import common, updater, fmovies, tools, download
 from DumbTools import DumbKeyboard
 import AuthTools
+from __builtin__ import eval
 
 TITLE = common.TITLE
 PREFIX = common.PREFIX
@@ -70,14 +71,14 @@ ICON_WARNING = "icon-warning.png"
 
 MC = common.NewMessageContainer(common.PREFIX, common.TITLE)
 
-ES_API_URL = 'http://movies-v2.api-fetch.website'
-
 CHECK_AUTH = 'CheckAuth'
 ######################################################################################
 # Set global variables
 
-CAT_WHATS_HOT = ['Sizzlers','Most Favourited','Recommended','Most Watched This Week','Most Watched This Month','Latest Movies','Latest TV-Series','Requested Movies']
-CAT_REGULAR = ['Movies','TV-Series','Top-IMDb','Most Watched','Sitemap Listing']
+CAT_WHATS_HOT = []
+CAT_WHATS_HOT_REGULAR = ['Sizzlers','Most Favourited','Recommended','Most Watched This Week','Most Watched This Month','Latest Movies','Latest TV-Series','Requested Movies']
+CAT_WHATS_HOT_ANIME = ['Recently Updated (Anime)','Recently Updated Sub (Anime)','Recently Updated Dub (Anime)', 'Trending (Anime)', 'Recently Added (Anime)', 'Ongoing (Anime)', 'Requested (Anime)']
+CAT_REGULAR = ['Anime','Movies','TV-Series','Top-IMDb','Most Watched','Sitemap Listing']
 CAT_FILTERS = ['Release','Genre','Country','Filter Setup >>>']
 CAT_GROUPS = ['What\'s Hot ?', 'Movies & TV-Series', 'Sort using...','Site News']
 
@@ -114,6 +115,11 @@ def Start():
 	common.CACHE.clear()
 	common.CACHE_META.clear()
 	HTTP.ClearCache()
+	
+	for x in CAT_WHATS_HOT_REGULAR:
+		CAT_WHATS_HOT.append(x)
+	for x in CAT_WHATS_HOT_ANIME:
+		CAT_WHATS_HOT.append(x)
 	
 	try:
 		CACHE_EXPIRY = 60 * int(Prefs["cache_expiry_time"])
@@ -209,23 +215,17 @@ def SiteCookieRoutine(session=None, reset=False, dump=False, quiet=False, **kwar
 ######################################################################################
 @route(PREFIX + "/PreCacheStuff")
 def PreCacheStuff():
-	try:
-		url = (fmovies.BASE_URL)
-		#HTTP.PreCache(newurl)
-		page_data, error = common.GetPageAsString(url=url)
-		if Prefs["use_debug"]:
-			Log("Pre-Cached : %s" % url)
-	except Exception as e:
-		Log(e)
-		
-	try:
-		url = (fmovies.BASE_URL + fmovies.SITE_MAP)
-		#HTTP.PreCache(newurl)
-		page_data, error = common.GetPageAsString(url=url)
-		if Prefs["use_debug"]:
-			Log("Pre-Cached : %s" % url)
-	except Exception as e:
-		Log(e)
+
+	PRE_CACHE_URLS = [fmovies.BASE_URL, fmovies.BASE_URL + '/home', fmovies.BASE_URL + fmovies.SITE_MAP, common.ANIME_URL]
+
+	for url in PRE_CACHE_URLS:
+		try:
+			Thread.Create(common.GetPageAsString, {}, url)
+			#HTTP.PreCache(newurl)
+			if Prefs["use_debug"]:
+				Log("Pre-Caching : %s" % url)
+		except Exception as e:
+			Log(e)
 
 ######################################################################################
 @route(PREFIX + "/SleepPersistAndUpdateCookie")
@@ -440,7 +440,7 @@ def DeviceOptions(session, **kwargs):
 	oc = ObjectContainer(title2='Device Options', no_cache=common.isForceNoCache())
 	
 	c = 1
-	for key in common.DEVICE_OPTIONS:
+	for key in sorted(common.DEVICE_OPTIONS):
 		summary = common.DEVICE_OPTION[key]
 		bool = False if (Dict['Toggle'+key+session] == None or Dict['Toggle'+key+session] == 'disabled') else True
 		title_msg = "%02d). %s %s | %s" % (c, common.GetEmoji(type=bool, mode='simple', session=session), key, summary)
@@ -888,7 +888,7 @@ def ExtProviders(session, curr_provs=None, refresh=False, item=None, setbool='Tr
 	
 	ARRAY_T = []
 	for prov in scanned_extProviders:
-		prov['enabled'] = 'True'
+		prov['enabled'] = True
 		ARRAY_T.append(prov)
 
 	if curr_provs == None:
@@ -898,6 +898,7 @@ def ExtProviders(session, curr_provs=None, refresh=False, item=None, setbool='Tr
 		curr_provs = JSON.ObjectFromString(D(curr_provs))
 			
 	del common.OPTIONS_PROVIDERS[:]
+	common.OPTIONS_PROVIDERS = []
 	
 	if curr_provs != None and len(curr_provs) > 0:
 		p_urls = []
@@ -1609,11 +1610,20 @@ def ShowMenu(title, session=None, **kwargs):
 @route(PREFIX + "/sortMenu")
 def SortMenu(title, session=None, **kwargs):
 
-	url = fmovies.BASE_URL + '/fmovies'
 	oc = ObjectContainer(title2 = title, no_cache=common.isForceNoCache())
+	is9anime = 'False'
 	
 	# Test for the site url initially to report a logical error
+	if title in CAT_WHATS_HOT_REGULAR:
+		url = fmovies.BASE_URL + '/home'
+	elif title in CAT_WHATS_HOT_ANIME:
+		url = common.ANIME_URL
+		is9anime = 'True'
+	else:
+		url = fmovies.BASE_URL + '/home'
+	
 	page_data, error = common.GetPageElements(url = url)
+	
 	if page_data == None:
 		bool, noc, page_data = testSite(url=url)
 		if bool == False:
@@ -1689,23 +1699,59 @@ def SortMenu(title, session=None, **kwargs):
 				elems = page_data.xpath(".//*[@id='body-wrapper']//div[@class='widget latest-series']//div[@class='item']")
 			elif title == CAT_WHATS_HOT[7]:
 				elems = page_data.xpath(".//*[@id='body-wrapper']//div[@class='widget requested']//div[@class='item']")
+			elif title == CAT_WHATS_HOT[8]: # Anime section starts here
+				elems = page_data.xpath(".//div[@data-name='updated']//*//div[@class='item']")
+			elif title == CAT_WHATS_HOT[9]:
+				elems = page_data.xpath(".//div[@data-name='updated-sub']//*//div[@class='item']")
+			elif title == CAT_WHATS_HOT[10]:
+				elems = page_data.xpath(".//div[@data-name='updated-dub']//*//div[@class='item']")
+			elif title == CAT_WHATS_HOT[11]:
+				elems = page_data.xpath(".//div[@data-name='top-week']//*//div[@class='item']")
+			elif title == CAT_WHATS_HOT[12]:
+				elems = page_data.xpath(".//div[@class='widget']//div[@class='list-film']//*//div[@class='item']")
+			elif title == CAT_WHATS_HOT[13]:
+				elems = page_data.xpath(".//div[@class='widget list-link']//div[@data-name='ongoing']//div[@class='item']")
+			elif title == CAT_WHATS_HOT[14]:
+				elems = page_data.xpath(".//div[@class='widget list-link']//div[@data-name='requested']//div[@class='item']")
 			
 			for elem in elems:
-				name = elem.xpath(".//a[@class='name']//text()")[0]
-				loc = fmovies.BASE_URL + elem.xpath(".//a[@class='name']//@href")[0]
-				thumb_t = elem.xpath(".//a[@class='poster']//@src")[0]
-				thumb = thumb_t if 'url' not in thumb_t else thumb_t.split('url=')[1]
-				summary = 'Plot Summary on Item Page.'
-				
 				eps_nos = ''
 				title_eps_no = ''
-				try:
-					eps_nos = elem.xpath(".//div[@class='status']//span//text()")[0]
-					eps_no_i = str(int(eps_nos.strip()))
-					title_eps_no = ' (Eps:'+eps_no_i+')'
-					eps_nos = ' Episodes: ' + eps_no_i
-				except:
-					pass
+				
+				if is9anime == 'False':
+					name = elem.xpath(".//a[@class='name']//text()")[0]
+					loc = fmovies.BASE_URL + elem.xpath(".//a[@class='name']//@href")[0]
+					thumb_t = elem.xpath(".//a[@class='poster']//@src")[0]
+					thumb = thumb_t if 'url' not in thumb_t else thumb_t.split('url=')[1]
+					summary = 'Plot Summary on Item Page.'
+					
+					try:
+						eps_nos = elem.xpath(".//div[@class='status']//span//text()")[0]
+						eps_no_i = str(int(eps_nos.strip()))
+						title_eps_no = ' (Eps:'+eps_no_i+')'
+						eps_nos = ' Episodes: ' + eps_no_i
+					except:
+						pass
+				else:
+					if title in [CAT_WHATS_HOT[13],CAT_WHATS_HOT[14]]:
+						name = elem.xpath(".//a//text()")[0]
+						loc = elem.xpath(".//a//@href")[0]
+						thumb_t = elem.xpath(".//img//@src")[0]
+						thumb = thumb_t if 'url' not in thumb_t else thumb_t.split('url=')[1]
+						summary = 'Plot Summary on Item Page.'
+					else:
+						name = elem.xpath(".//a[@class='name']//text()")[0]
+						loc = elem.xpath(".//a[@class='name']//@href")[0]
+						thumb_t = elem.xpath(".//a[@class='poster']//@src")[0]
+						thumb = thumb_t if 'url' not in thumb_t else thumb_t.split('url=')[1]
+						summary = 'Plot Summary on Item Page.'
+				
+					try:
+						eps_nosx = elem.xpath(".//div[@class='status']//text()")[0].strip()
+						title_eps_no = ' (Eps:'+eps_nosx+')'
+						eps_nos = ' Episodes: ' + eps_nosx
+					except:
+						pass
 				
 				try:
 					more_info_link = elem.xpath(".//@data-tip")[0]
@@ -1713,9 +1759,9 @@ def SortMenu(title, session=None, **kwargs):
 					more_info_link = None
 
 				oc.add(DirectoryObject(
-					key = Callback(EpisodeDetail, title = name, url = loc, thumb = thumb, session = session),
+					key = Callback(EpisodeDetail, title = name, url = loc, thumb = thumb, session = session, is9anime=is9anime),
 					title = name + title_eps_no,
-					summary = GetMovieInfo(summary=summary, urlPath=more_info_link, referer=url, session=session) + eps_nos,
+					summary = GetMovieInfo(summary=summary, urlPath=more_info_link, referer=url, session=session, is9anime=is9anime) + eps_nos,
 					thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback=ICON_UNAV)
 					)
 				)
@@ -1735,6 +1781,7 @@ def SortMenu(title, session=None, **kwargs):
 @route(PREFIX + "/showcategory")
 def ShowCategory(title, key=' ', urlpath=None, page_count='1', session=None, **kwargs):
 	
+	is9anime = 'False'
 	if urlpath != None:
 		newurl = urlpath + '?page=%s' % page_count
 	else:
@@ -1745,14 +1792,17 @@ def ShowCategory(title, key=' ', urlpath=None, page_count='1', session=None, **k
 		elif title == CAT_FILTERS[2]:
 			newurl = (fmovies.BASE_URL + '/country/' + key.lower() + '?page=%s' % page_count)
 		elif title == CAT_REGULAR[0]:
-			newurl = (fmovies.BASE_URL + '/movies' + '?page=%s' % page_count)
+			newurl = (common.ANIME_URL + '/newest' + '?page=%s' % page_count)
+			is9anime = 'True'
 		elif title == CAT_REGULAR[1]:
-			newurl = (fmovies.BASE_URL + '/tv-series' + '?page=%s' % page_count)
+			newurl = (fmovies.BASE_URL + '/movies' + '?page=%s' % page_count)
 		elif title == CAT_REGULAR[2]:
-			newurl = (fmovies.BASE_URL + '/top-imdb' + '?page=%s' % page_count)
+			newurl = (fmovies.BASE_URL + '/tv-series' + '?page=%s' % page_count)
 		elif title == CAT_REGULAR[3]:
-			newurl = (fmovies.BASE_URL + '/most-watched' + '?page=%s' % page_count)
+			newurl = (fmovies.BASE_URL + '/top-imdb' + '?page=%s' % page_count)
 		elif title == CAT_REGULAR[4]:
+			newurl = (fmovies.BASE_URL + '/most-watched' + '?page=%s' % page_count)
+		elif title == CAT_REGULAR[5]:
 			newurl = (fmovies.BASE_URL + fmovies.SITE_MAP)
 		
 	page_data, error = common.GetPageElements(url=newurl)
@@ -1768,7 +1818,7 @@ def ShowCategory(title, key=' ', urlpath=None, page_count='1', session=None, **k
 		return MC.message_container(title, error)
 	
 	elems = []
-	if title == CAT_REGULAR[4]:
+	if title == CAT_REGULAR[5]:
 		if len(fmovies.SITE_MAP_HTML_ELEMS) == 0:
 			elems_all = page_data.xpath(".//*[@id='body-wrapper']/div/div/div[2]/ul/li[9]/ul/li")
 			fmovies.SITE_MAP_HTML_ELEMS = elems_all
@@ -1779,6 +1829,13 @@ def ShowCategory(title, key=' ', urlpath=None, page_count='1', session=None, **k
 		limit_y = int(page_count) * 50
 		for i in range(limit_x, limit_y):
 			elems.append(elems_all[i])
+	elif title == CAT_REGULAR[0]: # Anime
+		elems = page_data.xpath(".//*[@id='body-wrapper']//div[@class='row']//div[@class='item']")
+		last_page_no = int(page_count)
+		try:
+			last_page_no = int(page_data.xpath(".//*[@id='body-wrapper']//span[@class='total']//text()")[0])
+		except:
+			pass
 	else:
 		elems = page_data.xpath(".//*[@id='body-wrapper']//div[@class='row movie-list']//div[@class='item']")
 		last_page_no = int(page_count)
@@ -1805,7 +1862,10 @@ def ShowCategory(title, key=' ', urlpath=None, page_count='1', session=None, **k
 			more_info_link = None
 		else:
 			name = elem.xpath(".//a[@class='name']//text()")[0]
-			loc = fmovies.BASE_URL + elem.xpath(".//a[@class='name']//@href")[0]
+			if title == CAT_REGULAR[0]:
+				loc = elem.xpath(".//a[@class='name']//@href")[0]
+			else:
+				loc = fmovies.BASE_URL + elem.xpath(".//a[@class='name']//@href")[0]
 			thumb_t = elem.xpath(".//a[@class='poster']//@src")[0]
 			thumb = thumb_t if 'url' not in thumb_t else thumb_t.split('url=')[1]
 			summary = 'Plot Summary on Item Page.'
@@ -1827,7 +1887,7 @@ def ShowCategory(title, key=' ', urlpath=None, page_count='1', session=None, **k
 		oc.add(DirectoryObject(
 			key = Callback(EpisodeDetail, title = name, url = loc, thumb = thumb, session = session),
 			title = name + title_eps_no,
-			summary = GetMovieInfo(summary=summary, urlPath=more_info_link, referer=newurl, session=session) + eps_nos,
+			summary = GetMovieInfo(summary=summary, urlPath=more_info_link, referer=newurl, session=session, is9anime=is9anime) + eps_nos,
 			thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback=ICON_UNAV)
 			)
 		)
@@ -1862,7 +1922,7 @@ def ShowCategory(title, key=' ', urlpath=None, page_count='1', session=None, **k
 
 ######################################################################################
 @route(PREFIX + "/episodedetail")
-def EpisodeDetail(title, url, thumb, session, dataEXS=None, **kwargs):
+def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **kwargs):
 
 	page_data, error = common.GetPageElements(url=url)
 	if error != '':
@@ -1870,225 +1930,450 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, **kwargs):
 	if page_data == None:
 		return MC.message_container("Unknown Error", "Error: The page was not received. Please try again.")
 		
+	is9anime = 'True' if common.ANIME_KEY in url.lower() else 'False'
+		
 	client_id = '%s-%s' % (Client.Product, session)
 	if client_id not in CUSTOM_TIMEOUT_DICT.keys():
 		CUSTOM_TIMEOUT_DICT[client_id] = {}
 		
-	try:
-		title = unicode(page_data.xpath(".//*[@id='info']//h1[@class='name']//text()")[0])
-	except:
-		title = unicode(title)
+	if dataEXS==None and dataEXSAnim==None and is9anime == 'False':
+		if Prefs["use_debug"]:
+			Log("============================= Processing bmovies ===============================")
 		
-	try:
-		item_unav = ''
-		errs = page_data.xpath(".//*[@id='movie']//div[@class='alert alert-primary notice'][2]//text()")
-		for err in errs:
-			if 'There is no server for this movie right now, please try again later.' in err:
-				item_unav = ' ' + common.GetEmoji(type='neg', session=session)
-				break
-	except:
-		pass
-		
-	try:
-		if thumb == None:
-			thumb_t = page_data.xpath(".//*[@id='info']//div//img")[0]
-			thumb = thumb_t if 'url' not in thumb_t else thumb_t.split('url=')[1]
-	except:
+		try:
+			title = unicode(page_data.xpath(".//*[@id='info']//h1[@class='name']//text()")[0])
+		except:
+			title = unicode(title)
+			
+		try:
+			item_unav = ''
+			errs = page_data.xpath(".//*[@id='movie']//div[@class='alert alert-primary notice'][2]//text()")
+			for err in errs:
+				if 'There is no server for this movie right now, please try again later.' in err:
+					item_unav = ' ' + common.GetEmoji(type='neg', session=session)
+					break
+		except:
+			pass
+			
 		try:
 			if thumb == None:
-				thumb_t = page_data.xpath(".//*[@id='info']//div//img//@src")[0]
+				thumb_t = page_data.xpath(".//*[@id='info']//div//img")[0]
 				thumb = thumb_t if 'url' not in thumb_t else thumb_t.split('url=')[1]
 		except:
-			thumb = R(ICON_UNAV)
-		
-	try:
-		serverts = page_data.xpath(".//body[@class='watching']//@data-ts")[0]
-	except:
-		serverts = 0
-	
-	try:
-		art = page_data.xpath(".//meta[@property='og:image'][1]//@content")[0]
-	except:
-		art = 'https://cdn.rawgit.com/coder-alpha/FMoviesPlus.bundle/master/Contents/Resources/art-default.jpg'
-	oc = ObjectContainer(title2 = title + item_unav, art = art, no_cache=common.isForceNoCache())
-	
-	try:
-		summary = page_data.xpath(".//*[@id='info']//div[@class='info col-md-19']//div[@class='desc']//text()")[0]
-		#summary = re.sub(r'[^0-9a-zA-Z \-/.,\':+&!()]', '', summary)
-	except:
-		summary = 'Summary Not Available.'
-	
-	try:
-		trailer = page_data.xpath(".//*[@id='control']//div['item mbtb watch-trailer hidden-xs']//@data-url")[0]
-	except:
-		trailer = None
-	
-	try:
-		year = str(page_data.xpath(".//*[@id='info']//dl[@class='meta col-sm-12'][2]//dd[2]//text()")[0][0:4])
-	except:
-		year = 'Not Available'
-		
-	try:
-		rating = str(page_data.xpath(".//*[@id='info']//div[@class='info col-md-19']//span[1]//b//text()")[0])
-	except:
-		rating = 'Not Available'
-		
-	try:
-		duration = int(page_data.xpath(".//*[@id='info']//div[@class='info col-md-19']//span[2]//b//text()")[0].strip('/episode').strip(' min'))
-	except:
-		duration = 'Not Available'
-
-	try:
-		genre0 = page_data.xpath(".//*[@id='info']//dl[@class='meta col-sm-12'][1]//dd[1]//a//text()")
-		genre = (','.join(str(x) for x in genre0))
-		if genre == '':
-			genre = 'Not Available'
-	except:
-		genre = 'Not Available'
-	
-	try:
-		directors0 = page_data.xpath(".//*[@id='info']//dl[@class='meta col-sm-12'][1]//dd[3]//text()")
-		directors = (','.join(common.removeAccents(x) for x in directors0))
-		if directors.strip() == '...':
-			directors = 'Not Available'
-	except:
-		directors = 'Not Available'
-	
-	try:
-		roles0 = page_data.xpath(".//*[@id='info']//dl[@class='meta col-sm-12'][1]//dd[2]//a//text()")
-		roles = (','.join(common.removeAccents(x) for x in roles0))
-		if roles == '':
-			roles = 'Not Available'
-	except:
-		roles = 'Not Available'
-	
-	try:
-		servers = page_data.xpath(".//*[@id='servers']//div[@class='server row']")
-	except:
-		servers = []
-	
-	summary += '\n '
-	summary += 'Actors: ' + (roles) + '\n '
-	summary += 'Directors: ' + (directors) + '\n '
-	
-	if str(duration) == 'Not Available':
-		summary += 'Runtime: ' + (str(duration)) + '\n '
-		duration = 0
-	else:
-		summary += 'Runtime: ' + (str(duration)) + ' min.' + '\n '
-	
-	summary += 'Year: ' + (year) + '\n '
-	summary += 'Genre: ' + (genre) + '\n '
-	summary += 'IMDB rating: ' + (rating) + '\n '
-
-	try:
-		summary = unicode(common.ascii_only(summary))
-		#summary = unicode(str(summary).replace('"','').replace('\u00',''))
-	except:
-		summary = 'Not Available'
-		
-	try:
-		similar_reccos = []
-		similar_reccos_elems = page_data.xpath(".//*[@id='movie']//div[@class='row movie-list']//div[@class='item']")
-
-		for elem in similar_reccos_elems:
-			similar_reccos_name = elem.xpath(".//a[@class='name']//text()")[0]
-			similar_reccos_loc = elem.xpath(".//a[@class='name']//@href")[0]
-			thumb_t = elem.xpath(".//a[@class='poster']//@src")[0]
-			similar_reccos_thumb = thumb_t if 'url' not in thumb_t else thumb_t.split('url=')[1]
 			try:
-				eps_nos = elem.xpath(".//div[@class='status']//span//text()")[0]
-				eps_nos = ' Episodes: ' + str(int(eps_nos.strip()))
+				if thumb == None:
+					thumb_t = page_data.xpath(".//*[@id='info']//div//img//@src")[0]
+					thumb = thumb_t if 'url' not in thumb_t else thumb_t.split('url=')[1]
 			except:
-				eps_nos = ''
-			try:
-				similar_reccos_more_info_link = elem.xpath(".//@data-tip")[0]
-			except:
-				similar_reccos_more_info_link = None
-			similar_reccos.append({'name':similar_reccos_name, 'loc':similar_reccos_loc, 'thumb':similar_reccos_thumb, 'more_info_link':similar_reccos_more_info_link, 'eps_nos':eps_nos})
-	except:
-		similar_reccos = []
-		
-	try:
-		tags0 = page_data.xpath(".//*[@id='tags']//a//text()")
-		tags = (','.join(str(x) for x in tags0))
-		if tags == '':
-			tags = 'Not Available'
-	except:
-		tags = 'Not Available'
-	
-	episodes = []
-	try:
-		episodes = page_data.xpath(".//*[@id='movie']//div[@class='widget boxed episode-summary']//div[@class='item']")
-	except:
-		pass
-		
-	servers_list = {}
-	episodes_list = []
-	server_lab = []
-	isTvSeries = False
-	isMovieWithMultiPart = False
-	
-	try:
-		item_type = page_data.xpath(".//div[@id='movie']/@data-type")[0]
-		if item_type == 'series':
-			isTvSeries = True
-	except:
-		pass
-		
-	for server in servers:
-		label = server.xpath(".//label[@class='name col-md-4 col-sm-5']//text()[2]")[0].strip()
-		if label in common.host_gvideo.FMOVIES_SERVER_MAP:
-			label = common.host_gvideo.FMOVIES_SERVER_MAP[label]
-		if 'Server F' in label:
-			label = label.replace('Server F','Google-F')
-		if 'Server G' in label:
-			label = label.replace('Server G','Google-G')
-		
-		server_lab.append(label)
-		items = server.xpath(".//ul//li")
-		if len(items) > 1:
-			isMovieWithMultiPart = True
+				thumb = R(ICON_UNAV)
 			
-		servers_list[label] = []
-		c=0
-		for item in items:
-			servers_list[label].append([])
-			servers_list[label][c]={}
-			label_qual = item.xpath(".//a//text()")[0].strip()
-			label_val = item.xpath(".//a//@data-id")[0]
-			servers_list[label][c]['quality'] = label_qual
-			servers_list[label][c]['loc'] = label_val
-			c += 1
+		try:
+			serverts = page_data.xpath(".//body[@class='watching']//@data-ts")[0]
+		except:
+			serverts = 0
+		
+		try:
+			art = page_data.xpath(".//meta[@property='og:image'][1]//@content")[0]
+		except:
+			art = 'https://cdn.rawgit.com/coder-alpha/FMoviesPlus.bundle/master/Contents/Resources/art-default.jpg'
+		oc = ObjectContainer(title2 = title + item_unav, art = art, no_cache=common.isForceNoCache())
+		
+		try:
+			summary = page_data.xpath(".//*[@id='info']//div[@class='info col-md-19']//div[@class='desc']//text()")[0]
+			#summary = re.sub(r'[^0-9a-zA-Z \-/.,\':+&!()]', '', summary)
+		except:
+			summary = 'Summary Not Available.'
+		
+		try:
+			trailer = page_data.xpath(".//*[@id='control']//div['item mbtb watch-trailer hidden-xs']//@data-url")[0]
+		except:
+			trailer = None
+		
+		try:
+			year = str(page_data.xpath(".//*[@id='info']//dl[@class='meta col-sm-12'][2]//dd[2]//text()")[0][0:4])
+		except:
+			year = 'Not Available'
+			
+		try:
+			rating = str(page_data.xpath(".//*[@id='info']//div[@class='info col-md-19']//span[1]//b//text()")[0])
+		except:
+			rating = 'Not Available'
+			
+		try:
+			duration = int(page_data.xpath(".//*[@id='info']//div[@class='info col-md-19']//span[2]//b//text()")[0].strip('/episode').strip(' min'))
+		except:
+			duration = 'Not Available'
 
-	# label array of servers available - sort them so that presentation order is consistent
-	server_lab = sorted(server_lab)
-	
-	# remap server list - this way its easier to iterate for tv-show episodes
-	servers_list_new = []
-	c=0
-	
-	if len(servers_list) > 0:
-		for k in servers_list:
-			break
-		for no in servers_list[k]:
-			servers_list_new.append([])
-			servers_list_new[c] = {}
-			for label in servers_list:
-				servers_list_new[c][label] = {}
+		try:
+			genre0 = page_data.xpath(".//*[@id='info']//dl[@class='meta col-sm-12'][1]//dd[1]//a//text()")
+			genre = (','.join(str(x) for x in genre0))
+			if genre == '':
+				genre = 'Not Available'
+		except:
+			genre = 'Not Available'
+		
+		try:
+			directors0 = page_data.xpath(".//*[@id='info']//dl[@class='meta col-sm-12'][1]//dd[3]//text()")
+			directors = (','.join(common.removeAccents(x) for x in directors0))
+			if directors.strip() == '...':
+				directors = 'Not Available'
+		except:
+			directors = 'Not Available'
+		
+		try:
+			roles0 = page_data.xpath(".//*[@id='info']//dl[@class='meta col-sm-12'][1]//dd[2]//a//text()")
+			roles = (','.join(common.removeAccents(x) for x in roles0))
+			if roles == '':
+				roles = 'Not Available'
+		except:
+			roles = 'Not Available'
+		
+		try:
+			servers = page_data.xpath(".//*[@id='servers']//div[@class='server row']")
+		except:
+			servers = []
+		
+		summary += '\n '
+		summary += 'Actors: ' + (roles) + '\n '
+		summary += 'Directors: ' + (directors) + '\n '
+		
+		if str(duration) == 'Not Available':
+			summary += 'Runtime: ' + (str(duration)) + '\n '
+			duration = 0
+		else:
+			summary += 'Runtime: ' + (str(duration)) + ' min.' + '\n '
+		
+		summary += 'Year: ' + (year) + '\n '
+		summary += 'Genre: ' + (genre) + '\n '
+		summary += 'IMDB rating: ' + (rating) + '\n '
+
+		try:
+			summary = unicode(common.ascii_only(summary))
+			#summary = unicode(str(summary).replace('"','').replace('\u00',''))
+		except:
+			summary = 'Not Available'
+			
+		try:
+			similar_reccos = []
+			similar_reccos_elems = page_data.xpath(".//*[@id='movie']//div[@class='row movie-list']//div[@class='item']")
+
+			for elem in similar_reccos_elems:
+				similar_reccos_name = elem.xpath(".//a[@class='name']//text()")[0]
+				similar_reccos_loc = elem.xpath(".//a[@class='name']//@href")[0]
+				thumb_t = elem.xpath(".//a[@class='poster']//@src")[0]
+				similar_reccos_thumb = thumb_t if 'url' not in thumb_t else thumb_t.split('url=')[1]
 				try:
-					servers_list_new[c][label] = {'quality':servers_list[label][c]['quality'], 'loc':servers_list[label][c]['loc']}
+					eps_nos = elem.xpath(".//div[@class='status']//span//text()")[0]
+					eps_nos = ' Episodes: ' + str(int(eps_nos.strip()))
 				except:
-					if c > 99:
-						servers_list_new[c][label] = {'quality':"%03d" % (c+1), 'loc':''}
-					else:
-						servers_list_new[c][label] = {'quality':"%02d" % (c+1), 'loc':''}
-			c += 1
+					eps_nos = ''
+				try:
+					similar_reccos_more_info_link = elem.xpath(".//@data-tip")[0]
+				except:
+					similar_reccos_more_info_link = None
+				similar_reccos.append({'name':similar_reccos_name, 'loc':similar_reccos_loc, 'thumb':similar_reccos_thumb, 'more_info_link':similar_reccos_more_info_link, 'eps_nos':eps_nos})
+		except:
+			similar_reccos = []
+			
+		try:
+			tags0 = page_data.xpath(".//*[@id='tags']//a//text()")
+			tags = (','.join(str(x) for x in tags0))
+			if tags == '':
+				tags = 'Not Available'
+		except:
+			tags = 'Not Available'
+		
+		episodes = []
+		try:
+			episodes = page_data.xpath(".//*[@id='movie']//div[@class='widget boxed episode-summary']//div[@class='item']")
+		except:
+			pass
+			
+		servers_list = {}
+		episodes_list = []
+		server_lab = []
+		isTvSeries = False
+		isMovieWithMultiPart = False
+		
+		try:
+			item_type = page_data.xpath(".//div[@id='movie']/@data-type")[0]
+			if item_type == 'series':
+				isTvSeries = True
+		except:
+			pass
+			
+		for server in servers:
+			label = server.xpath(".//label[@class='name col-md-4 col-sm-5']//text()[2]")[0].strip()
+			if label in common.host_gvideo.FMOVIES_SERVER_MAP:
+				label = common.host_gvideo.FMOVIES_SERVER_MAP[label]
+			if 'Server F' in label:
+				label = label.replace('Server F','Google-F')
+			if 'Server G' in label:
+				label = label.replace('Server G','Google-G')
+			
+			server_lab.append(label)
+			items = server.xpath(".//ul//li")
+			if len(items) > 1:
+				isMovieWithMultiPart = True
+				
+			servers_list[label] = []
+			c=0
+			for item in items:
+				servers_list[label].append([])
+				servers_list[label][c]={}
+				label_qual = item.xpath(".//a//text()")[0].strip()
+				label_val = item.xpath(".//a//@data-id")[0]
+				servers_list[label][c]['quality'] = label_qual
+				servers_list[label][c]['loc'] = label_val
+				c += 1
+
+		# label array of servers available - sort them so that presentation order is consistent
+		server_lab = sorted(server_lab)
+		
+		# remap server list - this way its easier to iterate for tv-show episodes
+		servers_list_new = []
+		c=0
+		
+		if len(servers_list) > 0:
+			for k in servers_list:
+				break
+			for no in servers_list[k]:
+				servers_list_new.append([])
+				servers_list_new[c] = {}
+				for label in servers_list:
+					servers_list_new[c][label] = {}
+					try:
+						servers_list_new[c][label] = {'quality':servers_list[label][c]['quality'], 'loc':servers_list[label][c]['loc']}
+					except:
+						if c > 99:
+							servers_list_new[c][label] = {'quality':"%03d" % (c+1), 'loc':''}
+						else:
+							servers_list_new[c][label] = {'quality':"%02d" % (c+1), 'loc':''}
+				c += 1
 			
 	############################# Data ############################
 	episodes_XS = []
 	imdb_id = None
-	if dataEXS != None or ES_API_URL.lower() in url:
+	
+	if dataEXSAnim != None or is9anime == 'True':
+		if Prefs["use_debug"]:
+			Log("============================= Processsing 9anime ===============================")
+		try:
+			title = page_data.xpath("//*[@id='movie']//h1[@class='title']//text()")[0]
+		except:
+			pass
+			
+		title = unicode(common.ascii_only(title))
+			
+		try:
+			item_unav = ''
+			errs = page_data.xpath(".//*[@id='movie']//div[@class='alert alert-primary notice'][2]//text()")
+			for err in errs:
+				if 'There is no server for this movie right now, please try again later.' in err:
+					item_unav = ' ' + common.GetEmoji(type='neg', session=session)
+					break
+		except:
+			pass
+			
+		isTvSeries = False
+		try:
+			item_type = page_data.xpath(".//div[@id='movie']/@data-type")[0]
+			if item_type == 'series' or item_type == 'ova':
+				isTvSeries = True
+		except:
+			pass
+			
+			
+		try:
+			if thumb == None:
+				thumb_t = page_data.xpath(".//*[@id='info']//div//img")[0]
+				thumb = thumb_t if 'url' not in thumb_t else thumb_t.split('url=')[1]
+		except:
+			try:
+				if thumb == None:
+					thumb_t = page_data.xpath(".//*[@id='info']//div//img//@src")[0]
+					thumb = thumb_t if 'url' not in thumb_t else thumb_t.split('url=')[1]
+			except:
+				thumb = R(ICON_UNAV)
+			
+		try:
+			serverts = page_data.xpath(".//body//@data-ts")[0]
+		except:
+			serverts = 0
+		
+		try:
+			art = page_data.xpath(".//meta[@property='og:image'][1]//@content")[0]
+		except:
+			art = 'https://cdn.rawgit.com/coder-alpha/FMoviesPlus.bundle/master/Contents/Resources/art-default.jpg'
+		oc = ObjectContainer(title2 = title + item_unav, art = art, no_cache=common.isForceNoCache())
+		
+		try:
+			summary = page_data.xpath(".//*[@id='info']//div[@class='desc']//text()")
+			summary = summary[0]
+		except:
+			try:
+				summary = page_data.xpath(".//div[@class='shortcontent']/text()")
+				summary = summary[0]
+			except:
+				summary = 'Summary Not Available.'
+		
+		try:
+			trailer = page_data.xpath(".//*[@id='control']//div['item mbtb watch-trailer hidden-xs']//@data-url")[0]
+		except:
+			trailer = None
+		
+		try:
+			try:
+				year = str(page_data.xpath(".//dt[contains(text(),'Date')]//following-sibling::dd[1]//text()")[0].strip()[-4:])
+				year = str(int(year))
+			except:
+				year = str(page_data.xpath(".//dt[contains(text(),'Premiered')]//following-sibling::dd[1]//text()")[0].strip()[-4:])
+				year = str(int(year))
+		except:
+			year = 'Not Available'
+			
+		try:
+			rating = str(page_data.xpath(".//*[@id='info']//dl[@class='meta col-sm-12'][2]//dd[1]//text()")[0].split('/')[0])
+		except:
+			rating = 'Not Available'
+			
+		try:
+			if isTvSeries == True:
+				duration = int(page_data.xpath(".//dd[contains(text(),'min')]//text()")[0].strip('/episode').strip(' min'))
+			else:
+				duration = int(eval(page_data.xpath(".//dd[contains(text(),'min') or contains(text(),'hr')]/text()")[0].replace('hr.','*60+').strip(' min')))
+		except:
+			duration = 'Not Available'
+
+		try:
+			genre0 = page_data.xpath(".//*[@id='info']//dl[@class='meta col-sm-12'][1]//dd[3]//a//text()")
+			genre = (','.join(str(x) for x in genre0))
+			if genre == '':
+				genre = 'Not Available'
+		except:
+			genre = 'Not Available'
+		
+		directors = 'Not Available'
+		roles = 'Not Available'
+		
+		try:
+			servers = page_data.xpath(".//*[@id='servers']//div[@class='server row']")
+		except:
+			servers = []
+		
+		summary += '\n '
+		summary += 'Actors: ' + (roles) + '\n '
+		summary += 'Directors: ' + (directors) + '\n '
+		
+		if str(duration) == 'Not Available':
+			summary += 'Runtime: ' + (str(duration)) + '\n '
+			duration = 0
+		else:
+			summary += 'Runtime: ' + (str(duration)) + ' min.' + '\n '
+		
+		summary += 'Year: ' + (year) + '\n '
+		summary += 'Genre: ' + (genre) + '\n '
+		summary += 'Rating: ' + (rating) + '\n '
+
+		try:
+			summary = unicode(common.ascii_only(summary))
+			#summary = unicode(str(summary).replace('"','').replace('\u00',''))
+		except:
+			summary = 'Not Available'
+			
+		try:
+			similar_reccos = []
+			similar_reccos_elems = page_data.xpath(".//*[@id='movie']//div[@class='row']//div[@class='item']")
+
+			for elem in similar_reccos_elems:
+				similar_reccos_name = elem.xpath(".//a[@class='name']//text()")[0]
+				similar_reccos_loc = elem.xpath(".//a[@class='name']//@href")[0]
+				thumb_t = elem.xpath(".//a[@class='poster']//@src")[0]
+				similar_reccos_thumb = thumb_t if 'url' not in thumb_t else thumb_t.split('url=')[1]
+				try:
+					eps_nos = elem.xpath(".//div[@class='status']//span//text()")[0]
+					eps_nos = ' Episodes: ' + str(int(eps_nos.strip()))
+				except:
+					eps_nos = ''
+				try:
+					similar_reccos_more_info_link = elem.xpath(".//@data-tip")[0]
+				except:
+					similar_reccos_more_info_link = None
+				similar_reccos.append({'name':similar_reccos_name, 'loc':similar_reccos_loc, 'thumb':similar_reccos_thumb, 'more_info_link':similar_reccos_more_info_link, 'eps_nos':eps_nos})
+		except:
+			similar_reccos = []
+			
+		try:
+			tags0 = page_data.xpath(".//*[@id='tags']//a//text()")
+			tags = (','.join(str(x) for x in tags0))
+			if tags == '':
+				tags = 'Not Available'
+		except:
+			tags = 'Not Available'
+		
+		episodes = []
+		try:
+			episodes = page_data.xpath(".//*[@id='movie']//div[@class='widget boxed episode-summary']//div[@class='item']")
+		except:
+			pass
+			
+		servers_list = {}
+		episodes_list = []
+		server_lab = []
+		isMovieWithMultiPart = False
+		
+		for server in servers:
+			label = server.xpath(".//label[@class='name col-md-3 col-sm-4']//text()[2]")[0].strip()
+			if label in common.host_gvideo.FMOVIES_SERVER_MAP:
+				label = common.host_gvideo.FMOVIES_SERVER_MAP[label]
+			if 'Server F' in label:
+				label = label.replace('Server F','Google-F')
+			if 'Server G' in label:
+				label = label.replace('Server G','Google-G')
+			
+			server_lab.append(label)
+			items = server.xpath(".//ul//li")
+			if len(items) > 1:
+				isMovieWithMultiPart = True
+				
+			servers_list[label] = []
+			c=0
+			for item in items:
+				servers_list[label].append([])
+				servers_list[label][c]={}
+				label_qual = item.xpath(".//a//text()")[0].strip()
+				label_val = item.xpath(".//a//@data-id")[0]
+				servers_list[label][c]['quality'] = label_qual
+				servers_list[label][c]['loc'] = label_val
+				c += 1
+
+		# label array of servers available - sort them so that presentation order is consistent
+		server_lab = sorted(server_lab)
+		
+		# remap server list - this way its easier to iterate for tv-show episodes
+		servers_list_new = []
+		c=0
+		
+		if len(servers_list) > 0:
+			for k in servers_list:
+				break
+			for no in servers_list[k]:
+				servers_list_new.append([])
+				servers_list_new[c] = {}
+				for label in servers_list:
+					servers_list_new[c][label] = {}
+					try:
+						servers_list_new[c][label] = {'quality':servers_list[label][c]['quality'], 'loc':servers_list[label][c]['loc']}
+					except:
+						if c > 99:
+							servers_list_new[c][label] = {'quality':"%03d" % (c+1), 'loc':''}
+						else:
+							servers_list_new[c][label] = {'quality':"%02d" % (c+1), 'loc':''}
+				c += 1
+	
+	if dataEXS != None or common.ES_API_URL.lower() in url:
+		if Prefs["use_debug"]:
+			Log("============================= Processsing API-Fetch ===============================")
 	
 		json_data = None
 		if dataEXS == None:
@@ -2143,7 +2428,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, **kwargs):
 				type = 'movie'
 				subtype = 'movie'
 				
-			loc = ES_API_URL + '/%s/%s' % (type,id)
+			loc = common.ES_API_URL + '/%s/%s' % (type,id)
 			
 			dataEXS_d = {}
 			dataEXS_d['title'] = name
@@ -2201,6 +2486,12 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, **kwargs):
 				genre = 'Not Available'
 		except:
 			genre = 'Not Available'
+			
+	try:
+		summary = unicode(common.ascii_only(summary))
+		#summary = unicode(str(summary).replace('"','').replace('\u00',''))
+	except:
+		summary = 'Not Available'
 
 	# trailer
 	try:
@@ -2366,7 +2657,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, **kwargs):
 			
 		if SeasonN > 0 or True: # enable for all - even if this might be a single season
 			oc.add(DirectoryObject(
-			key = Callback(Search, query = common.cleantitle.removeParanthesisAndSeason(title, SeasonN), session = session, mode='other seasons', thumb=thumb, summary=summary),
+			key = Callback(Search, query = common.cleantitle.removeParanthesisAndSeason(title, SeasonN), session = session, mode='other seasons', thumb=thumb, summary=summary, is9anime=is9anime),
 			title = "Other Seasons",
 			summary = 'Other Seasons of ' + common.cleantitle.removeParanthesis(title),
 			art = art,
@@ -2404,7 +2695,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, **kwargs):
 				pass
 		if SeasonN > 0 or True: # enable for all - even if this might be a single season
 			oc.add(DirectoryObject(
-			key = Callback(Search, query = common.cleantitle.removeParanthesisAndSeason(title, SeasonN), session = session, mode='other seasons', thumb=thumb, summary=summary),
+			key = Callback(Search, query = common.cleantitle.removeParanthesisAndSeason(title, SeasonN), session = session, mode='other seasons', thumb=thumb, summary=summary, is9anime=is9anime),
 			title = "Other Seasons",
 			summary = 'Other Seasons of ' + common.cleantitle.removeParanthesisAndSeason(title, SeasonN),
 			art = art,
@@ -2433,7 +2724,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, **kwargs):
 			try:
 				episode = eps[server_lab[0]]['quality']
 				title_s = episode
-				oc.add(VideoClipObject(
+				oc.add(DirectoryObject(
 					key = Callback(TvShowDetail, tvshow=title, title=title_s, url=url, servers_list_new=servers_list_new[c], server_lab=(','.join(str(x) for x in server_lab)), summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, serverts=serverts, session=session, season=SeasonN, episode=episode, treatasmovie=True, imdb_id=imdb_id),
 					title = title_s,
 					summary = summary,
@@ -2553,7 +2844,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, **kwargs):
 								if not Prefs['use_openload_pairing'] and 'openload' in host and common.is_uss_installed() and URLService.ServiceIdentifierForURL(server_info) != None:
 									durl = server_info
 								else:
-									durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":server_info_t, "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "roles":roles, "directors":directors, "roles":roles, "isTargetPlay":str(isTargetPlay), "useSSL":Prefs["use_https_alt"], "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled, 'urldata':'','quality':qual, 'pairrequired':pair_required, "host":host, "openloadApiKey":Prefs['control_openload_api_key']}))
+									durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":server_info_t, "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "roles":roles, "directors":directors, "roles":roles, "isTargetPlay":str(isTargetPlay), "useSSL":Prefs["use_https_alt"], "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled, 'urldata':'','quality':qual, 'pairrequired':pair_required, "host":host, "openloadApiKey":Prefs['control_openload_api_key', "force_transcode":common.UsingOption(key=common.DEVICE_OPTIONS[10], session=session)]}))
 									
 								vco = VideoClipObject(
 									url = durl,
@@ -2647,7 +2938,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, **kwargs):
 						
 	if len(similar_reccos) > 0:
 		oc.add(DirectoryObject(
-			key = Callback(SimilarRecommendations, title = title, similar_reccos = E(JSON.StringFromObject(similar_reccos)), referer=url),
+			key = Callback(SimilarRecommendations, title = title, similar_reccos = E(JSON.StringFromObject(similar_reccos)), referer=url, is9anime = is9anime),
 			title = "Similar Recommendations",
 			summary = 'Discover other %s similar to %s' % (itemtype, title),
 			art = art,
@@ -2657,7 +2948,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, **kwargs):
 	
 	if roles != 'Not Available':
 		oc.add(DirectoryObject(
-			key = Callback(MoviesWithPeople, stars = roles, session = session),
+			key = Callback(MoviesWithPeople, stars = roles, session = session, is9anime = is9anime),
 			title = "People Search",
 			summary = 'Search for movies/shows based on a person from the current %s' % (itemtype),
 			art = art,
@@ -2667,7 +2958,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, **kwargs):
 	
 	if tags != 'Not Available':
 		oc.add(DirectoryObject(
-			key = Callback(MoviesWithTag, tags = tags, session = session),
+			key = Callback(MoviesWithTag, tags = tags, session = session, is9anime = is9anime),
 			title = "Tag Search",
 			summary = 'Search for movies/shows based on a Tag from the current %s' % (itemtype),
 			art = art,
@@ -2700,6 +2991,12 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, **kwargs):
 ####################################################################################################
 @route(PREFIX + "/TvShowDetail")
 def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thumb, art, year, rating, duration, genre, directors, roles, serverts, session, season=None, episode=None, treatasmovie=False, imdb_id=None, **kwargs):
+
+	try:
+		summary = unicode(common.ascii_only(summary))
+		#summary = unicode(str(summary).replace('"','').replace('\u00',''))
+	except:
+		summary = 'Not Available'
 
 	oc = ObjectContainer(title2 = title, art = art, no_cache=common.isForceNoCache())
 
@@ -2783,7 +3080,7 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 				if not Prefs['use_openload_pairing'] and 'openload' in host and common.is_uss_installed() and URLService.ServiceIdentifierForURL(server_info) != None:
 					durl = server_info
 				else:
-					durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":server_info_t, "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "directors":directors, "roles":roles, "isTargetPlay":str(isTargetPlay), "useSSL":Prefs["use_https_alt"], "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled, 'urldata':'', 'pairrequired':pair_required, "host":host, "openloadApiKey":Prefs['control_openload_api_key']}))
+					durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":server_info_t, "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "directors":directors, "roles":roles, "isTargetPlay":str(isTargetPlay), "useSSL":Prefs["use_https_alt"], "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled, 'urldata':'', 'pairrequired':pair_required, "host":host, "openloadApiKey":Prefs['control_openload_api_key'], "force_transcode":common.UsingOption(key=common.DEVICE_OPTIONS[10], session=session)}))
 				
 				vco = None
 				try:
@@ -2875,6 +3172,12 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 @route(PREFIX + "/Videodetail")
 def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary, art, year, rating, duration, genre, directors, roles, libtype, session=None, watch_title=None, **kwargs):
 	
+	try:
+		summary = unicode(common.ascii_only(summary))
+		#summary = unicode(str(summary).replace('"','').replace('\u00',''))
+	except:
+		summary = 'Not Available'
+		
 	oc = ObjectContainer(title2=title)
 	try:
 		# url_s = label_i['loc']
@@ -2943,7 +3246,7 @@ def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary
 				if not Prefs['use_openload_pairing'] and 'openload' in host and common.is_uss_installed() and URLService.ServiceIdentifierForURL(server_info) != None:
 					durl = server_info
 				else:
-					durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":server_info_t, "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "roles":roles, "directors":directors, "roles":roles, "isTargetPlay":str(isTargetPlay), "useSSL":Prefs["use_https_alt"], "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled, 'urldata':'','quality':qual, 'pairrequired':pair_required, "host":host, "openloadApiKey":Prefs['control_openload_api_key']}))
+					durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":server_info_t, "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "roles":roles, "directors":directors, "roles":roles, "isTargetPlay":str(isTargetPlay), "useSSL":Prefs["use_https_alt"], "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled, 'urldata':'','quality':qual, 'pairrequired':pair_required, "host":host, "openloadApiKey":Prefs['control_openload_api_key'], "force_transcode":common.UsingOption(key=common.DEVICE_OPTIONS[10], session=session)}))
 					
 				vco = None
 				vco = VideoClipObject(
@@ -3045,7 +3348,13 @@ def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary
 	
 ####################################################################################################
 @route(PREFIX + "/ExtSources")
-def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directors, roles, movtitle=None, year=None, tvshowtitle=None, season=None, episode=None, session=None, imdb_id=None, **kwargs):
+def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directors, roles, movtitle=None, year=None, tvshowtitle=None, season=None, episode=None, session=None, imdb_id=None,refresh=0, **kwargs):
+
+	try:
+		summary = unicode(common.ascii_only(summary))
+		#summary = unicode(str(summary).replace('"','').replace('\u00',''))
+	except:
+		summary = 'Not Available'
 	
 	tvshowcleaned = tvshowtitle
 	if tvshowtitle != None:
@@ -3079,7 +3388,7 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 			if prog < 100:
 				oc_conc = ObjectContainer(title2='External Sources - Progress %s%s' % (prog, '%'), no_history=True, no_cache=True)
 				oc.append(DirectoryObject(
-					key = Callback(ExtSources, movtitle=movtitle, tvshowtitle=tvshowtitle, season=season, episode=episode, title=title, url=url, summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, session=session),
+					key = Callback(ExtSources, movtitle=movtitle, tvshowtitle=tvshowtitle, season=season, episode=episode, title=title, url=url, summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, session=session, refresh=int(refresh)+1),
 					title = 'Refresh - %s%s Done' % (prog,'%'),
 					summary = 'List sources by External Providers.',
 					art = art,
@@ -3109,6 +3418,7 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 		return MC.message_container('External Sources', 'No External Sources Available for this video.')
 		
 	internal_extSources = extSourKey
+	extExtrasSources_urlservice = []
 	
 	watch_title = movtitle
 	if season != None and episode != None:
@@ -3171,22 +3481,24 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 				titleinfo = ''
 			title_msg = "%s %s| %s | %s | %s | %s | %s" % (status, source['maininfo'], source['rip'], source['quality'], file_size, source['source']+':'+source['subdomain'] if source['source']=='gvideo' else source['source'], source['provider'])
 		else:
-			titleinfo = source['titleinfo']
-			title_msg = "%s %s| %s | %s | %s | %s | %s | %s" % (status, source['maininfo'], source['vidtype'], source['rip'], source['quality'], file_size, source['source'], source['provider'])
+			#titleinfo = source['titleinfo']
+			#title_msg = "%s %s| %s | %s | %s | %s | %s | %s" % (status, source['maininfo'], source['vidtype'], source['rip'], source['quality'], file_size, source['source'], source['provider'])
+			#extExtrasSources_urlservice.append(source)
+			pass
 			
 		if common.DEV_DEBUG == True:
 			Log("%s --- %s" % (title_msg, vidUrl))
 			Log('Playback: %s' % common.interface.getHostsPlaybackSupport(encode=False)[source['source']])
 		
 		# all source links (not extras) that can be played via the code service
-		if vidUrl != None and source['enabled'] and source['allowsStreaming'] and source['misc']['player'] == 'iplayer' and common.interface.getHostsPlaybackSupport(encode=False)[source['source']]:
+		if vidUrl != None and source['vidtype'] in 'Movie/Show' and source['enabled'] and source['allowsStreaming'] and source['misc']['player'] == 'iplayer' and common.interface.getHostsPlaybackSupport(encode=False)[source['source']]:
 			urldata = source['urldata']
 			params = source['params']
 			
 			if not Prefs['use_openload_pairing'] and 'openload' in source['source'] and common.is_uss_installed() and URLService.ServiceIdentifierForURL(vidUrl) != None:
 					durl = vidUrl
 			else:
-				durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":vidUrl, "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "directors":directors, "roles":roles, "isTargetPlay":str(isTargetPlay), "useSSL":Prefs["use_https_alt"], "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled, 'quality':source['quality'], 'urldata':urldata, 'params':params, 'pairrequired':pair_required, "host":source['source'], "openloadApiKey":Prefs['control_openload_api_key']}))
+				durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":vidUrl, "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "directors":directors, "roles":roles, "isTargetPlay":str(isTargetPlay), "useSSL":Prefs["use_https_alt"], "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled, 'quality':source['quality'], 'urldata':urldata, 'params':params, 'pairrequired':pair_required, "host":source['source'], "openloadApiKey":Prefs['control_openload_api_key'], "force_transcode":common.UsingOption(key=common.DEVICE_OPTIONS[10], session=session)}))
 			try:
 				oc.append(VideoClipObject(
 					url = durl,
@@ -3236,7 +3548,6 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 		external_extSources = common.FilterBasedOn(external_extSources, use_host=False, use_filesize=False)
 		
 		extSources_urlservice = []
-		extExtrasSources_urlservice = []
 		for source in external_extSources:
 			bool = True
 			for i in common.INTERNAL_SOURCES:
@@ -3267,13 +3578,13 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 		
 		if cx > 0:
 			ext_summmary = ', '.join('%s (%s)' % (x['label'],'enabled' if str(x['enabled']).lower()=='true' else 'disabled') for x in common.INTERNAL_SOURCES_FILETYPE if 'Movie/Show' not in x['label'])
-			ocp = DirectoryObject(title = 'Extras (%s items)' % str(cx), key = Callback(PSExtSources, con_title='Extras (%s items)' % str(cx), extSources_play=E(JSON.StringFromObject(extExtrasSources_urlservice)), session=session, watch_title=watch_title, summary=summary, thumb=thumb, art=art, url=url, duration=duration, genre=genre), summary=ext_summmary,thumb=R(ICON_PLEX))
+			ocp = DirectoryObject(title = 'Extras (%s items)' % str(cx), key = Callback(PSExtSources, con_title='Extras (%s items)' % str(cx), extSources_play=E(JSON.StringFromObject(extExtrasSources_urlservice)), session=session, watch_title=watch_title, year=year, summary=summary, thumb=thumb, art=art, url=url, duration=duration, rating=rating, genre=genre), summary=ext_summmary,thumb=R(ICON_PLEX))
 			if prog < 100:
 				oc.insert(1,ocp)
 			else:
 				oc.insert(0,ocp)
 		if c > 0:
-			ocp = DirectoryObject(title = 'External Sources (via Plex-Service) %s links' % str(c), key = Callback(PSExtSources, con_title='External Sources (via Plex-Service) %s links' % str(c), extSources_play=E(JSON.StringFromObject(extSources_urlservice)), session=session, watch_title=watch_title, summary=summary, thumb=thumb, art=art, url=url, duration=duration, genre=genre), summary='Playable via Plex services that are available and a Generic Player that tries its best to handle the rest.', thumb=R(ICON_PLEX))
+			ocp = DirectoryObject(title = 'External Sources (via Plex-Service) %s links' % str(c), key = Callback(PSExtSources, con_title='External Sources (via Plex-Service) %s links' % str(c), extSources_play=E(JSON.StringFromObject(extSources_urlservice)), session=session, watch_title=watch_title, year=year, summary=summary, thumb=thumb, art=art, url=url, duration=duration, rating=rating, genre=genre), summary='Playable via Plex services that are available and a Generic Player that tries its best to handle the rest.', thumb=R(ICON_PLEX))
 			oc.append(ocp)
 
 	if len(oc) == 0:
@@ -3286,6 +3597,12 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 ####################################################################################################
 @route(PREFIX + "/ExtSourcesDownload")
 def ExtSourcesDownload(title, url, summary, thumb, art, rating, duration, genre, directors, roles, mode, movtitle=None, year=None, tvshowtitle=None, season=None, episode=None, session=None, imdb_id=None, refresh=0, **kwargs):
+
+	try:
+		summary = unicode(common.ascii_only(summary))
+		#summary = unicode(str(summary).replace('"','').replace('\u00',''))
+	except:
+		summary = 'Not Available'
 	
 	tvshowcleaned = tvshowtitle
 	if tvshowtitle != None:
@@ -3425,14 +3742,79 @@ def ExtSourcesDownload(title, url, summary, thumb, art, rating, duration, genre,
 ####################################################################################################
 	
 @route(PREFIX + "/PSExtSources")
-def PSExtSources(extSources_play, con_title, session, watch_title, summary, thumb, art, url, duration, genre):
+def PSExtSources(extSources_play, con_title, session, watch_title, year, summary, thumb, art, url, duration, rating, genre):
 	oc = ObjectContainer(title2 = unicode(con_title), no_cache=common.isForceNoCache())
 	
+	try:
+		summary = unicode(common.ascii_only(summary))
+		#summary = unicode(str(summary).replace('"','').replace('\u00',''))
+	except:
+		summary = 'Not Available'
+	
 	generic_playback_links = []
-	for source in JSON.ObjectFromString(D(extSources_play)):
+	
+	all_sources = JSON.ObjectFromString(D(extSources_play))
+	
+	for source in all_sources:
+		status = common.GetEmoji(type=source['online'], session=session)
 		vidUrl = source['url']
-
-		if vidUrl != None:
+		
+		isTargetPlay = True if source['source'] not in ['gvideo','mega'] else False
+		isVideoOnline = source['online']
+		
+		redirector_stat = ''
+		redirector_enabled = 'false'
+		if common.UsingOption(key=common.DEVICE_OPTIONS[2], session=session) and isTargetPlay == False:
+			redirector_stat = '| (via Redirector)'
+			redirector_enabled = 'true'
+			
+		pair_required = False
+		if source['source'] == 'openload' and (Prefs['use_openload_pairing'] or not common.is_uss_installed()):
+			pair_required = source['misc']['pair']
+		
+		try:
+			file_size = '%s GB' % str(round(float(source['fs'])/common.TO_GB, 3))
+		except:
+			file_size = '? GB'
+			
+		if source['vidtype'] in 'Movie/Show':
+			if source['titleinfo'] != '':
+				titleinfo = ' | ' + source['titleinfo']
+			else:
+				titleinfo = ''
+			title_msg = "%s %s| %s | %s | %s | %s | %s" % (status, source['maininfo'], source['rip'], source['quality'], file_size, source['source']+':'+source['subdomain'] if source['source']=='gvideo' else source['source'], source['provider'])
+		else:
+			titleinfo = source['titleinfo']
+			title_msg = "%s %s| %s | %s | %s | %s | %s | %s" % (status, source['maininfo'], source['vidtype'], source['rip'], source['quality'], file_size, source['source'], source['provider'])
+			
+		if common.DEV_DEBUG == True:
+			Log("%s --- %s" % (title_msg, vidUrl))
+			Log('Playback: %s' % common.interface.getHostsPlaybackSupport(encode=False)[source['source']])
+		
+		# all source links (not extras) that can be played via the code service
+		if vidUrl != None and source['enabled'] and source['allowsStreaming'] and source['misc']['player'] == 'iplayer' and common.interface.getHostsPlaybackSupport(encode=False)[source['source']]:
+			urldata = source['urldata']
+			params = source['params']
+			
+			if not Prefs['use_openload_pairing'] and 'openload' in source['source'] and common.is_uss_installed() and URLService.ServiceIdentifierForURL(vidUrl) != None:
+					durl = vidUrl
+			else:
+				durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":vidUrl, "title":watch_title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "directors":None, "roles":None, "isTargetPlay":str(isTargetPlay), "useSSL":Prefs["use_https_alt"], "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled, 'quality':source['quality'], 'urldata':urldata, 'params':params, 'pairrequired':pair_required, "host":source['source'], "openloadApiKey":Prefs['control_openload_api_key'], "force_transcode":common.UsingOption(key=common.DEVICE_OPTIONS[10], session=session)}))
+			try:
+				oc.add(VideoClipObject(
+					url = durl,
+					title = title_msg + titleinfo + redirector_stat,
+					thumb = GetThumb(thumb, session=session),
+					art = art,
+					summary = summary,
+					key = AddRecentWatchList(title = watch_title, url=url, summary=summary, thumb=thumb)
+					)
+				)
+			except Exception as e:
+				if Prefs["use_debug"]:
+					Log('ERROR init.py>PSExtSources>VideoClipObject-1 %s' % (e.args))
+	
+		elif vidUrl != None:
 			status = common.GetEmoji(type=source['online'], session=session)
 			if source['vidtype'] in 'Movie/Show':
 				title_msg = "%s %s| %s | %s | %s | %s" % (status, source['maininfo'], source['rip'], source['quality'], source['source'], source['provider'])
@@ -3451,7 +3833,7 @@ def PSExtSources(extSources_play, con_title, session, watch_title, summary, thum
 						key = AddRecentWatchList(title = watch_title, url=url, summary=summary, thumb=thumb)
 						)
 					)
-				else:
+				elif source['enabled'] == True:
 					generic_playback_links.append((title_msg + source['titleinfo'] + ' | (via Generic Playback)', summary, GetThumb(thumb, session=session), source['params'], duration, genre, vidUrl, source['quality'], watch_title))
 			except:
 				try:
@@ -3528,7 +3910,7 @@ def GetThumb(thumb, session=None, **kwargs):
 
 ####################################################################################################
 @route(PREFIX + "/SimilarRecommendations")	
-def SimilarRecommendations(title, similar_reccos, referer=None, session = None, **kwargs):
+def SimilarRecommendations(title, similar_reccos, referer=None, is9anime = 'False', session = None, **kwargs):
 
 	oc = ObjectContainer(title2 = 'Similar to ' + title, no_cache=common.isForceNoCache())
 	
@@ -3536,16 +3918,22 @@ def SimilarRecommendations(title, similar_reccos, referer=None, session = None, 
 	
 	for elem in similar_reccos:
 		name = elem['name']
-		loc = fmovies.BASE_URL + elem['loc']
+		if is9anime == 'False':
+			loc = fmovies.BASE_URL + elem['loc']
+			dataEXSAnim = None
+		else:
+			loc = elem['loc']
+			dataEXSAnim = loc
+			
 		thumb = elem['thumb']
 		eps_nos = elem['eps_nos']
 		summary = 'Plot Summary on Item Page.'
 		more_info_link = elem['more_info_link']
 
 		oc.add(DirectoryObject(
-			key = Callback(EpisodeDetail, title = name, url = loc, thumb = thumb, session = session),
+			key = Callback(EpisodeDetail, title = name, url = loc, thumb = thumb, session = session, dataEXSAnim = dataEXSAnim),
 			title = name,
-			summary = GetMovieInfo(summary=summary, urlPath=more_info_link, referer=referer, session=session) + eps_nos,
+			summary = GetMovieInfo(summary=summary, urlPath=more_info_link, referer=referer, session=session, is9anime=is9anime) + eps_nos,
 			thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback=ICON_UNAV)
 			)
 		)
@@ -3561,7 +3949,7 @@ def SimilarRecommendations(title, similar_reccos, referer=None, session = None, 
 	
 ####################################################################################################
 @route(PREFIX + "/MoviesWithPeople")
-def MoviesWithPeople(stars, session, **kwargs):
+def MoviesWithPeople(stars, session, is9anime='False', **kwargs):
 
 	oc = ObjectContainer(title2 = 'People Search', no_cache=common.isForceNoCache())
 	
@@ -3570,8 +3958,13 @@ def MoviesWithPeople(stars, session, **kwargs):
 		roles_s = sorted(roles_s)
 	for role in roles_s:
 		role = common.removeAccents(role)
+		if is9anime == 'False':
+			surl= fmovies.BASE_URL + fmovies.STAR_PATH + role.lower().replace(' ', '-')
+		else:
+			surl= common.ANIME_URL + fmovies.STAR_PATH + role.lower().replace(' ', '-')
+			
 		oc.add(DirectoryObject(
-			key = Callback(Search, query = role, session = session, surl= fmovies.BASE_URL + fmovies.STAR_PATH + role.lower().replace(' ', '-'), mode = 'people'),
+			key = Callback(Search, query = role, session = session, surl= surl, mode = 'people', is9anime=is9anime),
 			title = role + ' >>>',
 			summary = 'Other movie/show starring ' + role,
 			thumb = R(ICON_STAR)
@@ -3589,7 +3982,7 @@ def MoviesWithPeople(stars, session, **kwargs):
 	
 ####################################################################################################
 @route(PREFIX + "/MoviesWithTag")	
-def MoviesWithTag(tags, session, **kwargs):
+def MoviesWithTag(tags, session, is9anime='False', **kwargs):
 
 	oc = ObjectContainer(title2 = 'Tag Search', no_cache=common.isForceNoCache())
 	
@@ -3598,13 +3991,18 @@ def MoviesWithTag(tags, session, **kwargs):
 		tags_s = sorted(tags_s)
 	for tag in tags_s:
 		tag = re.sub(r'[^0-9a-zA-Z ]', '', tag)
-		oc.add(DirectoryObject(
-			key = Callback(Search, query = tag, session = session, surl= fmovies.BASE_URL + fmovies.KEYWORD_PATH + tag.lower().replace(' ', '-'), mode = 'tag'),
-			title = tag + ' >>>',
-			summary = 'Other movie/show with keyword ' + tag,
-			thumb = R(ICON_TAG)
+		if len(tag) > 0:
+			if is9anime == 'False':
+				surl= fmovies.BASE_URL + fmovies.KEYWORD_PATH + tag.lower().replace(' ', '-')
+			else:
+				surl= common.ANIME_URL + fmovies.KEYWORD_PATH + tag.lower().replace(' ', '-')
+			oc.add(DirectoryObject(
+				key = Callback(Search, query = tag, session = session, surl= surl, mode = 'tag', is9anime=is9anime),
+				title = tag + ' >>>',
+				summary = 'Other movie/show with keyword ' + tag,
+				thumb = R(ICON_TAG)
+				)
 			)
-		)
 	
 	oc.add(DirectoryObject(
 		key = Callback(MainMenu),
@@ -3617,10 +4015,12 @@ def MoviesWithTag(tags, session, **kwargs):
 	
 ####################################################################################################
 @route(PREFIX + "/getmovieinfo")
-def GetMovieInfo(summary, urlPath, referer=None, session=None, **kwargs):
+def GetMovieInfo(summary, urlPath, referer=None, session=None, is9anime='False', **kwargs):
 
-	if common.NO_MOVIE_INFO == True or urlPath == None and (summary == None or summary == '') or Prefs['use_web_proxy'] or common.UsingOption(common.DEVICE_OPTIONS[8], session=session) == True:
+	if common.NO_MOVIE_INFO == True or urlPath == None and (summary == None or summary == '') or Prefs['use_web_proxy']:
 		return 'Plot Summary on Item Page'
+	elif (is9anime == 'False' and common.UsingOption(common.DEVICE_OPTIONS[8], session=session) == True) or (is9anime == 'True' and common.UsingOption(common.DEVICE_OPTIONS[11], session=session) == True):
+		return 'Plot Summary on Item Page. Disabled via Device Options.'
 	elif summary != None and Prefs["dont_fetch_more_info"]:
 		return summary
 	elif urlPath == None:
@@ -3629,7 +4029,11 @@ def GetMovieInfo(summary, urlPath, referer=None, session=None, **kwargs):
 		return 'Plot Summary on Item Page'
 		
 	try:
-		url = fmovies.BASE_URL + '/' + urlPath
+		if is9anime == 'False':
+			url = fmovies.BASE_URL + '/' + urlPath
+		else:
+			url = common.ANIME_URL + '/' + urlPath
+			
 		page_data, error = common.GetPageElements(url=url, referer=referer)
 		
 		summary = ''
@@ -3705,7 +4109,7 @@ def RecentWatchList(title, session=None, **kwargs):
 	for each in Dict:
 		longstring = str(Dict[each])
 		
-		if (('fmovies.' in longstring or 'bmovies.' in longstring) or ES_API_URL.lower() in longstring.lower()) and 'RR44SS' in longstring:
+		if (('fmovies.' in longstring or 'bmovies.' in longstring) or common.isArrayValueInString(common.EXT_SITE_URLS, longstring) == True) and 'RR44SS' in longstring:
 			longstringsplit = longstring.split('RR44SS')
 			urls_list.append({'key': each, 'time': longstringsplit[4], 'val': longstring})
 				
@@ -3732,8 +4136,10 @@ def RecentWatchList(title, session=None, **kwargs):
 		url = url.replace('www.','')
 		
 		ES = ''
-		if ES_API_URL.lower() in longstring.lower():
-			ES = '*'
+		if common.ES_API_URL.lower() in longstring.lower():
+			ES = common.EMOJI_EXT
+		if common.ANIME_URL.lower() in longstring.lower():
+			ES = common.EMOJI_ANIME
 		
 		if url.replace('fmovies.to',fmovies_base) in items_in_recent or c > NO_OF_ITEMS_IN_RECENT_LIST:
 			items_to_del.append(each['key'])
@@ -3785,7 +4191,7 @@ def ClearRecentWatchList(**kwargs):
 	for each in Dict:
 		try:
 			longstring = Dict[each]
-			if (('fmovies.' in longstring or 'bmovies.' in longstring) or ES_API_URL.lower() in longstring) and 'RR44SS' in longstring:
+			if (('fmovies.' in longstring or 'bmovies.' in longstring) or common.isArrayValueInString(common.EXT_SITE_URLS, longstring) == True) and 'RR44SS' in longstring:
 				remove_list.append(each)
 		except:
 			continue
@@ -3819,7 +4225,7 @@ def Bookmarks(title, session = None, **kwargs):
 	for each in Dict:
 		longstring = str(Dict[each])
 		
-		if (('fmovies.' in longstring or 'bmovies.' in longstring) or ES_API_URL.lower() in longstring.lower()) and 'Key5Split' in longstring:	
+		if (('fmovies.' in longstring or 'bmovies.' in longstring) or common.isArrayValueInString(common.EXT_SITE_URLS, longstring) == True) and 'Key5Split' in longstring:	
 			stitle = unicode(longstring.split('Key5Split')[0])
 			url = longstring.split('Key5Split')[1]
 			summary = unicode(longstring.split('Key5Split')[2])
@@ -3841,14 +4247,17 @@ def Bookmarks(title, session = None, **kwargs):
 			if url not in items_in_bm:
 				
 				items_in_bm.append(url)
-				
+				is9anime = 'False'
 				ES = ''
-				if ES_API_URL.lower() in url.lower():
-					ES = '*'
+				if common.ES_API_URL.lower() in url.lower():
+					ES = common.EMOJI_EXT
+				if common.ANIME_URL.lower() in url.lower():
+					ES = common.EMOJI_ANIME
+					is9anime = 'True'
 				
 				if fmovies.FILTER_PATH in url:
 					oc.add(DirectoryObject(
-						key=Callback(Search, query=stitle.replace(' (All Seasons)',''), session = session, mode='other seasons', thumb=thumb, summary=summary),
+						key=Callback(Search, query=stitle.replace(' (All Seasons)',''), session = session, mode='other seasons', thumb=thumb, summary=summary, is9anime=is9anime),
 						title='%s%s' % (stitle,ES),
 						thumb=thumb,
 						summary=summary
@@ -4775,7 +5184,7 @@ def Check(title, url, **kwargs):
 	fmovies_urlhost = common.client.geturlhost(url)
 	#Log("%s --- %s --- %s" % (longstring, url, fmovies_urlhost))
 	
-	if longstring != None and (longstring.lower()).find(ES_API_URL.lower()) != -1:
+	if longstring != None and common.isArrayValueInString(common.EXT_SITE_URLS, longstring) == True:
 		return True
 	
 	if longstring != None and url in longstring:
@@ -4858,7 +5267,7 @@ def ClearBookmarks(**kwargs):
 	for each in Dict:
 		try:
 			url = Dict[each]
-			if url.find(ES_API_URL.lower()) != -1 and 'http' in url and 'RR44SS' not in url:
+			if common.isArrayValueInString(common.EXT_SITE_URLS, url) == True and 'http' in url and 'RR44SS' not in url:
 				remove_list.append(each)
 		except:
 			continue
@@ -4883,7 +5292,7 @@ def ClearSearches(**kwargs):
 		try:
 			if (each.find('fmovies') != -1 or each.find('bmovies') != -1 or each.find(common.TITLE.lower()) != -1) and 'MyCustomSearch' in each:
 				remove_list.append(each)
-			elif each.find(ES_API_URL.lower()) != -1 and 'MyCustomSearch' in each:
+			elif common.isArrayValueInString(common.EXT_SITE_URLS, each) == True and 'MyCustomSearch' in each:
 				remove_list.append(each)
 		except:
 			continue
@@ -4900,13 +5309,16 @@ def ClearSearches(**kwargs):
 
 ####################################################################################################
 @route(PREFIX + "/search")
-def Search(query=None, surl=None, page_count='1', mode='default', thumb=None, summary=None, session=None, **kwargs):
+def Search(query=None, surl=None, page_count='1', mode='default', thumb=None, summary=None, is9anime='False', session=None, **kwargs):
 
 	if not common.interface.isInitialized():
 		return MC.message_container("Please wait..", "Please wait a few seconds for the Interface to Load & Initialize plugins")
 
 	last_page_no = page_count
 	query2 = None
+	
+	if page_count=='1' and mode == 'default':
+		Thread.Create(AnimeSearchExt,{},query,session)
 	
 	if surl != None:
 		if mode == 'people' or mode == 'tag':
@@ -4920,7 +5332,10 @@ def Search(query=None, surl=None, page_count='1', mode='default', thumb=None, su
 			Dict.Save()
 			url = fmovies.BASE_URL + fmovies.SEARCH_PATH + '?page=%s&keyword=%s' % (str(page_count), String.Quote(query, usePlus=True))
 		elif mode == 'other seasons':
-			url = fmovies.BASE_URL + fmovies.FILTER_PATH + '?type=series&page=%s&keyword=%s' % (str(page_count), String.Quote(query, usePlus=True))
+			if is9anime == 'False':
+				url = fmovies.BASE_URL + fmovies.FILTER_PATH + '?type=series&page=%s&keyword=%s' % (str(page_count), String.Quote(query, usePlus=True))
+			else:
+				url = common.ANIME_URL + fmovies.FILTER_PATH + '?type=series&page=%s&keyword=%s' % (str(page_count), String.Quote(query, usePlus=True))
 		else:
 			url = fmovies.BASE_URL + fmovies.SEARCH_PATH + '?page=%s&keyword=%s' % (str(page_count), String.Quote(query, usePlus=True))
 
@@ -4932,7 +5347,10 @@ def Search(query=None, surl=None, page_count='1', mode='default', thumb=None, su
 	elems = []
 	errorB = False
 	try:
-		elems = page_data.xpath(".//*[@id='body-wrapper']//div[@class='row movie-list']//div[@class='item']")
+		if is9anime == 'False':
+			elems = page_data.xpath(".//*[@id='body-wrapper']//div[@class='row movie-list']//div[@class='item']")
+		else:
+			elems = page_data.xpath(".//*[@id='body-wrapper']//div[@class='row']//div[@class='item']")
 		last_page_no = int(page_count)
 		last_page_no = int(page_data.xpath(".//*[@id='body-wrapper']//ul[@class='pagination'][1]//li[last()-1]//text()")[0])
 	except:
@@ -4941,10 +5359,16 @@ def Search(query=None, surl=None, page_count='1', mode='default', thumb=None, su
 	no_elems = len(elems)
 	
 	if errorB==True and no_elems == 0 and mode == 'other seasons':
-		xurl = fmovies.BASE_URL + fmovies.SEARCH_PATH + '?page=%s&keyword=%s' % (str(page_count), String.Quote(query, usePlus=True))
+		if is9anime == 'False':
+			xurl = fmovies.BASE_URL + fmovies.SEARCH_PATH + '?page=%s&keyword=%s' % (str(page_count), String.Quote(query, usePlus=True))
+		else:
+			xurl = common.ANIME_URL + fmovies.SEARCH_PATH + '?page=%s&keyword=%s' % (str(page_count), String.Quote(query, usePlus=True))
 		page_data, error = common.GetPageElements(url=xurl, timeout=7)
 		try:
-			elems = page_data.xpath(".//*[@id='body-wrapper']//div[@class='row movie-list']//div[@class='item']")
+			if is9anime == 'False':
+				elems = page_data.xpath(".//*[@id='body-wrapper']//div[@class='row movie-list']//div[@class='item']")
+			else:
+				elems = page_data.xpath(".//*[@id='body-wrapper']//div[@class='row']//div[@class='item']")
 			last_page_no = int(page_count)
 			last_page_no = int(page_data.xpath(".//*[@id='body-wrapper']//ul[@class='pagination'][1]//li[last()-1]//text()")[0])
 			errorB = False
@@ -4968,7 +5392,10 @@ def Search(query=None, surl=None, page_count='1', mode='default', thumb=None, su
 		if no_elems > 0:
 			for elem in elems:
 				name = elem.xpath(".//a[@class='name']//text()")[0]
-				loc = fmovies.BASE_URL + elem.xpath(".//a[@class='name']//@href")[0]
+				if is9anime == 'False':
+					loc = fmovies.BASE_URL + elem.xpath(".//a[@class='name']//@href")[0]
+				else:
+					loc = elem.xpath(".//a[@class='name']//@href")[0]
 				thumb_t = elem.xpath(".//a[@class='poster']//@src")[0]
 				thumb = thumb_t if 'url' not in thumb_t else thumb_t.split('url=')[1]
 				summary = 'Plot Summary on Item Page.'
@@ -5020,26 +5447,38 @@ def Search(query=None, surl=None, page_count='1', mode='default', thumb=None, su
 	except Exception as e:
 		Log('__init.py__ > Search Error: %s URL: %s' % (e, url))
 		pass
-			
+		
+	oc_ext = []
 	if Prefs['disable_extsources'] == False and common.interface.isInitialized() and page_count=='1' and mode == 'default':
 		if common.SEARCH_EXT_SOURCES_FROM_SEARCH_MENU == True:
 			try:
 				oc_ext = SearchExt(query=query, query2=query2, append='true', session=session)
-				for o in oc_ext:
-					oc.add(o)
 			except:
 				pass
 		else:
-			oc.add(DirectoryObject(
+			oc_ext.append(DirectoryObject(
 					key = Callback(SearchExt, query=query, session=session),
 					title = 'Search in External Sources',
 					summary = 'Search for a possible match in External Sources',
 					thumb = R(ICON_SEARCH)
 					)
 				)
-	
+				
+	if page_count=='1' and mode == 'default' and len(common.ANIME_SEARCH) > 0:
+		for o in common.ANIME_SEARCH:
+			try:
+				oc.add(o)
+			except:
+				pass
+				
+	if page_count=='1' and mode == 'default' and len(oc_ext) > 0:
+		for o in oc_ext:
+			try:
+				oc.add(o)
+			except:
+				pass
+			
 	if len(oc) == 0:
-	
 		try:
 			error = page_data.xpath(".//*[@id='body-wrapper']//div[@class='alert alert-danger']//p[1]//text()")[0]
 			error_msg = page_data.xpath(".//*[@id='body-wrapper']//div[@class='alert alert-danger']//p[3]//text()")[0]
@@ -5061,7 +5500,7 @@ def Search(query=None, surl=None, page_count='1', mode='default', thumb=None, su
 	if mode == 'default' or mode == 'people' or mode == 'tag' or (mode == 'other seasons' and no_elems == len(oc)):
 		if int(page_count) < last_page_no:
 			oc.add(NextPageObject(
-				key = Callback(Search, query = query, session = session, surl = surl, page_count = str(int(page_count) + 1), mode=mode),
+				key = Callback(Search, query = query, session = session, surl = surl, page_count = str(int(page_count) + 1), mode=mode, is9anime=is9anime),
 				title = "Next Page (" + str(int(page_count) + 1) +'/'+ str(last_page_no) + ") >>",
 				thumb = R(ICON_NEXT)
 				)
@@ -5093,6 +5532,33 @@ def Search(query=None, surl=None, page_count='1', mode='default', thumb=None, su
 	)
 
 	return oc
+	
+####################################################################################################
+@route(PREFIX + "/AnimeSearchExt")
+def AnimeSearchExt(query=None, session=None, **kwargs):
+
+	del common.ANIME_SEARCH[:]
+	
+	url = common.ANIME_SEARCH_URL % String.Quote(query, usePlus=True)
+	page_data, error = common.GetPageElements(url=url, timeout=7)
+	
+	if page_data != None:
+		items = page_data.xpath("//*[@id='body-wrapper']//div[@class='item']")
+		for i in items:
+			try:
+				thumb = i.xpath(".//@src")[0]
+				title = i.xpath(".//a[@class='name']//text()")[0]
+				url = i.xpath(".//@href")[0]
+				summary = 'Available on item page.'
+				dobj = DirectoryObject(
+					key = Callback(EpisodeDetail, title=title, url=url, thumb=thumb, session=session, dataEXSAnim=url),
+					title = '%s %s' % (common.EMOJI_ANIME, title),
+					summary = summary,
+					thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback=ICON_UNAV)
+				)
+				common.ANIME_SEARCH.append(dobj)
+			except Exception as e:
+				Log(e)
 	
 ####################################################################################################
 @route(PREFIX + "/SearchExt")
@@ -5261,6 +5727,8 @@ def SearchExt(query=None, query2=None, session=None, xtitle=None, xyear=None, xt
 			
 			summary = unicode(summary.replace('–','-'))
 			
+			summary = unicode(common.ascii_only(summary))
+			
 			xthumb = GetThumb(thumb, session=session)
 			
 			xitem = E(JSON.StringFromObject(item))
@@ -5277,13 +5745,13 @@ def SearchExt(query=None, query2=None, session=None, xtitle=None, xyear=None, xt
 				
 				dobj = DirectoryObject(
 					key = Callback(DoIMDBExtSources, title=title, year=year, type=type, imdbid=imdbid, summary=summary, thumb=xthumb, session=session), 
-					title = '*'+watch_title,
+					title = common.EMOJI_EXT+watch_title,
 					summary = summary,
 					thumb = xthumb)
 			else:
 				dobj = DirectoryObject(
 					key = Callback(SearchExt, query=query, query2=query2, session=session, xtitle=title, xyear=year, xtype=type, ximdbid=imdbid, xsummary=summary, xthumb=xthumb, xitem=xitem, append='false', final='false'), 
-					title = '*'+watch_title,
+					title = common.EMOJI_EXT+watch_title,
 					summary = summary,
 					thumb = xthumb)
 				
@@ -5481,7 +5949,7 @@ def DoIMDBExtSources(title, year, type, imdbid, season=None, episode=None, episo
 					
 				oc.add(DirectoryObject(
 				key = Callback(DoIMDBExtSources, title=x_title, year=x_year, type=type, imdbid=imdbid, item=E(JSON.StringFromObject(item)), season=season, episode=str(e), session=session), 
-				title = '*'+watch_title,
+				title = common.EMOJI_EXT+watch_title,
 				summary = summary,
 				thumb = thumb))
 				
@@ -5550,7 +6018,7 @@ def DoIMDBExtSources(title, year, type, imdbid, season=None, episode=None, episo
 			
 			oc.add(DirectoryObject(
 				key = Callback(DoIMDBExtSources, title=title, year=year, type=type, imdbid=imdbid, item=E(JSON.StringFromObject(item)), season=season, episode=episode, session=session, final=True), 
-				title = '*'+watch_title,
+				title = common.EMOJI_EXT+watch_title,
 				summary = summary,
 				thumb = thumb)
 			)
@@ -5686,7 +6154,7 @@ def DoIMDBExtSourcesEpisode(query, title, year, type, imdbid, season, summary, t
 	oc = ObjectContainer(title2='%s (%s)' % (title, watch_title), no_cache=common.isForceNoCache())
 	oc.add(DirectoryObject(
 		key = Callback(DoIMDBExtSources, title=title, year=year, type=type, imdbid=imdbid, item=E(JSON.StringFromObject(item)), simpleSummary=True, season=season, episode=episode, session=session, final=True), 
-		title = '*'+watch_title,
+		title = common.EMOJI_EXT+watch_title,
 		summary =  '%s : %s' % (watch_title,summary),
 		thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback = ICON_UNAV)))
 		
@@ -6238,10 +6706,10 @@ def ShowCategoryES(title, filter=None, page_count='1', last_page_no=None, sessio
 		
 		# Build Filter-Search Url
 		#http://movies-v2.api-fetch.website/movies/1?sort=trending&limit=50&year=2017&genre=Comedy&order=-1
-		apiUrl = ES_API_URL + '/%s' % urllib2.quote(searchString, safe='%/_-+=&?')
+		apiUrl = common.ES_API_URL + '/%s' % urllib2.quote(searchString, safe='%/_-+=&?')
 		
 		if last_page_no == None:
-			pagesUrl = ES_API_URL + '/%s' % filter['type']
+			pagesUrl = common.ES_API_URL + '/%s' % filter['type']
 			pages_data, error = common.GetPageAsString(url=pagesUrl)
 			#Log(pages_data)
 			#Log(error)
@@ -6308,7 +6776,7 @@ def ShowCategoryES(title, filter=None, page_count='1', last_page_no=None, sessio
 			type = filter['type'][0:-1]
 			subtype = 'movie'
 			
-		loc = ES_API_URL + '/%s/%s' % (type,id)
+		loc = common.ES_API_URL + '/%s/%s' % (type,id)
 		
 		data = {}
 		data['title'] = name

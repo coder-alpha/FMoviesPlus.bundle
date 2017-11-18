@@ -35,7 +35,9 @@ AVOID_DOMAINS = ['9c40a04e9732e6a6.com']
 class source:
 	def __init__(self):
 		del loggertxt[:]
-		log(type='INFO', method='init', err=' -- Initializing %s Start --' % name)
+		self.ver = '0.0.1'
+		self.update_date = 'Nov. 13, 2017'
+		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
 		self.base_link_alts = ['http://www.primewire.ag','http://www.primewire.is','http://www.primewire.org']
 		self.base_link = self.base_link_alts[0]
@@ -59,7 +61,7 @@ class source:
 		self.testparser = 'Unknown'
 		self.testparser = self.testParser()
 		self.init = True
-		log(type='INFO', method='init', err=' -- Initializing %s End --' % name)
+		log(type='INFO', method='init', err=' -- Initializing %s %s %s End --' % (name, self.ver, self.update_date))
 		
 	def info(self):
 		return {

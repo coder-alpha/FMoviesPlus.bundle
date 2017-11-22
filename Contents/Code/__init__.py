@@ -1937,6 +1937,22 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 	if client_id not in CUSTOM_TIMEOUT_DICT.keys():
 		CUSTOM_TIMEOUT_DICT[client_id] = {}
 		
+	servers_list = {}
+	episodes_list = []
+	server_lab = []
+	episodes = []
+	episodes_XS = []
+	imdb_id = None
+	isTvSeries = False
+	isMovieWithMultiPart = False
+	directors = 'Not Available'
+	roles = 'Not Available'
+	serverts = 0
+	similar_reccos = []
+	tags = 'Not Available'
+	
+	oc = ObjectContainer(title2 = title, no_cache=common.isForceNoCache())
+		
 	if dataEXS==None and dataEXSAnim==None and is9anime == 'False':
 		if Prefs["use_debug"]:
 			Log("============================= Processing bmovies ===============================")
@@ -2153,8 +2169,6 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 				c += 1
 			
 	############################# Data ############################
-	episodes_XS = []
-	imdb_id = None
 	
 	if dataEXSAnim != None or is9anime == 'True':
 		if Prefs["use_debug"]:

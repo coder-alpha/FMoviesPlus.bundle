@@ -49,6 +49,9 @@ def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web
 		user_defined_reqkey_cookie = Prefs['reqkey_cookie']
 	except:
 		pass
+		
+	if key == None:
+		return None, False, 'Item key is None. Item does not exist !', None, None
 	
 	res = None
 	res_subtitle = None

@@ -92,6 +92,7 @@ def update(url, ver):
 		except Exception as exception:
 			msg = 'Error: ' + str(exception)
 			msgH = 'Update failed'
+			Log.Error('%s : %s' % (msgH,msg))
 				
 		try:
 			os.remove(zip_data)
@@ -132,6 +133,7 @@ def update2(url, ver):
 		except Exception as exception:
 			msg = 'Error: ' + str(exception)
 			msgH = 'Update failed'
+			Log.Error('%s : %s' % (msgH,msg))
 				
 		try:
 			os.remove(zip_data)

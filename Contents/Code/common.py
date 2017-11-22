@@ -1,6 +1,6 @@
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.50' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.51' # Release notation (x.y - where x is major and y is minor)
 TAG = ''
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
@@ -925,6 +925,28 @@ def cleanJSS2(str):
 	code = code.replace('returnreturn','return')
 	code = code.encode('utf-8')
 	return code, replaced
+		
+####################################################################################################
+@route(PREFIX + "/stripDay")
+def stripDay(text):
+	days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
+	for day in days:
+		text = text.replace(day,'')
+		
+	return text.strip()
+	
+@route(PREFIX + "/convertMonthToInt")
+def convertMonthToInt(text):
+	months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+	m = 1
+	for month in months:
+		if month in text:
+			m_str = '%02d' % m
+			text = text.replace(month, str(m_str)+',')
+			break
+		m += 1
+		
+	return text.strip()
 		
 ####################################################################################################
 @route(PREFIX + "/removeAccents")

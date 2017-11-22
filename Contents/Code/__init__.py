@@ -1931,6 +1931,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 		return MC.message_container("Unknown Error", "Error: The page was not received. Please try again.")
 		
 	is9anime = 'True' if common.ANIME_KEY in url.lower() else 'False'
+	servers_list_new = []
 		
 	client_id = '%s-%s' % (Client.Product, session)
 	if client_id not in CUSTOM_TIMEOUT_DICT.keys():
@@ -2370,6 +2371,37 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 						else:
 							servers_list_new[c][label] = {'quality':"%02d" % (c+1), 'loc':''}
 				c += 1
+				
+	##### Fix numbering #####
+	seq = range(1, len(servers_list_new))
+	if len(servers_list_new) > 0:
+		#Log(server_lab)
+		#Log(servers_list_new)
+		
+		new_map = []
+
+		for eps in servers_list_new:
+			eps_items = {}
+			for label in server_lab:
+				eps_item = {}
+				info = eps[label]
+				ep_c = info['quality'].strip()
+				eps_item[label] = info
+				try:
+					if int(ep_c) != seq[0]:
+						eps_item[label]['quality'] = str(seq[0])
+						eps_item[label]['loc'] = None
+					if int(ep_c) > seq[0] and label == server_lab[len(server_lab)-1]:
+						seq.remove(seq[0])
+					if int(ep_c) in seq and label == server_lab[len(server_lab)-1]:
+						seq.remove(int(ep_c))
+				except:
+					pass
+				eps_items[label] = eps_item[label]
+			new_map.append(eps_items)
+		#Log(new_map)
+		servers_list_new = new_map
+	############################
 	
 	if dataEXS != None or common.ES_API_URL.lower() in url:
 		if Prefs["use_debug"]:
@@ -2605,14 +2637,57 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 						break
 					c += 1
 				if not successIns:
-					episodes_list.append({"name":'',"air_date":'',"desc":''})
+					try:
+						name = episode.xpath(".//span[@class='name']//text()")[0]
+					except:
+						name = 'Episode Name Not Available.'
+					try:
+						air_date = episode.xpath(".//div[@class='date']//text()")[0]
+					except:
+						air_date = ''
+					try:
+						desc = episode.xpath(".//div[@class='desc']//text()")[0]
+					except:
+						desc = 'Episode Summary Not Available.'
+					episodes_list.append({"name":name,"air_date":air_date,"desc":desc})
 			c_not_missing += 1
+		
+		
+		######################################################################################
+		##### Fix air date sequence #####
+		
+		episodes_list_new = []
+		ord_date_bk = 0
+		for item in episodes_list:
+			ord_date = item['air_date']
+			if ord_date != '':
+				ord_date = common.stripDay(ord_date)
+				ord_date = common.convertMonthToInt(ord_date)
+			try:
+				ord_date_s = ord_date.replace(' ','').strip().split(',')
+				ord_date = '%04d%02d%02d' % (int(ord_date_s[2]), int(ord_date_s[0]), int(ord_date_s[1]))
+				ord_date = str(ord_date)
+				ord_date_bk = int(ord_date)
+			except:
+				counter_str = '%08d' % (ord_date_bk + 1)
+				ord_date = str(counter_str)
+				ord_date_bk += 1
+				
+			item['ord_date'] = ord_date
+			episodes_list_new.append(item)
+			
+		episodes_list_new = sorted(episodes_list_new, key=lambda k: k['ord_date'], reverse=False)
+		#Log(episodes_list_new)
+		episodes_list = episodes_list_new
+
+		######################################################################################
 		
 		eps_i = 1
 		c_not_missing=-1
 		c=0
-		for eps in servers_list_new:
 		
+		for eps in servers_list_new:
+			
 			if '-' in eps[server_lab[0]]['quality'] and verify2partcond(eps[server_lab[0]]['quality']): # 2 part episode condition
 				qual_i = (int(eps[server_lab[0]]['quality'].split('-')[0])-eps_i)
 				eps_i += 1
@@ -2642,7 +2717,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 			
 			try:
 				oc.add(DirectoryObject(
-					key = Callback(TvShowDetail, tvshow=title, title=title_s, url=url, servers_list_new=servers_list_new[c], server_lab=(','.join(str(x) for x in server_lab)), summary=desc+'\n '+summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, serverts=serverts, session=session, season=SeasonN, episode=episode, imdb_id=imdb_id),
+					key = Callback(TvShowDetail, tvshow=title, title=title_s, url=url, servers_list_new=E(JSON.StringFromObject(servers_list_new[c])), server_lab=E(JSON.StringFromObject(server_lab)), summary=desc+'\n '+summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, serverts=serverts, session=session, season=SeasonN, episode=episode, imdb_id=imdb_id),
 					title = title_s,
 					summary = desc+ '\n ' +summary,
 					art = art,
@@ -2682,7 +2757,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 				episode = eps[server_lab[0]]['quality']
 				title_s = 'Ep:' + episode
 				oc.add(DirectoryObject(
-					key = Callback(TvShowDetail, tvshow=title, title=title_s, url=url, servers_list_new=servers_list_new[c], server_lab=(','.join(str(x) for x in server_lab)), summary='Episode Summary Not Available.\n ' + summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, serverts=serverts, session=session, season=SeasonN, episode=episode, imdb_id=imdb_id),
+					key = Callback(TvShowDetail, tvshow=title, title=title_s, url=url, servers_list_new=E(JSON.StringFromObject(servers_list_new[c])), server_lab=E(JSON.StringFromObject(server_lab)), summary='Episode Summary Not Available.\n ' + summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, serverts=serverts, session=session, season=SeasonN, episode=episode, imdb_id=imdb_id),
 					title = title_s,
 					summary = 'Episode Summary Not Available.\n ' + summary,
 					art = art,
@@ -2725,7 +2800,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 				episode = eps[server_lab[0]]['quality']
 				title_s = episode
 				oc.add(DirectoryObject(
-					key = Callback(TvShowDetail, tvshow=title, title=title_s, url=url, servers_list_new=servers_list_new[c], server_lab=(','.join(str(x) for x in server_lab)), summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, serverts=serverts, session=session, season=SeasonN, episode=episode, treatasmovie=True, imdb_id=imdb_id),
+					key = Callback(TvShowDetail, tvshow=title, title=title_s, url=url, servers_list_new=E(JSON.StringFromObject(servers_list_new[c])), server_lab=E(JSON.StringFromObject(server_lab)), summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, serverts=serverts, session=session, season=SeasonN, episode=episode, treatasmovie=True, imdb_id=imdb_id),
 					title = title_s,
 					summary = summary,
 					art = art,
@@ -2994,16 +3069,14 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 
 	try:
 		summary = unicode(common.ascii_only(summary))
-		#summary = unicode(str(summary).replace('"','').replace('\u00',''))
 	except:
 		summary = 'Not Available'
 
 	oc = ObjectContainer(title2 = title, art = art, no_cache=common.isForceNoCache())
 
-	servers_list_new = servers_list_new.replace("'", "\"")
-	servers_list_new = json.loads(servers_list_new)
+	servers_list_new = JSON.ObjectFromString(D(servers_list_new))
 	
-	server_lab = server_lab.split(',')
+	server_lab = JSON.ObjectFromString(D(server_lab))
 	
 	client_id = '%s-%s' % (Client.Product, session)
 
@@ -3033,109 +3106,109 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 	pair_required = False
 	for label in server_lab:
 		url_s = servers_list_new[label]['loc']
-		
-		if common.UsingOption(common.DEVICE_OPTIONS[5], session=session):	
-			server_info,isTargetPlay, error, host, sub_url = fmovies.GetApiUrl(url=url, key=url_s, serverts=serverts)
-			server_info_t = server_info
-			captcha = None
-			dlt = None
-			if server_info != None:
-				pair = ''
-				pair_required = False
-				status = ''
-				isVideoOnline = 'unknown'
-				if Prefs["use_linkchecker"]:
-					data = server_info
-					if isTargetPlay == True:
-						pass
-					else:
-						data = E(JSON.StringFromObject({"server":server_info}))
-					isVideoOnline = common.isItemVidAvailable(isTargetPlay=isTargetPlay, data=data, host=host)
-					
-				if isTargetPlay == True and 'openload' in host and (Prefs['use_openload_pairing'] or not common.is_uss_installed()):
-					pair_required, u1 = common.host_openload.isPairingRequired(url=server_info, session=session)
-					if pair_required == True:
-						a1,a2,captcha,dlt,err = common.host_openload.link_from_api(server_info)
-						if common.host_openload.isPairingDone() == False:
-							pair = ' *Pairing required* '
+		if url_s != None:
+			if common.UsingOption(common.DEVICE_OPTIONS[5], session=session):	
+				server_info,isTargetPlay, error, host, sub_url = fmovies.GetApiUrl(url=url, key=url_s, serverts=serverts)
+				server_info_t = server_info
+				captcha = None
+				dlt = None
+				if server_info != None:
+					pair = ''
+					pair_required = False
+					status = ''
+					isVideoOnline = 'unknown'
+					if Prefs["use_linkchecker"]:
+						data = server_info
+						if isTargetPlay == True:
+							pass
 						else:
-							pair = ' *Paired* '
-					else:
-						server_info_t = u1
+							data = E(JSON.StringFromObject({"server":server_info}))
+						isVideoOnline = common.isItemVidAvailable(isTargetPlay=isTargetPlay, data=data, host=host)
 						
+					if isTargetPlay == True and 'openload' in host and (Prefs['use_openload_pairing'] or not common.is_uss_installed()):
+						pair_required, u1 = common.host_openload.isPairingRequired(url=server_info, session=session)
+						if pair_required == True:
+							a1,a2,captcha,dlt,err = common.host_openload.link_from_api(server_info)
+							if common.host_openload.isPairingDone() == False:
+								pair = ' *Pairing required* '
+							else:
+								pair = ' *Paired* '
+						else:
+							server_info_t = u1
+							
+						if Prefs["use_debug"]:
+							Log("%s --- %s : Pairing required: %s" % (server_info, pair, pair_required))
+						
+					if isVideoOnline != str(False):
+						status = common.GetEmoji(type=isVideoOnline, session=session) + ' ' + pair
+					else:
+						status = common.GetEmoji(type=isVideoOnline, session=session)
+						
+					redirector_stat = ''
+					redirector_enabled = 'false'
+					if common.UsingOption(key=common.DEVICE_OPTIONS[2], session=session) and isTargetPlay == False:
+						redirector_stat = ' (via Redirector)'
+						redirector_enabled = 'true'
+					
+					if not Prefs['use_openload_pairing'] and 'openload' in host and common.is_uss_installed() and URLService.ServiceIdentifierForURL(server_info) != None:
+						durl = server_info
+					else:
+						durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":server_info_t, "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "directors":directors, "roles":roles, "isTargetPlay":str(isTargetPlay), "useSSL":Prefs["use_https_alt"], "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled, 'urldata':'', 'pairrequired':pair_required, "host":host, "openloadApiKey":Prefs['control_openload_api_key'], "force_transcode":common.UsingOption(key=common.DEVICE_OPTIONS[10], session=session)}))
+					
+					vco = None
+					try:
+						vco = VideoClipObject(
+							url = durl,
+							title = status + title + ' (' + label + ')' + redirector_stat,
+							thumb = GetThumb(thumb, session=session),
+							duration = int(duration) * 60 * 1000,
+							year = int(year),
+							art = art,
+							summary = summary,
+							key = AddRecentWatchList(title = watch_title, url=url, summary=summary, thumb=thumb)
+							)
+						oc.add(vco)
+					except:
+						Log('ERROR init.py>TvShowDetail %s, %s' % (e.args, (title + ' - ' + title_s)))
+						Log("ERROR: %s with key:%s returned %s" % (url,url_s,server_info))
+						
+					if captcha != None and captcha != False:
+						DumbKeyboard(PREFIX, oc, SolveCaptcha, dktitle = 'Solve Captcha: ' + title, dkHistory = False, dkthumb = captcha, dkart=captcha, url = server_info, dlt = dlt, vco=vco, title=title + ' (' + label + ')' + redirector_stat)
+						po = create_photo_object(url = captcha, title = 'View Captcha')
+						oc.add(po)
+				else:
+					pass
 					if Prefs["use_debug"]:
-						Log("%s --- %s : Pairing required: %s" % (server_info, pair, pair_required))
-					
-				if isVideoOnline != str(False):
-					status = common.GetEmoji(type=isVideoOnline, session=session) + ' ' + pair
-				else:
-					status = common.GetEmoji(type=isVideoOnline, session=session)
-					
-				redirector_stat = ''
-				redirector_enabled = 'false'
-				if common.UsingOption(key=common.DEVICE_OPTIONS[2], session=session) and isTargetPlay == False:
-					redirector_stat = ' (via Redirector)'
-					redirector_enabled = 'true'
-				
-				if not Prefs['use_openload_pairing'] and 'openload' in host and common.is_uss_installed() and URLService.ServiceIdentifierForURL(server_info) != None:
-					durl = server_info
-				else:
-					durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":server_info_t, "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "directors":directors, "roles":roles, "isTargetPlay":str(isTargetPlay), "useSSL":Prefs["use_https_alt"], "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled, 'urldata':'', 'pairrequired':pair_required, "host":host, "openloadApiKey":Prefs['control_openload_api_key'], "force_transcode":common.UsingOption(key=common.DEVICE_OPTIONS[10], session=session)}))
-				
-				vco = None
-				try:
-					vco = VideoClipObject(
-						url = durl,
-						title = status + title + ' (' + label + ')' + redirector_stat,
-						thumb = GetThumb(thumb, session=session),
+						Log("Video will not be displayed as playback option !")
+						Log("ERROR: %s" % error)
+						Log("ERROR: %s with key:%s returned %s" % (url,url_s,server_info))
+			else:
+				if common.UsingOption(common.DEVICE_OPTIONS[6], session=session):
+					oc.add(MovieObject(
+						key = Callback(VideoDetail, title=title, url=url, url_s=url_s, label=label, label_i_qual=None, serverts=serverts, summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, libtype='show', session=session, watch_title=watch_title),
 						duration = int(duration) * 60 * 1000,
 						year = int(year),
-						art = art,
+						title = label,
+						rating_key = url+url_s,
 						summary = summary,
-						key = AddRecentWatchList(title = watch_title, url=url, summary=summary, thumb=thumb)
+						art = art,
+						thumb = GetThumb(thumb, session=session)
 						)
-					oc.add(vco)
-				except:
-					Log('ERROR init.py>TvShowDetail %s, %s' % (e.args, (title + ' - ' + title_s)))
-					Log("ERROR: %s with key:%s returned %s" % (url,url_s,server_info))
-					
-				if captcha != None and captcha != False:
-					DumbKeyboard(PREFIX, oc, SolveCaptcha, dktitle = 'Solve Captcha: ' + title, dkHistory = False, dkthumb = captcha, dkart=captcha, url = server_info, dlt = dlt, vco=vco, title=title + ' (' + label + ')' + redirector_stat)
-					po = create_photo_object(url = captcha, title = 'View Captcha')
-					oc.add(po)
-			else:
-				pass
-				if Prefs["use_debug"]:
-					Log("Video will not be displayed as playback option !")
-					Log("ERROR: %s" % error)
-					Log("ERROR: %s with key:%s returned %s" % (url,url_s,server_info))
-		else:
-			if common.UsingOption(common.DEVICE_OPTIONS[6], session=session):
-				oc.add(MovieObject(
-					key = Callback(VideoDetail, title=title, url=url, url_s=url_s, label=label, label_i_qual=None, serverts=serverts, summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, libtype='show', session=session, watch_title=watch_title),
-					duration = int(duration) * 60 * 1000,
-					year = int(year),
-					title = label,
-					rating_key = url+url_s,
-					summary = summary,
-					art = art,
-					thumb = GetThumb(thumb, session=session)
 					)
-				)
-			else:
-				oc.add(DirectoryObject(
-					key = Callback(VideoDetail, title=title, url=url, url_s=url_s, label=label, label_i_qual=None, serverts=serverts, summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, libtype='show', session=session, watch_title=watch_title),
-					title = label,
-					summary = summary,
-					art = art,
-					thumb = GetThumb(thumb, session=session)
+				else:
+					oc.add(DirectoryObject(
+						key = Callback(VideoDetail, title=title, url=url, url_s=url_s, label=label, label_i_qual=None, serverts=serverts, summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, libtype='show', session=session, watch_title=watch_title),
+						title = label,
+						summary = summary,
+						art = art,
+						thumb = GetThumb(thumb, session=session)
+						)
 					)
-				)
-			
-		if label != server_lab[len(server_lab)-1] and isTimeoutApproaching(clientProd = Client.Product, item = E(url), client_id=client_id, session=session):
-			Log("isTimeoutApproaching action")
-			break
-			#return MC.message_container('Timeout', 'Timeout: Please try again !')
+				
+			if label != server_lab[len(server_lab)-1] and isTimeoutApproaching(clientProd = Client.Product, item = E(url), client_id=client_id, session=session):
+				Log("isTimeoutApproaching action")
+				break
+				#return MC.message_container('Timeout', 'Timeout: Please try again !')
 		
 	if treatasmovie==False and Prefs['disable_extsources'] == False and common.interface.isInitialized():
 		oc.add(DirectoryObject(

@@ -37,10 +37,11 @@ loggertxt = []
 class source:
 	def __init__(self):
 		del loggertxt[:]
-		self.ver = '0.0.1'
-		self.update_date = 'Nov. 13, 2017'
+		self.ver = '0.0.2'
+		self.update_date = 'Nov. 29, 2017'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
+		self.serverts = None
 		self.disabled = False
 		self.TOKEN_KEY = []
 		self.base_link_alts = ['https://9anime.is','https://9anime.to']
@@ -130,6 +131,7 @@ class source:
 	def initAndSleep(self):
 		try:
 			self.TOKEN_KEY = []
+			self.serverts = None
 			self.getVidToken()
 			if len(self.TOKEN_KEY) > 0:
 				log('SUCCESS', 'initAndSleep', 'Vid Token: %s' % client.b64encode(self.TOKEN_KEY[0]))
@@ -155,7 +157,14 @@ class source:
 				reqkey = ''
 			
 			# get session cookie
+			self.serverts = self.getSetServerTs()
 			serverts = str(((int(time.time())/3600)*3600))
+			if self.serverts == None:
+				self.serverts = serverts
+			else:
+				serverts = self.serverts
+			control.set_setting(name+'serverts', serverts)
+
 			query = {'ts': serverts}
 			try:
 				tk = self.__get_token(query)
@@ -165,7 +174,7 @@ class source:
 			query.update(tk)
 			hash_url = urlparse.urljoin(t_base_link, self.hash_menu_link)
 			hash_url = hash_url + '?' + urllib.urlencode(query)
-
+			
 			r1, headers, content, cookie2 = proxies.request(hash_url, headers=self.headers, limit='0', output='extended', httpsskip=True)
 
 			#cookie = cookie1 + '; ' + cookie2 + '; user-info=null; reqkey=' + reqkey
@@ -175,6 +184,18 @@ class source:
 			log('SUCCESS', 'initAndSleep', 'Cookies : %s for %s' % (cookie,self.base_link))
 		except Exception as e:
 			log('ERROR','initAndSleep', '%s' % e)
+			
+	def getSetServerTs(self):
+		geturl = proxies.request('https://bmovies.is/home', output='geturl')
+		res = proxies.request(geturl)
+		try:
+			myts1 = re.findall(r'data-ts="(.*?)"', res)[0]
+			myts = str(int(myts1))
+			return myts
+		except:
+			pass
+			
+		return None
 		
 	def testParser(self):
 		try:
@@ -355,10 +376,23 @@ class source:
 				return sources
 
 			try:
-				myts = re.findall(r'data-ts="(.*?)"', result)[0]
+				myts1 = re.findall(r'data-ts="(.*?)"', result)[0]
+				myts = str(int(myts1))
 			except:
-				log('INFO','get_sources-3', 'could not parse ts ! will use generated one : %s' % myts, dolog=False)
-				
+				try:
+					b, resp = self.decode_ts(myts1)
+					if b == False:
+						raise Exception('Could not decode ts')
+					else:
+						myts = str(int(resp))
+						log('INFO','get_sources-3', 'could not parse ts ! will try and use decoded : %s' % myts, dolog=False)
+				except:
+					if self.serverts != None:
+						myts = str(self.serverts)
+						log('INFO','get_sources-3', 'could not parse ts ! will use borrowed one : %s' % myts, dolog=False)
+					else:
+						log('INFO','get_sources-3', 'could not parse ts ! will use generated one : %s' % myts, dolog=False)
+
 			trailers = []
 			links_m = []
 			
@@ -455,7 +489,7 @@ class source:
 						
 					log('INFO','get_sources-5', result, dolog=False)
 					
-					if result['target'] != "":
+					if result['target'] != "-":
 						pass
 					else:
 						grabber = result['grabber']
@@ -467,14 +501,13 @@ class source:
 							grabber_url = grab_data[0]
 							grab_data = grab_data[1]
 							
-						print grab_data
 						grab_server = str(urlparse.parse_qs(grab_data)['server'][0])
 						
-						b, resp = self.decode_t(result['params']['token'], -18)
+						b, resp = self.decode_t(result['params']['token'])
 						if b == False:
 							raise Exception(resp)
 						token = resp
-						b, resp = self.decode_t(result['params']['options'], -18)
+						b, resp = self.decode_t(result['params']['options'])
 						if b == False:
 							raise Exception(resp)
 						options = resp
@@ -514,10 +547,10 @@ class source:
 							links_m = resolvers.createMeta(i, self.name, self.logo, quality, links_m, key, riptype, sub_url=sub_url, testing=testing)
 					else:
 						target = result['target']
-						# b, resp = self.decode_t(target, -18)
-						# if b == False:
-							# raise Exception(resp)
-						# target = resp
+						b, resp = self.decode_t(target)
+						if b == False:
+							raise Exception(resp)
+						target = resp
 						sub_url = result['subtitle']
 						if sub_url==None or len(sub_url) == 0:
 							sub_url = None
@@ -568,25 +601,57 @@ class source:
 				i += ord(t[e]) + e
 		return i
 
-	def decode_t(self, t, i):
-		n = [] 
-		e = []
-		r = ''
+	def decode_t(self, t):
+
+		r = ""
+		e_s = 'abcdefghijklmnopqrstuvwxyz'
+		r_s = 'acegikmoqsuwybdfhjlnprtvxz'
 		try:
-			if t[0] == '.':
+			if t[0] == '-' and len(t) > 1:
+				t = t[1:]
 				for n in range(0, len(t)):
-					if n == 0 and t[n] == '.':
+					if n == 0 and t[n] == '-':
 						pass
 					else:
-						c = ord(t[n])
-						if c >= 97 and c <= 122:
-							e.append((c - 71 + i) % 26 + 97)
-						elif c >= 65 and c <= 90:
-							e.append((c - 39 + i) % 26 + 65)
-						else:
-							e.append(c)
-				for ee in e:
-					r += chr(ee)
+						s = False
+						for ix in range(0, len(r_s)):
+							if t[n] == r_s[ix]:
+								r += e_s[ix]
+								s = True
+								break
+						if s == False:
+							r += t[n]
+							
+				missing_padding = len(r) % 4
+				if missing_padding != 0:
+					r += b'='* (4 - missing_padding)
+				r = client.b64decode(r)
+			return True, r
+		except Exception as e:
+			log('ERROR', 'decode_t','%s' % e, dolog=False)
+			False, 'Error in decoding'
+			
+	def decode_ts(self, t):
+
+		r = ""
+		e_s = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+		r_s = 'ACEGIKMOQSUWYBDFHJLNPRTVXZ'
+		try:
+			if len(t) > 1:
+				for n in range(0, len(t)):
+					s = False
+					for ix in range(0, len(r_s)):
+						if t[n] == r_s[ix]:
+							r += e_s[ix]
+							s = True
+							break
+					if s == False:
+						r += t[n]
+							
+				missing_padding = len(r) % 4
+				if missing_padding != 0:
+					r += b'='* (4 - missing_padding)
+				r = client.b64decode(r)
 			return True, r
 		except Exception as e:
 			log('ERROR', 'decode_t','%s' % e, dolog=False)
@@ -617,7 +682,7 @@ class source:
 			if len(self.TOKEN_KEY) == 0:
 				all_js_pack_code = proxies.request(all_js_url, use_web_proxy=self.proxyrequired, httpsskip=True)
 				unpacked_code = jsunpack.unpack(all_js_pack_code)
-				cch = re.findall(r'%s' % client.b64decode('ZnVuY3Rpb25cKFthLXpdLFthLXpdLFthLXpdXCl7XCJ1c2Ugc3RyaWN0XCI7ZnVuY3Rpb24gW2Etel1cKFwpe3JldHVybiAoLio/KX1mdW5jdGlvbiBbYS16XVwoW2Etel1cKQ=='), unpacked_code)[0]
+				cch = re.findall(r'%s' % client.b64decode('ZnVuY3Rpb25cKFthLXpdLFthLXpdLFthLXpdXCl7XCJ1c2Ugc3RyaWN0XCI7ZnVuY3Rpb24gW2Etel1cKFwpe3JldHVybiAoLio/KX0='), unpacked_code)[0]
 				token_key = re.findall(r'%s=.*?\"(.*?)\"' % cch, unpacked_code)[0]
 				if token_key !=None and token_key != '':
 					self.TOKEN_KEY.append(token_key)

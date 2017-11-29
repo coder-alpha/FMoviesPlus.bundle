@@ -552,6 +552,9 @@ def DownloadOptions(session, refresh=0, **kwargs):
 		
 				title_msg = 'Library:%s | Type:%s | Path:%s | Enabled:%s' % (section[2], type.title(), section[3], common.GetEmoji(type=bool, mode='simple', session=session))
 				oc.add(DirectoryObject(title = title_msg, key = Callback(SetDownloadChoice, session=session, key=section[0], title=section[2], type=type, path=section[3], bool=bool)))
+				
+	if len(oc) == 0:
+		return MC.message_container('No Library found', 'No library was found ! Please define a Movie and TV-Show library first !')
 
 	oc.add(DirectoryObject(
 		key = Callback(DownloadOptions, session=session, refresh=int(refresh)+1),

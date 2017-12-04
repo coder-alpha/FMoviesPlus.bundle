@@ -157,10 +157,18 @@ def SaveBookmarks(**kwargs):
 				url = url.replace('fmovies.to',fmovies_base)
 			elif 'bmovies.to' in url:
 				url = url.replace('bmovies.to',fmovies_base)
+			elif 'bmovies.is' in url:
+				url = url.replace('bmovies.is',fmovies_base)
+			elif 'bmovies.pro' in url:
+				url = url.replace('bmovies.pro',fmovies_base)
 			elif 'fmovies.se' in url:
 				url = url.replace('fmovies.se',fmovies_base)
 			elif 'fmovies.is' in url:
 				url = url.replace('fmovies.is',fmovies_base)
+			else:
+				if 'fmovies.' in longstring or 'bmovies.' in longstring:
+					urlhost = common.client.getUrlHost(url)
+					url = url.replace(urlhost,fmovies_base)
 				
 			#Log("BM : %s" % url)
 				
@@ -235,10 +243,18 @@ def SaveConfig(**kwargs):
 				url = url.replace('fmovies.to',fmovies_base)
 			elif 'bmovies.to' in url:
 				url = url.replace('bmovies.to',fmovies_base)
+			elif 'bmovies.is' in url:
+				url = url.replace('bmovies.is',fmovies_base)
+			elif 'bmovies.pro' in url:
+				url = url.replace('bmovies.pro',fmovies_base)
 			elif 'fmovies.se' in url:
 				url = url.replace('fmovies.se',fmovies_base)
 			elif 'fmovies.is' in url:
 				url = url.replace('fmovies.is',fmovies_base)
+			else:
+				if 'fmovies.' in longstring or 'bmovies.' in longstring:
+					urlhost = common.client.getUrlHost(url)
+					url = url.replace(urlhost,fmovies_base)
 				
 			#Log("BM : %s" % url)
 				
@@ -285,12 +301,16 @@ def SaveConfig(**kwargs):
 				items_to_del.append(each['key'])
 			elif url.replace('bmovies.to',fmovies_base) in items_in_recent:
 				items_to_del.append(each['key'])
+			elif url.replace('bmovies.is',fmovies_base) in items_in_recent:
+				items_to_del.append(each['key'])
+			elif url.replace('bmovies.pro',fmovies_base) in items_in_recent:
+				items_to_del.append(each['key'])
 			elif url.replace('fmovies.se',fmovies_base) in items_in_recent:
 				items_to_del.append(each['key'])
 			elif url.replace('fmovies.is',fmovies_base) in items_in_recent:
 				items_to_del.append(each['key'])
 			else:
-				if 'fmovies.' in longstring:
+				if 'fmovies.' in longstring or 'bmovies.' in longstring:
 					url = url.replace(common.client.geturlhost(url),fmovies_base)
 				items_in_recent.append(url)
 				items_in_recentlisting.append({'title':stitle, 'url':url, 'summary':summary, 'thumb':thumb, 'time':timestr})

@@ -4239,6 +4239,10 @@ def RecentWatchList(title, session=None, **kwargs):
 			items_to_del.append(each['key'])
 		elif url.replace('bmovies.to',fmovies_base) in items_in_recent or c > NO_OF_ITEMS_IN_RECENT_LIST:
 			items_to_del.append(each['key'])
+		elif url.replace('bmovies.is',fmovies_base) in items_in_recent or c > NO_OF_ITEMS_IN_RECENT_LIST:
+			items_to_del.append(each['key'])
+		elif url.replace('bmovies.pro',fmovies_base) in items_in_recent or c > NO_OF_ITEMS_IN_RECENT_LIST:
+			items_to_del.append(each['key'])
 		else:
 			if 'fmovies.' in longstring or 'bmovies.' in longstring:
 				url = url.replace(common.client.geturlhost(url),fmovies_base)
@@ -4327,6 +4331,10 @@ def Bookmarks(title, session = None, **kwargs):
 				url = url.replace('fmovies.to',fmovies_base)
 			elif 'bmovies.to' in url:
 				url = url.replace('bmovies.to',fmovies_base)
+			elif 'bmovies.is' in url:
+				url = url.replace('bmovies.is',fmovies_base)
+			elif 'bmovies.pro' in url:
+				url = url.replace('bmovies.pro',fmovies_base)
 			elif 'fmovies.se' in url:
 				url = url.replace('fmovies.se',fmovies_base)
 			elif 'fmovies.is' in url:
@@ -4345,7 +4353,7 @@ def Bookmarks(title, session = None, **kwargs):
 					ES = common.EMOJI_ANIME
 					is9anime = 'True'
 				
-				if fmovies.FILTER_PATH in url:
+				if fmovies.FILTER_PATH in url or '(All Seasons)' in stitle:
 					oc.add(DirectoryObject(
 						key=Callback(Search, query=stitle.replace(' (All Seasons)',''), session = session, mode='other seasons', thumb=thumb, summary=summary, is9anime=is9anime),
 						title='%s%s' % (stitle,ES),
@@ -5289,6 +5297,16 @@ def Check(title, url, **kwargs):
 	longstring = Dict[title+'-'+E(surl)]
 	if longstring != None and surl in longstring:
 		return True
+		
+	surl = url.replace(fmovies_urlhost,'bmovies.is')
+	longstring = Dict[title+'-'+E(surl)]
+	if longstring != None and surl in longstring:
+		return True
+		
+	surl = url.replace(fmovies_urlhost,'bmovies.pro')
+	longstring = Dict[title+'-'+E(surl)]
+	if longstring != None and surl in longstring:
+		return True
 	
 	surl = url.replace(fmovies_urlhost,'fmovies.se')
 	longstring = Dict[title+'-'+E(surl)]
@@ -5334,6 +5352,14 @@ def RemoveBookmark(title, url, **kwargs):
 		pass
 	try:
 		del Dict[title+'-'+E(url.replace(fmovies_urlhost,'bmovies.to'))]
+	except:
+		pass
+	try:
+		del Dict[title+'-'+E(url.replace(fmovies_urlhost,'bmovies.is'))]
+	except:
+		pass
+	try:
+		del Dict[title+'-'+E(url.replace(fmovies_urlhost,'bmovies.pro'))]
 	except:
 		pass
 	try:
@@ -5423,9 +5449,9 @@ def Search(query=None, surl=None, page_count='1', mode='default', thumb=None, su
 			url = fmovies.BASE_URL + fmovies.SEARCH_PATH + '?page=%s&keyword=%s' % (str(page_count), String.Quote(query, usePlus=True))
 		elif mode == 'other seasons':
 			if is9anime == 'False':
-				url = fmovies.BASE_URL + fmovies.FILTER_PATH + '?type=series&page=%s&keyword=%s' % (str(page_count), String.Quote(query, usePlus=True))
+				url = fmovies.BASE_URL + fmovies.SEARCH_PATH + '?type=series&page=%s&keyword=%s' % (str(page_count), String.Quote(query, usePlus=True))
 			else:
-				url = common.ANIME_URL + fmovies.FILTER_PATH + '?type=series&page=%s&keyword=%s' % (str(page_count), String.Quote(query, usePlus=True))
+				url = common.ANIME_URL + fmovies.SEARCH_PATH + '?type=series&page=%s&keyword=%s' % (str(page_count), String.Quote(query, usePlus=True))
 		else:
 			url = fmovies.BASE_URL + fmovies.SEARCH_PATH + '?page=%s&keyword=%s' % (str(page_count), String.Quote(query, usePlus=True))
 
@@ -5443,7 +5469,8 @@ def Search(query=None, surl=None, page_count='1', mode='default', thumb=None, su
 			elems = page_data.xpath(".//*[@id='body-wrapper']//div[@class='row']//div[@class='item']")
 		last_page_no = int(page_count)
 		last_page_no = int(page_data.xpath(".//*[@id='body-wrapper']//ul[@class='pagination'][1]//li[last()-1]//text()")[0])
-	except:
+	except Exception as e:
+		Log("__init.py__ > Search > Error: %s" % e)
 		errorB = True
 		pass
 	no_elems = len(elems)
@@ -5487,7 +5514,7 @@ def Search(query=None, surl=None, page_count='1', mode='default', thumb=None, su
 				else:
 					loc = elem.xpath(".//a[@class='name']//@href")[0]
 				thumb_t = elem.xpath(".//a[@class='poster']//@src")[0]
-				thumb = thumb_t if 'url' not in thumb_t else thumb_t.split('url=')[1]
+				thumbx = thumb_t if 'url' not in thumb_t else thumb_t.split('url=')[1]
 				summary = 'Plot Summary on Item Page.'
 				if query2 == None:
 					try:
@@ -5511,10 +5538,10 @@ def Search(query=None, surl=None, page_count='1', mode='default', thumb=None, su
 					more_info_link = None
 				
 				do = DirectoryObject(
-					key = Callback(EpisodeDetail, title = name, url = loc, thumb = thumb, session = session),
+					key = Callback(EpisodeDetail, title = name, url = loc, thumb = thumbx, session = session),
 					title = name + title_eps_no,
 					summary = GetMovieInfo(summary=summary, urlPath=more_info_link, referer=url, session=session) + eps_nos,
-					thumb = Resource.ContentsOfURLWithFallback(url = thumb, fallback=ICON_UNAV)
+					thumb = Resource.ContentsOfURLWithFallback(url = thumbx, fallback=ICON_UNAV)
 					)
 				if mode == 'default' or mode == 'people' or mode == 'tag':
 					oc.add(do)

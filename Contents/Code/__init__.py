@@ -440,6 +440,13 @@ def DeviceOptions(session, **kwargs):
 	oc = ObjectContainer(title2='Device Options', no_cache=common.isForceNoCache())
 	
 	c = 1
+	
+	user = common.control.setting('%s-%s' % (session, 'user'))
+	if user != None:
+		summary = 'UserName: %s' % user
+		title_msg = "00). %s" % summary
+		oc.add(DirectoryObject(key=Callback(MyMessage, 'Info', summary), title = title_msg))
+	
 	for key in sorted(common.DEVICE_OPTIONS):
 		summary = common.DEVICE_OPTION[key]
 		bool = False if (Dict['Toggle'+key+session] == None or Dict['Toggle'+key+session] == 'disabled') else True
@@ -4239,6 +4246,8 @@ def RecentWatchList(title, session=None, **kwargs):
 			items_to_del.append(each['key'])
 		elif url.replace('bmovies.to',fmovies_base) in items_in_recent or c > NO_OF_ITEMS_IN_RECENT_LIST:
 			items_to_del.append(each['key'])
+		elif url.replace('bmovies.online',fmovies_base) in items_in_recent or c > NO_OF_ITEMS_IN_RECENT_LIST:
+			items_to_del.append(each['key'])
 		elif url.replace('bmovies.is',fmovies_base) in items_in_recent or c > NO_OF_ITEMS_IN_RECENT_LIST:
 			items_to_del.append(each['key'])
 		elif url.replace('bmovies.pro',fmovies_base) in items_in_recent or c > NO_OF_ITEMS_IN_RECENT_LIST:
@@ -4331,6 +4340,8 @@ def Bookmarks(title, session = None, **kwargs):
 				url = url.replace('fmovies.to',fmovies_base)
 			elif 'bmovies.to' in url:
 				url = url.replace('bmovies.to',fmovies_base)
+			elif 'bmovies.online' in url:
+				url = url.replace('bmovies.online',fmovies_base)
 			elif 'bmovies.is' in url:
 				url = url.replace('bmovies.is',fmovies_base)
 			elif 'bmovies.pro' in url:
@@ -4339,6 +4350,10 @@ def Bookmarks(title, session = None, **kwargs):
 				url = url.replace('fmovies.se',fmovies_base)
 			elif 'fmovies.is' in url:
 				url = url.replace('fmovies.is',fmovies_base)
+			else:
+				if 'fmovies.' in url or 'bmovies.' in url:
+					urlhost = common.client.getUrlHost(url)
+					url = url.replace(urlhost,fmovies_base)
 				
 			#Log("BM : %s" % url)
 				
@@ -4400,6 +4415,7 @@ def AddToDownloadsListPre(title, year, url, durl, purl, summary, thumb, quality,
 	admin = True if str(admin) == 'True' else False
 	update = True if str(update) == 'True' else False
 	resumable = True if str(resumable) == 'True' else False
+	user = common.control.setting('%s-%s' % (session,'user'))
 		
 	bool = False
 	for i_source in common.interface.getHosts(encode=False):
@@ -4478,7 +4494,7 @@ def AddToDownloadsListPre(title, year, url, durl, purl, summary, thumb, quality,
 		chunk_size = int(1024.0 * 1024.0 * float(common.DOWNLOAD_CHUNK_SIZE)) # in bytes
 		fid = '.'+common.id_generator()
 		
-		EncTxt = E(JSON.StringFromObject({'title':title, 'year':year, 'url':url, 'durl':durl, 'purl':purl, 'sub_url':sub_url, 'summary':summary, 'thumb':thumb, 'fsBytes':int(fsBytes), 'fs':fs, 'chunk_size':chunk_size, 'file_ext':file_ext, 'quality':quality, 'source':source, 'source_meta':source_meta, 'file_meta':file_meta, 'uid':uid, 'fid':fid, 'type':type, 'resumable':resumable, 'status':common.DOWNLOAD_STATUS[4], 'startPos':0, 'timeAdded':time.time(), 'first_time':time.time(), 'progress':0, 'chunk_speed':0,'avg_speed':0,'avg_speed_curr':0, 'eta':0, 'error':'', 'last_error':'Unknown Error', 'action':common.DOWNLOAD_PROPS[3],'section_path':section_path, 'section_title':section_title, 'section_key':section_key})) 
+		EncTxt = E(JSON.StringFromObject({'title':title, 'year':year, 'url':url, 'durl':durl, 'purl':purl, 'sub_url':sub_url, 'summary':summary, 'thumb':thumb, 'fsBytes':int(fsBytes), 'fs':fs, 'chunk_size':chunk_size, 'file_ext':file_ext, 'quality':quality, 'source':source, 'source_meta':source_meta, 'file_meta':file_meta, 'uid':uid, 'fid':fid, 'type':type, 'resumable':resumable, 'status':common.DOWNLOAD_STATUS[4], 'startPos':0, 'timeAdded':time.time(), 'first_time':time.time(), 'progress':0, 'chunk_speed':0,'avg_speed':0,'avg_speed_curr':0, 'eta':0, 'error':'', 'last_error':'Unknown Error', 'action':common.DOWNLOAD_PROPS[3],'section_path':section_path, 'section_title':section_title, 'section_key':section_key, 'user':user})) 
 		Dict[uid] = EncTxt
 		Dict.Save()
 		return MC.message_container('Requested Sources', 'Successfully added to Requested List')
@@ -4493,12 +4509,12 @@ def AddToDownloadsListPre(title, year, url, durl, purl, summary, thumb, quality,
 			Dict['DOWNLOAD_OPTIONS_SECTION_TEMP'][tuec][x] = common.DOWNLOAD_OPTIONS[x]
 		Dict.Save()
 		
-	return AddToDownloadsList(title=title, purl=purl, url=url, durl=durl, summary=summary, thumb=thumb, year=year, quality=quality, source=source, source_meta=source_meta, file_meta=file_meta, type=type, resumable=resumable, sub_url=sub_url, fsBytes=fsBytes, fs=fs, file_ext=file_ext, mode=mode, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, update=update)
+	return AddToDownloadsList(title=title, purl=purl, url=url, durl=durl, summary=summary, thumb=thumb, year=year, quality=quality, source=source, source_meta=source_meta, file_meta=file_meta, type=type, resumable=resumable, sub_url=sub_url, fsBytes=fsBytes, fs=fs, file_ext=file_ext, mode=mode, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, update=update, user=user)
 	
 ######################################################################################
 # Adds a movie to the DownloadsList list using the (title + 'Down5Split') as a key for the url
 @route(PREFIX + "/addToDownloadsList")
-def AddToDownloadsList(title, year, url, durl, purl, summary, thumb, quality, source, type, resumable, source_meta, file_meta, sub_url=None, fsBytes=None, fs=None, file_ext=None, section_path=None, section_title=None, section_key=None, session=None, admin=False, update=False, **kwargs):
+def AddToDownloadsList(title, year, url, durl, purl, summary, thumb, quality, source, type, resumable, source_meta, file_meta, sub_url=None, fsBytes=None, fs=None, file_ext=None, section_path=None, section_title=None, section_key=None, session=None, admin=False, update=False, user=None, **kwargs):
 
 	admin = True if str(admin) == 'True' else False
 	update = True if str(update) == 'True' else False
@@ -4543,13 +4559,13 @@ def AddToDownloadsList(title, year, url, durl, purl, summary, thumb, quality, so
 					LOCS.append(item)
 			if len(LOCS) == 1:
 				item = LOCS[0]
-				return AddToDownloadsList(title=title, year=year, url=url, durl=durl, purl=purl, summary=summary, thumb=thumb, fs=fs, fsBytes=fsBytes, file_ext=file_ext, quality=quality, source=source, source_meta=source_meta, file_meta=file_meta, type=type, resumable=resumable, sub_url=sub_url, section_path=item['path'], section_title=item['title'], section_key=item['key'], session=session, admin=admin, update=update)
+				return AddToDownloadsList(title=title, year=year, url=url, durl=durl, purl=purl, summary=summary, thumb=thumb, fs=fs, fsBytes=fsBytes, file_ext=file_ext, quality=quality, source=source, source_meta=source_meta, file_meta=file_meta, type=type, resumable=resumable, sub_url=sub_url, section_path=item['path'], section_title=item['title'], section_key=item['key'], session=session, admin=admin, update=update, user=user)
 			else:
 				oc = ObjectContainer(title1='Select Location', no_cache=common.isForceNoCache())
 				for item in DOWNLOAD_OPTIONS_SECTION_TEMP[type]:
 					if item['enabled']:
 						oc.add(DirectoryObject(
-							key = Callback(AddToDownloadsList, title=title, year=year, url=url, durl=durl, purl=purl, summary=summary, thumb=thumb, fs=fs, fsBytes=fsBytes, file_ext=file_ext, quality=quality, source=source, source_meta=source_meta, file_meta=file_meta, type=type, resumable=resumable, sub_url=sub_url, section_path=item['path'], section_title=item['title'], section_key=item['key'], session=session, admin=admin, update=update),
+							key = Callback(AddToDownloadsList, title=title, year=year, url=url, durl=durl, purl=purl, summary=summary, thumb=thumb, fs=fs, fsBytes=fsBytes, file_ext=file_ext, quality=quality, source=source, source_meta=source_meta, file_meta=file_meta, type=type, resumable=resumable, sub_url=sub_url, section_path=item['path'], section_title=item['title'], section_key=item['key'], session=session, admin=admin, update=update, user=user),
 							title = '%s | %s' % (item['title'], item['path'])
 							)
 						)
@@ -4603,7 +4619,7 @@ def AddToDownloadsList(title, year, url, durl, purl, summary, thumb, quality, so
 			chunk_size = int(1024.0 * 1024.0 * float(common.DOWNLOAD_CHUNK_SIZE)) # in bytes
 			fid = '.'+common.id_generator()
 			
-			EncTxt = E(JSON.StringFromObject({'title':title, 'year':year, 'url':url, 'durl':durl, 'purl':purl, 'sub_url':sub_url, 'summary':summary, 'thumb':thumb, 'fsBytes':int(fsBytes), 'fs':fs, 'chunk_size':chunk_size, 'file_ext':file_ext, 'quality':quality, 'source':source, 'source_meta':source_meta, 'file_meta':file_meta, 'uid':uid, 'fid':fid, 'type':type, 'resumable':resumable, 'status':common.DOWNLOAD_STATUS[0], 'startPos':0, 'timeAdded':time.time(), 'first_time':time.time(), 'progress':0, 'chunk_speed':0,'avg_speed':0,'avg_speed_curr':0, 'eta':0, 'error':'', 'last_error':'Unknown Error', 'action':common.DOWNLOAD_ACTIONS[4],'section_path':section_path, 'section_title':section_title, 'section_key':section_key})) 
+			EncTxt = E(JSON.StringFromObject({'title':title, 'year':year, 'url':url, 'durl':durl, 'purl':purl, 'sub_url':sub_url, 'summary':summary, 'thumb':thumb, 'fsBytes':int(fsBytes), 'fs':fs, 'chunk_size':chunk_size, 'file_ext':file_ext, 'quality':quality, 'source':source, 'source_meta':source_meta, 'file_meta':file_meta, 'uid':uid, 'fid':fid, 'type':type, 'resumable':resumable, 'status':common.DOWNLOAD_STATUS[0], 'startPos':0, 'timeAdded':time.time(), 'first_time':time.time(), 'progress':0, 'chunk_speed':0,'avg_speed':0,'avg_speed_curr':0, 'eta':0, 'error':'', 'last_error':'Unknown Error', 'action':common.DOWNLOAD_ACTIONS[4],'section_path':section_path, 'section_title':section_title, 'section_key':section_key, 'user':user})) 
 			Dict[uid] = EncTxt
 			Dict.Save()
 			Thread.Create(download.trigger_que_run)
@@ -4717,7 +4733,10 @@ def Downloads(title, session = None, status = None, refresh = 0, **kwargs):
 						key = Callback(DownloadingFilesMenu, title=longstringObjs['title'], uid=longstringObjs['uid'], choice=None, session=session, status=status)
 						summary = '%s | %s' % (wtitle, summary)
 					elif status == common.DOWNLOAD_STATUS[4]: # Requested
-						wtitle = '%s (%s) | %s | %s - %s | %s | %s - %s | %s | %s MB/s | Subtitle:%s' % (longstringObjs['title'], longstringObjs['year'], longstringObjs['type'].title(), longstringObjs['fs'], longstringObjs['quality'], longstringObjs['source'], longstringObjs['status'], common.DOWNLOAD_ACTIONS_K[longstringObjs['action']], str(longstringObjs['progress'])+'%', str(longstringObjs['avg_speed_curr']), common.GetEmoji(type=has_sub, mode='simple', session=session))
+						if 'user' in longstringObjs.keys() and longstringObjs['user'] != None and AuthTools.CheckAdmin() == True:
+							wtitle = '%s (%s) | %s | %s - %s | %s | %s (by %s) - %s | %s | %s MB/s | Subtitle:%s' % (longstringObjs['title'], longstringObjs['year'], longstringObjs['type'].title(), longstringObjs['fs'], longstringObjs['quality'], longstringObjs['source'], longstringObjs['status'], longstringObjs['user'], common.DOWNLOAD_ACTIONS_K[longstringObjs['action']], str(longstringObjs['progress'])+'%', str(longstringObjs['avg_speed_curr']), common.GetEmoji(type=has_sub, mode='simple', session=session))
+						else:
+							wtitle = '%s (%s) | %s | %s - %s | %s | %s - %s | %s | %s MB/s | Subtitle:%s' % (longstringObjs['title'], longstringObjs['year'], longstringObjs['type'].title(), longstringObjs['fs'], longstringObjs['quality'], longstringObjs['source'], longstringObjs['status'], common.DOWNLOAD_ACTIONS_K[longstringObjs['action']], str(longstringObjs['progress'])+'%', str(longstringObjs['avg_speed_curr']), common.GetEmoji(type=has_sub, mode='simple', session=session))
 						key = Callback(DownloadingFilesMenu, title=longstringObjs['title'], uid=longstringObjs['uid'], choice=None, session=session, status=status)
 					elif status == common.DOWNLOAD_STATUS[5]: # All
 						if longstringObjs['status'] == common.DOWNLOAD_STATUS[1]: # Downloading
@@ -5298,6 +5317,21 @@ def Check(title, url, **kwargs):
 	if longstring != None and surl in longstring:
 		return True
 		
+	surl = url.replace(fmovies_urlhost,'bmovies.online')
+	longstring = Dict[title+'-'+E(surl)]
+	if longstring != None and surl in longstring:
+		return True
+		
+	surl = url.replace(fmovies_urlhost,'bmovies.club')
+	longstring = Dict[title+'-'+E(surl)]
+	if longstring != None and surl in longstring:
+		return True
+		
+	surl = url.replace(fmovies_urlhost,'bmovies.ru')
+	longstring = Dict[title+'-'+E(surl)]
+	if longstring != None and surl in longstring:
+		return True
+		
 	surl = url.replace(fmovies_urlhost,'bmovies.is')
 	longstring = Dict[title+'-'+E(surl)]
 	if longstring != None and surl in longstring:
@@ -5318,7 +5352,10 @@ def Check(title, url, **kwargs):
 	if longstring != None and surl in longstring:
 		return True
 		
-	
+	surl = url.replace(fmovies_urlhost,'fmovies.is')
+	longstring = Dict[title+'-'+E(surl)]
+	if longstring != None and surl in longstring:
+		return True
 
 	return False
 
@@ -5355,6 +5392,18 @@ def RemoveBookmark(title, url, **kwargs):
 	except:
 		pass
 	try:
+		del Dict[title+'-'+E(url.replace(fmovies_urlhost,'bmovies.online'))]
+	except:
+		pass
+	try:
+		del Dict[title+'-'+E(url.replace(fmovies_urlhost,'bmovies.club'))]
+	except:
+		pass
+	try:
+		del Dict[title+'-'+E(url.replace(fmovies_urlhost,'bmovies.ru'))]
+	except:
+		pass
+	try:
 		del Dict[title+'-'+E(url.replace(fmovies_urlhost,'bmovies.is'))]
 	except:
 		pass
@@ -5383,7 +5432,7 @@ def ClearBookmarks(**kwargs):
 	for each in Dict:
 		try:
 			url = Dict[each]
-			if common.isArrayValueInString(common.EXT_SITE_URLS, url) == True and 'http' in url and 'RR44SS' not in url:
+			if ('bmovies.' in url or 'fmovies.' in url) or common.isArrayValueInString(common.EXT_SITE_URLS, url) == True and 'http' in url and 'RR44SS' not in url:
 				remove_list.append(each)
 		except:
 			continue
@@ -7138,6 +7187,10 @@ def DumpPrefs(changed=False, **kwargs):
 ######################################################################################
 @route(PREFIX + "/ClientInfo")
 def ClientInfo(session, **kwargs):
+
+	if session != None:
+		common.setPlexTVUser(session)
+
 	Log("=================FMoviesPlus Client Info=================")
 	Log(common.TITLE + ' v. %s %s' % (common.VERSION, common.TAG))
 	Log("OS: " + sys.platform)

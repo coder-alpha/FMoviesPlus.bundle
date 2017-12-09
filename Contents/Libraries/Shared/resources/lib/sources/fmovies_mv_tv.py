@@ -43,7 +43,7 @@ class source:
 		self.init = False
 		self.disabled = False
 		self.TOKEN_KEY = []
-		self.base_link_alts = ['https://bmovies.to','https://bmovies.pro'] #['https://fmovies.to','https://fmovies.is','https://fmovies.se']
+		self.base_link_alts = ['https://bmovies.club','https://bmovies.online','https://bmovies.ru'] #['https://fmovies.to','https://fmovies.is','https://fmovies.se']
 		self.base_link = self.base_link_alts[0]
 		self.grabber_api = "grabber-api/"
 		self.search_link = '/sitemap'

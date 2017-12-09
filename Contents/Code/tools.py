@@ -8,7 +8,7 @@
 import os, io
 import shutil
 import json, time
-import common, fmovies, AuthTools
+import common, fmovies, AuthTools, externals
 
 TITLE = common.TITLE
 PREFIX = common.PREFIX
@@ -82,7 +82,21 @@ def DevToolsC(title=None, header=None, message=None, **kwargs):
 				Log(u'\n----------Loaded Config from {}----------'.format(resources_path))
 			else:
 				message='Error: Could not Load Config file (config.json)'
-			
+		elif title == 'check_externals':
+			if len(externals.BUSY_BOOL) > 0:
+				message = 'Checking externals. Please wait and try again.'
+			else:
+				Thread.Create(externals.checkRoutine)
+				time.sleep(7)
+				if len(externals.BUSY_BOOL) > 0:
+					message = 'Checking externals. Please wait and try again.'
+				else:
+					if len(externals.CHECK_ROUTINE_LOG) > 0:
+						for item in externals.CHECK_ROUTINE_LOG:
+							oc.add(DirectoryObject(title=item,key=Callback(MyMessage, 'Info', item)))
+						return oc
+					else:
+						message = 'Could not retrieve output from externals.'
 		return MC.message_container('Info', message)
 
 	# oc.add(DirectoryObject(key=Callback(DevToolsC, title='plex_cache'),
@@ -105,6 +119,10 @@ def DevToolsC(title=None, header=None, message=None, **kwargs):
 		title=u'Load Config',
 		thumb = R(ICON_TOOLS),
 		summary=u'Load Config from the Resource dir. (file: config.json). Device Options (all clients), Bookmarks, Recent WatchList, SearchQue, Downloads and Interface Options can be saved and restored using Config file.'))
+	oc.add(DirectoryObject(key=Callback(DevToolsC, title='check_externals'),
+		title=u'Check Externals',
+		thumb = R(ICON_TOOLS),
+		summary=u'Check externals like PhantomJS and Cryptodome have been installed or not'))
 
 	return oc
 	
@@ -157,6 +175,8 @@ def SaveBookmarks(**kwargs):
 				url = url.replace('fmovies.to',fmovies_base)
 			elif 'bmovies.to' in url:
 				url = url.replace('bmovies.to',fmovies_base)
+			elif 'bmovies.online' in url:
+				url = url.replace('bmovies.online',fmovies_base)
 			elif 'bmovies.is' in url:
 				url = url.replace('bmovies.is',fmovies_base)
 			elif 'bmovies.pro' in url:
@@ -243,6 +263,8 @@ def SaveConfig(**kwargs):
 				url = url.replace('fmovies.to',fmovies_base)
 			elif 'bmovies.to' in url:
 				url = url.replace('bmovies.to',fmovies_base)
+			elif 'bmovies.online' in url:
+				url = url.replace('bmovies.online',fmovies_base)
 			elif 'bmovies.is' in url:
 				url = url.replace('bmovies.is',fmovies_base)
 			elif 'bmovies.pro' in url:
@@ -300,6 +322,8 @@ def SaveConfig(**kwargs):
 			if url.replace('fmovies.to',fmovies_base) in items_in_recent:
 				items_to_del.append(each['key'])
 			elif url.replace('bmovies.to',fmovies_base) in items_in_recent:
+				items_to_del.append(each['key'])
+			elif url.replace('bmovies.online',fmovies_base) in items_in_recent:
 				items_to_del.append(each['key'])
 			elif url.replace('bmovies.is',fmovies_base) in items_in_recent:
 				items_to_del.append(each['key'])
@@ -465,4 +489,7 @@ def LoadConfig(**kwargs):
 		Log.Exception("tools.py>LoadConfig >> : >>> %s" % (e))
 	return False
 	
-######################################################################################
+####################################################################################################
+@route(PREFIX+'/MyMessage')
+def MyMessage(title, msg, **kwargs):	
+	return MC.message_container(title,msg)

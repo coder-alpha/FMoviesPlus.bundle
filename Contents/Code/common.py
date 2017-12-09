@@ -1,6 +1,6 @@
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.53' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.54' # Release notation (x.y - where x is major and y is minor)
 TAG = ''
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
@@ -273,6 +273,21 @@ def getSession():
 		session = 'UnknownClient-'+encode(str(Request.Headers['User-Agent']) + str(Request.Headers['X-Plex-Token'][:3]))[:10]
 	
 	return (session)
+	
+def setPlexTVUser(session):
+	token = Request.Headers.get("X-Plex-Token", "")
+	url = "https://plex.tv"
+	plexTVUser = None
+	try:
+		xml = XML.ObjectFromURL(url, headers={'X-Plex-Token': token})
+		plexTVUser = xml.get("myPlexUsername")
+	except:
+		pass
+	
+	try:
+		control.set_setting('%s-%s' % (session, 'user'), plexTVUser)
+	except Exception as e:
+		Log.Error('ERROR common.py>setPlexTVUser: %s' % e)
 
 #######################################################################################################
 # base64 decode

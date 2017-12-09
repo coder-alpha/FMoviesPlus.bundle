@@ -19,13 +19,13 @@ class source:
 		self.update_date = 'Nov. 13, 2017'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
-		self.base_link_alts = ['https://www.fmovies.io','https://www4.fmovies.io']
+		self.base_link_alts = ['https://www.fmovies.pe','https://www4.fmovies.pe']
 		self.base_link = self.base_link_alts[0]
 		self.search_link = '/sitemap'
 		self.link_server_f1 = "https://vidnode.net/streaming.php?id=%s"
 		self.link_server_f2 = "https://player.fmovie.io/embed.php?id=%s"
 		self.hash_link = '/ajax/episode/info'
-		self.MainPageValidatingContent = 'Watch Free Movies Online -  Streaming MoviesFast - Fmovies'
+		self.MainPageValidatingContent = 'Watch movies online free on Fmovies.'
 		self.type_filter = ['movie', 'show', 'anime']
 		self.ssl = False
 		self.disabled = False

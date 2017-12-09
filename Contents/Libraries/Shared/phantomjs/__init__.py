@@ -1,7 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-import os, sys, time, base64
+import os, sys, io, time, base64, hashlib
 import subprocess
 
 try:
@@ -77,7 +77,7 @@ def decode(url, python_dir=None, debug=False, ssl=True):
 		log(type='ERROR', err= "%s > %s > %s" % (str(err), str(output), str(file_cmd)))
 		return str(err), False
 
-def log(err='', type='INFO', logToControl=True):
+def log(err='', type='INFO', logToControl=True, dolog=False):
 	try:
 		msg = '%s: %s > %s : %s' % (time.ctime(time.time()), type, 'PhantomJS', err)
 		if dolog == True:
@@ -89,7 +89,35 @@ def log(err='', type='INFO', logToControl=True):
 	except Exception as e:
 		control.log('Error in Logging: %s >>> %s' % (msg,e))
 		
+
+def checkBinaryPresence():
+	try:
+		PHANTOMJS_PATH = os.path.dirname(os.path.abspath(__file__))
+
+		if sys.platform == "win32":
+			binary_path = os.path.join(PHANTOMJS_PATH, 'phantomjs.exe')
+		elif sys.platform == "darwin":
+			binary_path = os.path.join(PHANTOMJS_PATH, 'phantomjs')
+		else:
+			binary_path = os.path.join(PHANTOMJS_PATH, 'phantomjs')
+			
+		if os.path.isfile(binary_path):
+			md5checksum = md5(binary_path)
+			return True, md5checksum
+	except Exception as e:
+		log(type='ERROR', err=e)
+
+	return False, 0
+		
+def md5(fname):
+	hash_md5 = hashlib.md5()
+	with io.open(fname, "rb") as f:
+		for chunk in iter(lambda: f.read(4096), b""):
+			hash_md5.update(chunk)
+	return hash_md5.hexdigest()
+		
 def test():
+	print "PhantomJS binary file presence: %s | MD5 Checksum: %s" % checkBinaryPresence()
 	resp = decode("https://openload.co/embed/kUEfGclsU9o", debug=False)
 	print resp[0]
 	log(PROCESSES)

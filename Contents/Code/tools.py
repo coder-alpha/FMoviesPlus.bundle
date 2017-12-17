@@ -97,6 +97,14 @@ def DevToolsC(title=None, header=None, message=None, **kwargs):
 						return oc
 					else:
 						message = 'Could not retrieve output from externals.'
+		elif title == 'set_base_url':
+			base_urls = ["https://bmovies.is","https://bmovies.to","https://bmovies.pro","https://bmovies.online","https://bmovies.club","https://bmovies.ru"]
+			oc = ObjectContainer(title2='Set Base URL')
+			for u in base_urls:
+				ch = common.GetEmoji(type=True) if u == fmovies.BASE_URL else common.GetEmoji(type=False)
+				oc.add(DirectoryObject(title='%s | Base URL : %s' % (ch, u),key=Callback(SetBaseUrl, url=u)))
+			return oc
+
 		return MC.message_container('Info', message)
 
 	# oc.add(DirectoryObject(key=Callback(DevToolsC, title='plex_cache'),
@@ -123,6 +131,10 @@ def DevToolsC(title=None, header=None, message=None, **kwargs):
 		title=u'Check Externals',
 		thumb = R(ICON_TOOLS),
 		summary=u'Check externals like PhantomJS and Cryptodome have been installed or not'))
+	oc.add(DirectoryObject(key=Callback(DevToolsC, title='set_base_url'),
+		title=u'Set Base URL',
+		thumb = R(ICON_TOOLS),
+		summary=u'Set the Base URL to be used by the Channel'))
 
 	return oc
 	
@@ -488,6 +500,12 @@ def LoadConfig(**kwargs):
 	except Exception as e:
 		Log.Exception("tools.py>LoadConfig >> : >>> %s" % (e))
 	return False
+	
+####################################################################################################
+@route(PREFIX+'/SetBaseUrl')
+def SetBaseUrl(url):
+	fmovies.BASE_URL = url
+	return MyMessage('Set Base URL','Base URL set to %s' % fmovies.BASE_URL)
 	
 ####################################################################################################
 @route(PREFIX+'/MyMessage')

@@ -2,7 +2,7 @@
 
 #########################################################################################################
 #
-# Youtube scrapper
+# Direct scrapper
 #
 # Coder Alpha
 # https://github.com/coder-alpha
@@ -42,31 +42,31 @@ hdr = {
 	'Accept-Language': 'en-US,en;q=0.8',
 	'Connection': 'keep-alive'}
 
-name = 'youtube'
+name = 'direct'
 loggertxt = []
 	
 class host:
 	def __init__(self):
 		del loggertxt[:]
 		self.ver = '0.0.1'
-		self.update_date = 'Nov. 13, 2017'
+		self.update_date = 'Dec. 16, 2017'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
-		self.logo = 'http://i.imgur.com/qZUP77r.png'
+		self.logo = 'https://i.imgur.com/nbtnvDr.png'
 		self.name = name
-		self.host = ['youtube.com']
-		self.netloc = ['youtube.com']
+		self.host = ['imdb.com','media-imdb.com','einthusan.tv']
+		self.netloc = ['imdb.com','media-imdb.com','einthusan.tv']
 		self.quality = '1080p'
 		self.loggertxt = []
 		self.captcha = False
-		self.allowsDownload = False
-		self.resumeDownload = False
+		self.allowsDownload = True
+		self.resumeDownload = True
 		self.allowsStreaming = True
 		self.ac = False
 		self.pluginManagedPlayback = False
-		self.speedtest = 0
-		self.working = self.testWorking()[0]
-		self.resolver = self.testResolver()
+		self.speedtest = 'NA'
+		self.working = True
+		self.resolver = True
 		self.msg = ''
 		self.init = True
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s End --' % (name, self.ver, self.update_date))
@@ -77,7 +77,7 @@ class host:
 			'ver': self.ver,
 			'date': self.update_date,
 			'class': self.name,
-			'speed': round(self.speedtest,3),
+			'speed': self.speedtest,
 			'netloc': self.netloc,
 			'host': self.host,
 			'quality': self.quality,
@@ -96,45 +96,6 @@ class host:
 		self.loggertxt = loggertxt
 		return self.loggertxt
 		
-	def testWorking(self):
-		try:
-			testUrls = self.testUrl()
-			bool = False
-			msg = []
-			for testUrl in testUrls:
-				x1 = time.time()
-				bool = check(testUrl)
-				self.speedtest = time.time() - x1
-				msg.append([bool, testUrl])
-				if bool == True:
-					break
-				
-			log(method='testWorking', err='%s online status: %s' % (self.name, bool))
-			return (bool,msg)
-		except Exception as e:
-			log(method='testWorking', err='%s online status: %s' % (self.name, bool))
-			log(type='ERROR', method='testWorking', err=e)
-			return False
-			
-	def testResolver(self):
-		try:
-			testUrls = self.testUrl()
-			links = []
-			bool = False
-			for testUrl in testUrls:
-				links = self.createMeta(testUrl, 'Test', '', '720p', links, 'testing', 'BRRIP')
-				if len(links) > 0:
-					bool = True
-					break
-		except Exception as e:
-			log(type='ERROR', method='testResolver', err=e)
-			
-		log(method='testResolver', err='%s parser status: %s' % (self.name, bool))
-		return bool
-		
-	def testUrl(self):
-		return ['https://www.youtube.com/watch?v=HcRvwVwD1Sc']
-		
 	def createMeta(self, url, provider, logo, quality, links, key, riptype, vidtype='Movie', lang='en', sub_url=None, txt='', file_ext = '.mp4', testing=False):
 	
 		if testing == True:
@@ -152,13 +113,13 @@ class host:
 		
 		online = check(url)
 		files_ret = []
-		fs = 5*1024*1024*1024
+		fs = client.getFileSize(url, retry429=True)
 		
 		try:
-			files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':riptype, 'provider':provider, 'url':url, 'durl':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':fs, 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'subdomain':self.netloc[0], 'misc':{'player':'eplayer', 'gp':False}})
+			files_ret.append({'source':self.name, 'maininfo':txt, 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':riptype, 'provider':provider, 'url':url, 'durl':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':fs, 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'subdomain':client.geturlhost(url), 'misc':{'player':'eplayer', 'gp':False}})
 		except Exception as e:
 			log(type='ERROR',method='createMeta', err=u'%s' % e)
-			files_ret.append({'source':urlhost, 'maininfo':'', 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'url':url, 'durl':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':fs, 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'subdomain':self.netloc[0], 'misc':{'player':'eplayer', 'gp':False}})
+			files_ret.append({'source':urlhost, 'maininfo':txt, 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'url':url, 'durl':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':fs, 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'subdomain':client.geturlhost(url), 'misc':{'player':'eplayer', 'gp':False}})
 			
 		for fr in files_ret:
 			links.append(fr)

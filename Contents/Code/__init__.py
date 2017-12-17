@@ -330,6 +330,23 @@ def SleepAndUpdateThread(update=True, startthread=True, session=None, **kwargs):
 			del common.INTERNAL_SOURCES_FILETYPE[:]
 			for r in ARRAY_T:
 				common.INTERNAL_SOURCES_FILETYPE.append(r)
+				
+			for r in common.INTERNAL_SOURCES_FILETYPE:
+				ok_bool = False
+				for r2 in common.INTERNAL_SOURCES_FILETYPE_CONST:
+					if r['label'] == r2['label']:
+						ok_bool = True
+						break
+				if ok_bool == False:
+					common.INTERNAL_SOURCES_FILETYPE.remove(r)
+			for r in common.INTERNAL_SOURCES_FILETYPE_CONST:
+				ok_bool = False
+				for r2 in common.INTERNAL_SOURCES_FILETYPE:
+					if r['label'] == r2['label']:
+						ok_bool = True
+						break
+				if ok_bool == False:
+					common.INTERNAL_SOURCES_FILETYPE.append(r)
 		else:
 			del common.INTERNAL_SOURCES_FILETYPE[:]
 			for q in common.INTERNAL_SOURCES_FILETYPE_CONST:
@@ -1432,10 +1449,15 @@ def ResetAllOptions(session, doReset=False, **kwargs):
 	del common.OPTIONS_PROXY[:]
 	del common.INTERNAL_SOURCES[:]
 	common.DOWNLOAD_OPTIONS = {'movie':[], 'show':[]}
-	common.INTERNAL_SOURCES_QUALS = [{'label':'4K','enabled': 'True'},{'label':'1080p','enabled': 'True'},{'label':'720p','enabled': 'True'},{'label':'480p','enabled': 'True'},{'label':'360p','enabled': 'True'}]
-	common.INTERNAL_SOURCES_RIPTYPE = [{'label':'BRRIP','enabled': 'True'},{'label':'PREDVD','enabled': 'True'},{'label':'CAM','enabled': 'True'},{'label':'TS','enabled': 'True'},{'label':'SCR','enabled': 'True'},{'label':'UNKNOWN','enabled': 'True'}]
-	common.INTERNAL_SOURCES_FILETYPE = [{'label':'Movie/Show','enabled': 'True'},{'label':'Trailer','enabled': 'True'},{'label':'Behind the scenes','enabled': 'False'},{'label':'Music Video','enabled': 'False'},{'label':'Deleted Scenes','enabled': 'False'},{'label':'Interviews','enabled': 'False'},{'label':'Misc.','enabled': 'False'}]
-	common.INTERNAL_SOURCES_SIZES = [{'label':'> 2GB','enabled': 'True','LL':2*common.TO_GB,'UL':100*common.TO_GB},{'label':'1GB - 2GB','enabled': 'True','LL':1*common.TO_GB,'UL':2*common.TO_GB},{'label':'0.5GB - 1GB','enabled': 'True','LL':0.5*common.TO_GB,'UL':1*common.TO_GB},{'label':'0GB - 0.5GB','enabled': 'True','LL':1,'UL':0.5*common.TO_GB},{'label':'0GB','enabled': 'False','LL':0,'UL':0}]
+	common.INTERNAL_SOURCES_SIZES = list(common.INTERNAL_SOURCES_SIZES_CONST)
+	common.INTERNAL_SOURCES_QUALS = list(common.INTERNAL_SOURCES_QUALS_CONST)
+	common.INTERNAL_SOURCES_RIPTYPE = list(common.INTERNAL_SOURCES_RIPTYPE_CONST)
+	common.INTERNAL_SOURCES_FILETYPE = list(common.INTERNAL_SOURCES_FILETYPE_CONST)
+
+	# common.INTERNAL_SOURCES_QUALS = [{'label':'4K','enabled': 'True'},{'label':'1080p','enabled': 'True'},{'label':'720p','enabled': 'True'},{'label':'480p','enabled': 'True'},{'label':'360p','enabled': 'True'}]
+	# common.INTERNAL_SOURCES_RIPTYPE = [{'label':'BRRIP','enabled': 'True'},{'label':'PREDVD','enabled': 'True'},{'label':'CAM','enabled': 'True'},{'label':'TS','enabled': 'True'},{'label':'SCR','enabled': 'True'},{'label':'UNKNOWN','enabled': 'True'}]
+	# common.INTERNAL_SOURCES_FILETYPE = [{'label':'Movie/Show','enabled': 'True'},{'label':'Trailer','enabled': 'True'},{'label':'Behind the scenes','enabled': 'False'},{'label':'Music Video','enabled': 'False'},{'label':'Deleted Scenes','enabled': 'False'},{'label':'Interviews','enabled': 'False'},{'label':'Misc.','enabled': 'False'}]
+	# common.INTERNAL_SOURCES_SIZES = [{'label':'> 2GB','enabled': 'True','LL':2*common.TO_GB,'UL':100*common.TO_GB},{'label':'1GB - 2GB','enabled': 'True','LL':1*common.TO_GB,'UL':2*common.TO_GB},{'label':'0.5GB - 1GB','enabled': 'True','LL':0.5*common.TO_GB,'UL':1*common.TO_GB},{'label':'0GB - 0.5GB','enabled': 'True','LL':1,'UL':0.5*common.TO_GB},{'label':'0GB','enabled': 'False','LL':0,'UL':0}]
 	
 	FilterExt_Search.clear()
 	FilterExt.clear()
@@ -1828,7 +1850,7 @@ def ShowCategory(title, key=' ', urlpath=None, page_count='1', session=None, **k
 		return MC.message_container(title, error)
 	
 	elems = []
-	if title == CAT_REGULAR[5]:
+	if title == CAT_REGULAR[5]: # Site-Map
 		if len(fmovies.SITE_MAP_HTML_ELEMS) == 0:
 			elems_all = page_data.xpath(".//*[@id='body-wrapper']/div/div/div[2]/ul/li[9]/ul/li")
 			fmovies.SITE_MAP_HTML_ELEMS = elems_all
@@ -1860,7 +1882,7 @@ def ShowCategory(title, key=' ', urlpath=None, page_count='1', session=None, **k
 		oc = ObjectContainer(title2 = title + '|Page ' + str(page_count) + ' of ' + str(last_page_no), no_cache=common.isForceNoCache())
 		
 	for elem in elems:
-		if title == CAT_REGULAR[4]:
+		if title == CAT_REGULAR[4] and False:
 			name = elem.xpath(".//a//text()")[0]
 			if '...' in name:
 				name = elem.xpath(".//a//@title")[0]
@@ -2131,28 +2153,30 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 			
 		for server in servers:
 			label = server.xpath(".//label[@class='name col-md-4 col-sm-5']//text()[2]")[0].strip()
-			if label in common.host_gvideo.FMOVIES_SERVER_MAP:
-				label = common.host_gvideo.FMOVIES_SERVER_MAP[label]
-			if 'Server F' in label:
-				label = label.replace('Server F','Google-F')
-			if 'Server G' in label:
-				label = label.replace('Server G','Google-G')
 			
-			server_lab.append(label)
-			items = server.xpath(".//ul//li")
-			if len(items) > 1:
-				isMovieWithMultiPart = True
+			if label.lower() != 'mycloud' or (label.lower() == 'mycloud' and common.MY_CLOUD_DISABLED == False):
+				if label in common.host_gvideo.FMOVIES_SERVER_MAP:
+					label = common.host_gvideo.FMOVIES_SERVER_MAP[label]
+				if 'Server F' in label:
+					label = label.replace('Server F','Google-F')
+				if 'Server G' in label:
+					label = label.replace('Server G','Google-G')
 				
-			servers_list[label] = []
-			c=0
-			for item in items:
-				servers_list[label].append([])
-				servers_list[label][c]={}
-				label_qual = item.xpath(".//a//text()")[0].strip()
-				label_val = item.xpath(".//a//@data-id")[0]
-				servers_list[label][c]['quality'] = label_qual
-				servers_list[label][c]['loc'] = label_val
-				c += 1
+				server_lab.append(label)
+				items = server.xpath(".//ul//li")
+				if len(items) > 1:
+					isMovieWithMultiPart = True
+					
+				servers_list[label] = []
+				c=0
+				for item in items:
+					servers_list[label].append([])
+					servers_list[label][c]={}
+					label_qual = item.xpath(".//a//text()")[0].strip()
+					label_val = item.xpath(".//a//@data-id")[0]
+					servers_list[label][c]['quality'] = label_qual
+					servers_list[label][c]['loc'] = label_val
+					c += 1
 
 		# label array of servers available - sort them so that presentation order is consistent
 		server_lab = sorted(server_lab)
@@ -2962,10 +2986,12 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 								Log('ERROR init.py>EpisodeDetail>Movie2a %s' % (title + ' - ' + title_s))
 								
 							if captcha != None and captcha != False:
-								DumbKeyboard(PREFIX, oc, SolveCaptcha, dktitle = 'Solve Captcha: ' + title, dkHistory = False, dkthumb = captcha, dkart=captcha, url = server_info, dlt = dlt, vco=vco, title=title + ' - ' + title_s + redirector_stat)
-								po = create_photo_object(url = captcha, title = 'View Captcha')
-								oc.add(po)
-								
+								try:
+									DumbKeyboard(PREFIX, oc, SolveCaptcha, dktitle = 'Solve Captcha: ' + title, dkHistory = False, dkthumb = captcha, dkart=captcha, url = server_info, dlt = dlt, vco=vco, title=title + ' - ' + title_s + redirector_stat)
+									po = create_photo_object(url = captcha, title = 'View Captcha')
+									oc.add(po)
+								except Exception as e2:
+									Log("ERROR: In Setting DumbKeyboard for Captcha %s" % e2)
 						else:
 							pass
 							if Prefs["use_debug"]:
@@ -3000,10 +3026,11 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 							)
 						)
 				
-			if label != server_lab[len(server_lab)-1] and isTimeoutApproaching(clientProd = Client.Product, item = E(url), client_id=client_id, session=session):
-				Log("isTimeoutApproaching action")
-				break
-				#return MC.message_container('Timeout', 'Timeout: Please try again !')
+			if common.USE_CUSTOM_TIMEOUT == True:
+				if label != server_lab[len(server_lab)-1] and isTimeoutApproaching(clientProd = Client.Product, item = E(url), client_id=client_id, session=session):
+					Log("isTimeoutApproaching action")
+					break
+					#return MC.message_container('Timeout', 'Timeout: Please try again !')
 
 		if Prefs['disable_extsources'] == False and common.interface.isInitialized():
 			oc.add(DirectoryObject(
@@ -3197,9 +3224,12 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 						Log("ERROR: %s with key:%s returned %s" % (url,url_s,server_info))
 						
 					if captcha != None and captcha != False:
-						DumbKeyboard(PREFIX, oc, SolveCaptcha, dktitle = 'Solve Captcha: ' + title, dkHistory = False, dkthumb = captcha, dkart=captcha, url = server_info, dlt = dlt, vco=vco, title=title + ' (' + label + ')' + redirector_stat)
-						po = create_photo_object(url = captcha, title = 'View Captcha')
-						oc.add(po)
+						try:
+							DumbKeyboard(PREFIX, oc, SolveCaptcha, dktitle = 'Solve Captcha: ' + title, dkHistory = False, dkthumb = captcha, dkart=captcha, url = server_info, dlt = dlt, vco=vco, title=title + ' (' + label + ')' + redirector_stat)
+							po = create_photo_object(url = captcha, title = 'View Captcha')
+							oc.add(po)
+						except Exception as e2:
+							Log("ERROR: In Setting DumbKeyboard for Captcha %s" % e2)
 				else:
 					pass
 					if Prefs["use_debug"]:
@@ -3229,10 +3259,11 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 						)
 					)
 				
-			if label != server_lab[len(server_lab)-1] and isTimeoutApproaching(clientProd = Client.Product, item = E(url), client_id=client_id, session=session):
-				Log("isTimeoutApproaching action")
-				break
-				#return MC.message_container('Timeout', 'Timeout: Please try again !')
+			if common.USE_CUSTOM_TIMEOUT == True:
+				if label != server_lab[len(server_lab)-1] and isTimeoutApproaching(clientProd = Client.Product, item = E(url), client_id=client_id, session=session):
+					Log("isTimeoutApproaching action")
+					break
+					#return MC.message_container('Timeout', 'Timeout: Please try again !')
 		
 	if treatasmovie==False and Prefs['disable_extsources'] == False and common.interface.isInitialized():
 		oc.add(DirectoryObject(
@@ -3359,9 +3390,12 @@ def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary
 				oc.add(vco)
 				
 				if captcha != None and captcha != False:
-					DumbKeyboard(PREFIX, oc, SolveCaptcha, dktitle = 'Solve Captcha: ' + title, dkHistory=False, dkthumb=captcha, dkart=captcha, url=server_info, dlt=dlt, vco=vco, title=title + ' - ' + title_s + redirector_stat)
-					po = create_photo_object(url = captcha, title = 'View Captcha')
-					oc.add(po)
+					try:
+						DumbKeyboard(PREFIX, oc, SolveCaptcha, dktitle = 'Solve Captcha: ' + title, dkHistory=False, dkthumb=captcha, dkart=captcha, url=server_info, dlt=dlt, vco=vco, title=title + ' - ' + title_s + redirector_stat)
+						po = create_photo_object(url = captcha, title = 'View Captcha')
+						oc.add(po)
+					except Exception as e2:
+						Log("ERROR: In Setting DumbKeyboard for Captcha %s" % e2)
 				
 				try:
 					if Prefs['disable_downloader'] == False:
@@ -3578,13 +3612,19 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 				titleinfo = ''
 			title_msg = "%s %s| %s | %s | %s | %s | %s" % (status, source['maininfo'], source['rip'], source['quality'], file_size, source['source']+':'+source['subdomain'] if source['source']=='gvideo' else source['source'], source['provider'])
 		else:
+			#title_msg = ''
 			#titleinfo = source['titleinfo']
 			#title_msg = "%s %s| %s | %s | %s | %s | %s | %s" % (status, source['maininfo'], source['vidtype'], source['rip'], source['quality'], file_size, source['source'], source['provider'])
 			#extExtrasSources_urlservice.append(source)
-			pass
+			if source['source'] == 'openload':
+				title_msg = "%s %s| %s | %s | %s | %s | %s | %s" % (status, source['maininfo'], source['vidtype'], source['rip'], source['quality'], file_size, source['source'], source['provider'])
+			elif source['source'] == 'direct':
+				title_msg = "%s | %s-%s | %s | %s | %s | %s | %s" % (status, source['vidtype'], source['maininfo'], source['rip'], source['quality'], file_size, source['source'], source['provider'])
+			else:
+				title_msg = "%s | %s | %s | %s | %s | %s | %s" % (status, source['vidtype'], source['rip'], source['quality'], file_size, source['source'], source['provider'])
 			
 		if common.DEV_DEBUG == True:
-			Log("%s --- %s" % (title_msg, vidUrl))
+			Log("%s --- %s %s" % (title_msg, source['vidtype'], vidUrl))
 			Log('Playback: %s' % common.interface.getHostsPlaybackSupport(encode=False)[source['source']])
 		
 		# all source links (not extras) that can be played via the code service
@@ -3656,6 +3696,7 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 				
 		for source in plexservice_extras_playback_links:
 			extExtrasSources_urlservice.append(source)
+			
 		extExtrasSources_urlservice = common.OrderBasedOn(extExtrasSources_urlservice, use_host=False, use_filesize=common.UsingOption(key=common.DEVICE_OPTIONS[9], session=session))
 		cx = len(extExtrasSources_urlservice)
 		
@@ -3807,20 +3848,28 @@ def ExtSourcesDownload(title, url, summary, thumb, art, rating, duration, genre,
 		if source['vidtype'] in 'Movie/Show':
 			titleinfo = source['titleinfo'] + ' | ' if source['titleinfo'] != '' else ''
 			title_msg = "%s %s| %s | %s | %s | %s | %s | %sSubtitles: %s" % (status, source['maininfo'], source['rip'], source['quality'], fs, source['source']+':'+source['subdomain'] if source['source']=='gvideo' else source['source'], source['provider'], titleinfo, common.GetEmoji(type=True if source['sub_url'] != None else False, session=session))
+			watch_title_x = watch_title
 		else:
-			title_msg = "%s %s| %s | %s | %s | %s | %s | %s" % (status, source['maininfo'], source['vidtype'], source['rip'], source['quality'], fs, source['source'], source['provider'])
+			if source['source'] == 'openload':
+				title_msg = "%s %s| %s | %s | %s | %s | %s | %s" % (status, source['maininfo'], source['vidtype'], source['rip'], source['quality'], fs, source['source'], source['provider'])
+			elif source['source'] == 'direct':
+				title_msg = "%s | %s-%s | %s | %s | %s | %s | %s" % (status, source['vidtype'], source['maininfo'], source['rip'], source['quality'], fs, source['source'], source['provider'])
+			else:
+				title_msg = "%s | %s | %s | %s | %s | %s | %s" % (status, source['vidtype'], source['rip'], source['quality'], fs, source['source'], source['provider'])
+				
+			watch_title_x = '%s - %s%s' % (watch_title, source['maininfo'], (' - ' + source['vidtype']) if source['vidtype'].lower() not in source['maininfo'].lower() else '')
 			
 		if common.DEV_DEBUG == True:
 			Log("%s --- %s" % (title_msg, vidUrl))
 			Log('Playback: %s' % common.interface.getHostsPlaybackSupport(encode=False)[source['source']])
 		
 		# all source links (not extras) that can be played via the code service
-		if vidUrl != None and source['enabled'] and source['allowsDownload'] and source['misc']['player'] == 'iplayer' and common.interface.getHostsPlaybackSupport(encode=False)[source['source']]:
+		if vidUrl != None and source['enabled'] and source['allowsDownload'] and source['misc']['player'] == 'iplayer' and common.interface.getHostsPlaybackSupport(encode=False)[source['source']] or source['source'] == 'direct':
 			
 			try:
 				libtype='movie' if tvshowtitle == None else 'show'
 				oc.add(DirectoryObject(
-					key = Callback(AddToDownloadsListPre, title=watch_title, purl=url, url=source['url'], durl=source['durl'], sub_url=source['sub_url'], summary=summary, thumb=thumb, year=year, fsBytes=fsBytes, fs=fs, file_ext=source['file_ext'], quality=source['quality'], source=source['source'], source_meta={}, file_meta={}, type=libtype, resumable=source['resumeDownload'], mode=mode, session=session, admin=True if mode==common.DOWNLOAD_MODE[0] else False),
+					key = Callback(AddToDownloadsListPre, title=watch_title_x, purl=url, url=source['url'], durl=source['durl'], sub_url=source['sub_url'], summary=summary, thumb=thumb, year=year, fsBytes=fsBytes, fs=fs, file_ext=source['file_ext'], quality=source['quality'], source=source['source'], source_meta={}, file_meta={}, type=libtype, resumable=source['resumeDownload'], mode=mode, session=session, admin=True if mode==common.DOWNLOAD_MODE[0] else False),
 					title = title_msg,
 					summary = 'Adds the current video to %s List' % 'Download' if mode==common.DOWNLOAD_MODE[0] else 'Request',
 					art = art,
@@ -3882,10 +3931,16 @@ def PSExtSources(extSources_play, con_title, session, watch_title, year, summary
 			title_msg = "%s %s| %s | %s | %s | %s | %s" % (status, source['maininfo'], source['rip'], source['quality'], file_size, source['source']+':'+source['subdomain'] if source['source']=='gvideo' else source['source'], source['provider'])
 		else:
 			titleinfo = source['titleinfo']
-			title_msg = "%s %s| %s | %s | %s | %s | %s | %s" % (status, source['maininfo'], source['vidtype'], source['rip'], source['quality'], file_size, source['source'], source['provider'])
+			if source['source'] == 'openload':
+				title_msg = "%s %s| %s | %s | %s | %s | %s | %s" % (status, source['maininfo'], source['vidtype'], source['rip'], source['quality'], file_size, source['source'], source['provider'])
+			elif source['source'] == 'direct':
+				title_msg = "%s | %s-%s | %s | %s | %s | %s | %s" % (status, source['vidtype'], source['maininfo'], source['rip'], source['quality'], file_size, source['source'], source['provider'])
+			else:
+				title_msg = "%s | %s | %s | %s | %s | %s | %s" % (status, source['vidtype'], source['rip'], source['quality'], file_size, source['source'], source['provider'])
 			
 		if common.DEV_DEBUG == True:
 			Log("%s --- %s" % (title_msg, vidUrl))
+			Log("%s" % source)
 			Log('Playback: %s' % common.interface.getHostsPlaybackSupport(encode=False)[source['source']])
 		
 		# all source links (not extras) that can be played via the code service
@@ -3916,7 +3971,12 @@ def PSExtSources(extSources_play, con_title, session, watch_title, year, summary
 			if source['vidtype'] in 'Movie/Show':
 				title_msg = "%s %s| %s | %s | %s | %s" % (status, source['maininfo'], source['rip'], source['quality'], source['source'], source['provider'])
 			else:
-				title_msg = "%s %s| %s | %s | %s | %s | %s" % (status, source['maininfo'], source['vidtype'], source['rip'], source['quality'], source['source'], source['provider'])
+				if source['source'] == 'openload':
+					title_msg = "%s %s| %s | %s | %s | %s | %s" % (status, source['maininfo'], source['vidtype'], source['rip'], source['quality'], source['source'], source['provider'])
+				elif source['source'] == 'direct':
+					title_msg = "%s | %s-%s | %s | %s | %s | %s" % (status, source['vidtype'], source['maininfo'], source['rip'], source['quality'], source['source'], source['provider'])
+				else:
+					title_msg = "%s | %s | %s | %s | %s | %s" % (status, source['vidtype'], source['rip'], source['quality'], source['source'], source['provider'])
 			
 			try:
 				url_serv = URLService.ServiceIdentifierForURL(vidUrl)

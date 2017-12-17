@@ -56,11 +56,17 @@ def checkRoutine():
 		if EXTERNALS[i]['Shared'] == True:
 			msg = "Verifying: %s" % i
 			CHECK_ROUTINE_LOG.append(msg)
-			msg = "Presence: %s" % checkFilePresence(os.path.join(EXTERNALS[i]['local_path'],EXTERNALS[i][osplat]['file']), EXTERNALS[i]['isFile'])
+			try:
+				msg = "Presence: %s" % checkFilePresence(os.path.join(EXTERNALS[i]['local_path'],EXTERNALS[i][osplat]['file']), EXTERNALS[i]['isFile'])
+			except Exception as e:
+				msg = "ERROR externals.py>: Presence check routine caused an error: %s" % e
 			CHECK_ROUTINE_LOG.append(msg)
 			if EXTERNALS[i][osplat]['md5s'] != '':
-				md5s = md5(os.path.join(EXTERNALS[i]['local_path'],EXTERNALS[i][osplat]['file']), EXTERNALS[i]['isFile'])
-				msg = "MD5 Checksum: %s | Match: %s" % (md5s, True if md5s == EXTERNALS[i][osplat]['md5s'] else False)
+				try:
+					md5s = md5(os.path.join(EXTERNALS[i]['local_path'],EXTERNALS[i][osplat]['file']), EXTERNALS[i]['isFile'])
+					msg = "MD5 Checksum: %s | Match: %s" % (md5s, True if md5s == EXTERNALS[i][osplat]['md5s'] else False)
+				except Exception as e:
+					msg = "ERROR externals.py>: MD5 Checksum routine caused an error: %s" % e
 				CHECK_ROUTINE_LOG.append(msg)
 			
 	del BUSY_BOOL[:]

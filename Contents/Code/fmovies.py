@@ -809,6 +809,9 @@ def decode_t(t, i, is9Anime=False, **kwargs):
 	n = [] 
 	e = []
 	r = ''
+	
+	if common.ENCRYPTED_URLS == False:
+		return True, t
 
 	try:
 		if is9Anime == True:

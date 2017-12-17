@@ -37,7 +37,8 @@ class source:
 		self.update_date = 'Nov. 13, 2017'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
-		self.base_link = 'http://xpau.se'
+		self.base_link_alts = ['http://xpau.se','http://xpau.se.prx2.unblocksites.co','http://xpau.se.prx.proxyunblocker.org']
+		self.base_link = self.base_link_alts[0]
 		self.MainPageValidatingContent = 'movies'
 		self.type_filter = ['movie', 'show']
 		self.urlhost = 'xpau.se'
@@ -77,33 +78,43 @@ class source:
 		return self.loggertxt
 		
 	def testSite(self):
+		for site in self.base_link_alts:
+			bool = self.testSiteAlts(site)
+			if bool == True:
+				self.base_link = site
+				return bool
+				
+		self.base_link = self.base_link_alts[0]
+		return False
+		
+	def testSiteAlts(self, site):
 		try:
 			x1 = time.time()
-			http_res, content = proxies.request(url=self.base_link, output='response', use_web_proxy=False)
+			http_res, content = proxies.request(url=site, output='response', use_web_proxy=False)
 			self.speedtest = time.time() - x1
 			if content != None and content.find(self.MainPageValidatingContent) >-1:
-				log('SUCCESS', 'testSite', 'HTTP Resp : %s for %s' % (http_res,self.base_link))
+				log('SUCCESS', 'testSite', 'HTTP Resp : %s for %s' % (http_res,site))
 				return True
 			else:
-				log('FAIL', 'testSite', 'Validation content Not Found. HTTP Resp : %s for %s' % (http_res,self.base_link))
+				log('FAIL', 'testSite', 'Validation content Not Found. HTTP Resp : %s for %s' % (http_res,site))
 				x1 = time.time()
-				http_res, content = proxies.request(url=self.base_link, output='response', use_web_proxy=True)
+				http_res, content = proxies.request(url=site, output='response', use_web_proxy=True)
 				self.speedtest = time.time() - x1
 				if content != None and content.find(self.MainPageValidatingContent) >-1:
 					self.proxyrequired = True
-					log('SUCCESS', 'testSite', 'HTTP Resp : %s via proxy for %s' % (http_res,self.base_link))
+					log('SUCCESS', 'testSite', 'HTTP Resp : %s via proxy for %s' % (http_res,site))
 					return True
 				else:
 					time.sleep(2.0)
 					x1 = time.time()
-					http_res, content = proxies.request(url=self.base_link, output='response', use_web_proxy=True)
+					http_res, content = proxies.request(url=site, output='response', use_web_proxy=True)
 					self.speedtest = time.time() - x1
 					if content != None and content.find(self.MainPageValidatingContent) >-1:
 						self.proxyrequired = True
-						log('SUCCESS', 'testSite', 'HTTP Resp : %s via proxy for %s' % (http_res,self.base_link))
+						log('SUCCESS', 'testSite', 'HTTP Resp : %s via proxy for %s' % (http_res,site))
 						return True
 					else:
-						log('FAIL', 'testSite', 'Validation content Not Found. HTTP Resp : %s via proxy for %s' % (http_res,self.base_link))
+						log('FAIL', 'testSite', 'Validation content Not Found. HTTP Resp : %s via proxy for %s' % (http_res,site))			
 			return False
 		except Exception as e:
 			log('ERROR','testSite', '%s' % e)

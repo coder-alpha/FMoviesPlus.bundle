@@ -1,6 +1,6 @@
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.55' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.56' # Release notation (x.y - where x is major and y is minor)
 TAG = ''
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
@@ -8,7 +8,7 @@ PREFIX = "/video/fmoviesplus"
 
 import time, base64, unicodedata, re, random, string
 from resources.lib.libraries import control, client, cleantitle, jsfdecoder, jsunpack
-from resources.lib.resolvers import host_openload, host_gvideo, host_mega
+from resources.lib.resolvers import host_openload, host_gvideo, host_mega, host_rapidvideo
 import interface
 from __builtin__ import ord, format, eval
 

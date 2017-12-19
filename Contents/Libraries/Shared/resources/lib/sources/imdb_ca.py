@@ -40,8 +40,8 @@ loggertxt = []
 class source:
 	def __init__(self):
 		del loggertxt[:]
-		self.ver = '0.0.1'
-		self.update_date = 'Dec. 16, 2017'
+		self.ver = '0.0.2'
+		self.update_date = 'Dec. 19, 2017'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
 		self.priority = 1
@@ -239,6 +239,7 @@ class source:
 				
 			links = []
 			quality = u'720p'
+			selection_map = {}
 			
 			for vidtype in types_map.keys():
 				page_links = types_map[vidtype]
@@ -247,19 +248,45 @@ class source:
 						res = proxies.request(page_link, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
 						vidurls = re.findall(r'encodings\":(.*?\])', res)[0]
 						vidurls_json = json.loads(vidurls)
+						txt = re.findall(r'<title>(.*?)</title>', res)[0]
+						txt = txt.replace('&quot;','')
+
 						for viddata in vidurls_json:
 							try:
 								vidurl = viddata['videoUrl']
 								if '.mp4' in vidurl:
-									txt = re.findall(r'<title>(.*?)</title>', res)[0]
-									txt = txt.replace('&quot;','')
+									if txt not in selection_map.keys():
+										selection_map[txt] = {}
 									quality = viddata['definition']
-									links = resolvers.createMeta(vidurl, self.name, self.logo, quality, links, key, vidtype=re_map_types[vidtype], testing=testing, txt=txt)
-							except:
-								pass
-					except:
-						pass
-					
+									vidtype = re_map_types[vidtype]
+									try:
+										l = resolvers.createMeta(vidurl, self.name, self.logo, quality, [], key, vidtype=vidtype, testing=testing, txt=txt)
+										l = l[0]
+										if testing == True:
+											links.append(l)
+											break
+									except Exception as e:
+										log('ERROR', 'get_sources-0', '%s' % e, dolog=not testing)	
+									if l['quality'] in selection_map[txt].keys():
+										selection_map[txt][l['quality']].append({'fs' : int(l['fs']), 'link': l})
+									else:
+										selection_map[txt][l['quality']] = [{'fs' : int(l['fs']), 'link': l}]
+							except Exception as e:
+								log('ERROR', 'get_sources-1', '%s' % e, dolog=not testing)
+					except Exception as e:
+						log('ERROR', 'get_sources-2', '%s' % e, dolog=not testing)
+					if testing == True and len(links) > 0:
+						break
+				if testing == True and len(links) > 0:
+					break
+						
+			#print selection_map
+			for sel_titles in selection_map.keys():
+				for sel in selection_map[sel_titles].keys():
+					qls = selection_map[sel_titles][sel]
+					files = sorted(qls, key=lambda k: k['fs'], reverse=True)
+					file = files[0]
+					links.append(file['link'])
 					
 			for i in links: sources.append(i)
 			

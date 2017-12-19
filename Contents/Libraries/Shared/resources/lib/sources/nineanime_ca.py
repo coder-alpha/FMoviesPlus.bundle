@@ -37,8 +37,8 @@ loggertxt = []
 class source:
 	def __init__(self):
 		del loggertxt[:]
-		self.ver = '0.0.2'
-		self.update_date = 'Nov. 29, 2017'
+		self.ver = '0.0.3'
+		self.update_date = 'Dec. 18, 2017'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
 		self.serverts = None
@@ -606,6 +606,9 @@ class source:
 		r = ""
 		e_s = 'abcdefghijklmnopqrstuvwxyz'
 		r_s = 'acegikmoqsuwybdfhjlnprtvxz'
+		
+		return True, t
+		
 		try:
 			if t[0] == '-' and len(t) > 1:
 				t = t[1:]

@@ -2373,28 +2373,30 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 		
 		for server in servers:
 			label = server.xpath(".//label[@class='name col-md-3 col-sm-4']//text()[2]")[0].strip()
-			if label in common.host_gvideo.FMOVIES_SERVER_MAP:
-				label = common.host_gvideo.FMOVIES_SERVER_MAP[label]
-			if 'Server F' in label:
-				label = label.replace('Server F','Google-F')
-			if 'Server G' in label:
-				label = label.replace('Server G','Google-G')
 			
-			server_lab.append(label)
-			items = server.xpath(".//ul//li")
-			if len(items) > 1:
-				isMovieWithMultiPart = True
+			if label.lower() != 'mycloud' or (label.lower() == 'mycloud' and common.MY_CLOUD_DISABLED == False):
+				if label in common.host_gvideo.FMOVIES_SERVER_MAP:
+					label = common.host_gvideo.FMOVIES_SERVER_MAP[label]
+				if 'Server F' in label:
+					label = label.replace('Server F','Google-F')
+				if 'Server G' in label:
+					label = label.replace('Server G','Google-G')
 				
-			servers_list[label] = []
-			c=0
-			for item in items:
-				servers_list[label].append([])
-				servers_list[label][c]={}
-				label_qual = item.xpath(".//a//text()")[0].strip()
-				label_val = item.xpath(".//a//@data-id")[0]
-				servers_list[label][c]['quality'] = label_qual
-				servers_list[label][c]['loc'] = label_val
-				c += 1
+				server_lab.append(label)
+				items = server.xpath(".//ul//li")
+				if len(items) > 1:
+					isMovieWithMultiPart = True
+					
+				servers_list[label] = []
+				c=0
+				for item in items:
+					servers_list[label].append([])
+					servers_list[label][c]={}
+					label_qual = item.xpath(".//a//text()")[0].strip()
+					label_val = item.xpath(".//a//@data-id")[0]
+					servers_list[label][c]['quality'] = label_qual
+					servers_list[label][c]['loc'] = label_val
+					c += 1
 
 		# label array of servers available - sort them so that presentation order is consistent
 		server_lab = sorted(server_lab)
@@ -3400,24 +3402,34 @@ def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary
 				try:
 					if Prefs['disable_downloader'] == False:
 						if isTargetPlay == True:
-							if Prefs['disable_downloader'] == False and AuthTools.CheckAdmin() == True:
-								oc.add(DirectoryObject(
-									key = Callback(AddToDownloadsListPre, title=watch_title, purl=url, url=server_info, durl=server_info, summary=summary, thumb=thumb, year=year, quality=qual, source=host, type=libtype, resumable=True, source_meta={}, file_meta={}, sub_url=sub_url, mode=common.DOWNLOAD_MODE[0], session=session, admin=True),
-									title = '%s | Add to Download Queue' % qual,
-									summary = 'Adds the current video to Download List',
-									art = art,
-									thumb = GetThumb(R(ICON_OTHERSOURCESDOWNLOAD), session=session)
+							if 'rapidvideo' in host:
+								vvurls = [{'url':server_info+'&q=720p', 'qual':'720p'},{'url':server_info+'&q=480p', 'qual':'480p'},{'url':server_info+'&q=360p', 'qual':'360p'}]
+							elif 'openload' in host:
+								vvurls = [{'url':server_info, 'qual':qual}]
+							else:
+								vvurls = [{'url':server_info, 'qual':qual}]
+								
+							for vvv in vvurls:
+								vv = vvv['url']
+								qualx = vvv['qual']
+								if Prefs['disable_downloader'] == False and AuthTools.CheckAdmin() == True:
+									oc.add(DirectoryObject(
+										key = Callback(AddToDownloadsListPre, title=watch_title, purl=url, url=vv, durl=vv, summary=summary, thumb=thumb, year=year, quality=qualx, source=host, type=libtype, resumable=True, source_meta={}, file_meta={}, sub_url=sub_url, mode=common.DOWNLOAD_MODE[0], session=session, admin=True),
+										title = '%s | Add to Download Queue' % qualx,
+										summary = 'Adds the current video to Download List',
+										art = art,
+										thumb = GetThumb(R(ICON_OTHERSOURCESDOWNLOAD), session=session)
+										)
 									)
-								)
-							elif Prefs['disable_downloader'] == False:
-								oc.add(DirectoryObject(
-									key = Callback(AddToDownloadsListPre, title=watch_title, purl=url, url=server_info, durl=server_info, summary=summary, thumb=thumb, year=year, quality=qual, source=host, type=libtype, resumable=True, source_meta={}, file_meta={}, sub_url=sub_url, mode=common.DOWNLOAD_MODE[1], session=session, admin=False),
-									title = '%s | Add to Request Queue' % qual,
-									summary = 'Adds the current video to Request List',
-									art = art,
-									thumb = GetThumb(R(ICON_REQUESTS), session=session)
+								elif Prefs['disable_downloader'] == False:
+									oc.add(DirectoryObject(
+										key = Callback(AddToDownloadsListPre, title=watch_title, purl=url, url=vv, durl=vv, summary=summary, thumb=thumb, year=year, quality=qualx, source=host, type=libtype, resumable=True, source_meta={}, file_meta={}, sub_url=sub_url, mode=common.DOWNLOAD_MODE[1], session=session, admin=False),
+										title = '%s | Add to Request Queue' % qualx,
+										summary = 'Adds the current video to Request List',
+										art = art,
+										thumb = GetThumb(R(ICON_REQUESTS), session=session)
+										)
 									)
-								)
 						else:
 							host_source = 'gvideo' 
 							files = json.loads(server_info)
@@ -3625,7 +3637,9 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 			
 		if common.DEV_DEBUG == True:
 			Log("%s --- %s %s" % (title_msg, source['vidtype'], vidUrl))
-			Log('Playback: %s' % common.interface.getHostsPlaybackSupport(encode=False)[source['source']])
+			my_i_hosts = common.interface.getHostsPlaybackSupport(encode=False)
+			if source['source'] in my_i_hosts.keys():
+				Log('Playback: %s' % my_i_hosts[source['source']])
 		
 		# all source links (not extras) that can be played via the code service
 		if vidUrl != None and source['vidtype'] in 'Movie/Show' and source['enabled'] and source['allowsStreaming'] and source['misc']['player'] == 'iplayer' and common.interface.getHostsPlaybackSupport(encode=False)[source['source']]:
@@ -3861,7 +3875,9 @@ def ExtSourcesDownload(title, url, summary, thumb, art, rating, duration, genre,
 			
 		if common.DEV_DEBUG == True:
 			Log("%s --- %s" % (title_msg, vidUrl))
-			Log('Playback: %s' % common.interface.getHostsPlaybackSupport(encode=False)[source['source']])
+			my_i_hosts = common.interface.getHostsPlaybackSupport(encode=False)
+			if source['source'] in my_i_hosts.keys():
+				Log('Playback: %s' % my_i_hosts[source['source']])
 		
 		# all source links (not extras) that can be played via the code service
 		if vidUrl != None and source['enabled'] and source['allowsDownload'] and source['misc']['player'] == 'iplayer' and common.interface.getHostsPlaybackSupport(encode=False)[source['source']] or source['source'] == 'direct':
@@ -3941,7 +3957,9 @@ def PSExtSources(extSources_play, con_title, session, watch_title, year, summary
 		if common.DEV_DEBUG == True:
 			Log("%s --- %s" % (title_msg, vidUrl))
 			Log("%s" % source)
-			Log('Playback: %s' % common.interface.getHostsPlaybackSupport(encode=False)[source['source']])
+			my_i_hosts = common.interface.getHostsPlaybackSupport(encode=False)
+			if source['source'] in my_i_hosts.keys():
+				Log('Playback: %s' % my_i_hosts[source['source']])
 		
 		# all source links (not extras) that can be played via the code service
 		if vidUrl != None and source['enabled'] and source['allowsStreaming'] and source['misc']['player'] == 'iplayer' and common.interface.getHostsPlaybackSupport(encode=False)[source['source']]:
@@ -4497,6 +4515,11 @@ def AddToDownloadsListPre(title, year, url, durl, purl, summary, thumb, quality,
 				online, r1, err, fs_i, furl2, sub_url_t =  common.host_openload.check(url, usePairing = False, embedpage=True)
 				if sub_url == None:
 					sub_url = sub_url_t
+			elif 'rapidvideo' in source:
+				vurl, r1, sub_url_t = common.host_rapidvideo.resolve(url, True)
+				if sub_url == None:
+					sub_url = sub_url_t
+				fs_i, err = common.client.getFileSize(vurl, retError=True, retry429=True, cl=2)
 			else:
 				fs_i, err = common.client.getFileSize(url, retError=True, retry429=True, cl=2)
 

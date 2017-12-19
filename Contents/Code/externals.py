@@ -9,7 +9,10 @@
 import os, sys, io, time, base64, hashlib
 from __builtin__ import iter
 
-bundle_path = os.path.join(os.getcwd().lstrip('\\\?').split('Plug-in Support')[0], 'Plug-ins', 'FMoviesPlus.bundle')
+plugins_path = os.getcwd().lstrip('\\\?').split('Plug-in Support')[0]
+if 'Plug-ins' in plugins_path:
+	plugins_path = plugins_path.split('Plug-ins')[0]
+bundle_path = os.path.join(plugins_path, 'Plug-ins', 'FMoviesPlus.bundle')
 modules_path = os.path.join(bundle_path, 'Contents', 'Libraries', 'Shared')
 
 BUSY_BOOL = []
@@ -22,7 +25,8 @@ EXTERNALS = {
 							'local_path':os.path.join(modules_path,'phantomjs'),
 							'win32':{'url':'','file':'phantomjs.exe','md5s':'339f74c735e683502c43512a508e53d6'},
 							'darwin':{'url':'','file':'phantomjs','md5s':''},
-							'linux':{'url':'','file':'phantomjs','md5s':''}
+							'linux':{'url':'','file':'phantomjs','md5s':'0a6c36ddd62eee77a015d0592e009ce9'},
+							'linux2':{'url':'','file':'phantomjs','md5s':'0a6c36ddd62eee77a015d0592e009ce9'}
 							},
 				'Cryptodome': {
 							'Shared':True,
@@ -30,7 +34,8 @@ EXTERNALS = {
 							'local_path':modules_path,
 							'win32':{'url':'','file':'Cryptodome','md5s':'306b92b4b6d5ff03bd64ec624d44e2a0'},
 							'darwin':{'url':'','file':'Cryptodome','md5s':''},
-							'linux':{'url':'','file':'Cryptodome','md5s':''}
+							'linux':{'url':'','file':'Cryptodome','md5s':'3ee42aceb7618051ebc62bfaa5c20604'},
+							'linux2':{'url':'','file':'Cryptodome','md5s':'3ee42aceb7618051ebc62bfaa5c20604'}
 							},
 				'USS': 		{
 							'Shared':False,
@@ -49,8 +54,9 @@ def checkRoutine():
 	msg = "OS/Platform: %s" % osplat
 	CHECK_ROUTINE_LOG.append(msg)
 	
-	#msg = "Modules Path: %s" % modules_path
+	msg = "Modules Path: %s" % modules_path
 	#CHECK_ROUTINE_LOG.append(msg)
+	#print msg
 	
 	for i in EXTERNALS.keys():
 		if EXTERNALS[i]['Shared'] == True:
@@ -61,13 +67,16 @@ def checkRoutine():
 			except Exception as e:
 				msg = "ERROR externals.py>: Presence check routine caused an error: %s" % e
 			CHECK_ROUTINE_LOG.append(msg)
-			if EXTERNALS[i][osplat]['md5s'] != '':
-				try:
-					md5s = md5(os.path.join(EXTERNALS[i]['local_path'],EXTERNALS[i][osplat]['file']), EXTERNALS[i]['isFile'])
+
+			try:
+				md5s = md5(os.path.join(EXTERNALS[i]['local_path'],EXTERNALS[i][osplat]['file']), EXTERNALS[i]['isFile'])
+				if EXTERNALS[i][osplat]['md5s'] != '':
 					msg = "MD5 Checksum: %s | Match: %s" % (md5s, True if md5s == EXTERNALS[i][osplat]['md5s'] else False)
-				except Exception as e:
-					msg = "ERROR externals.py>: MD5 Checksum routine caused an error: %s" % e
-				CHECK_ROUTINE_LOG.append(msg)
+				else:
+					msg = "MD5 Checksum: %s | Match: %s" % (md5s, 'Unknown')
+			except Exception as e:
+				msg = "ERROR externals.py>: MD5 Checksum routine caused an error: %s" % e
+			CHECK_ROUTINE_LOG.append(msg)
 			
 	del BUSY_BOOL[:]
 			

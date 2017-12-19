@@ -73,20 +73,34 @@ def resolve(url, https_skip, test=False, strip_url=True):
 			myheaders['User-Agent'] = 'Mozilla'
 			myheaders['Referer'] = ourl
 			myParams['headers'] = myheaders
-			page_data_string = request(ourl, headers=myheaders, httpsskip=True)
-			page_data_elems = HTML.ElementFromString(page_data_string)
-			try:
-				video_url = page_data_elems.xpath(".//div[@id='home_video']//source/@src")[0]
-			except:
-				video_url = re.findall(r'src=\".*(http.*?mp4)\"',page_data_string)[0]
-			res = '720'
-			try:
-				res = page_data_elems.xpath(".//div[@id='home_video']//source/@data-res")[0]
-			except:
-				pass
-			f_i = {'file':video_url, 'label':res}
-			video_url_a.append(f_i)
+			
+			if '&q=' in ourl:
+				ourl_s = ourl.split('&q=')
+				ourl = ourl_s[0]
+				quals = [ourl_s[1]]
+			else:
+				quals = ['720p','480p','360p']
+			
+			for qs in quals:
+				try:
+					page_data_string = request((ourl + '&q=%s') % qs, headers=myheaders, httpsskip=True)
+					page_data_elems = HTML.ElementFromString(page_data_string)
+					try:
+						video_url = page_data_elems.xpath(".//div[@id='home_video']//source/@src")[0]
+					except:
+						video_url = re.findall(r'src=\".*(http.*?mp4)\"',page_data_string)[0]
+					res = '720'
+					try:
+						res = page_data_elems.xpath(".//div[@id='home_video']//source/@data-res")[0]
+					except:
+						pass
+					f_i = {'file':video_url, 'label':res}
+					video_url_a.append(f_i)
+				except:
+					pass
+			
 			video_urlf = video_url_a
+			
 		elif 'mycloud.' in ourl or 'mcloud.' in ourl:
 			#Log('============ MyCloud URL ==================')
 			myheaders = {}

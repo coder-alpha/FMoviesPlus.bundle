@@ -190,6 +190,15 @@ class Downloader(object):
 				Log('OpenLoad Error: %s' % error)
 				download_failed(url, error, progress, startPos, purgeKey)
 				return
+		elif 'rapidvideo' in source.lower():
+			furl, error, sub_url_t = common.host_rapidvideo.resolve(furl)
+			if error != '' or furl == None:
+				furl, error, sub_url_t = common.host_rapidvideo.resolve(durl)
+			if error != '' or furl == None:
+				Log('RapidVideo URL: %s' % furl)
+				Log('RapidVideo Error: %s' % error)
+				download_failed(url, error, progress, startPos, purgeKey)
+				return
 		
 		if sub_url_t != None:
 			file_meta['sub_url'] = sub_url_t

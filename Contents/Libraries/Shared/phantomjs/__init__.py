@@ -12,7 +12,7 @@ except:
 PATH = os.path.join(PATH_R, 'Shared/resources/lib/libraries')
 sys.path.insert(0,PATH)
 
-import control
+from resources.lib.libraries import control
 
 __title__ = "phantomjs"
 __version__ = "0.0.1"
@@ -23,6 +23,7 @@ __credits__ = [
 PROCESSES = {}
 
 def decode(url, python_dir=None, debug=False, ssl=True, js='openload.js'):
+
 	output = ""
 	try:
 		url_encode = base64.b64encode(url)
@@ -30,6 +31,7 @@ def decode(url, python_dir=None, debug=False, ssl=True, js='openload.js'):
 		PHANTOMJS_PLUGIN_CHANNEL_PATH = None
 		
 		PHANTOMJS_USER_DEFINED_PATH = control.setting('control_phantomjs_path')
+		
 		if PHANTOMJS_USER_DEFINED_PATH != None and len(PHANTOMJS_USER_DEFINED_PATH) > 0:
 			bool, md5 = checkBinaryPresence2(PHANTOMJS_USER_DEFINED_PATH)
 			if bool == True:

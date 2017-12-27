@@ -79,7 +79,7 @@ def resolve(url, https_skip, test=False, strip_url=True):
 				ourl = ourl_s[0]
 				quals = [ourl_s[1]]
 			else:
-				quals = ['720p','480p','360p']
+				quals = ['1080p','720p','480p','360p']
 			
 			for qs in quals:
 				try:
@@ -88,14 +88,15 @@ def resolve(url, https_skip, test=False, strip_url=True):
 					try:
 						video_url = page_data_elems.xpath(".//div[@id='home_video']//source/@src")[0]
 					except:
-						video_url = re.findall(r'src=\".*(http.*?mp4)\"',page_data_string)[0]
-					res = '720'
+						video_url = None
 					try:
 						res = page_data_elems.xpath(".//div[@id='home_video']//source/@data-res")[0]
 					except:
-						pass
-					f_i = {'file':video_url, 'label':res}
-					video_url_a.append(f_i)
+						res = qs
+						
+					if video_url != None and res != None:
+						f_i = {'file':video_url, 'label':res}
+						video_url_a.append(f_i)
 				except:
 					pass
 			

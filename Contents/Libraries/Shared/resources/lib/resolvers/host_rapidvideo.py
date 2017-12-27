@@ -47,15 +47,15 @@ loggertxt = []
 class host:
 	def __init__(self):
 		del loggertxt[:]
-		self.ver = '0.0.1'
-		self.update_date = 'Dec. 18, 2017'
+		self.ver = '0.0.2'
+		self.update_date = 'Dec. 28, 2017'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
 		self.logo = 'https://i.imgur.com/AG9ooWt.png'
 		self.name = name
 		self.host = ['rapidvideo.com']
 		self.netloc = ['rapidvideo.com']
-		self.quality = '720p'
+		self.quality = '1080p'
 		self.loggertxt = []
 		self.captcha = False
 		self.allowsDownload = True
@@ -168,19 +168,20 @@ class host:
 		for vv in vidurls:
 			durl = vv['page']
 			vidurl, r1, r2 = resolve(durl, online)
-			quality = vv['label']
-			try:
-				fs = client.getFileSize(vidurl)
-				fs = int(fs)
-			except:
-				fs = 0
-			log(type='INFO',method='createMeta', err=u'durl:%s ; res:%s; fs:%s' % (vidurl,quality,fs))
-			
-			try:
-				files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':txt, 'quality':quality, 'vidtype':vidtype, 'rip':riptype, 'provider':provider, 'url':vidurl, 'durl':durl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':fs, 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'subdomain':client.geturlhost(url), 'misc':{'player':'iplayer', 'gp':False}})
-			except Exception as e:
-				log(type='ERROR',method='createMeta', err=u'%s' % e)
-				files_ret.append({'source':urlhost, 'maininfo':'', 'titleinfo':txt, 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'url':durl, 'durl':durl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':fs, 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'subdomain':client.geturlhost(url), 'misc':{'player':'eplayer', 'gp':False}})
+			if vidurl != None:
+				quality = vv['label']
+				try:
+					fs = client.getFileSize(vidurl)
+					fs = int(fs)
+				except:
+					fs = 0
+
+				try:
+					log(type='INFO',method='createMeta', err=u'durl:%s ; res:%s; fs:%s' % (vidurl,quality,fs))
+					files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':txt, 'quality':quality, 'vidtype':vidtype, 'rip':riptype, 'provider':provider, 'url':durl, 'durl':durl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':fs, 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'subdomain':client.geturlhost(url), 'misc':{'player':'iplayer', 'gp':False}})
+				except Exception as e:
+					log(type='ERROR',method='createMeta', err=u'%s' % e)
+					files_ret.append({'source':urlhost, 'maininfo':'', 'titleinfo':txt, 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'url':durl, 'durl':durl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':fs, 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'subdomain':client.geturlhost(url), 'misc':{'player':'iplayer', 'gp':False}})
 			
 		for fr in files_ret:
 			links.append(fr)
@@ -232,7 +233,7 @@ def getAllQuals(url, online=None):
 		myheaders['User-Agent'] = 'Mozilla'
 		myheaders['Referer'] = url
 		
-		quals = ['720p','480p','360p']
+		quals = ['1080p','720p','480p','360p']
 		for qs in quals:
 			try:
 				page_link = (url + '&q=%s') % qs

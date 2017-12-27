@@ -7,6 +7,7 @@
 # 
 
 import os, sys, io, time, base64, hashlib
+import common
 from __builtin__ import iter
 
 plugins_path = os.getcwd().lstrip('\\\?').split('Plug-in Support')[0]
@@ -62,14 +63,28 @@ def checkRoutine():
 		if EXTERNALS[i]['Shared'] == True:
 			msg = "Verifying: %s" % i
 			CHECK_ROUTINE_LOG.append(msg)
+			
+			DIR_PATH = EXTERNALS[i]['local_path']
+			
+			if i == 'PhantomJS':
+				USER_DEFINED_PATH = common.control.setting('control_phantomjs_path')
+				if USER_DEFINED_PATH != None and len(USER_DEFINED_PATH) > 0:
+					DIR_PATH = USER_DEFINED_PATH
+				
 			try:
-				msg = "Presence: %s" % checkFilePresence(os.path.join(EXTERNALS[i]['local_path'],EXTERNALS[i][osplat]['file']), EXTERNALS[i]['isFile'])
+				msg = "Path: %s" % os.path.join(DIR_PATH,EXTERNALS[i][osplat]['file'])
+			except Exception as e:
+				msg = "ERROR externals.py>: Path listing caused an error: %s" % e
+			CHECK_ROUTINE_LOG.append(msg)
+			
+			try:
+				msg = "Presence: %s" % checkFilePresence(os.path.join(DIR_PATH,EXTERNALS[i][osplat]['file']), EXTERNALS[i]['isFile'])
 			except Exception as e:
 				msg = "ERROR externals.py>: Presence check routine caused an error: %s" % e
 			CHECK_ROUTINE_LOG.append(msg)
 
 			try:
-				md5s = md5(os.path.join(EXTERNALS[i]['local_path'],EXTERNALS[i][osplat]['file']), EXTERNALS[i]['isFile'])
+				md5s = md5(os.path.join(DIR_PATH,EXTERNALS[i][osplat]['file']), EXTERNALS[i]['isFile'])
 				if EXTERNALS[i][osplat]['md5s'] != '':
 					msg = "MD5 Checksum: %s | Match: %s" % (md5s, True if md5s == EXTERNALS[i][osplat]['md5s'] else False)
 				else:

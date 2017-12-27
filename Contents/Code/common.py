@@ -1,6 +1,6 @@
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.56' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.57' # Release notation (x.y - where x is major and y is minor)
 TAG = ''
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
@@ -212,7 +212,7 @@ def GetKeyFromVal(list, val_look):
 
 def set_control_settings(session=None):
 
-	keys = ['use_https_alt','control_all_uc_api_key','control_openload_api_key','use_openload_pairing','use_phantomjs']
+	keys = ['use_https_alt','control_all_uc_api_key','control_openload_api_key','use_openload_pairing','use_phantomjs','control_phantomjs_path']
 	for i in range(0,len(keys)):
 		try:
 			key = keys[i]

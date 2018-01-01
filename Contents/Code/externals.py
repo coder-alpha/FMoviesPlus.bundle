@@ -27,7 +27,9 @@ EXTERNALS = {
 							'win32':{'url':'','file':'phantomjs.exe','md5s':'339f74c735e683502c43512a508e53d6'},
 							'darwin':{'url':'','file':'phantomjs','md5s':''},
 							'linux':{'url':'','file':'phantomjs','md5s':'0a6c36ddd62eee77a015d0592e009ce9'},
-							'linux2':{'url':'','file':'phantomjs','md5s':'0a6c36ddd62eee77a015d0592e009ce9'}
+							'linux2':{'url':'','file':'phantomjs','md5s':'0a6c36ddd62eee77a015d0592e009ce9'},
+							'freebsd9':{'url':'','file':'phantomjs','md5s':'c95484f0719e1cbbb39255316eea1997'},
+							'generic':{'url':'','file':'phantomjs','md5s':''}
 							},
 				'Cryptodome': {
 							'Shared':True,
@@ -36,7 +38,9 @@ EXTERNALS = {
 							'win32':{'url':'','file':'Cryptodome','md5s':'306b92b4b6d5ff03bd64ec624d44e2a0'},
 							'darwin':{'url':'','file':'Cryptodome','md5s':''},
 							'linux':{'url':'','file':'Cryptodome','md5s':'3ee42aceb7618051ebc62bfaa5c20604'},
-							'linux2':{'url':'','file':'Cryptodome','md5s':'3ee42aceb7618051ebc62bfaa5c20604'}
+							'linux2':{'url':'','file':'Cryptodome','md5s':'3ee42aceb7618051ebc62bfaa5c20604'},
+							'freebsd9':{'url':'','file':'Cryptodome','md5s':''},
+							'generic':{'url':'','file':'Cryptodome','md5s':''}
 							},
 				'USS': 		{
 							'Shared':False,
@@ -70,6 +74,11 @@ def checkRoutine():
 				USER_DEFINED_PATH = common.control.setting('control_phantomjs_path')
 				if USER_DEFINED_PATH != None and len(USER_DEFINED_PATH) > 0:
 					DIR_PATH = USER_DEFINED_PATH
+				
+			if osplat not in EXTERNALS[i].keys():
+				msg = "OS/Platform not defined in externals.py - trying 'generic'"
+				CHECK_ROUTINE_LOG.append(msg)
+				osplat = 'generic'
 				
 			try:
 				msg = "Path: %s" % os.path.join(DIR_PATH,EXTERNALS[i][osplat]['file'])

@@ -2,12 +2,16 @@
 // if that doesn't work try: phantomjs --ssl-protocol=any openload.js <video_url>
 // Author: Tithen-Firion
 // https://gist.github.com/Tithen-Firion/8b3921d745131837519d5c5b95b86440
+//
+// Modded by CA
+// https://github.com/coder-alpha/FMoviesPlus.bundle/blob/master/Contents/Libraries/Shared/phantomjs/openload.js
+//
 
 var separator = ' | ';
 var page = require('webpage').create(),
   system = require('system'),
   id, match;
-
+  
 if(system.args.length < 2) {
   console.error('No URL provided');
   phantom.exit(1);
@@ -30,16 +34,46 @@ page.onInitialized = function() {
 page.settings.userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36";
 
 // thanks @skidank (https://forums.plex.tv/discussion/comment/1582115/#Comment_1582115)
-
 page.onError = function() { }
 
 page.open('https://openload.co/embed/' + id + '/', function(status) {
-  var info = page.evaluate(function() {
-    return {
-      decoded_id: document.getElementById('streamuri').innerHTML
-    };
-  });
-  var url = 'https://openload.co/stream/' + info.decoded_id + '?mime=true';
-  console.log(url);
-  phantom.exit();
+
+	//page.includeJs('https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js', function() {
+		var info = page.evaluate(function() {
+
+			function GetMySpanID() {
+				var elm = null;
+				var oid = window.shouldreport;
+				var elms = document.getElementsByTagName("span");
+				for (var j = 0; j < elms.length; j++) {
+					if (elms[j].id.length > 0) {
+						var txt = elms[j].innerHTML;
+						if (txt.indexOf(oid+'~') !== -1) {
+							return elms[j].id;
+						}
+					}
+				}
+				return elm;
+			};
+			
+			var spanID = GetMySpanID();
+			
+			if (spanID == null || spanID.length == 0) {
+				return {
+					decoded_id: spanID
+				};
+			}
+			return {
+				decoded_id: document.getElementById(spanID).innerHTML
+			};
+		  });
+		var myInfo = info.decoded_id;
+		if (myInfo == null || myInfo.length == 0) {
+			console.log('ERROR: > ID not found. ' + myInfo);
+		} else {
+			var url = 'https://openload.co/stream/' + info.decoded_id + '?mime=true';
+			console.log(url);
+		}
+		phantom.exit();
+	//});
 });

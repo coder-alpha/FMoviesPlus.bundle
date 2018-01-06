@@ -34,7 +34,7 @@ page.onInitialized = function() {
 page.settings.userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36";
 
 // thanks @skidank (https://forums.plex.tv/discussion/comment/1582115/#Comment_1582115)
-page.onError = function() { }
+page.onError = function() { console.log('ERROR: > ID not found. Unexpected error.'); phantom.exit(); }
 
 page.open('https://openload.co/embed/' + id + '/', function(status) {
 

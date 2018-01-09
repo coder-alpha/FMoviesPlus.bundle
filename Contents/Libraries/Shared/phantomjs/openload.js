@@ -34,7 +34,9 @@ page.onInitialized = function() {
 page.settings.userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36";
 
 // thanks @skidank (https://forums.plex.tv/discussion/comment/1582115/#Comment_1582115)
-page.onError = function() {}
+page.onError = function(msg, trace) {
+	//console.log(msg);
+}
 
 page.open('https://openload.co/embed/' + id + '/', function(status) {
 
@@ -43,12 +45,28 @@ page.open('https://openload.co/embed/' + id + '/', function(status) {
 
 			function GetMySpanID() {
 				var elm = null;
-				var oid = window.shouldreport;
+				var oid = null;
+				oid = window.shouldreport;
+				if (oid == null) {
+					oid = window.fileid;
+				}
+				if (oid == null) {
+					oid = document.querySelector('meta[name="og:url"]').content;
+					if (oid != null) {
+						oid = oid.split('/');
+						oid = oid[oid.length-1];
+					}
+				}
+				if (oid == null) {
+					return 'Exception: OID could not be found from window.';
+				}
 				var elms = document.getElementsByTagName("span");
 				for (var j = 0; j < elms.length; j++) {
 					if (elms[j].id.length > 0) {
 						var txt = elms[j].innerHTML;
-						if (txt.indexOf(oid+'~') !== -1) {
+						if (txt.indexOf(oid+'~') > -1) {
+							return elms[j].id;
+						} else if (j == elms.length-1) {
 							return elms[j].id;
 						}
 					}
@@ -58,7 +76,7 @@ page.open('https://openload.co/embed/' + id + '/', function(status) {
 			
 			var spanID = GetMySpanID();
 			
-			if (spanID == null || spanID.length == 0) {
+			if (spanID == null || spanID.length == 0 || spanID.indexOf('Exception') > -1) {
 				return {
 					decoded_id: spanID
 				};
@@ -68,12 +86,16 @@ page.open('https://openload.co/embed/' + id + '/', function(status) {
 			};
 		  });
 		var myInfo = info.decoded_id;
-		if (myInfo == null || myInfo.length == 0) {
-			console.log('ERROR: > ID not found. ' + myInfo);
+		if (myInfo == null || myInfo.length == 0 || myInfo.indexOf('Exception') > -1) {
+			console.log('ERROR: ID not found. ' + myInfo);
 		} else {
 			var url = 'https://openload.co/stream/' + info.decoded_id + '?mime=true';
 			console.log(url);
 		}
-		phantom.exit();
 	//});
 });
+
+page.onLoadFinished = function(status) {
+	//console.log('Status: ' + status);
+	phantom.exit();
+};

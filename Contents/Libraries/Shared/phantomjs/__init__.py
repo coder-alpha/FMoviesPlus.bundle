@@ -12,7 +12,10 @@ except:
 PATH = os.path.join(PATH_R, 'Shared/resources/lib/libraries')
 sys.path.insert(0,PATH)
 
-from resources.lib.libraries import control
+try:
+	from resources.lib.libraries import control
+except:
+	import control
 
 __title__ = "phantomjs"
 __version__ = "0.0.1"
@@ -81,6 +84,8 @@ def decode(url, python_dir=None, debug=False, ssl=True, js='openload.js'):
 
 		#print output
 		PROCESSES[url_encode].update({'output':output})
+		if 'ERROR' in output:
+			raise Exception(output)
 		#print "1: %s" % output
 		output = re.findall(r'https://openload.co/stream/.*', output)[0]
 		#print "2: %s" % output
@@ -96,7 +101,7 @@ def decode(url, python_dir=None, debug=False, ssl=True, js='openload.js'):
 		log(type='ERROR', err= "%s > %s > %s" % (str(err), str(output), str(file_cmd)))
 		return str(err), False
 
-def log(err='', type='INFO', logToControl=True, dolog=False):
+def log(err='', type='INFO', logToControl=True, dolog=False, doPrint=False):
 	try:
 		msg = '%s: %s > %s : %s' % (time.ctime(time.time()), type, 'PhantomJS', err)
 		if dolog == True:

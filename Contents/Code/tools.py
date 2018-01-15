@@ -98,7 +98,7 @@ def DevToolsC(title=None, header=None, message=None, **kwargs):
 					else:
 						message = 'Could not retrieve output from externals.'
 		elif title == 'set_base_url':
-			base_urls = ["https://bmovies.is","https://bmovies.to","https://bmovies.pro","https://bmovies.online","https://bmovies.club","https://bmovies.ru"]
+			base_urls = ["https://fmovies.is","https://fmovies.to","https://fmovies.se","https://bmovies.is","https://bmovies.to","https://bmovies.pro","https://bmovies.online","https://bmovies.club","https://bmovies.ru"]
 			oc = ObjectContainer(title2='Set Base URL')
 			for u in base_urls:
 				ch = common.GetEmoji(type=True) if u == fmovies.BASE_URL else common.GetEmoji(type=False)

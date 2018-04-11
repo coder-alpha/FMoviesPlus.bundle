@@ -12,7 +12,7 @@ import urllib, urlparse, json, time, re, datetime, calendar
 import common
 from __builtin__ import ord, format, eval
 
-BASE_URL = "https://bmovies.to"
+BASE_URL = "https://fmovies.taxi"
 HASH_PATH_MENU = "/user/ajax/menu-bar"
 HASH_PATH_INFO = "/ajax/episode/info"
 TOKEN_PATH = "/token"

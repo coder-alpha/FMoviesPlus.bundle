@@ -16,8 +16,8 @@ if(system.args.length < 2) {
   console.error('No URL provided');
   phantom.exit(1);
 }
-match = system.args[1].match(
-  /https?:\/\/(?:openload\.(?:co|io)|oload\.tv)\/(?:f|embed)\/([\w\-]+)/);
+match = system.args[1].match(/https?:\/\/(?:www\.)?(?:openload\.(?:co|io|link)|oload\.(?:tv|stream|site|xyz))\/(?:f|embed)\/([\w\-]+)/);
+// https?://(?:www\.)?(?:openload\.(?:co|io|link)|oload\.(?:tv|stream|site|xyz))/(?:f|embed)/(?P<id>[a-zA-Z0-9-_]+)
 if(match === null) {
   console.error('Could not find video ID in provided URL');
   phantom.exit(2);
@@ -60,7 +60,7 @@ page.open('https://openload.co/embed/' + id + '/', function(status) {
 				if (oid == null) {
 					return 'Exception: OID could not be found from window.';
 				}
-				var elms = document.getElementsByTagName("span");
+				var elms = document.getElementsByTagName("p");
 				for (var j = 0; j < elms.length; j++) {
 					if (elms[j].id.length > 0) {
 						var txt = elms[j].innerHTML;

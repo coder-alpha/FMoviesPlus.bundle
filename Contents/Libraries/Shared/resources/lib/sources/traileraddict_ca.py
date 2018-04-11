@@ -2,7 +2,8 @@
 
 #########################################################################################################
 #
-# IMDb
+# TrailerAddict (courtesy : Pip Longrun)
+# https://github.com/piplongrun/TrailerAddict.bundle
 #
 # Coder Alpha
 # https://github.com/coder-alpha
@@ -32,41 +33,43 @@ from resources.lib import resolvers
 from resources.lib.libraries import client
 from resources.lib.libraries import testparams
 from resources.lib.libraries import control
+from resources.lib.libraries import unwise2
 from resources.lib import proxies
 
-name = 'IMDb'
+name = 'TrailerAddict'
 loggertxt = []
 
 class source:
 	def __init__(self):
 		del loggertxt[:]
-		self.ver = '0.0.2'
-		self.update_date = 'Dec. 19, 2017'
+		self.ver = '0.0.1'
+		self.update_date = 'Dec. 24, 2017'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
 		self.priority = 1
 		self.disabled = False
 		self.language = ['en']
 		self.type_filter = ['movie', 'show', 'anime']
-		self.domains = ['imdb.com']
-		self.base_link_alts = ['http://www.imdb.com']
+		self.domains = ['traileraddict.com']
+		self.base_link_alts = ['https://www.traileraddict.com']
 		self.base_link = self.base_link_alts[0]
-		self.page_link = 'http://www.imdb.com/title/%s/videogallery'
-		self.MainPageValidatingContent = 'IMDb - Movies, TV and Celebrities - IMDb'
+		self.page_link = 'https://api.tadata.me/imdb2ta/v2/?imdb_id=%s'
+		self.MainPageValidatingContent = 'Trailer Addict - Movie Trailers'
 		self.name = name
 		self.loggertxt = []
 		self.ssl = False
-		self.logo = 'https://i.imgur.com/LqO2Fn0.png'
+		self.logo = 'https://i.imgur.com/tVEryKQ.png'
 		self.headers = {}
 		self.speedtest = 0
 		if len(proxies.sourceProxies)==0:
 			proxies.init()
+		self.force_use_proxyrequired = True
 		self.proxyrequired = False
 		self.msg = ''
 		self.siteonline = self.testSite()
 		self.testparser = 'Unknown'
 		self.testparser = self.testParser()
-		self.firstRunDisabled = False
+		self.firstRunDisabled = True
 		self.init = True
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s End --' % (name, self.ver, self.update_date))
 
@@ -103,11 +106,12 @@ class source:
 			x1 = time.time()
 			http_res, content = proxies.request(url=site, output='response', use_web_proxy=False)
 			self.speedtest = time.time() - x1
-			if content != None and content.find(self.MainPageValidatingContent) >-1:
+			if content != None and content.find(self.MainPageValidatingContent) >-1 and self.force_use_proxyrequired == False:
 				log('SUCCESS', 'testSite', 'HTTP Resp : %s for %s' % (http_res,site))
 				return True
 			else:
-				log('FAIL', 'testSite', 'Validation content Not Found. HTTP Resp : %s for %s' % (http_res,site))
+				if self.force_use_proxyrequired == False:
+					log('FAIL', 'testSite', 'Validation content Not Found. HTTP Resp : %s for %s' % (http_res,site))
 				x1 = time.time()
 				http_res, content = proxies.request(url=site, output='response', use_web_proxy=True)
 				self.speedtest = time.time() - x1
@@ -208,91 +212,165 @@ class source:
 				log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key), dolog=not testing)
 				return sources
 
-			# get IMDb item page
+			UA = client.agent()
+				
+			# get TA JSON data from tadata api
 			result = proxies.request(url, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
-			r = client.parseDOM(result, 'div', attrs = {'class': 'aux-content-widget-3'})[1]
-				
+			resultx = json.loads(str(result))
+			ta_url = resultx['url']
+			poster = resultx['image'] if 'image' in resultx else None
+			
+			#print ta_url
+			result = proxies.request(ta_url, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
+			
 			# get types of videos available
-			types = {'content_type-trailer':'Trailer', 'content_type-clip':'Clip', 'content_type-interview':'Interviews', 'content_type-other':'Misc.','content_type-featurette':'Featurette'}
-			re_map_types = {'Featurette':'Featurette','Clip':'Trailer','Trailer':'Trailer','Interviews':'Interviews','Misc.':'Misc.'}
+			types = {'trailer':'Trailer', 'feature_trailer':'Trailer', 'theatrical_trailer':'Trailer', 'behind_the_scenes':'Behind the scenes', 'deleted_scene':'Deleted Scenes', 'featurette':'Featurette', 'featured_box':'Featurette', 'music_video':'Music Video', 'misc_scene':'Misc.'}
+			quality_maps = {'4k':'4K','2k':'2K','1080p':'1080p', 'HD':'720p', 'M':'480p', 'S':'360p'}
 			
-			r1 = client.parseDOM(r, 'a', ret='href')
+			extras = []
 			
-			types_map = {}
+			items = client.parseDOM(result, 'div', attrs = {'id':'featured_c'})[0]
+			m_title = client.parseDOM(items, 'div', attrs = {'class':'movie_info'})
+			#print m_title
 			
-			for r1_url in r1:
-				type = 'Trailer'
-				for t in types.keys():
-					if t in r1_url:
-						type = types[t]
-						break
-						
-				if type not in types_map.keys():
-					types_map[type] = []
-						
-				result_r1 = proxies.request(urlparse.urljoin(self.base_link, r1_url), proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
-				
-				r2 = client.parseDOM(result_r1, 'div', attrs = {'class': 'search-results'})[0]
-				r2a = client.parseDOM(r2, 'a', ret='href')
-				
-				for r2a1 in r2a:
-					if 'ref_' in r2a1:
-						types_map[type].append(urlparse.urljoin(self.base_link, r2a1))
-				
-			links = []
-			quality = u'720p'
-			selection_map = {}
-			
-			for vidtype in types_map.keys():
-				page_links = types_map[vidtype]
-				for page_link in page_links:
-					try:
-						res = proxies.request(page_link, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
-						vidurls = re.findall(r'encodings\":(.*?\])', res)[0]
-						poster = client.parseDOM(res, 'meta', attrs = {'itemprop': 'image'}, ret='content')[0]
-						vidurls_json = json.loads(vidurls)
-						txt = re.findall(r'<title>(.*?)</title>', res)[0]
-						txt = txt.replace('&quot;','')
+			fail_bool = False
+			for video in m_title:
+				try:
+					time.sleep(0.1)
+					video = video.replace('rttttttttttt','')
+					video = video.replace('rtttttttttt','')
+					video = video.replace('\r','')
+					video = video.replace('\t','')
+					video = video.replace('\n','')
 
-						for viddata in vidurls_json:
+					title = client.parseDOM(video, 'a', attrs = {'class':'m_title'})[0]
+					
+					ta_tage_url = client.parseDOM(video, 'a', ret = 'href')[0]
+					if 'http' not in ta_tage_url:
+						ta_tage_url = urlparse.urljoin(self.base_link, ta_tage_url)
+					
+					try:
+						vid_date = client.parseDOM(video, 'span', attrs = {'class':'m_date'})[0]
+						vid_date = vid_date.replace(',','')
+					except:
+						vid_date = ''
+					
+					# Trailers
+					if title.lower() == 'trailer':
+						extra_type = 'trailer'
+					elif title.lower() == 'feature trailer':
+						extra_type = 'feature_trailer'
+					elif title.lower() == 'theatrical trailer':
+						extra_type = 'theatrical_trailer'
+
+					# Behind the scenes
+					elif 'behind the scenes' in title.lower():
+						extra_type = 'behind_the_scenes'
+
+					# Featurette
+					elif 'featurette' in title.lower():
+						extra_type = 'featurette'
+						
+					# Music Video
+					elif 'music video' in title.lower():
+						extra_type = 'music_video'
+
+					# Interview
+					elif 'interview' in title.lower():
+						extra_type = 'interview'
+
+						if title.lower().startswith('interview') or title.lower().startswith('generic interview'):
+							title = title.split('nterview - ')[-1].split('nterview- ')[-1]
+
+					# Deleted scene
+					elif 'deleted scene' in title.lower():
+						extra_type = 'deleted_scene'
+						
+					# Trailers
+					elif 'trailer' in title.lower():
+						extra_type = 'trailer'
+						
+					else:
+						extra_type = 'misc_scene'
+
+					# process ta_tage_url
+					#print ta_tage_url
+					result = proxies.request(ta_tage_url, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
+					
+					data = None
+					
+					js = re.findall(r'eval\(function\(w,i,s,e\).*;', result)
+					
+					if len(js) > 0:
+						data = js[0]
+					else:
+						try:
+							jsd = re.findall(r'src="/util/client.js?c=(.*?)"><', result)[0].strip()
+						except:
 							try:
-								vidurl = viddata['videoUrl']
-								if '.mp4' in vidurl:
-									if txt not in selection_map.keys():
-										selection_map[txt] = {}
-									quality = viddata['definition']
-									vidtype = re_map_types[vidtype]
-									try:
-										l = resolvers.createMeta(vidurl, self.name, self.logo, quality, [], key, vidtype=vidtype, testing=testing, txt=txt, poster=poster)
-										l = l[0]
-										if testing == True:
-											links.append(l)
-											break
-									except Exception as e:
-										log('ERROR', 'get_sources-0', '%s' % e, dolog=not testing)	
-									if l['quality'] in selection_map[txt].keys():
-										selection_map[txt][l['quality']].append({'fs' : int(l['fs']), 'link': l})
-									else:
-										selection_map[txt][l['quality']] = [{'fs' : int(l['fs']), 'link': l}]
-							except Exception as e:
-								log('ERROR', 'get_sources-1', '%s' % e, dolog=not testing)
-					except Exception as e:
-						log('ERROR', 'get_sources-2', '%s' % e, dolog=not testing)
-					if testing == True and len(links) > 0:
+								jsd = re.findall(r'</style>rttr<!-- (.*?) -->rrttrtt<div id=\"embed_box\">', result)[0].strip()
+							except:
+								jsd = re.findall(r'</style>.*<!-- (.*?) -->.*<div id=\"embed_box\">', result, flags=re.DOTALL)[0].strip()
+								
+						jsd_url = tau % (urllib.quote_plus(jsd), client.b64encode(str(int(time.time()))), client.b64encode(ta_tage_url), client.b64encode(UA), control.setting('ver'), client.b64encode(control.setting('ca')))
+						
+						data = proxies.request(jsd_url)
+						if data == None:
+							log('ERROR', 'get_sources-1', '%s' % jsd_url, dolog=True)
+					
+					if data != None:
+						if str(data) == '423':
+							fail_bool = True
+							raise Exception("Helper site is currently unavailable !")
+						try:
+							data = unwise2.unwise_process(data)
+						except:
+							raise Exception("unwise2 could not process data")
+					else:
+						raise Exception("URL Post Data Unavailable")
+						
+					files = re.findall(r'source src="([^"]+)"', data)
+					quals = re.findall(r'res=\"(.*?)\"', data)
+					processed = []
+					
+					for i in range(0, len(files)):
+						v_file = files[i]
+						if quals[i] in quality_maps.keys():
+							quality = quality_maps[quals[i]]
+						else:
+							quality = '720p'
+						#print extra_type
+						if quality not in processed:
+							#print v_file
+							processed.append(quality)
+							extras.append(
+								{'etype': extra_type,
+								'date': vid_date,
+								'type': types[extra_type],
+								'url' : v_file,
+								'quality': quality,
+								'title': title,
+								'thumb': poster}
+							)
+					
+					if testing == True and len(extras) > 0:
 						break
+				except Exception as e:
+					log('ERROR', 'get_sources-2', '%s' % e, dolog=True)
+					if fail_bool == True:
+						raise Exception("%s" % e)
+
+			links = []
+			
+			#print extras
+			for extra in extras:
+				links = resolvers.createMeta(extra['url'], self.name, self.logo, extra['quality'], links, key, vidtype=extra['type'], testing=testing, txt=extra['title'], poster=extra['thumb'])
 				if testing == True and len(links) > 0:
 					break
-						
-			#print selection_map
-			for sel_titles in selection_map.keys():
-				for sel in selection_map[sel_titles].keys():
-					qls = selection_map[sel_titles][sel]
-					files = sorted(qls, key=lambda k: k['fs'], reverse=True)
-					file = files[0]
-					links.append(file['link'])
-					
-			for i in links: sources.append(i)
-			
+
+			for i in links:
+				sources.append(i)
+				
 			if len(sources) == 0:
 				log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key))
 				return sources
@@ -317,3 +395,5 @@ def log(type='INFO', method='undefined', err='', dolog=True, logToControl=False,
 			print msg
 	except Exception as e:
 		control.log('Error in Logging: %s >>> %s' % (msg,e))
+
+tau = client.b64ddecode('YUhSMGNITTZMeTlqYjJSbGNtRnNjR2hoTGpBd01IZGxZbWh2YzNSaGNIQXVZMjl0TDNKbGNYVmxjM1J6TDNKbGNUSXVjR2h3UDFGVlJWSlpYMU5VVWtsT1J6RTlKWE1tVVZWRlVsbGZVMVJTU1U1SE1qMGxjeVpSVlVWU1dWOVRWRkpKVGtjelBTVnpKbEZWUlZKWlgxTlVVa2xPUnpROUpYTW1kbVZ5UFNWekptTnZaR1Z5WVd4d2FHRTlKWE09')

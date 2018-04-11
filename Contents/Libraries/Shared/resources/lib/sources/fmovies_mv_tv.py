@@ -39,13 +39,13 @@ ENCRYPTED_URLS = False
 class source:
 	def __init__(self):
 		del loggertxt[:]
-		self.ver = '0.0.2'
+		self.ver = '0.0.3'
 		self.update_date = 'Nov. 18, 2017'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
 		self.disabled = False
 		self.TOKEN_KEY = []
-		self.base_link_alts = ['https://bmovies.is','https://bmovies.to','https://bmovies.pro','https://bmovies.club','https://bmovies.online','https://bmovies.ru'] #['https://fmovies.to','https://fmovies.is','https://fmovies.se']
+		self.base_link_alts = ['https://bmovies.pro','https://bmovies.is','https://bmovies.to','https://bmovies.club','https://bmovies.online','https://bmovies.ru','https://fmovies.to','https://fmovies.is','https://fmovies.se','https://fmovies.taxi']
 		self.base_link = self.base_link_alts[0]
 		self.grabber_api = "grabber-api/"
 		self.search_link = '/sitemap'
@@ -71,6 +71,7 @@ class source:
 		self.testparser = 'Unknown'
 		self.testparser = self.testParser()
 		self.initAndSleepThread()
+		self.firstRunDisabled = False
 		self.init = True
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s End --' % (name, self.ver, self.update_date))
 		
@@ -82,6 +83,7 @@ class source:
 			'speed': round(self.speedtest,3),
 			'logo': self.logo,
 			'ssl' : self.ssl,
+			'frd' : self.firstRunDisabled,
 			'online': self.siteonline,
 			'online_via_proxy' : self.proxyrequired,
 			'parser': self.testparser
@@ -93,6 +95,14 @@ class source:
 		
 	def testSite(self):
 		for site in self.base_link_alts:
+			try:
+				sitex = client.getRedirectingUrl(site).strip("/")
+				if 'http' not in sitex:
+					raise Exception('Error in geturl')
+				else:
+					site = sitex
+			except:
+				pass
 			bool = self.testSiteAlts(site)
 			if bool == True:
 				return bool
@@ -127,6 +137,8 @@ class source:
 	def InitSleepThread(self):
 		while True:
 			time.sleep(60*100)
+			self.siteonline = self.testSite()
+			self.testparser = self.testParser()
 			self.initAndSleep()
 			
 	def initAndSleep(self):

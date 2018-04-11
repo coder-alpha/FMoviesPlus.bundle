@@ -126,13 +126,12 @@ def testLink(url):
 	except:
 		return 'Unknown'
 		
-def createMeta(url, provider, logo, quality, links, key, riptype=None, vidtype='Movie', lang='en', sub_url=None, txt='', file_ext='.mp4', testing=False):
+def createMeta(url, provider, logo, quality, links, key, riptype=None, vidtype='Movie', lang='en', sub_url=None, txt='', file_ext='.mp4', testing=False, urlhost=None, poster=None):
 
 	if url == None or url == '':
 		return links
 		
 	url = url.strip()
-	
 	
 	for item in links:
 		if url == item['durl']:
@@ -145,22 +144,23 @@ def createMeta(url, provider, logo, quality, links, key, riptype=None, vidtype='
 	params = client.b64encode(json.dumps('', encoding='utf-8'))
 	
 	try:
-		try:
-			urlhost = re.findall('([\w]+[.][\w]+)$', urlparse.urlparse(url.strip().lower()).netloc)[0]
-		except:
-			urlhost = re.findall('([\w]+[.][\w]+).*$', urlparse.urlparse(url.strip().lower()).netloc)[0]
-			urlhost = urlhost.split('.')[1]
-			
-		if riptype == None:
-			riptype_def = 'BRRIP'
-		else:
-			riptype_def = riptype
-		for host in sourceHostsCall:
-			log("Searching %s in %s" % (urlhost, host['host']), logToControl=False)
+		if urlhost == None:
+			try:
+				urlhost = re.findall('([\w]+[.][\w]+)$', urlparse.urlparse(url.strip().lower()).netloc)[0]
+			except:
+				urlhost = re.findall('([\w]+[.][\w]+).*$', urlparse.urlparse(url.strip().lower()).netloc)[0]
+				urlhost = urlhost.split('.')[1]
+				
+			if riptype == None:
+				riptype_def = 'BRRIP'
+			else:
+				riptype_def = riptype
+			for host in sourceHostsCall:
+				log("Searching %s in %s" % (urlhost, host['host']), logToControl=False)
 
-			if urlhost in host['host']:
-				log("Found %s in %s" % (urlhost, host['host']))
-				return host['call'].createMeta(url, provider, logo, quality, links, key, riptype_def, vidtype=vidtype, lang=lang, sub_url=sub_url, txt=txt, file_ext=file_ext, testing=testing)
+				if urlhost in host['host']:
+					log("Found %s in %s" % (urlhost, host['host']))
+					return host['call'].createMeta(url, provider, logo, quality, links, key, riptype_def, vidtype=vidtype, lang=lang, sub_url=sub_url, txt=txt, file_ext=file_ext, testing=testing, poster=poster)
 				
 		log("urlhost '%s' not found in host/resolver plugins - creating generic meta for external services" % urlhost)
 				
@@ -171,7 +171,7 @@ def createMeta(url, provider, logo, quality, links, key, riptype=None, vidtype='
 		else:
 			type = riptype
 		
-		links_m.append({'source':urlhost, 'maininfo':'', 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':type, 'provider':provider, 'url':url, 'durl':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':'Unknown', 'allowsDownload':False, 'resumeDownload':False, 'allowsStreaming':True, 'key':key, 'enabled':True, 'fs':int(0), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'subdomain':client.geturlhost(url), 'misc':{'player':'eplayer', 'gp':False}})
+		links_m.append({'source':urlhost, 'maininfo':'', 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':type, 'provider':provider, 'url':url, 'durl':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':'Unknown', 'allowsDownload':False, 'resumeDownload':False, 'allowsStreaming':True, 'key':key, 'enabled':True, 'fs':int(0), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':urlhost, 'misc':{'player':'eplayer', 'gp':False}})
 	except Exception as e:
 		log(type='ERROR', err="createMeta : %s url: %s" % (e.args, url))
 		

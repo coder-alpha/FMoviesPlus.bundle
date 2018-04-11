@@ -1,6 +1,6 @@
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.62' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.63' # Release notation (x.y - where x is major and y is minor)
 TAG = ''
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
@@ -21,7 +21,7 @@ except:
 	Log('Error disabling IPv6 and setting IPv4 as default')
 	pass
 
-BASE_URL = "https://bmovies.to"
+BASE_URL = "https://fmovies.taxi"
 	
 JSEngines_ALLowed = ['Node']
 Engine_OK = False
@@ -154,12 +154,13 @@ USE_JSFDECODER = True
 USE_JSENGINE = True
 USE_JSWEBHOOK = True
 ALT_PLAYBACK = True
+SEARCH_EXT_SOURCES_FROM_SEARCH_MENU = True
+CHECK_BASE_URL_REDIRECTION = True
 DEV_BM_CONVERSION = False
 NO_MOVIE_INFO = False
 USE_CUSTOM_TIMEOUT = False
-SEARCH_EXT_SOURCES_FROM_SEARCH_MENU = True
-CHECK_BASE_URL_REDIRECTION = False
 MY_CLOUD_DISABLED = True
+FMOVIES_HOSTS_DISABLED = ['mycloud', 'server fm', 'streamango']
 ENCRYPTED_URLS = False
 DEV_DEBUG = False
 WBH = 'aHR0cHM6Ly9ob29rLmlvL2NvZGVyLWFscGhhL3Rlc3Q='
@@ -397,6 +398,12 @@ def isForceNoCache(**kwargs):
 		return True
 		
 	return False
+	
+	
+####################################################################################################
+def FixUrlInconsistencies(url):
+	url = url.replace('www3.www3.','www3.')
+	return url
 
 ####################################################################################################
 def OrderBasedOn(srcs, use_host=True, use_filesize=False):

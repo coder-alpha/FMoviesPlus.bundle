@@ -61,6 +61,7 @@ class source:
 		self.fetchedtoday = 0
 		self.siteonline = self.testSite()
 		self.testparser = self.testParser()
+		self.firstRunDisabled = False
 		self.init = True
 		if control.setting('control_all_uc_api_key') == control.base64.b64decode(control.base64.b64decode(control.all_uc_api)):
 			log(type='INFO', method='init', err='Using Plugin (Non-User) Set API Key - Count is set at 2')
@@ -81,6 +82,7 @@ class source:
 			'speed': round(self.speedtest,3),
 			'logo': self.logo,
 			'ssl' : self.ssl,
+			'frd' : self.firstRunDisabled,
 			'online': self.siteonline,
 			'online_via_proxy' : self.proxyrequired,
 			'parser': self.testparser

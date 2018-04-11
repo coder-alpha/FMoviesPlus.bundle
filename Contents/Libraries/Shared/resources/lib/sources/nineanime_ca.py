@@ -70,6 +70,7 @@ class source:
 		self.testparser = 'Unknown'
 		self.testparser = self.testParser()
 		self.initAndSleepThread()
+		self.firstRunDisabled = False
 		self.init = True
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s End --' % (name, self.ver, self.update_date))
 		
@@ -81,6 +82,7 @@ class source:
 			'speed': round(self.speedtest,3),
 			'logo': self.logo,
 			'ssl' : self.ssl,
+			'frd' : self.firstRunDisabled,
 			'online': self.siteonline,
 			'online_via_proxy' : self.proxyrequired,
 			'parser': self.testparser

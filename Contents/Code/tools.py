@@ -98,7 +98,7 @@ def DevToolsC(title=None, header=None, message=None, **kwargs):
 					else:
 						message = 'Could not retrieve output from externals.'
 		elif title == 'set_base_url':
-			base_urls = ["https://fmovies.is","https://fmovies.to","https://fmovies.se","https://bmovies.is","https://bmovies.to","https://bmovies.pro","https://bmovies.online","https://bmovies.club","https://bmovies.ru"]
+			base_urls = ["https://bmovies.is","https://bmovies.to","https://bmovies.pro","https://bmovies.online","https://bmovies.club","https://bmovies.ru","https://fmovies.to","https://fmovies.is","https://fmovies.taxi"]
 			oc = ObjectContainer(title2='Set Base URL')
 			for u in base_urls:
 				ch = common.GetEmoji(type=True) if u == fmovies.BASE_URL else common.GetEmoji(type=False)
@@ -197,10 +197,13 @@ def SaveBookmarks(**kwargs):
 				url = url.replace('fmovies.se',fmovies_base)
 			elif 'fmovies.is' in url:
 				url = url.replace('fmovies.is',fmovies_base)
+			elif 'fmovies.taxi' in url:
+				url = url.replace('fmovies.taxi',fmovies_base)
 			else:
 				if 'fmovies.' in longstring or 'bmovies.' in longstring:
 					urlhost = common.client.getUrlHost(url)
 					url = url.replace(urlhost,fmovies_base)
+					url = common.FixUrlInconsistencies(url)
 				
 			#Log("BM : %s" % url)
 				
@@ -285,10 +288,13 @@ def SaveConfig(**kwargs):
 				url = url.replace('fmovies.se',fmovies_base)
 			elif 'fmovies.is' in url:
 				url = url.replace('fmovies.is',fmovies_base)
+			elif 'fmovies.taxi' in url:
+				url = url.replace('fmovies.taxi',fmovies_base)
 			else:
 				if 'fmovies.' in longstring or 'bmovies.' in longstring:
 					urlhost = common.client.getUrlHost(url)
 					url = url.replace(urlhost,fmovies_base)
+					url = common.FixUrlInconsistencies(url)
 				
 			#Log("BM : %s" % url)
 				
@@ -345,9 +351,12 @@ def SaveConfig(**kwargs):
 				items_to_del.append(each['key'])
 			elif url.replace('fmovies.is',fmovies_base) in items_in_recent:
 				items_to_del.append(each['key'])
+			elif url.replace('fmovies.taxi',fmovies_base) in items_in_recent:
+				items_to_del.append(each['key'])
 			else:
 				if 'fmovies.' in longstring or 'bmovies.' in longstring:
 					url = url.replace(common.client.geturlhost(url),fmovies_base)
+				url = common.FixUrlInconsistencies(url)
 				items_in_recent.append(url)
 				items_in_recentlisting.append({'title':stitle, 'url':url, 'summary':summary, 'thumb':thumb, 'time':timestr})
 
@@ -505,7 +514,26 @@ def LoadConfig(**kwargs):
 @route(PREFIX+'/SetBaseUrl')
 def SetBaseUrl(url):
 	fmovies.BASE_URL = url
-	return MyMessage('Set Base URL','Base URL set to %s' % fmovies.BASE_URL)
+	RED_URL = None
+	RED_Bool = False
+	if common.CHECK_BASE_URL_REDIRECTION == True:
+		try:
+			RED_URL = common.client.getRedirectingUrl(fmovies.BASE_URL).strip("/")
+		except Exception as e:
+			Log("Error in geturl : %s" % e)
+
+	if RED_URL != None and 'http' in RED_URL and fmovies.BASE_URL != RED_URL:
+		Log("***Base URL has been overridden and set based on redirection: %s ***" % RED_URL)
+		fmovies.BASE_URL = RED_URL
+		del common.CACHE_COOKIE[:]
+		RED_Bool = True
+		
+	common.BASE_URL = fmovies.BASE_URL
+	HTTP.Headers['Referer'] = fmovies.BASE_URL
+	if RED_Bool == True:
+		return MyMessage('Set Base URL','Base URL (Redirecting) set to %s' % fmovies.BASE_URL)
+	else:
+		return MyMessage('Set Base URL','Base URL set to %s' % fmovies.BASE_URL)
 	
 ####################################################################################################
 @route(PREFIX+'/MyMessage')

@@ -194,11 +194,11 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 			opener = urllib2.build_opener(redirectHandler)
 			opener = urllib2.install_opener(opener)
 
-		request = urllib2.Request(url, data=post, headers=headers)
-		#print request
+		requestResp = urllib2.Request(url, data=post, headers=headers)
+		#print requestResp
 
 		try:
-			response = urllib2.urlopen(request, timeout=int(timeout))
+			response = urllib2.urlopen(requestResp, timeout=int(timeout))
 			if followredirect:
 				for redURL in redirectHandler.redirections:
 					urlList.append(redURL) # make a list, might be useful
@@ -227,14 +227,18 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 					cf = cfc.get(netloc, headers['User-Agent'], timeout)
 					
 					headers['Cookie'] = cf
-					request = urllib2.Request(url, data=post, headers=headers)
-					response = urllib2.urlopen(request, timeout=int(timeout))
+					requestResp = urllib2.Request(url, data=post, headers=headers)
+					response = urllib2.urlopen(requestResp, timeout=int(timeout))
 				elif error == False:
 					if IPv4 == True:
 						setIP6()
 					return
 				elif error == True:
 					return '%s: %s' % (response.code, response.reason), content
+			elif response.code == 520:
+				redUrlViaRequests = getRedirectingUrl(url)
+				if redUrlViaRequests not in url and url not in redUrlViaRequests:
+					return request(redUrlViaRequests, close=close, redirect=redirect, followredirect=followredirect, error=error, proxy=proxy, post=post, headers=headers, mobile=mobile, limit=limit, referer=referer, cookie=cookie, output=output, timeout=timeout, httpsskip=httpsskip, use_web_proxy=use_web_proxy, XHR=XHR, IPv4=IPv4)
 			elif response.code == 403:
 				if output == 'response':
 					return response.code, content
@@ -247,8 +251,8 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 				try: cookie = '; '.join(['%s=%s' % (i.name, i.value) for i in cookies])
 				except: pass
 				headers['Cookie'] = cookie
-				request = urllib2.Request(response.headers['Location'], data=post, headers=headers)
-				response = urllib2.urlopen(request, timeout=int(timeout))
+				requestResp = urllib2.Request(response.headers['Location'], data=post, headers=headers)
+				response = urllib2.urlopen(requestResp, timeout=int(timeout))
 				#Log("AAAA- BBBBBBB %s" %  response.code)
 			elif resp_code != None:
 				if IPv4 == True:
@@ -384,6 +388,16 @@ def simpleCheck(link, headers={}, cookie={}, retError=False, retry429=False, cl=
 			return code, red_url, size, '{}'.format(e)
 		else:
 			return code, red_url, size
+			
+def getRedirectingUrl(url):
+	red = url
+	try:
+		response = requests.get(url)
+		if response.history:
+			red = response.url
+	except:
+		pass
+	return red
 		
 def getFileSize(link, retError=False, retry429=False, cl=3):
 	try:

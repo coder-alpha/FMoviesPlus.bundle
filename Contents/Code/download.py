@@ -151,6 +151,12 @@ class Downloader(object):
 		first_time = file_meta['first_time']
 		progress = file_meta['progress']
 		path = file_meta['section_path']
+		
+		try:
+			vidtype = file_meta['vidtype']
+		except:
+			vidtype = 'Movie'
+		
 		file_meta['last_error'] = 'Unknown Error'
 		file_meta['error'] = 'Unknown Error'
 		purgeKey = uid
@@ -206,7 +212,9 @@ class Downloader(object):
 		if Prefs['use_debug']:
 			Log('Save path: %s' % abs_path)
 		
+		# https://support.plex.tv/articles/200220677-local-media-assets-movies/
 		fname = '%s (%s)%s' % (file_meta['title'], file_meta['year'], file_ext)
+		item_folder_name = '%s (%s)' % (file_meta['title'], file_meta['year'])
 		final_abs_path = Core.storage.join_path(path, fname)
 		
 		fname = '%s (%s)%s' % (file_meta['title'], file_meta['year'], '.en.srt')

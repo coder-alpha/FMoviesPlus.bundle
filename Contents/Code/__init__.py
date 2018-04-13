@@ -77,7 +77,7 @@ CHECK_AUTH = 'CheckAuth'
 
 CAT_WHATS_HOT = []
 CAT_WHATS_HOT_REGULAR = ['Sizzlers','Most Favourited','Recommended','Most Watched This Week','Most Watched This Month','Latest Movies','Latest TV-Series','Requested Movies']
-CAT_WHATS_HOT_ANIME = ['Recently Updated (Anime)','Recently Updated Sub (Anime)','Recently Updated Dub (Anime)', 'Trending (Anime)', 'Recently Added (Anime)', 'Ongoing (Anime)', 'Requested (Anime)']
+CAT_WHATS_HOT_ANIME = ['Newest (Anime)','Last Update (Anime)', 'Ongoing (Anime)']
 CAT_REGULAR = ['Anime','Movies','TV-Series','Top-IMDb','Most Watched','Sitemap Listing']
 CAT_FILTERS = ['Release','Genre','Country','Filter Setup >>>']
 CAT_GROUPS = ['What\'s Hot ?', 'Movies & TV-Series', 'Sort using...','Site News']
@@ -236,6 +236,7 @@ def PreCacheStuff():
 		except Exception as e:
 			Log("Error in geturl : %s" % e)
 			
+	tools.SetAnimeBaseUrl()
 	PRE_CACHE_URLS = [fmovies.BASE_URL, urlparse.urljoin(fmovies.BASE_URL, 'home'), urlparse.urljoin(fmovies.BASE_URL, fmovies.SITE_MAP), common.ANIME_URL]
 
 	for url in PRE_CACHE_URLS:
@@ -547,11 +548,14 @@ def InterfaceOptions(session, **kwargs):
 	
 ######################################################################################
 @route(common.PREFIX + "/downloadoptions")
-def DownloadOptions(session, refresh=0, **kwargs):
+def DownloadOptions(session, refresh=0, reset='false', **kwargs):
 	
 	if AuthTools.CheckAdmin() == False:
 		return MC.message_container('Admin Access Only', 'Only the Admin can perform this action !')
 
+	if reset == 'true':
+		common.DOWNLOAD_OPTIONS = common.DOWNLOAD_OPTIONS_CONST
+		
 	oc = ObjectContainer(title2='Download Options', no_cache=common.isForceNoCache())
 	#Log(common.DOWNLOAD_OPTIONS)
 	
@@ -604,6 +608,13 @@ def DownloadOptions(session, refresh=0, **kwargs):
 		key = Callback(DownloadOptions, session=session, refresh=int(refresh)+1),
 		title = 'Refresh',
 		summary = 'Refresh to load any changes made to the library paths.',
+		thumb = R(ICON_REFRESH)
+	))
+	
+	oc.add(DirectoryObject(
+		key = Callback(DownloadOptions, session=session, reset='true'),
+		title = 'Reset',
+		summary = 'Reset saved paths to defaults.',
 		thumb = R(ICON_REFRESH)
 	))
 	
@@ -1679,7 +1690,15 @@ def SortMenu(title, session=None, **kwargs):
 	if title in CAT_WHATS_HOT_REGULAR:
 		url = urlparse.urljoin(fmovies.BASE_URL, 'home')
 	elif title in CAT_WHATS_HOT_ANIME:
-		url = common.ANIME_URL
+		
+		if title == CAT_WHATS_HOT_ANIME[0]:
+			url = urlparse.urljoin(common.ANIME_URL, 'newest')
+		elif title == CAT_WHATS_HOT_ANIME[1]:
+			url = urlparse.urljoin(common.ANIME_URL, 'updated')
+		elif title == CAT_WHATS_HOT_ANIME[2]:
+			url = urlparse.urljoin(common.ANIME_URL, 'ongoing')
+		else:
+			url = common.ANIME_URL
 		is9anime = 'True'
 	else:
 		url = urlparse.urljoin(fmovies.BASE_URL, 'home')
@@ -1761,20 +1780,9 @@ def SortMenu(title, session=None, **kwargs):
 				elems = page_data.xpath(".//*[@id='body-wrapper']//div[@class='widget latest-series']//div[@class='item']")
 			elif title == CAT_WHATS_HOT[7]:
 				elems = page_data.xpath(".//*[@id='body-wrapper']//div[@class='widget requested']//div[@class='item']")
-			elif title == CAT_WHATS_HOT[8]: # Anime section starts here
-				elems = page_data.xpath(".//div[@data-name='updated']//*//div[@class='item']")
-			elif title == CAT_WHATS_HOT[9]:
-				elems = page_data.xpath(".//div[@data-name='updated-sub']//*//div[@class='item']")
-			elif title == CAT_WHATS_HOT[10]:
-				elems = page_data.xpath(".//div[@data-name='updated-dub']//*//div[@class='item']")
-			elif title == CAT_WHATS_HOT[11]:
-				elems = page_data.xpath(".//div[@data-name='top-week']//*//div[@class='item']")
-			elif title == CAT_WHATS_HOT[12]:
-				elems = page_data.xpath(".//div[@class='widget']//div[@class='list-film']//*//div[@class='item']")
-			elif title == CAT_WHATS_HOT[13]:
-				elems = page_data.xpath(".//div[@class='widget list-link']//div[@data-name='ongoing']//div[@class='item']")
-			elif title == CAT_WHATS_HOT[14]:
-				elems = page_data.xpath(".//div[@class='widget list-link']//div[@data-name='requested']//div[@class='item']")
+			elif title in CAT_WHATS_HOT_ANIME: # Anime section starts here
+				elems = page_data.xpath(".//*//div[@class='item']")
+
 			
 			for elem in elems:
 				eps_nos = ''
@@ -1795,9 +1803,9 @@ def SortMenu(title, session=None, **kwargs):
 					except:
 						pass
 				else:
-					if title in [CAT_WHATS_HOT[13],CAT_WHATS_HOT[14]]:
-						name = elem.xpath(".//a//text()")[0]
-						loc = elem.xpath(".//a//@href")[0]
+					if title in CAT_WHATS_HOT_ANIME:
+						name = elem.xpath(".//a[@class='name']//text()")[0]
+						loc = elem.xpath(".//a[@class='name']//@href")[0]
 						thumb_t = elem.xpath(".//img//@src")[0]
 						thumb = thumb_t if 'url' not in thumb_t else thumb_t.split('url=')[1]
 						summary = 'Plot Summary on Item Page.'
@@ -1809,9 +1817,10 @@ def SortMenu(title, session=None, **kwargs):
 						summary = 'Plot Summary on Item Page.'
 				
 					try:
-						eps_nosx = elem.xpath(".//div[@class='status']//text()")[0].strip()
-						title_eps_no = ' (Eps:'+eps_nosx+')'
-						eps_nos = ' Episodes: ' + eps_nosx
+						eps_nosx = elem.xpath(".//*//div[@class='ep']//text()")[0].strip()
+						eps_nosx = eps_nosx.strip()
+						title_eps_no = ' ('+eps_nosx+')'
+						eps_nos = ' ' + eps_nosx
 					except:
 						pass
 				
@@ -1892,10 +1901,10 @@ def ShowCategory(title, key=' ', urlpath=None, page_count='1', session=None, **k
 		for i in range(limit_x, limit_y):
 			elems.append(elems_all[i])
 	elif title == CAT_REGULAR[0]: # Anime
-		elems = page_data.xpath(".//*[@id='body-wrapper']//div[@class='row']//div[@class='item']")
+		elems = page_data.xpath(".//*//div[@class='film-list']//div[@class='item']")
 		last_page_no = int(page_count)
 		try:
-			last_page_no = int(page_data.xpath(".//*[@id='body-wrapper']//span[@class='total']//text()")[0])
+			last_page_no = int(page_data.xpath(".//*//span[@class='total']//text()")[0])
 		except:
 			pass
 	else:
@@ -2256,8 +2265,9 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 			
 		isTvSeries = False
 		try:
-			item_type = page_data.xpath(".//div[@id='movie']/@data-type")[0]
-			if item_type == 'series' or item_type == 'ova':
+			item_type = page_data.xpath(".//dl[@class='meta col-sm-12']//dd//text()")[0]
+			item_type = item_type.lower()
+			if item_type == 'series' or item_type == 'ova' or item_type == 'ovn' or item_type == 'tv series':
 				isTvSeries = True
 		except:
 			pass
@@ -2276,7 +2286,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 				thumb = R(ICON_UNAV)
 			
 		try:
-			serverts = page_data.xpath(".//body//@data-ts")[0]
+			serverts = page_data.xpath(".//@data-ts")[0]
 		except:
 			serverts = 0
 		
@@ -2286,15 +2296,20 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 			art = 'https://cdn.rawgit.com/coder-alpha/FMoviesPlus.bundle/master/Contents/Resources/art-default.jpg'
 		oc = ObjectContainer(title2 = title + item_unav, art = art, no_cache=common.isForceNoCache())
 		
+		
 		try:
-			summary = page_data.xpath(".//*[@id='info']//div[@class='desc']//text()")
+			summary = page_data.xpath(".//div[@class='desc']//text()")
 			summary = summary[0]
 		except:
 			try:
-				summary = page_data.xpath(".//div[@class='shortcontent']/text()")
+				summary = page_data.xpath(".//div[@class='desc']//div[@class='long']//text()")
 				summary = summary[0]
 			except:
-				summary = 'Summary Not Available.'
+				try:
+					summary = page_data.xpath(".//div[@class='desc']//div[@class='short']//text()")
+					summary = summary[0]
+				except:
+					summary = 'Summary Not Available.'
 		
 		try:
 			trailer = page_data.xpath(".//*[@id='control']//div['item mbtb watch-trailer hidden-xs']//@data-url")[0]
@@ -2303,29 +2318,43 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 		
 		try:
 			try:
-				year = str(page_data.xpath(".//dt[contains(text(),'Date')]//following-sibling::dd[1]//text()")[0].strip()[-4:])
+				year = str(page_data.xpath(".//dt[contains(text(),'Date')]//following-sibling::dd[1]//text()")[0].replace('to ?','').strip()[-4:])
 				year = str(int(year))
 			except:
-				year = str(page_data.xpath(".//dt[contains(text(),'Premiered')]//following-sibling::dd[1]//text()")[0].strip()[-4:])
+				year = str(page_data.xpath(".//dt[contains(text(),'Premiered')]//following-sibling::dd[1]//text()")[0].replace('to ?','').strip()[-4:])
 				year = str(int(year))
 		except:
 			year = 'Not Available'
 			
 		try:
-			rating = str(page_data.xpath(".//*[@id='info']//dl[@class='meta col-sm-12'][2]//dd[1]//text()")[0].split('/')[0])
+			try:
+				rating = str(page_data.xpath(".//*//dl[@class='meta col-sm-12'][2]//dd[1]//text()")[0].split('/')[0]).strip()
+				if rating == '0' or rating == '':
+					raise
+			except:
+				rating = str(page_data.xpath(".//*//dd[@class='rating']//span[1]//text()")[0]).strip()
 		except:
 			rating = 'Not Available'
 			
+		episodesx = []
+		try:
+			episodesx = page_data.xpath(".//div[@class='server active']//ul[@class='episodes range active']//li")
+		except:
+			pass
+			
+		if len(episodesx) > 0:
+			isTvSeries = True
+			
 		try:
 			if isTvSeries == True:
-				duration = int(page_data.xpath(".//dd[contains(text(),'min')]//text()")[0].strip('/episode').strip(' min'))
+				duration = int(page_data.xpath(".//dd[contains(text(),'min')]//text()")[0].strip('/episode').strip('/ep').strip(' min'))
 			else:
 				duration = int(eval(page_data.xpath(".//dd[contains(text(),'min') or contains(text(),'hr')]/text()")[0].replace('hr.','*60+').strip(' min')))
 		except:
 			duration = 'Not Available'
 
 		try:
-			genre0 = page_data.xpath(".//*[@id='info']//dl[@class='meta col-sm-12'][1]//dd[3]//a//text()")
+			genre0 = page_data.xpath(".//dt[contains(text(),'Genre')]//following-sibling::dd[1]//a//text()")
 			genre = (','.join(str(x) for x in genre0))
 			if genre == '':
 				genre = 'Not Available'
@@ -2336,7 +2365,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 		roles = 'Not Available'
 		
 		try:
-			servers = page_data.xpath(".//*[@id='servers']//div[@class='server row']")
+			servers = page_data.xpath(".//div[contains(@class ,'server active') or contains(@class,'server hidden')]")
 		except:
 			servers = []
 		
@@ -2402,7 +2431,8 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 		isMovieWithMultiPart = False
 		
 		for server in servers:
-			label = server.xpath(".//label[@class='name col-md-3 col-sm-4']//text()[2]")[0].strip()
+			dataname = server.xpath(".//@data-name")[0]
+			label = page_data.xpath(".//span[contains(@data-name ,'%s')]//text()" % dataname)[0].strip()
 			
 			if label.lower() not in common.FMOVIES_HOSTS_DISABLED or (label.lower() in common.FMOVIES_HOSTS_DISABLED and common.MY_CLOUD_DISABLED == False):
 				if label in common.host_gvideo.FMOVIES_SERVER_MAP:
@@ -4395,7 +4425,7 @@ def RecentWatchList(title, session=None, **kwargs):
 		ES = ''
 		if common.ES_API_URL.lower() in longstring.lower():
 			ES = common.EMOJI_EXT
-		if common.ANIME_URL.lower() in longstring.lower():
+		if common.ANIME_URL.lower() in longstring.lower() or '9anime' in longstring.lower():
 			ES = common.EMOJI_ANIME
 		
 		if url.replace('fmovies.to',fmovies_base) in items_in_recent or c > NO_OF_ITEMS_IN_RECENT_LIST:
@@ -4458,7 +4488,7 @@ def ClearRecentWatchList(**kwargs):
 	for each in Dict:
 		try:
 			longstring = Dict[each]
-			if (('fmovies.' in longstring or 'bmovies.' in longstring) or common.isArrayValueInString(common.EXT_SITE_URLS, longstring) == True) and 'RR44SS' in longstring:
+			if (('fmovies.' in longstring or 'bmovies.' in longstring or '9anime.' in longstring) or common.isArrayValueInString(common.EXT_SITE_URLS, longstring) == True) and 'RR44SS' in longstring:
 				remove_list.append(each)
 		except:
 			continue
@@ -4492,7 +4522,7 @@ def Bookmarks(title, session = None, **kwargs):
 	for each in Dict:
 		longstring = str(Dict[each])
 		
-		if (('fmovies.' in longstring or 'bmovies.' in longstring) or common.isArrayValueInString(common.EXT_SITE_URLS, longstring) == True) and 'Key5Split' in longstring:	
+		if (('fmovies.' in longstring or 'bmovies.' in longstring or '9anime.' in longstring) or common.isArrayValueInString(common.EXT_SITE_URLS, longstring) == True) and 'Key5Split' in longstring:	
 			stitle = unicode(longstring.split('Key5Split')[0])
 			url = longstring.split('Key5Split')[1]
 			summary = unicode(longstring.split('Key5Split')[2])
@@ -4606,6 +4636,11 @@ def AddToDownloadsListPre(title, year, url, durl, purl, summary, thumb, quality,
 					sub_url = sub_url_t
 			elif 'rapidvideo' in source:
 				vurl, r1, sub_url_t = common.host_rapidvideo.resolve(url, True)
+				if sub_url == None:
+					sub_url = sub_url_t
+				fs_i, err = common.client.getFileSize(vurl, retError=True, retry429=True, cl=2)
+			elif 'streamango' in source:
+				vurl, r1, sub_url_t = common.host_streamango.resolve(url, True)
 				if sub_url == None:
 					sub_url = sub_url_t
 				fs_i, err = common.client.getFileSize(vurl, retError=True, retry429=True, cl=2)
@@ -4964,7 +4999,6 @@ def Downloads(title, session = None, status = None, refresh = 0, **kwargs):
 				#Log(common.DOWNLOAD_STATS)
 				items_to_del.append(each)
 				
-	Log("items_to_del: %s" % len(items_to_del))
 	if len(items_to_del) > 0:
 		for each in items_to_del:
 			if each in common.DOWNLOAD_STATS.keys():
@@ -5546,6 +5580,11 @@ def Check(title, url, **kwargs):
 	longstring = Dict[title+'-'+E(surl)]
 	if longstring != None and surl in longstring:
 		return True
+		
+	surl = url.replace(fmovies_urlhost,'9anime.is')
+	longstring = Dict[title+'-'+E(surl)]
+	if longstring != None and surl in longstring:
+		return True
 
 	return False
 
@@ -5613,6 +5652,10 @@ def RemoveBookmark(title, url, **kwargs):
 		del Dict[title+'-'+E(url.replace(fmovies_urlhost,'fmovies.taxi'))]
 	except:
 		pass
+	try:
+		del Dict[title+'-'+E(url.replace(fmovies_urlhost,'9anime.is'))]
+	except:
+		pass
 		
 	Dict.Save()
 	return MC.message_container(title, 'This item has been removed from your bookmarks.')
@@ -5626,7 +5669,7 @@ def ClearBookmarks(**kwargs):
 	for each in Dict:
 		try:
 			url = Dict[each]
-			if ('bmovies.' in url or 'fmovies.' in url) or common.isArrayValueInString(common.EXT_SITE_URLS, url) == True and 'http' in url and 'RR44SS' not in url:
+			if ('bmovies.' in url or 'fmovies.' in url or '9anime.' in url) or common.isArrayValueInString(common.EXT_SITE_URLS, url) == True and 'http' in url and 'RR44SS' not in url:
 				remove_list.append(each)
 		except:
 			continue
@@ -5649,7 +5692,7 @@ def ClearSearches(**kwargs):
 	remove_list = []
 	for each in Dict:
 		try:
-			if (each.find('fmovies') != -1 or each.find('bmovies') != -1 or each.find(common.TITLE.lower()) != -1) and 'MyCustomSearch' in each:
+			if (each.find('fmovies') != -1 or each.find('bmovies') != -1 or each.find('9anime') != -1 or each.find(common.TITLE.lower()) != -1) and 'MyCustomSearch' in each:
 				remove_list.append(each)
 			elif common.isArrayValueInString(common.EXT_SITE_URLS, each) == True and 'MyCustomSearch' in each:
 				remove_list.append(each)
@@ -5708,10 +5751,12 @@ def Search(query=None, surl=None, page_count='1', mode='default', thumb=None, su
 	try:
 		if is9anime == 'False':
 			elems = page_data.xpath(".//*[@id='body-wrapper']//div[@class='row movie-list']//div[@class='item']")
+			last_page_no = int(page_count)
+			last_page_no = int(page_data.xpath(".//*[@id='body-wrapper']//ul[@class='pagination'][1]//li[last()-1]//text()")[0])
 		else:
-			elems = page_data.xpath(".//*[@id='body-wrapper']//div[@class='row']//div[@class='item']")
-		last_page_no = int(page_count)
-		last_page_no = int(page_data.xpath(".//*[@id='body-wrapper']//ul[@class='pagination'][1]//li[last()-1]//text()")[0])
+			elems = page_data.xpath(".//*//div[@class='film-list']//div[@class='item']")
+			last_page_no = int(page_count)
+			last_page_no = int(page_data.xpath(".//*//ul[@class='pagination'][1]//li[last()-1]//text()")[0])
 	except Exception as e:
 		Log("__init.py__ > Search > Error: %s" % e)
 		errorB = True
@@ -5727,10 +5772,12 @@ def Search(query=None, surl=None, page_count='1', mode='default', thumb=None, su
 		try:
 			if is9anime == 'False':
 				elems = page_data.xpath(".//*[@id='body-wrapper']//div[@class='row movie-list']//div[@class='item']")
+				last_page_no = int(page_count)
+				last_page_no = int(page_data.xpath(".//*[@id='body-wrapper']//ul[@class='pagination'][1]//li[last()-1]//text()")[0])
 			else:
-				elems = page_data.xpath(".//*[@id='body-wrapper']//div[@class='row']//div[@class='item']")
-			last_page_no = int(page_count)
-			last_page_no = int(page_data.xpath(".//*[@id='body-wrapper']//ul[@class='pagination'][1]//li[last()-1]//text()")[0])
+				elems = page_data.xpath(".//*//div[@class='film-list']//div[@class='item']")
+				last_page_no = int(page_count)
+				last_page_no = int(page_data.xpath(".//*//ul[@class='pagination'][1]//li[last()-1]//text()")[0])
 			errorB = False
 		except:
 			errorB = True
@@ -5903,7 +5950,7 @@ def AnimeSearchExt(query=None, session=None, **kwargs):
 	page_data, error = common.GetPageElements(url=url, timeout=7)
 	
 	if page_data != None:
-		items = page_data.xpath("//*[@id='body-wrapper']//div[@class='item']")
+		items = page_data.xpath("//*//div[@class='item']")
 		for i in items:
 			try:
 				thumb = i.xpath(".//@src")[0]

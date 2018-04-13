@@ -667,7 +667,6 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 						grabber_url = grab_data[0]
 						grab_data = grab_data[1]
 						
-					print grab_data
 					grab_server = str(urlparse.parse_qs(grab_data)['server'][0])
 					
 					b, resp = decode_t(result['params']['token'], -18, is9Anime)
@@ -796,7 +795,7 @@ def a01(t, token_error=False, is9Anime=False):
 			if is9Anime == False:
 				i += ord(t[e]) + e
 			else:
-				i += ord(t[e]) * e
+				i += ord(t[e]) + e
 		else:
 			try:
 				i += eval('ord(t[%s]) %s' % (e, TOKEN_OPER[0]))

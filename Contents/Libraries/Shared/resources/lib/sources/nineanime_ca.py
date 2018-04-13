@@ -44,7 +44,7 @@ class source:
 		self.serverts = None
 		self.disabled = False
 		self.TOKEN_KEY = []
-		self.base_link_alts = ['https://9anime.is','https://9anime.to']
+		self.base_link_alts = ['https://www4.9anime.is','https://9anime.is','https://9anime.to']
 		self.base_link = self.base_link_alts[0]
 		self.grabber_api = "grabber-api/"
 		self.search_link = '/sitemap'
@@ -298,11 +298,20 @@ class source:
 					
 					log('INFO','get_sources-2', '%s' % search_url, dolog=False)
 					
-					rs = client.parseDOM(result, 'div', attrs = {'class': '[^"]*row[^"]*'})[0]
+					rs = client.parseDOM(result, 'div', attrs = {'class': '[^"]*film-list[^"]*'})[0]
+					#print rs
+					
 					r = client.parseDOM(rs, 'div', attrs = {'class': 'item'})
+					#print r
+					
 					r = [(client.parseDOM(i, 'a', ret='href'), client.parseDOM(i, 'a', attrs = {'class': 'name'})) for i in r]
+					#print r
+					
 					r = [(i[0][0], i[1][0]) for i in r if len(i[0]) > 0 and  len(i[1]) > 0]
+					#print r
+					
 					r = [(re.sub('http.+?//.+?/','/', i[0]), re.sub('&#\d*;','', i[1])) for i in r]
+					#print r
 					
 					if 'season' in data:
 						r = [(i[0], re.sub(' \(\w*\)', '', i[1])) for i in r]
@@ -427,6 +436,11 @@ class source:
 				quality = '480p'
 				riptype = 'BRRIP'
 
+			try:
+				server_no = client.parseDOM(result, 'div', attrs = {'class': 'server active'}, ret='data-name')[0]
+			except:
+				server_no = []
+			
 			result = client.parseDOM(result, 'ul', attrs = {'data-range-id':"0"})
 
 			servers = []
@@ -444,7 +458,7 @@ class source:
 
 					headers = {'X-Requested-With': 'XMLHttpRequest'}
 					hash_url = urlparse.urljoin(self.base_link, self.hash_link)
-					query = {'ts': myts, 'id': s[0], 'update': '0', 'server':'36'}
+					query = {'ts': myts, 'id': s[0], 'update': '0', 'server':str(server_no)}
 
 					query.update(self.__get_token(query))
 					hash_url = hash_url + '?' + urllib.urlencode(query)
@@ -598,9 +612,9 @@ class source:
 		i = 0
 		for e in range(0, len(t)):
 			if token_error == False:
-				i += ord(t[e]) * e
-			else:
 				i += ord(t[e]) + e
+			else:
+				i += ord(t[e]) * e
 		return i
 
 	def decode_t(self, t):

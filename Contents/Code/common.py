@@ -1,6 +1,6 @@
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.63' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.64' # Release notation (x.y - where x is major and y is minor)
 TAG = ''
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
@@ -8,7 +8,7 @@ PREFIX = "/video/fmoviesplus"
 
 import time, base64, unicodedata, re, random, string
 from resources.lib.libraries import control, client, cleantitle, jsfdecoder, jsunpack
-from resources.lib.resolvers import host_openload, host_gvideo, host_mega, host_rapidvideo
+from resources.lib.resolvers import host_openload, host_gvideo, host_mega, host_rapidvideo, host_streamango
 import interface
 from __builtin__ import ord, format, eval
 
@@ -121,6 +121,7 @@ DEVICE_OPTION_CONSTRAINTS = {DEVICE_OPTIONS[2]:[{'Pref':'use_https_alt','Desc':'
 DEVICE_OPTION_CONSTRAINTS2 = {DEVICE_OPTIONS[5]:[{'Option':6,'ReqValue':False}], DEVICE_OPTIONS[6]:[{'Option':5,'ReqValue':False}]}
 DEVICE_OPTION_PROPOGATE_TO_CONTROL = {DEVICE_OPTIONS[7]:True}
 
+DOWNLOAD_OPTIONS_CONST = {'movie':[], 'show':[]}
 DOWNLOAD_OPTIONS = {'movie':[], 'show':[]}
 DOWNLOAD_OPTIONS_SECTION_TEMP = {}
 DOWNLOAD_MODE = ['Add','Request']
@@ -160,7 +161,7 @@ DEV_BM_CONVERSION = False
 NO_MOVIE_INFO = False
 USE_CUSTOM_TIMEOUT = False
 MY_CLOUD_DISABLED = True
-FMOVIES_HOSTS_DISABLED = ['mycloud', 'server fm', 'streamango']
+FMOVIES_HOSTS_DISABLED = ['mycloud', 'server fm']
 ENCRYPTED_URLS = False
 DEV_DEBUG = False
 WBH = 'aHR0cHM6Ly9ob29rLmlvL2NvZGVyLWFscGhhL3Rlc3Q='
@@ -399,10 +400,20 @@ def isForceNoCache(**kwargs):
 		
 	return False
 	
-	
 ####################################################################################################
 def FixUrlInconsistencies(url):
+	url = url.replace('//www0.www','//www')
+	url = url.replace('//www1.www','//www')
+	url = url.replace('//www2.www','//www')
+	url = url.replace('//www3.www','//www')
+	url = url.replace('//www4.www','//www')
+	url = url.replace('//www5.www','//www')
+	url = url.replace('www0.www0.','www0.')
+	url = url.replace('www1.www1.','www1.')
+	url = url.replace('www2.www2.','www2.')
 	url = url.replace('www3.www3.','www3.')
+	url = url.replace('www4.www4.','www4.')
+	url = url.replace('www5.www5.','www5.')
 	return url
 
 ####################################################################################################

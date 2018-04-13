@@ -447,12 +447,21 @@ class source:
 								params = self.uncensored3(script)
 							else:
 								raise Exception()
+								
 							u = urlparse.urljoin(self.base_link, self.sourcelink % (eid[0], params['x'], params['y']))
-							
 							#print u
-							
 							r = client.request(u, IPv4=True)
-							url = json.loads(r)['playlist'][0]['sources']
+							
+							if r == None or len(r) == 0:
+								u = urlparse.urljoin(self.base_link, self.embed_link % (eid[0]))
+								#print u
+								r = client.request(u, IPv4=True)
+							
+							try:
+								url = json.loads(r)['playlist'][0]['sources']
+							except:
+								url = [{'file': json.loads(r)['src']}]
+							
 							#print url
 							
 							try:

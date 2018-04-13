@@ -51,7 +51,7 @@ IP_OVERIDE = True
 RE_SUB1 = Regex(r'(?m)(^[^\#])')
 RE_SOURCES = Regex(r'(?m)(^.+?\d+/(\d+).+$)')
 
-supported_hosts = ['mycloud.to','mcloud.to','rapidvideo.com']
+supported_hosts = ['mycloud.to','mcloud.to','rapidvideo.com','streamango.com']
 
 def resolve(url, https_skip, test=False, strip_url=True):
 	video_urlf = None
@@ -92,7 +92,7 @@ def resolve(url, https_skip, test=False, strip_url=True):
 					try:
 						res = page_data_elems.xpath(".//div[@id='home_video']//source/@data-res")[0]
 					except:
-						res = qs
+						res = qs.replace('p','')
 						
 					if video_url != None and res != None:
 						f_i = {'file':video_url, 'label':res}
@@ -101,6 +101,40 @@ def resolve(url, https_skip, test=False, strip_url=True):
 					pass
 			
 			video_urlf = video_url_a
+			
+		elif 'streamango.' in ourl:
+			myheaders = {}
+			myheaders['User-Agent'] = 'Mozilla'
+			myheaders['Referer'] = ourl
+			myParams['headers'] = myheaders
+			
+			page_data_string = request(ourl, headers=myheaders, httpsskip=True)
+			if 'Sorry!' not in page_data_string and 'We are unable to find the video you\'re looking for' not in page_data_string:
+				video_url = decode_streamango(page_data_string)
+				if video_url[len(video_url)-1] == '@':
+					video_url = video_url[:-1]
+					
+				v_qs = video_url.split('/')
+				v_qs = v_qs[len(v_qs)-1]
+				v_qs = re.sub(r'[^0-9]', "", v_qs)
+				v_qs = int(v_qs)
+				
+				quals = [1080,720,480,360]
+				for qs in quals:
+					try:
+						if v_qs == qs:
+							f_i = {'file':video_url, 'label':'%s' % qs}
+							video_url_a.append(f_i)
+							break
+						elif v_qs > qs:
+							i = quals.index(qs)
+							f_i = {'file':video_url, 'label':'%s' % quals[i-1]}
+							video_url_a.append(f_i)
+							break
+					except:
+						pass
+				
+				video_urlf = video_url_a
 			
 		elif 'mycloud.' in ourl or 'mcloud.' in ourl:
 			#Log('============ MyCloud URL ==================')
@@ -231,6 +265,8 @@ def error(url, https_skip):
 				error = 'URL Error.'
 			elif ('mycloud.' in ourl or 'mcloud.' in ourl) and 'This video is in processing' in page_data_string:
 				error = 'Video is in processing, try again later.'
+			elif ('streamango.' in ourl or 'fruitstreams.' in ourl or 'streamcherry.' in ourl) and ('We are unable to find the video you\'re looking for' in page_data_string or 'Sorry!' in page_data_string):
+				error = 'Video removed by streamango.'
 		else:
 			error = 'Page returned None'
 	except:
@@ -238,7 +274,54 @@ def error(url, https_skip):
 		
 	return error
 
+####################################################################################################
+def decode_streamango(html):
+	
+	source = None
+	
+	try:
+		encoded = re.search('''srces\.push\({type:"video/mp4",src:\w+\('([^']+)',(\d+)''', html)
+		if encoded:
+			source = decode2(encoded.group(1), int(encoded.group(2)))
+	except Exception as e:
+		Log(e)
+	
+	return source
+		
+def decode2(encoded, code):
+		
+	vid_url = ""
+	k = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/='
+	k = k[::-1]
 
+	count = 0
+
+	for index in range(0, len(encoded) - 1):
+		while count <= len(encoded) - 1:
+			dec1 = k.index(encoded[count])
+			count += 1
+			dec2 = k.index(encoded[count])
+			count += 1
+			dec3 = k.index(encoded[count])
+			count += 1
+			dec4 = k.index(encoded[count])
+			count += 1
+
+			t1 = ((dec1 << 2) | (dec2 >> 4))
+			t2 = (((dec2 & 15) << 4) | (dec3 >> 2))
+			t3 = ((dec3 & 3) << 6) | dec4
+			t1 = t1 ^ code
+
+			vid_url = str(vid_url) + chr(t1)
+
+			if dec3 != 64:
+				vid_url = str(vid_url) + chr(t2)
+			if dec3 != 64:
+				vid_url = str(vid_url) + chr(t3)
+
+	if 'http' not in vid_url:
+		vid_url = 'https:' + vid_url
+	return vid_url
 
 def request(url, close=True, redirect=True, followredirect=False, error=False, proxy=None, post=None, headers=None, mobile=False, limit=None, referer=None, cookie=None, output='', timeout='30', httpsskip=False, use_web_proxy=False, XHR=False, IPv4=False):
 

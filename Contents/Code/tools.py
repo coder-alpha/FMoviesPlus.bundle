@@ -100,9 +100,17 @@ def DevToolsC(title=None, header=None, message=None, **kwargs):
 		elif title == 'set_base_url':
 			base_urls = ["https://bmovies.is","https://bmovies.to","https://bmovies.pro","https://bmovies.online","https://bmovies.club","https://bmovies.ru","https://fmovies.to","https://fmovies.is","https://fmovies.taxi"]
 			oc = ObjectContainer(title2='Set Base URL')
+			base_url_match = False
 			for u in base_urls:
+				if u == fmovies.BASE_URL:
+					base_url_match = True
 				ch = common.GetEmoji(type=True) if u == fmovies.BASE_URL else common.GetEmoji(type=False)
 				oc.add(DirectoryObject(title='%s | Base URL : %s' % (ch, u),key=Callback(SetBaseUrl, url=u)))
+			if base_url_match == False:
+				u = fmovies.BASE_URL
+				ch = common.GetEmoji(type=True) if u == fmovies.BASE_URL else common.GetEmoji(type=False)
+				oc.add(DirectoryObject(title='%s | Base URL : %s (set by redirection detector)' % (ch, u),key=Callback(SetBaseUrl, url=u)))
+				
 			return oc
 
 		return MC.message_container('Info', message)
@@ -534,6 +542,17 @@ def SetBaseUrl(url):
 		return MyMessage('Set Base URL','Base URL (Redirecting) set to %s' % fmovies.BASE_URL)
 	else:
 		return MyMessage('Set Base URL','Base URL set to %s' % fmovies.BASE_URL)
+		
+####################################################################################################
+@route(PREFIX+'/SetAnimeBaseUrl')
+def SetAnimeBaseUrl():
+	common.ANIME_URL = 'https://%s.is' % common.ANIME_KEY
+	ANIME_URL_T = common.client.getRedirectingUrl(common.ANIME_URL).strip("/")
+	if ANIME_URL_T != None and 'http' in ANIME_URL_T and common.ANIME_URL != ANIME_URL_T:
+		Log("***Base ANIME_URL has been overridden and set based on redirection: %s ***" % ANIME_URL_T)
+		common.ANIME_URL = ANIME_URL_T
+	common.ANIME_SEARCH_URL = common.ANIME_URL + '/search?keyword=%s'
+	common.EXT_SITE_URLS = [common.ANIME_URL, common.ES_API_URL]
 	
 ####################################################################################################
 @route(PREFIX+'/MyMessage')

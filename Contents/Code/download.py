@@ -205,6 +205,15 @@ class Downloader(object):
 				Log('RapidVideo Error: %s' % error)
 				download_failed(url, error, progress, startPos, purgeKey)
 				return
+		elif 'streamango' in source.lower():
+			furl, error, sub_url_t = common.host_streamango.resolve(furl)
+			if error != '' or furl == None:
+				furl, error, sub_url_t = common.host_streamango.resolve(durl)
+			if error != '' or furl == None:
+				Log('Streamango URL: %s' % furl)
+				Log('Streamango Error: %s' % error)
+				download_failed(url, error, progress, startPos, purgeKey)
+				return
 		
 		if sub_url_t != None:
 			file_meta['sub_url'] = sub_url_t

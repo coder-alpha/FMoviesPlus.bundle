@@ -36,8 +36,8 @@ USE_GDRIVE_SPECIFIC_SEARCH = False
 class source:
 	def __init__(self):
 		del loggertxt[:]
-		self.ver = '0.0.1'
-		self.update_date = 'Nov. 14, 2017'
+		self.ver = '0.1.0'
+		self.update_date = 'Apr. 25, 2018'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
 		self.count = 2
@@ -93,11 +93,7 @@ class source:
 		return self.loggertxt
 		
 	def testSite(self):
-		try:
-			if control.setting('Provider-%s' % name) == False:
-				log('INFO','testSite', 'Plugin Disabled by User - cannot test site')
-				return False
-			
+		try:			
 			x1 = time.time()
 			http_res, content = proxies.request(url=self.base_link, output='response', use_web_proxy=False)
 			self.speedtest = time.time() - x1
@@ -131,6 +127,9 @@ class source:
 		
 	def testParser(self):
 		try:
+			if control.setting('Provider-%s' % name) == False:
+				log('INFO','testParser', 'Plugin Disabled by User - cannot test parser')
+				return False
 			if self.disabled == True:
 				log('INFO','testParser', 'Plugin Disabled - cannot test parser')
 				return False

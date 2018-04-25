@@ -1,14 +1,14 @@
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.50' # Release notation (x.y - where x is major and y is minor)
-TAG = 'dev Nov. 17, 2017'
+VERSION = '0.65' # Release notation (x.y - where x is major and y is minor)
+TAG = 'dev Apr. 25, 2018'
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
 ################################################################################
 
 import time, base64, unicodedata, re, random, string
 from resources.lib.libraries import control, client, cleantitle, jsfdecoder, jsunpack
-from resources.lib.resolvers import host_openload, host_gvideo, host_mega
+from resources.lib.resolvers import host_openload, host_gvideo, host_mega, host_rapidvideo, host_streamango
 import interface
 from __builtin__ import ord, format, eval
 
@@ -21,7 +21,8 @@ except:
 	Log('Error disabling IPv6 and setting IPv4 as default')
 	pass
 
-BASE_URL = "https://bmovies.to"
+BASE_URL = "https://fmovies.taxi"
+BASE_URLS = ["https://bmovies.is","https://bmovies.to","https://bmovies.pro","https://bmovies.online","https://bmovies.club","https://bmovies.ru","https://fmovies.to","https://fmovies.is","https://fmovies.taxi","https://fmovies.se"]
 	
 JSEngines_ALLowed = ['Node']
 Engine_OK = False
@@ -71,6 +72,7 @@ EMOJI_CASSETTE = u'\U0001F4FC'
 EMOJI_CINEMA = u'\U0001F3A6'
 EMOJI_TV = u'\U0001F4FA'
 EMOJI_ANIME = u'\u2318'
+EMOJI_EXT = u'*'
 
 # Simple Emoji's
 EMOJI_HEART = u'\u2665'
@@ -84,18 +86,25 @@ EMOJI_TXT_NEG = u'(x)'
 EMOJI_TXT_QUES = u'(?)'
 
 INTERFACE_OPTIONS_LABELS = {'Provider':'Provider', 'Host':'Host', 'Proxy':'Proxy'}
+BOOT_UP_CONTROL_SETTINGS = {'Provider':{}, 'Host':{}, 'Proxy':{}}
 
 OPTIONS_PROXY = []
 INTERNAL_SOURCES = []
 OPTIONS_PROVIDERS = []
-INTERNAL_SOURCES_QUALS = [{'label':'4K','enabled': 'True'},{'label':'1080p','enabled': 'True'},{'label':'720p','enabled': 'True'},{'label':'480p','enabled': 'True'},{'label':'360p','enabled': 'True'}]
-INTERNAL_SOURCES_RIPTYPE = [{'label':'BRRIP','enabled': 'True'},{'label':'PREDVD','enabled': 'True'},{'label':'CAM','enabled': 'True'},{'label':'TS','enabled': 'True'},{'label':'SCR','enabled': 'True'},{'label':'UNKNOWN','enabled': 'True'}]
-INTERNAL_SOURCES_FILETYPE = [{'label':'Movie/Show','enabled': 'True'},{'label':'Trailer','enabled': 'True'},{'label':'Behind the scenes','enabled': 'False'},{'label':'Music Video','enabled': 'False'},{'label':'Deleted Scenes','enabled': 'False'},{'label':'Interviews','enabled': 'False'},{'label':'Misc.','enabled': 'False'}]
-INTERNAL_SOURCES_SIZES = [{'label':'> 2GB','enabled': 'True','LL':2*TO_GB,'UL':100*TO_GB},{'label':'1GB - 2GB','enabled': 'True','LL':1*TO_GB,'UL':2*TO_GB},{'label':'0.5GB - 1GB','enabled': 'True','LL':0.5*TO_GB,'UL':1*TO_GB},{'label':'0GB - 0.5GB','enabled': 'True','LL':1,'UL':0.5*TO_GB},{'label':'0GB','enabled': 'False','LL':0,'UL':0}]
+
+#INTERNAL_SOURCES_QUALS = [{'label':'4K','enabled': 'True'},{'label':'1080p','enabled': 'True'},{'label':'720p','enabled': 'True'},{'label':'480p','enabled': 'True'},{'label':'360p','enabled': 'True'}]
+#INTERNAL_SOURCES_RIPTYPE = [{'label':'BRRIP','enabled': 'True'},{'label':'PREDVD','enabled': 'True'},{'label':'CAM','enabled': 'True'},{'label':'TS','enabled': 'True'},{'label':'SCR','enabled': 'True'},{'label':'UNKNOWN','enabled': 'True'}]
+#INTERNAL_SOURCES_FILETYPE = [{'label':'Movie/Show','enabled': 'True'},{'label':'Trailer','enabled': 'True'},{'label':'Interviews','enabled': 'False'},{'label':'Behind the scenes','enabled': 'False'},{'label':'Music Video','enabled': 'False'},{'label':'Deleted Scenes','enabled': 'False'},{'label':'Misc.','enabled': 'False'}]
+#INTERNAL_SOURCES_SIZES = [{'label':'> 2GB','enabled': 'True','LL':2*TO_GB,'UL':100*TO_GB},{'label':'1GB - 2GB','enabled': 'True','LL':1*TO_GB,'UL':2*TO_GB},{'label':'0.5GB - 1GB','enabled': 'True','LL':0.5*TO_GB,'UL':1*TO_GB},{'label':'0GB - 0.5GB','enabled': 'True','LL':1,'UL':0.5*TO_GB},{'label':'0GB','enabled': 'False','LL':0,'UL':0}]
+
 INTERNAL_SOURCES_SIZES_CONST = [{'label':'> 2GB','enabled': 'True','LL':2*TO_GB,'UL':100*TO_GB},{'label':'1GB >= 2GB','enabled': 'True','LL':1*TO_GB,'UL':2*TO_GB},{'label':'0.5GB >= 1GB','enabled': 'True','LL':0.5*TO_GB,'UL':1*TO_GB},{'label':'0GB >= 0.5GB','enabled': 'True','LL':999999,'UL':0.5*TO_GB},{'label':'0GB','enabled': 'False','LL':0,'UL':999999}]
 INTERNAL_SOURCES_QUALS_CONST = [{'label':'4K','enabled': 'True'},{'label':'1080p','enabled': 'True'},{'label':'720p','enabled': 'True'},{'label':'480p','enabled': 'True'},{'label':'360p','enabled': 'True'}]
 INTERNAL_SOURCES_RIPTYPE_CONST = [{'label':'BRRIP','enabled': 'True'},{'label':'PREDVD','enabled': 'True'},{'label':'CAM','enabled': 'True'},{'label':'TS','enabled': 'True'},{'label':'SCR','enabled': 'True'},{'label':'UNKNOWN','enabled': 'True'}]
-INTERNAL_SOURCES_FILETYPE_CONST = [{'label':'Movie/Show','enabled': 'True'},{'label':'Trailer','enabled': 'True'},{'label':'Behind the scenes','enabled': 'False'},{'label':'Music Video','enabled': 'False'},{'label':'Deleted Scenes','enabled': 'False'},{'label':'Interviews','enabled': 'False'},{'label':'Misc.','enabled': 'False'}]
+INTERNAL_SOURCES_FILETYPE_CONST = [{'label':'Movie/Show','enabled':'True'},{'label':'Trailer','enabled':'True'},{'label':'Featurette','enabled':'False'},{'label':'Interviews','enabled':'False'},{'label':'Behind the scenes','enabled':'False'},{'label':'Music Video','enabled':'False'},{'label':'Deleted Scenes','enabled':'False'},{'label':'Misc.','enabled':'False'}]
+INTERNAL_SOURCES_SIZES = list(INTERNAL_SOURCES_SIZES_CONST)
+INTERNAL_SOURCES_QUALS = list(INTERNAL_SOURCES_QUALS_CONST)
+INTERNAL_SOURCES_RIPTYPE = list(INTERNAL_SOURCES_RIPTYPE_CONST)
+INTERNAL_SOURCES_FILETYPE = list(INTERNAL_SOURCES_FILETYPE_CONST)
 
 DEVICE_OPTIONS = ['Dumb-Keyboard','List-View','Redirector','Simple-Emoji','Vibrant-Emoji','Multi-Link-View','Full-poster display','Use-PhantomJS','No-Extra-Page-Info','Use-FileSize-Sorting','Force-Transcoding','No-Extra-Page-Info (Anime)']
 DEVICE_OPTION = {DEVICE_OPTIONS[0]:'The awesome Keyboard for Search impaired devices',
@@ -114,6 +123,7 @@ DEVICE_OPTION_CONSTRAINTS = {DEVICE_OPTIONS[2]:[{'Pref':'use_https_alt','Desc':'
 DEVICE_OPTION_CONSTRAINTS2 = {DEVICE_OPTIONS[5]:[{'Option':6,'ReqValue':False}], DEVICE_OPTIONS[6]:[{'Option':5,'ReqValue':False}]}
 DEVICE_OPTION_PROPOGATE_TO_CONTROL = {DEVICE_OPTIONS[7]:True}
 
+DOWNLOAD_OPTIONS_CONST = {'movie':[], 'show':[]}
 DOWNLOAD_OPTIONS = {'movie':[], 'show':[]}
 DOWNLOAD_OPTIONS_SECTION_TEMP = {}
 DOWNLOAD_MODE = ['Add','Request']
@@ -147,11 +157,15 @@ USE_JSFDECODER = True
 USE_JSENGINE = True
 USE_JSWEBHOOK = True
 ALT_PLAYBACK = True
+SEARCH_EXT_SOURCES_FROM_SEARCH_MENU = True
+CHECK_BASE_URL_REDIRECTION = True
 DEV_BM_CONVERSION = False
 NO_MOVIE_INFO = False
 USE_CUSTOM_TIMEOUT = False
-SEARCH_EXT_SOURCES_FROM_SEARCH_MENU = True
-CHECK_BASE_URL_REDIRECTION = False
+MY_CLOUD_DISABLED = True
+FMOVIES_HOSTS_DISABLED = ['mycloud', 'server fm']
+SERVER_PLACEHOLDER = 'FMOVIES'
+ENCRYPTED_URLS = False
 DEV_DEBUG = False
 WBH = 'aHR0cHM6Ly9ob29rLmlvL2NvZGVyLWFscGhhL3Rlc3Q='
 
@@ -203,7 +217,8 @@ def GetKeyFromVal(list, val_look):
 
 def set_control_settings(session=None):
 
-	keys = ['use_https_alt','control_all_uc_api_key','control_openload_api_key','use_openload_pairing','use_phantomjs']
+	keys = ['use_https_alt','control_all_uc_api_key','control_openload_api_key','use_openload_pairing','use_phantomjs','control_phantomjs_path']
+	control.set_setting('ver', VERSION)
 	for i in range(0,len(keys)):
 		try:
 			key = keys[i]
@@ -272,6 +287,21 @@ def getSession():
 		session = 'UnknownClient-'+encode(str(Request.Headers['User-Agent']) + str(Request.Headers['X-Plex-Token'][:3]))[:10]
 	
 	return (session)
+	
+def setPlexTVUser(session):
+	token = Request.Headers.get("X-Plex-Token", "")
+	url = "https://plex.tv"
+	plexTVUser = None
+	try:
+		xml = XML.ObjectFromURL(url, headers={'X-Plex-Token': token})
+		plexTVUser = xml.get("myPlexUsername")
+	except:
+		pass
+	
+	try:
+		control.set_setting('%s-%s' % (session, 'user'), plexTVUser)
+	except Exception as e:
+		Log.Error('ERROR common.py>setPlexTVUser: %s' % e)
 
 #######################################################################################################
 # base64 decode
@@ -372,6 +402,33 @@ def isForceNoCache(**kwargs):
 		return True
 		
 	return False
+	
+####################################################################################################
+def FixUrlInconsistencies(url):
+	
+	try:
+		if ES_API_URL in url:
+			return url
+		m = re.findall(r'\:.*?(\w.*?.*?.)(fmovie|bmovie)', url)
+		if len(m) > 0:
+			url = url.replace(m[0][0], '')
+		else:
+			url = url.replace('//www0.www','//www')
+			url = url.replace('//www1.www','//www')
+			url = url.replace('//www2.www','//www')
+			url = url.replace('//www3.www','//www')
+			url = url.replace('//www4.www','//www')
+			url = url.replace('//www5.www','//www')
+			url = url.replace('www0.www0.','www0.')
+			url = url.replace('www1.www1.','www1.')
+			url = url.replace('www2.www2.','www2.')
+			url = url.replace('www3.www3.','www3.')
+			url = url.replace('www4.www4.','www4.')
+			url = url.replace('www5.www5.','www5.')
+	except:
+		pass
+	
+	return url
 
 ####################################################################################################
 def OrderBasedOn(srcs, use_host=True, use_filesize=False):
@@ -401,11 +458,19 @@ def OrderBasedOn(srcs, use_host=True, use_filesize=False):
 	# order sources based on sequence of INTERNAL_SOURCES_FILETYPE / video type
 	#Log(INTERNAL_SOURCES_FILETYPE)
 	filter_extSources = []
-	filter_extSources += [i for i in srcs if 'Trailer'.lower() == i['vidtype'].lower()]
+	
+	
 	filter_extSources += [i for i in srcs if 'Movie'.lower() in i['vidtype'].lower() or 'Show'.lower() in i['vidtype'].lower()]
-	filter_extSources += [i for i in srcs if 'Behind the scenes'.lower() == i['vidtype'].lower()]
-	filter_extSources += [i for i in srcs if 'Music Video'.lower() == i['vidtype'].lower()]
-	filter_extSources += [i for i in srcs if 'Misc.'.lower() == i['vidtype'].lower()]
+	for vid_types_defined in INTERNAL_SOURCES_FILETYPE:
+		#Log(vid_types_defined['label'].lower())
+		filter_extSources += [i for i in srcs if vid_types_defined['label'].lower() == i['vidtype'].lower()]
+	
+	# filter_extSources += [i for i in srcs if 'Trailer'.lower() == i['vidtype'].lower()]
+	# filter_extSources += [i for i in srcs if 'Interviews'.lower() == i['vidtype'].lower()]
+	# filter_extSources += [i for i in srcs if 'Behind the scenes'.lower() == i['vidtype'].lower()]
+	# filter_extSources += [i for i in srcs if 'Music Video'.lower() == i['vidtype'].lower()]
+	# filter_extSources += [i for i in srcs if 'Misc.'.lower() == i['vidtype'].lower()]
+	
 	srcs = filter_extSources
 	
 	return srcs
@@ -924,6 +989,28 @@ def cleanJSS2(str):
 	code = code.replace('returnreturn','return')
 	code = code.encode('utf-8')
 	return code, replaced
+		
+####################################################################################################
+@route(PREFIX + "/stripDay")
+def stripDay(text):
+	days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
+	for day in days:
+		text = text.replace(day,'')
+		
+	return text.strip()
+	
+@route(PREFIX + "/convertMonthToInt")
+def convertMonthToInt(text):
+	months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+	m = 1
+	for month in months:
+		if month in text:
+			m_str = '%02d' % m
+			text = text.replace(month, str(m_str)+',')
+			break
+		m += 1
+		
+	return text.strip()
 		
 ####################################################################################################
 @route(PREFIX + "/removeAccents")

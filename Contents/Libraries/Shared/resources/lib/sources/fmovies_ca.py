@@ -15,17 +15,17 @@ loggertxt = []
 class source:
 	def __init__(self):
 		del loggertxt[:]
-		self.ver = '0.0.1'
-		self.update_date = 'Nov. 13, 2017'
+		self.ver = '0.0.2'
+		self.update_date = 'Apr. 12, 2018'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
-		self.base_link_alts = ['https://www.fmovies.io','https://www4.fmovies.io']
+		self.base_link_alts = ['https://www3.fmovies.pe','https://www.fmovies.pe','https://www4.fmovies.pe','https://fmovies.io']
 		self.base_link = self.base_link_alts[0]
 		self.search_link = '/sitemap'
 		self.link_server_f1 = "https://vidnode.net/streaming.php?id=%s"
 		self.link_server_f2 = "https://player.fmovie.io/embed.php?id=%s"
 		self.hash_link = '/ajax/episode/info'
-		self.MainPageValidatingContent = 'Watch Free Movies Online -  Streaming MoviesFast - Fmovies'
+		self.MainPageValidatingContent = 'Watch movies online free'
 		self.type_filter = ['movie', 'show', 'anime']
 		self.ssl = False
 		self.disabled = False
@@ -42,6 +42,7 @@ class source:
 		self.siteonline = self.testSite()
 		self.testparser = 'Unknown'
 		self.testparser = self.testParser()
+		self.firstRunDisabled = False
 		self.init = True
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s End --' % (name, self.ver, self.update_date))
 		
@@ -53,6 +54,7 @@ class source:
 			'speed': round(self.speedtest,3),
 			'logo': self.logo,
 			'ssl' : self.ssl,
+			'frd' : self.firstRunDisabled,
 			'online': self.siteonline,
 			'online_via_proxy' : self.proxyrequired,
 			'parser': self.testparser
@@ -72,6 +74,10 @@ class source:
 			log('ERROR','setNewCookies', '%s' % e)
 		
 	def testSite(self):
+		if control.setting('Provider-%s' % name) == False:
+			log('INFO','testSite', 'Plugin Disabled by User - cannot test site')
+			return False
+			
 		for site in self.base_link_alts:
 			bool = self.testSiteAlts(site)
 			if bool == True:
@@ -85,7 +91,7 @@ class source:
 		try:
 			ua = client.randomagent()
 			self.headers['User-Agent'] = ua
-			self.base_link = proxies.request(url=site, headers=self.headers, output='geturl', use_web_proxy=False, httpsskip=True)
+			self.base_link = proxies.request(url=site, headers=self.headers, output='geturl', use_web_proxy=False, httpsskip=True).strip("/")
 			x1 = time.time()
 			http_res, content = proxies.request(url=self.base_link, headers=self.headers, output='response', use_web_proxy=False, httpsskip=True)
 			self.speedtest = time.time() - x1

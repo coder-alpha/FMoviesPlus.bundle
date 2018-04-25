@@ -12,7 +12,7 @@ import urllib, urlparse, json, time, re, datetime, calendar
 import common
 from __builtin__ import ord, format, eval
 
-BASE_URL = "https://bmovies.to"
+BASE_URL = "https://fmovies.taxi"
 HASH_PATH_MENU = "/user/ajax/menu-bar"
 HASH_PATH_INFO = "/ajax/episode/info"
 TOKEN_PATH = "/token"
@@ -49,6 +49,9 @@ def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web
 		user_defined_reqkey_cookie = Prefs['reqkey_cookie']
 	except:
 		pass
+		
+	if key == None:
+		return None, False, 'Item key is None. Item does not exist !', None, None
 	
 	res = None
 	res_subtitle = None
@@ -241,7 +244,7 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 	else:
 		if serverts == None:
 			serverts = str(((int(time.time())/3600)*3600))
-		
+
 		UA = common.client.randomagent()
 		
 		headersS = {'X-Requested-With': 'XMLHttpRequest'}
@@ -432,7 +435,7 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 	common.CACHE_COOKIE.append(cookie_dict)
 	
 	return cookie
-
+	
 def decodeAndParse(token, use_debug=False, use_https_alt=False, quiet=True):
 	# dec = common.jsfdecoder.JSFDecoder(common.client.b64decode(token)).ca_decode()
 	# dec = dec.split('reqkey=')
@@ -582,6 +585,28 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 			return magic_url, isTargetPlay, error, host_type, subtitle
 		referer = url
 		serverts = str(serverts)
+		
+		try:
+			myts1 = serverts
+			serverts = str(int(myts1))
+		except:
+			if use_debug:
+				Log("Server-TS is encoded !")
+			try:
+				b, resp = decode_ts(myts1)
+				if b == False:
+					raise Exception('Could not decode ts')
+				else:
+					serverts = str(int(resp))
+					if use_debug:
+						Log("Server-TS decoded !")
+			except:
+				Log("Server-TS could not be decoded !")
+				if common.control.setting('9animeserverts') != None:
+					serverts = str(common.control.setting('9animeserverts'))
+					if use_debug:
+						Log("Server-TS from provider plugin !")
+		
 		T_BASE_URL = BASE_URL
 		T_BASE_URL = 'https://%s' % common.client.geturlhost(url)
 		is9Anime = True if common.ANIME_KEY in url else False
@@ -628,54 +653,109 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 			#print result
 			result = json.loads(result)
 
-			if 'error' in result:
-				grabber = None
-				error = result['error']
-			elif result['target'] != "":
-				grabber = result['target']
-				b, resp = decode_t(grabber, -18, is9Anime)
-				if b == False:
-					raise ValueError(resp)
-				grabber = resp
-				isTargetPlay = True
-				subtitle = result['subtitle']
-			else:
-				grabber = result['grabber']
-				grab_data = grabber
-				grabber_url = urlparse.urljoin(BASE_URL, GRABBER_API)
-				
-				if '?' in grabber:
-					grab_data = grab_data.split('?')
-					grabber_url = grab_data[0]
-					grab_data = grab_data[1]
+			if is9Anime == True:
+				if 'error' in result:
+					grabber = None
+					error = result['error']
+				elif result['target'] == "-":
+					grabber = result['grabber']
+					grab_data = grabber
+					grabber_url = urlparse.urljoin(T_BASE_URL, GRABBER_API)
 					
-				grab_server = str(urlparse.parse_qs(grab_data)['server'][0])
-				
-				b, resp = decode_t(result['params']['token'], -18, is9Anime)
-				if b == False:
-					raise ValueError(resp)
-				token = resp
-				b, resp = decode_t(result['params']['options'], -18, is9Anime)
-				if b == False:
-					raise ValueError(resp)
-				options = resp
-				
-				grab_query = {'ts':serverts, grabber_url:'','id':result['params']['id'],'server':grab_server,'mobile':'0','token':token,'options':options}
-				tk = get_token(grab_query, token_error, is9Anime)
+					if '?' in grabber:
+						grab_data = grab_data.split('?')
+						grabber_url = grab_data[0]
+						grab_data = grab_data[1]
+						
+					grab_server = str(urlparse.parse_qs(grab_data)['server'][0])
+					
+					b, resp = decode_t(result['params']['token'], -18, is9Anime)
+					if b == False:
+						raise Exception(resp)
+					token = resp
+					b, resp = decode_t(result['params']['options'], -18, is9Anime)
+					if b == False:
+						raise Exception(resp)
+					options = resp
+					
+					grab_query = {'ts':serverts, grabber_url:'','id':result['params']['id'],'server':grab_server,'mobile':'0','token':token,'options':options}
+					tk = get_token(grab_query, token_error, is9Anime)
 
-				if tk == None:
-					raise ValueError('video token algo')
-				grab_info = {'token':token,'options':options}
-				del query['server']
-				query.update(grab_info)
-				query.update(tk)
-				
-				subtitle = result['subtitle']
-				if '?' in grabber:
-					grabber += '&' + urllib.urlencode(query)
-				else:
-					grabber += '?' + urllib.urlencode(query)
+					if tk == None:
+						raise Exception('video token algo')
+					grab_info = {'token':token,'options':options}
+					del query['server']
+					query.update(grab_info)
+					query.update(tk)
 					
+					subtitle = result['subtitle']
+					if subtitle==None or len(subtitle) == 0:
+						subtitle = None
+					
+					if '?' in grabber:
+						grabber += '&' + urllib.urlencode(query)
+					else:
+						grabber += '?' + urllib.urlencode(query)
+				
+					if grabber!=None and not grabber.startswith('http'):
+						grabber = 'http:'+grabber
+				else:
+					grabber = result['target']
+					b, resp = decode_t(grabber, -18, is9Anime)
+					if b == False:
+						raise ValueError(resp)
+					grabber = resp
+					isTargetPlay = True
+					subtitle = result['subtitle']
+			else:
+				if 'error' in result:
+					grabber = None
+					error = result['error']
+				elif result['target'] != "":
+					grabber = result['target']
+					b, resp = decode_t(grabber, -18, is9Anime)
+					if b == False:
+						raise ValueError(resp)
+					grabber = resp
+					isTargetPlay = True
+					subtitle = result['subtitle']
+				else:
+					grabber = result['grabber']
+					grab_data = grabber
+					grabber_url = urlparse.urljoin(T_BASE_URL, GRABBER_API)
+					
+					if '?' in grabber:
+						grab_data = grab_data.split('?')
+						grabber_url = grab_data[0]
+						grab_data = grab_data[1]
+						
+					grab_server = str(urlparse.parse_qs(grab_data)['server'][0])
+					
+					b, resp = decode_t(result['params']['token'], -18, is9Anime)
+					if b == False:
+						raise ValueError(resp)
+					token = resp
+					b, resp = decode_t(result['params']['options'], -18, is9Anime)
+					if b == False:
+						raise ValueError(resp)
+					options = resp
+					
+					grab_query = {'ts':serverts, grabber_url:'','id':result['params']['id'],'server':grab_server,'mobile':'0','token':token,'options':options}
+					tk = get_token(grab_query, token_error, is9Anime)
+
+					if tk == None:
+						raise ValueError('video token algo')
+					grab_info = {'token':token,'options':options}
+					del query['server']
+					query.update(grab_info)
+					query.update(tk)
+					
+					subtitle = result['subtitle']
+					if '?' in grabber:
+						grabber += '&' + urllib.urlencode(query)
+					else:
+						grabber += '?' + urllib.urlencode(query)
+						
 			if subtitle == None or len(subtitle) == 0:
 				subtitle = None
 				
@@ -715,7 +795,7 @@ def a01(t, token_error=False, is9Anime=False):
 			if is9Anime == False:
 				i += ord(t[e]) + e
 			else:
-				i += ord(t[e]) * e
+				i += ord(t[e]) + e
 		else:
 			try:
 				i += eval('ord(t[%s]) %s' % (e, TOKEN_OPER[0]))
@@ -728,10 +808,13 @@ def decode_t(t, i, is9Anime=False, **kwargs):
 	n = [] 
 	e = []
 	r = ''
+	
+	if common.ENCRYPTED_URLS == False:
+		return True, t
 
 	try:
 		if is9Anime == True:
-			return True, t
+			return decode_t2(t)
 		for n in range(0, len(t)):
 			if n==0 and t[n] == '.':
 				pass
@@ -750,6 +833,58 @@ def decode_t(t, i, is9Anime=False, **kwargs):
 	except Exception as e:
 		Log("fmovies.py > decode_t > %s" % e)
 	return False, 'Error in decoding val'
+	
+def decode_t2(t):
+	r = ""
+	e_s = 'abcdefghijklmnopqrstuvwxyz'
+	r_s = 'acegikmoqsuwybdfhjlnprtvxz'
+	try:
+		if t[0] == '-' and len(t) > 1:
+			t = t[1:]
+			for n in range(0, len(t)):
+				if n == 0 and t[n] == '-':
+					pass
+				else:
+					s = False
+					for ix in range(0, len(r_s)):
+						if t[n] == r_s[ix]:
+							r += e_s[ix]
+							s = True
+							break
+					if s == False:
+						r += t[n]
+						
+			missing_padding = len(r) % 4
+			if missing_padding != 0:
+				r += b'='* (4 - missing_padding)
+			r = common.client.b64decode(r)
+		return True, r
+	except Exception as e:
+		False, 'Error in decoding'
+		
+def decode_ts(t):
+	r = ""
+	e_s = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+	r_s = 'ACEGIKMOQSUWYBDFHJLNPRTVXZ'
+	try:
+		if len(t) > 1:
+			for n in range(0, len(t)):
+				s = False
+				for ix in range(0, len(r_s)):
+					if t[n] == r_s[ix]:
+						r += e_s[ix]
+						s = True
+						break
+				if s == False:
+					r += t[n]
+						
+			missing_padding = len(r) % 4
+			if missing_padding != 0:
+				r += b'='* (4 - missing_padding)
+			r = common.client.b64decode(r)
+		return True, r
+	except Exception as e:
+		False, 'Error in decoding'
 
 def get_token(n, token_error=False, is9Anime=False, **kwargs):
 	try:

@@ -1,9 +1,14 @@
 # -*- coding: utf-8 -*-
 
-'''
-    Exodus Add-on
-    Copyright (C) 2016 Exodus
+#########################################################################################################
+#
+# IMDb
+#
+# Coder Alpha
+# https://github.com/coder-alpha
+#
 
+'''
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
@@ -17,6 +22,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
+#########################################################################################################
 
 
 import re,urllib,urlparse,json,time
@@ -28,31 +34,29 @@ from resources.lib.libraries import testparams
 from resources.lib.libraries import control
 from resources.lib import proxies
 
-name = 'GoGoAnime'
+name = 'IMDb'
 loggertxt = []
 
 class source:
 	def __init__(self):
 		del loggertxt[:]
-		self.ver = '0.0.1'
-		self.update_date = 'Nov. 13, 2017'
+		self.ver = '0.0.2'
+		self.update_date = 'Dec. 19, 2017'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
 		self.priority = 1
 		self.disabled = False
 		self.language = ['en']
-		self.type_filter = ['anime']
-		self.domains = ['gogoanimemobile.com', 'gogoanimemobile.net', 'gogoanime.io']
-		self.base_link_alts = ['https://ww3.gogoanime.io','https://gogoanime.io','http://gogoanimemobile.com', 'http://gogoanimemobile.net']
+		self.type_filter = ['movie', 'show', 'anime']
+		self.domains = ['imdb.com']
+		self.base_link_alts = ['http://www.imdb.com']
 		self.base_link = self.base_link_alts[0]
-		self.search_link = '/search.html?keyword=%s'
-		self.episode_link = '/%s-episode-%s'
-		self.MainPageValidatingContent = 'anime'
-		self.urlhost = 'gogoanime.io'
+		self.page_link = 'http://www.imdb.com/title/%s/videogallery'
+		self.MainPageValidatingContent = 'IMDb - Movies, TV and Celebrities - IMDb'
 		self.name = name
 		self.loggertxt = []
 		self.ssl = False
-		self.logo = 'http://i.imgur.com/XC3vwqj.png'
+		self.logo = 'https://i.imgur.com/LqO2Fn0.png'
 		self.headers = {}
 		self.speedtest = 0
 		if len(proxies.sourceProxies)==0:
@@ -139,29 +143,31 @@ class source:
 			if self.siteonline == False:
 				log('INFO', 'testParser', '%s is offline - cannot test parser' % self.base_link)
 				return False
-		
-			for show in testparams.test_shows:
-				geturl = self.get_show(tvshowtitle=show['title'], season=show['season'], year=show['year'])
-				geturl = self.get_episode(geturl, episode=show['episode'])
-				links = self.get_sources(url=geturl, testing=True)
 				
-				if links != None and len(links) > 0:
+			for movie in testparams.test_movies:
+				getmovieurl = self.get_movie(title=movie['title'], year=movie['year'], imdb=movie['imdb'])
+				movielinks = self.get_sources(url=getmovieurl, testing=True)
+				
+				if movielinks != None and len(movielinks) > 0:
 					log('SUCCESS', 'testParser', 'Parser is working')
 					return True
-
+					
 			log('FAIL', 'testParser', 'Parser NOT working')
 			return False
 		except Exception as e:
 			log('ERROR', 'testParser', '%s' % e)
 			return False
 			
-	def get_movie(self,imdb, title, year, proxy_options=None, key=None):
+	def get_movie(self, imdb, title, year, proxy_options=None, key=None):
 		try:
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_movie','Provider Disabled by User')
 				return None
 				
-			return None
+			if imdb == None:
+				raise
+				
+			return self.page_link % imdb
 		except Exception as e: 
 			log('ERROR', 'get_movie','%s: %s' % (title,e), dolog=self.init)
 			return
@@ -172,31 +178,10 @@ class source:
 				log('INFO','get_show','Provider Disabled by User')
 				return None
 				
-			t = cleantitle.get(tvshowtitle)
-			year = '%s' % year
-			q = urlparse.urljoin(self.base_link, self.search_link)
-			q = q % urllib.quote_plus(tvshowtitle)
-			
-			#r = client.request(q)
-			r = proxies.request(q, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
-
-			r = client.parseDOM(r, 'ul', attrs={'class': 'items'})
-			r = client.parseDOM(r, 'li')
-			
-			if len(r) == 0:
-				raise Exception('Could not find a matching show title: %s' % tvshowtitle)
-			
-			r = [(client.parseDOM(i, 'a', ret='href'), client.parseDOM(i, 'a', ret='title'), re.findall('\d{4}', i)) for i in r]
-			
-			r = [(i[0][0], i[1][0], i[2][-1]) for i in r if i[0] and i[1] and i[2]]
-			r = [i for i in r if t == cleantitle.get(i[1]) and year == i[2]]
-			r = r[0][0]
-
-			url = re.findall('(?://.+?|)(/.+)', r)[0]
-			url = client.replaceHTMLCodes(url)
-			url = url.encode('utf-8')
-			
-			return url
+			if imdb == None:
+				raise
+				
+			return self.page_link % imdb
 		except Exception as e:
 			log('ERROR', 'get_show','%s: %s' % (tvshowtitle,e), dolog=self.init)
 			return
@@ -207,12 +192,14 @@ class source:
 			if control.setting('Provider-%s' % name) == False:
 				return None
 				
-			if url == None: return
-
-			url = [i for i in url.strip('/').split('/')][-1]
-			url = self.episode_link % (url, episode)
+			if url != None:
+				return url
+				
+			if imdb == None:
+				raise
+				
+			return self.page_link % imdb
 			
-			return url
 		except Exception as e:
 			log('ERROR', 'get_episode','%s: %s' % (title,e), dolog=self.init)
 			return
@@ -225,49 +212,88 @@ class source:
 				log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key), dolog=not testing)
 				return sources
 
-			url = urlparse.urljoin(self.base_link, url)
+			# get IMDb item page
+			result = proxies.request(url, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
+			r = client.parseDOM(result, 'div', attrs = {'class': 'aux-content-widget-3'})[1]
+				
+			# get types of videos available
+			types = {'content_type-trailer':'Trailer', 'content_type-clip':'Clip', 'content_type-interview':'Interviews', 'content_type-other':'Misc.','content_type-featurette':'Featurette'}
+			re_map_types = {'Featurette':'Featurette','Clip':'Trailer','Trailer':'Trailer','Interviews':'Interviews','Misc.':'Misc.'}
 			
-			#r = client.request(url)
-			req = proxies.request(url, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
-
-			r = client.parseDOM(req, 'iframe', ret='src')
-			try:
-				r2 = re.findall('data-video=\"(.*?)\"', req)
-				for r2_i in r2:
-					r.append(r2_i)
-			except:
-				pass
+			r1 = client.parseDOM(r, 'a', ret='href')
+			
+			types_map = {}
+			
+			for r1_url in r1:
+				type = 'Trailer'
+				for t in types.keys():
+					if t in r1_url:
+						type = types[t]
+						break
+						
+				if type not in types_map.keys():
+					types_map[type] = []
+						
+				result_r1 = proxies.request(urlparse.urljoin(self.base_link, r1_url), proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
+				
+				r2 = client.parseDOM(result_r1, 'div', attrs = {'class': 'search-results'})[0]
+				r2a = client.parseDOM(r2, 'a', ret='href')
+				
+				for r2a1 in r2a:
+					if 'ref_' in r2a1:
+						types_map[type].append(urlparse.urljoin(self.base_link, r2a1))
 				
 			links = []
+			quality = u'720p'
+			selection_map = {}
+			
+			for vidtype in types_map.keys():
+				page_links = types_map[vidtype]
+				for page_link in page_links:
+					try:
+						res = proxies.request(page_link, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
+						vidurls = re.findall(r'encodings\":(.*?\])', res)[0]
+						poster = client.parseDOM(res, 'meta', attrs = {'itemprop': 'image'}, ret='content')[0]
+						vidurls_json = json.loads(vidurls)
+						txt = re.findall(r'<title>(.*?)</title>', res)[0]
+						txt = txt.replace('&quot;','')
 
-			for u in r:
-				try:
-					if 'http' not in u:
-						u = 'http:' + u
-
-					if u.startswith('http') == True:
-						if 'vidstreaming' in u:
-							#url = client.request(u)
-							url = proxies.request(u, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
-							
-							url = client.parseDOM(url, 'source', ret='src')
-						else:
-							url = [u]
-
-						for i in url:
-							#try: sources.append({'source': 'gvideo', 'quality': directstream.googletag(i)[0]['quality'], 'language': 'en', 'url': i, 'direct': True, 'debridonly': False})
-							#except: pass
-							
+						for viddata in vidurls_json:
 							try:
-								qualityt = client.googletag(i)[0]['quality']
-							except:
-								qualityt = u'720p'
-							try:
-								links = resolvers.createMeta(i, self.name, self.logo, qualityt, links, key, vidtype='Show', testing=testing)
-							except:
-								pass
-				except:
-					pass
+								vidurl = viddata['videoUrl']
+								if '.mp4' in vidurl:
+									if txt not in selection_map.keys():
+										selection_map[txt] = {}
+									quality = viddata['definition']
+									vidtype = re_map_types[vidtype]
+									try:
+										l = resolvers.createMeta(vidurl, self.name, self.logo, quality, [], key, vidtype=vidtype, testing=testing, txt=txt, poster=poster)
+										l = l[0]
+										if testing == True:
+											links.append(l)
+											break
+									except Exception as e:
+										log('ERROR', 'get_sources-0', '%s' % e, dolog=not testing)	
+									if l['quality'] in selection_map[txt].keys():
+										selection_map[txt][l['quality']].append({'fs' : int(l['fs']), 'link': l})
+									else:
+										selection_map[txt][l['quality']] = [{'fs' : int(l['fs']), 'link': l}]
+							except Exception as e:
+								log('ERROR', 'get_sources-1', '%s' % e, dolog=not testing)
+					except Exception as e:
+						log('ERROR', 'get_sources-2', '%s' % e, dolog=not testing)
+					if testing == True and len(links) > 0:
+						break
+				if testing == True and len(links) > 0:
+					break
+						
+			#print selection_map
+			for sel_titles in selection_map.keys():
+				for sel in selection_map[sel_titles].keys():
+					qls = selection_map[sel_titles][sel]
+					files = sorted(qls, key=lambda k: k['fs'], reverse=True)
+					file = files[0]
+					links.append(file['link'])
 					
 			for i in links: sources.append(i)
 			

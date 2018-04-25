@@ -34,16 +34,18 @@ from __builtin__ import ord, format, eval
 name = 'FMovies'
 loggertxt = []
 
+ENCRYPTED_URLS = False
+
 class source:
 	def __init__(self):
 		del loggertxt[:]
-		self.ver = '0.0.1'
-		self.update_date = 'Nov. 13, 2017'
+		self.ver = '0.0.3'
+		self.update_date = 'Nov. 18, 2017'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
 		self.disabled = False
 		self.TOKEN_KEY = []
-		self.base_link_alts = ['https://bmovies.to','https://bmovies.pro'] #['https://fmovies.to','https://fmovies.is','https://fmovies.se']
+		self.base_link_alts = ['https://bmovies.pro','https://bmovies.is','https://bmovies.to','https://bmovies.club','https://bmovies.online','https://bmovies.ru','https://fmovies.to','https://fmovies.is','https://fmovies.se','https://fmovies.taxi']
 		self.base_link = self.base_link_alts[0]
 		self.grabber_api = "grabber-api/"
 		self.search_link = '/sitemap'
@@ -69,6 +71,7 @@ class source:
 		self.testparser = 'Unknown'
 		self.testparser = self.testParser()
 		self.initAndSleepThread()
+		self.firstRunDisabled = False
 		self.init = True
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s End --' % (name, self.ver, self.update_date))
 		
@@ -80,6 +83,7 @@ class source:
 			'speed': round(self.speedtest,3),
 			'logo': self.logo,
 			'ssl' : self.ssl,
+			'frd' : self.firstRunDisabled,
 			'online': self.siteonline,
 			'online_via_proxy' : self.proxyrequired,
 			'parser': self.testparser
@@ -90,7 +94,19 @@ class source:
 		return self.loggertxt
 		
 	def testSite(self):
+		if control.setting('Provider-%s' % name) == False:
+			log('INFO','testSite', 'Plugin Disabled by User - cannot test site')
+			return False
+			
 		for site in self.base_link_alts:
+			try:
+				sitex = client.getRedirectingUrl(site).strip("/")
+				if 'http' not in sitex:
+					raise Exception('Error in geturl')
+				else:
+					site = sitex
+			except:
+				pass
 			bool = self.testSiteAlts(site)
 			if bool == True:
 				return bool
@@ -125,6 +141,8 @@ class source:
 	def InitSleepThread(self):
 		while True:
 			time.sleep(60*100)
+			self.siteonline = self.testSite()
+			self.testparser = self.testParser()
 			self.initAndSleep()
 			
 	def initAndSleep(self):
@@ -570,6 +588,10 @@ class source:
 		n = [] 
 		e = []
 		r = ''
+		
+		if ENCRYPTED_URLS == False:
+			return True, t
+		
 		try:
 			for n in range(0, len(t)):
 				if n == 0 and t[n] == '.':
@@ -592,7 +614,10 @@ class source:
 
 	def __get_token(self, n, token_error=False):
 		try:
-			d = self.TOKEN_KEY[0]
+			if token_error == True and len(self.TOKEN_KEY) > 1:
+				d = self.TOKEN_KEY[1]
+			else:
+				d = self.TOKEN_KEY[0]
 			s = self.a01(d, token_error)
 			for i in n: 
 				s += self.a01(self.r01(d + i, n[i]), token_error)
@@ -613,19 +638,32 @@ class source:
 			unpacked_code = ''
 			cch = ''
 			if len(self.TOKEN_KEY) == 0:
-				all_js_pack_code = proxies.request(all_js_url, use_web_proxy=self.proxyrequired, httpsskip=True)
-				unpacked_code = jsunpack.unpack(all_js_pack_code)
-				cch = re.findall(r'%s' % client.b64decode('ZnVuY3Rpb25cKFthLXpdLFthLXpdLFthLXpdXCl7XCJ1c2Ugc3RyaWN0XCI7ZnVuY3Rpb24gW2Etel1cKFwpe3JldHVybiAoLio/KX1mdW5jdGlvbiBbYS16XVwoW2Etel1cKQ=='), unpacked_code)[0]
-				token_key = re.findall(r'%s=.*?\"(.*?)\"' % cch, unpacked_code)[0]
-				if token_key !=None and token_key != '':
-					self.TOKEN_KEY.append(token_key)
+				try:
+					all_js_pack_code = proxies.request(all_js_url, use_web_proxy=self.proxyrequired, httpsskip=True)
+					unpacked_code = jsunpack.unpack(all_js_pack_code)
+					cch = re.findall(r'%s' % client.b64decode('ZnVuY3Rpb25cKHQsaSxuXCl7XCJ1c2Ugc3RyaWN0XCI7ZnVuY3Rpb24gZVwoXCl7cmV0dXJuICguKj8pfWZ1bmN0aW9uIHJcKHRcKQ=='), unpacked_code)[0]
+					token_key = re.findall(r'%s=.*?\"(.*?)\"' % cch, unpacked_code)[0]
+					if token_key !=None and token_key != '':
+						self.TOKEN_KEY.append(token_key)
+				except Exception as e:
+					log('ERROR', 'getVidToken-1.1','%s' % e, dolog=False)
+					
+			if len(self.TOKEN_KEY) == 0:
+				try:
+					cch = re.findall(r'%s' % client.b64decode('ZnVuY3Rpb25cKFthLXpdLFthLXpdLFthLXpdXCl7XCJ1c2Ugc3RyaWN0XCI7ZnVuY3Rpb24gW2Etel1cKFwpe3JldHVybiAoLio/KX1mdW5jdGlvbiBbYS16XVwoW2Etel1cKQ=='), unpacked_code)[0]
+					token_key = re.findall(r'%s=.*?\"(.*?)\"' % cch, unpacked_code)[0]
+					if token_key !=None and token_key != '':
+						#cookie_dict.update({'token_key':token_key})
+						self.TOKEN_KEY.append(token_key)
+				except Exception as e:
+					log('ERROR', 'getVidToken-1.2','%s' % e, dolog=False)
 		except Exception as e:
 			log('ERROR', 'getVidToken-1','%s' % e, dolog=False)
 			log('ERROR', 'getVidToken-1','%s' % unpacked_code, dolog=False)
 			log('ERROR', 'getVidToken-1','%s' % cch, dolog=False)
 
 		try:
-			if len(self.TOKEN_KEY) == 0:
+			if len(self.TOKEN_KEY) == 0 or True:
 				token_key = proxies.request(self.TOKEN_KEY_PASTEBIN_URL, use_web_proxy=self.proxyrequired, httpsskip=True)
 				if token_key !=None and token_key != '':
 					#cookie_dict.update({'token_key':token_key})

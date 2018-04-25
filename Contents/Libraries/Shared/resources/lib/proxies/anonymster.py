@@ -7,17 +7,17 @@ from resources.lib import resolvers
 
 
 # Web Proxy
-name = 'Xperienc'
+name = 'Anonymster'
 loggertxt = []
-PROXY_URL = "https://www.xperienc.com/browsexp.php?b=12&u="
+PROXY_URL = "https://proxy.anonymster.com/browse.php?b=2&u="
 
 class proxy:
 	def __init__(self):
 		del loggertxt[:]
-		self.ver = '0.0.2'
+		self.ver = '0.0.1'
 		self.update_date = 'Dec. 19, 2017'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
-		self.base_link = 'https://www.xperienc.com'
+		self.base_link = 'https://proxy.anonymster.com'
 		self.name = name
 		self.loggertxt = []
 		self.disabled = False
@@ -76,6 +76,8 @@ def requestdirect(url, close=True, redirect=True, followredirect=False, error=Fa
 		
 		page_data_string = client.getPageDataBasedOnOutput(res, output)
 		
+		#print page_data_string
+		
 		pattern = re.compile('<script[\s\S]+?/script>')
 		page_data_string = re.sub(pattern, '', page_data_string)
 			
@@ -94,7 +96,7 @@ def requestdirect(url, close=True, redirect=True, followredirect=False, error=Fa
 			page_data_string = page_data_stringx
 		except Exception as e:
 			log('FAIL','requestdirect-2', '%s' % e, dolog=False)
-			
+		
 		#print page_data_string
 		#page_data_string = str(page_data_string)
 		
@@ -109,12 +111,11 @@ def requestdirect(url, close=True, redirect=True, followredirect=False, error=Fa
 			except Exception as e:
 				log('FAIL','requestdirect-4', '%s' % e, dolog=False)
 		
-		page_data_string = page_data_string.replace('https://www.xperienc.com/browsexp.php?', '')
-		page_data_string = page_data_string.replace('/browsexp.php?u=', '')
-		page_data_string = page_data_string.replace('&amp;b=12', '')
-		page_data_string = page_data_string.replace('b=12', '')
+		page_data_string = page_data_string.replace('https://proxy.anonymster.com/browse.php?', '')
+		page_data_string = page_data_string.replace('/browse.php?u=', '')
+		page_data_string = page_data_string.replace('&amp;b=2', '')
+		page_data_string = page_data_string.replace('b=2', '')
 		page_data_string = page_data_string.replace('u=', '')
-		page_data_string = page_data_string.replace('browsexp.php?', '')
 		page_data_string = page_data_string.replace('&http', 'http')
 		page_data_string = page_data_string.replace('/http', 'http')
 		

@@ -109,6 +109,7 @@ class sources:
 							'speed': 0.0,
 							'logo': 'Unknown',
 							'ssl': 'Unknown',
+							'frd': True,
 							'online': 'Unknown',
 							'online_via_proxy' : 'Unknown',
 							'parser': 'Unknown'

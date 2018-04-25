@@ -33,9 +33,11 @@ def CheckAdmin():
 		if Prefs['use_debug']:
 			Log.Debug('* Plex Token is available for validation')
 		try:
+			result = ""
 			req = urllib2.Request(url, headers={'X-Plex-Token': ptoken})
 			res = urllib2.urlopen(req, timeout=10)
-			if res.read():
+			result = res.read()
+			if result:
 				Log('* Current User is Admin')
 				Log.Debug('*' * 80)
 				return True

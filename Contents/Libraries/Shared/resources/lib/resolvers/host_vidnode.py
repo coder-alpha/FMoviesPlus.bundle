@@ -2,7 +2,7 @@
 
 #########################################################################################################
 #
-# Youtube scrapper
+# Vidnode scrapper
 #
 # Coder Alpha
 # https://github.com/coder-alpha
@@ -26,13 +26,13 @@
 
 import re,urllib,json,time
 import os, sys, ast
+from __builtin__ import eval
 
 try:
 	from resources.lib.libraries import client
 	from resources.lib.libraries import control
 except:
 	pass
-
 
 hdr = {
 	'User-Agent': client.USER_AGENT,
@@ -42,32 +42,36 @@ hdr = {
 	'Accept-Language': 'en-US,en;q=0.8',
 	'Connection': 'keep-alive'}
 
-name = 'youtube'
+name = 'vidnode'
 loggertxt = []
 	
 class host:
 	def __init__(self):
 		del loggertxt[:]
 		self.ver = '0.0.1'
-		self.update_date = 'Nov. 13, 2017'
+		self.update_date = 'Apr. 19, 2018'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
-		self.logo = 'http://i.imgur.com/qZUP77r.png'
+		self.logo = 'https://i.imgur.com/AG9ooWt.png'
 		self.name = name
-		self.host = ['youtube.com']
-		self.netloc = ['youtube.com']
+		self.host = ['vidnode.net']
+		self.netloc = ['vidnode.net']
 		self.quality = '1080p'
 		self.loggertxt = []
 		self.captcha = False
-		self.allowsDownload = False
-		self.resumeDownload = False
+		self.allowsDownload = True
+		self.resumeDownload = True
 		self.allowsStreaming = True
 		self.ac = False
 		self.pluginManagedPlayback = False
 		self.speedtest = 0
-		self.working = self.testWorking()[0]
+		testResults = self.testWorking()
+		self.working = testResults[0]
+		self.msg = testResults[1]
+		if self.working == False:
+			self.captcha = True
+			self.working = True
 		self.resolver = self.testResolver()
-		self.msg = ''
 		self.init = True
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s End --' % (name, self.ver, self.update_date))
 
@@ -100,21 +104,21 @@ class host:
 		try:
 			testUrls = self.testUrl()
 			bool = False
-			msg = []
+			msg = ''
 			for testUrl in testUrls:
 				x1 = time.time()
 				bool = check(testUrl)
 				self.speedtest = time.time() - x1
-				msg.append([bool, testUrl])
+				
 				if bool == True:
 					break
 				
 			log(method='testWorking', err='%s online status: %s' % (self.name, bool))
-			return (bool,msg)
+			return (bool, msg)
 		except Exception as e:
 			log(method='testWorking', err='%s online status: %s' % (self.name, bool))
 			log(type='ERROR', method='testWorking', err=e)
-			return False
+			return False, msg
 			
 	def testResolver(self):
 		try:
@@ -133,7 +137,7 @@ class host:
 		return bool
 		
 	def testUrl(self):
-		return ['https://www.youtube.com/watch?v=HcRvwVwD1Sc']
+		return ['https://vidnode.net/streaming.php?id=MTc4ODc5']
 		
 	def createMeta(self, url, provider, logo, quality, links, key, riptype, vidtype='Movie', lang='en', sub_url=None, txt='', file_ext = '.mp4', testing=False, poster=None):
 	
@@ -146,19 +150,51 @@ class host:
 			return links
 			
 		orig_url = url
+		ua = client.randomagent()
+		headers = {'Referer':'https://vidnode.net/','User-Agent':'Mozilla'}
 			
 		urldata = client.b64encode(json.dumps('', encoding='utf-8'))
-		params = client.b64encode(json.dumps('', encoding='utf-8'))
+		params = {'headers':headers,'cookie':None}
+		params = json.dumps(params, encoding='utf-8')
+		params = client.b64encode(params)
 		
-		online = check(url)
+		online = check(url, headers=headers)
+		vidurls, err, sub_url_t = getAllQuals(url, online)
+		
+		if vidurls == None:
+			log(type='ERROR',method='createMeta-1', err=u'%s' % err)
+			return links
+			
+		if sub_url_t != None:
+			sub_url = sub_url_t
+			
 		files_ret = []
-		fs = 5*1024*1024*1024
 		
-		try:
-			files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':riptype, 'provider':provider, 'url':url, 'durl':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':fs, 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':self.netloc[0], 'misc':{'player':'eplayer', 'gp':False}})
-		except Exception as e:
-			log(type='ERROR',method='createMeta', err=u'%s' % e)
-			files_ret.append({'source':urlhost, 'maininfo':'', 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'url':url, 'durl':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':fs, 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':self.netloc[0], 'misc':{'player':'eplayer', 'gp':False}})
+		#print vidurls
+		
+		for vv in vidurls:
+			durl = vv['page']
+			vidurl, r1, r2 = resolve(durl, online)
+			
+			print vidurl
+			
+			if vidurl == None:
+				log(type='ERROR',method='createMeta', err=u'%s' % r1)
+			else:
+				quality = vv['label']
+				try:
+					online = check(vidurl, headers=headers)
+					fs = client.getFileSize(vidurl)
+					fs = int(fs)
+				except:
+					fs = 0
+
+				try:
+					log(type='INFO',method='createMeta', err=u'durl:%s ; res:%s; fs:%s' % (vidurl,quality,fs))
+					files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':txt, 'quality':quality, 'vidtype':vidtype, 'rip':riptype, 'provider':provider, 'url':durl, 'durl':durl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':fs, 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'poster':poster, 'sub_url':sub_url, 'subdomain':client.geturlhost(url), 'misc':{'player':'iplayer', 'gp':False}})
+				except Exception as e:
+					log(type='ERROR',method='createMeta', err=u'%s' % e)
+					files_ret.append({'source':urlhost, 'maininfo':'', 'titleinfo':txt, 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'url':durl, 'durl':durl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':fs, 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(url), 'misc':{'player':'iplayer', 'gp':False}})
 			
 		for fr in files_ret:
 			links.append(fr)
@@ -175,12 +211,63 @@ class host:
 	def testLink(self, url):
 		return check(url)
 	
-def resolve(url):
+def resolve(url, online=None):
 
-	if check(url) == False: return
-	
-	return url
+	try:
+		if online == None:
+			if check(url) == False: 
+				raise Exception('Video not available')
 
+		video_url = None
+		err = ''
+		try:
+			if '.mp4' in url.lower() or '.m3u8' in url.lower():
+				video_url = url
+		except Exception as e:
+			err = r
+			log('ERROR', 'resolve', 'link > %s : %s' % (url, e), dolog=self.init)
+
+		return (video_url, err, None)
+		
+	except Exception as e:
+		e = '{}'.format(e)
+		return (None, e, None)
+
+def getAllQuals(url, online=None):
+	try:
+		if online == None:
+			if check(url) == False: 
+				raise Exception('Video not available')
+			
+		video_url_a = []
+
+		page_data_string = client.request(url, httpsskip=True)
+		srcs = re.findall(r'{.*mp4.*}', page_data_string)[0]
+		srcs = srcs.replace("file","'file'").replace("label","'label'")
+		links = eval("{'file':'','label':''},"+srcs)
+		#print links
+		
+		for link in links:
+			try:
+				#print link
+				page_link = link['file']
+				if page_link != None and len(page_link) > 0:
+					qs = link['label'].replace(' ','').lower()
+					if 'auto' in qs:
+						qs = '720p'
+					if 'hls' in qs:
+						pass
+					else:
+						f_i = {'label':qs, 'page':page_link}
+						video_url_a.append(f_i)
+			except:
+				pass
+		
+		video_urlf = video_url_a
+		return (video_urlf, '', None)
+	except Exception as e:
+		e = '{}'.format(e)
+		return (None, e, None)
 	
 def check(url, headers=None, cookie=None):
 	try:

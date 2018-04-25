@@ -51,9 +51,9 @@ IP_OVERIDE = True
 RE_SUB1 = Regex(r'(?m)(^[^\#])')
 RE_SOURCES = Regex(r'(?m)(^.+?\d+/(\d+).+$)')
 
-supported_hosts = ['mycloud.to','mcloud.to','rapidvideo.com']
+supported_hosts = ['mycloud.to','mcloud.to','rapidvideo.com','streamango.com']
 
-def resolve(url, https_skip, test=False, strip_url=True):
+def resolve(url, https_skip=True, test=False, strip_url=True):
 	video_urlf = None
 	
 	if 'https:' not in url and 'http:' not in url:
@@ -73,20 +73,69 @@ def resolve(url, https_skip, test=False, strip_url=True):
 			myheaders['User-Agent'] = 'Mozilla'
 			myheaders['Referer'] = ourl
 			myParams['headers'] = myheaders
-			page_data_string = request(ourl, headers=myheaders, httpsskip=True)
-			page_data_elems = HTML.ElementFromString(page_data_string)
-			try:
-				video_url = page_data_elems.xpath(".//div[@id='home_video']//source/@src")[0]
-			except:
-				video_url = re.findall(r'src=\".*(http.*?mp4)\"',page_data_string)[0]
-			res = '720'
-			try:
-				res = page_data_elems.xpath(".//div[@id='home_video']//source/@data-res")[0]
-			except:
-				pass
-			f_i = {'file':video_url, 'label':res}
-			video_url_a.append(f_i)
+			
+			if '&q=' in ourl:
+				ourl_s = ourl.split('&q=')
+				ourl = ourl_s[0]
+				quals = [ourl_s[1]]
+			else:
+				quals = ['1080p','720p','480p','360p']
+			
+			for qs in quals:
+				try:
+					page_data_string = request((ourl + '&q=%s') % qs, headers=myheaders, httpsskip=True)
+					page_data_elems = HTML.ElementFromString(page_data_string)
+					try:
+						video_url = page_data_elems.xpath(".//div[@id='home_video']//source/@src")[0]
+					except:
+						video_url = None
+					try:
+						res = page_data_elems.xpath(".//div[@id='home_video']//source/@data-res")[0]
+					except:
+						res = qs.replace('p','')
+						
+					if video_url != None and res != None:
+						f_i = {'file':video_url, 'label':res}
+						video_url_a.append(f_i)
+				except:
+					pass
+			
 			video_urlf = video_url_a
+			
+		elif 'streamango.' in ourl:
+			myheaders = {}
+			myheaders['User-Agent'] = 'Mozilla'
+			myheaders['Referer'] = ourl
+			myParams['headers'] = myheaders
+			
+			page_data_string = request(ourl, headers=myheaders, httpsskip=True)
+			if 'Sorry!' not in page_data_string and 'We are unable to find the video you\'re looking for' not in page_data_string:
+				video_url = decode_streamango(page_data_string)
+				if video_url[len(video_url)-1] == '@':
+					video_url = video_url[:-1]
+					
+				v_qs = video_url.split('/')
+				v_qs = v_qs[len(v_qs)-1]
+				v_qs = re.sub(r'[^0-9]', "", v_qs)
+				v_qs = int(v_qs)
+				
+				quals = [1080,720,480,360]
+				for qs in quals:
+					try:
+						if v_qs == qs:
+							f_i = {'file':video_url, 'label':'%s' % qs}
+							video_url_a.append(f_i)
+							break
+						elif v_qs > qs:
+							i = quals.index(qs)
+							f_i = {'file':video_url, 'label':'%s' % quals[i-1]}
+							video_url_a.append(f_i)
+							break
+					except:
+						pass
+				
+				video_urlf = video_url_a
+			
 		elif 'mycloud.' in ourl or 'mcloud.' in ourl:
 			#Log('============ MyCloud URL ==================')
 			myheaders = {}
@@ -95,25 +144,12 @@ def resolve(url, https_skip, test=False, strip_url=True):
 			myParams['headers'] = myheaders
 			
 			if strip_url == True and 'mycloud.' in url or 'mcloud.' in url:
-				try:
-					if '?' in ourl:
-						data = urlparse.parse_qs(ourl.split('?')[1])
-						kurl = ourl.split('?')[0]
-					else:
-						kurl = ourl
-						data = {'a.url':'https%3A%2F%2Ffmovies.to%2Facode%2Fplayer.html','a.close':0,'ui':['ZwrN0oNRXfRP686L3Z3BPkXInMs']}
-				except:
-					data.update({'a.url':'https%3A%2F%2Ffmovies.to%2Facode%2Fplayer.html','a.close':0,'ui':['ZwrN0oNRXfRP686L3Z3BPkXInMs']})
-					kurl = ourl
-					
-				#Log(data)
-				url = kurl + '?ui=%s' % data['ui'][0].replace('=','')
-				if 'https:' not in url and 'http:' not in url:
-					url = 'http:' + url
+				pass
 			
-			page_data_string = request(url, headers=myheaders, httpsskip=True)
+			page_data_string = str(request(url, headers=myheaders, httpsskip=True))
+			Log(page_data_string)
 			
-			if 'Sorry, the page you are looking for could not be found.' not in page_data_string and 'This video is in processing' not in page_data_string:	
+			if 'Sorry, the page you are looking for could not be found.' not in page_data_string and 'This video is in processing' not in page_data_string and 'We’re Sorry!' not in page_data_string and page_data_string.strip() != '404':	
 				json_data_str = re.findall(r'({\".*(.*m3u8|.mp4|.flv).*\"})', page_data_string)[0][0]
 				json_data = json.loads(json_data_str)
 				video_url = json_data['file']
@@ -187,35 +223,24 @@ def error(url, https_skip):
 	try:
 		headers = {}
 		headers['User-Agent'] = 'Mozilla5'
-		headers['Referer'] = 'http://mycloud.to'
 		data = {}
 		
 		if 'mycloud.' in url or 'mcloud.' in url:
-			try:
-				if '?' in ourl:
-					data = urlparse.parse_qs(ourl.split('?')[1])
-					kurl = ourl.split('?')[0]
-				else:
-					kurl = ourl
-					data = {'a.url':'https%3A%2F%2Ffmovies.to%2Facode%2Fplayer.html','a.close':0,'ui':['ZwrN0oNRXfRP686L3Z3BPkXInMs']}
-			except:
-				data.update({'a.url':'https%3A%2F%2Ffmovies.to%2Facode%2Fplayer.html','a.close':0,'ui':['ZwrN0oNRXfRP686L3Z3BPkXInMs']})
-				kurl = ourl
-				
-			#Log(data)
-			url = kurl + '?ui=%s' % data['ui'][0].replace('=','')
-			if 'https:' not in url and 'http:' not in url:
-				url = 'http:' + url
+			headers['Referer'] = 'http://mycloud.to'
 		
 		#Log('misc>error : %s' % url)
-		page_data_string = request(url, httpsskip=True)
-		#Log(page_data_string)
+		page_data_string = str(request(url, headers=headers, httpsskip=True))
+		Log(page_data_string)
 		
 		if page_data_string != None:
 			if ('mycloud.' in ourl or 'mcloud.' in ourl) and 'Sorry, the page you are looking for could not be found.' in page_data_string:
 				error = 'URL Error.'
 			elif ('mycloud.' in ourl or 'mcloud.' in ourl) and 'This video is in processing' in page_data_string:
 				error = 'Video is in processing, try again later.'
+			elif ('mycloud.' in ourl or 'mcloud.' in ourl) and 'We’re Sorry!' in page_data_string or page_data_string.strip() == '404':
+				error = 'Video removed or blocked.'
+			elif ('streamango.' in ourl or 'fruitstreams.' in ourl or 'streamcherry.' in ourl) and ('We are unable to find the video you\'re looking for' in page_data_string or 'Sorry!' in page_data_string):
+				error = 'Video removed by streamango.'
 		else:
 			error = 'Page returned None'
 	except:
@@ -223,7 +248,54 @@ def error(url, https_skip):
 		
 	return error
 
+####################################################################################################
+def decode_streamango(html):
+	
+	source = None
+	
+	try:
+		encoded = re.search('''srces\.push\({type:"video/mp4",src:\w+\('([^']+)',(\d+)''', html)
+		if encoded:
+			source = decode2(encoded.group(1), int(encoded.group(2)))
+	except Exception as e:
+		Log(e)
+	
+	return source
+		
+def decode2(encoded, code):
+		
+	vid_url = ""
+	k = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/='
+	k = k[::-1]
 
+	count = 0
+
+	for index in range(0, len(encoded) - 1):
+		while count <= len(encoded) - 1:
+			dec1 = k.index(encoded[count])
+			count += 1
+			dec2 = k.index(encoded[count])
+			count += 1
+			dec3 = k.index(encoded[count])
+			count += 1
+			dec4 = k.index(encoded[count])
+			count += 1
+
+			t1 = ((dec1 << 2) | (dec2 >> 4))
+			t2 = (((dec2 & 15) << 4) | (dec3 >> 2))
+			t3 = ((dec3 & 3) << 6) | dec4
+			t1 = t1 ^ code
+
+			vid_url = str(vid_url) + chr(t1)
+
+			if dec3 != 64:
+				vid_url = str(vid_url) + chr(t2)
+			if dec3 != 64:
+				vid_url = str(vid_url) + chr(t3)
+
+	if 'http' not in vid_url:
+		vid_url = 'https:' + vid_url
+	return vid_url
 
 def request(url, close=True, redirect=True, followredirect=False, error=False, proxy=None, post=None, headers=None, mobile=False, limit=None, referer=None, cookie=None, output='', timeout='30', httpsskip=False, use_web_proxy=False, XHR=False, IPv4=False):
 

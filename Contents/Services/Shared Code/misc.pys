@@ -119,7 +119,7 @@ def resolve(url, https_skip=True, test=False, strip_url=True):
 				v_qs = re.sub(r'[^0-9]', "", v_qs)
 				v_qs = int(v_qs)
 				
-				quals = [1080,720,480,360]
+				quals = [1080,720,480,360,256,128,64]
 				for qs in quals:
 					try:
 						if v_qs == qs:
@@ -147,7 +147,7 @@ def resolve(url, https_skip=True, test=False, strip_url=True):
 				pass
 			
 			page_data_string = str(request(url, headers=myheaders, httpsskip=True))
-			Log(page_data_string)
+			#Log(page_data_string)
 			
 			if 'Sorry, the page you are looking for could not be found.' not in page_data_string and 'This video is in processing' not in page_data_string and 'We’re Sorry!' not in page_data_string and page_data_string.strip() != '404':	
 				json_data_str = re.findall(r'({\".*(.*m3u8|.mp4|.flv).*\"})', page_data_string)[0][0]
@@ -241,6 +241,8 @@ def error(url, https_skip):
 				error = 'Video removed or blocked.'
 			elif ('streamango.' in ourl or 'fruitstreams.' in ourl or 'streamcherry.' in ourl) and ('We are unable to find the video you\'re looking for' in page_data_string or 'Sorry!' in page_data_string):
 				error = 'Video removed by streamango.'
+			elif ('streamango.' in ourl or 'fruitstreams.' in ourl or 'streamcherry.' in ourl) and ('The file you are looking is currently converting' in page_data_string):
+				error = 'Video is processing, try again later.'
 		else:
 			error = 'Page returned None'
 	except:

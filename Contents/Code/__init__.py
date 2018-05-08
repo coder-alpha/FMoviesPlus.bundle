@@ -453,7 +453,7 @@ def GetCacheTimeString(**kwargs):
 
 ######################################################################################
 @route(PREFIX + "/options")
-def Options(session, **kwargs):
+def Options(session, refresh=0, **kwargs):
 
 	oc = ObjectContainer(title2='Options', no_cache=common.isForceNoCache())
 	
@@ -479,7 +479,7 @@ def Options(session, **kwargs):
 		oc.add(DirectoryObject(key = Callback(InterfaceOptions, session=session), title = 'Interface Options', thumb = R(ICON_PREFS), summary='Interface for Proxies, Hosts, Providers and Playback Quality'))
 		oc.add(DirectoryObject(key = Callback(ResetExtOptions, session=session), title = "Reset Interface Options", summary='Resets Interface Options', thumb = R(ICON_REFRESH)))
 	else:
-		oc.add(DirectoryObject(key = Callback(Options, session=session), title = 'Interface Initializing.. Please wait & retry', thumb = R(ICON_ALERT)))
+		oc.add(DirectoryObject(key = Callback(Options, session=session, refresh=int(refresh)+1), title = 'Interface Initializing.. Please wait & retry', thumb = R(ICON_ALERT)))
 			
 	oc.add(DirectoryObject(key = Callback(ResetAllOptions, session=session), title = "Factory Reset", summary='Factory Reset. Sets everything as a clean new installation. Channel Pref/Setting options are not affected !', thumb = R(ICON_REFRESH)))
 	
@@ -512,51 +512,57 @@ def DeviceOptions(session, **kwargs):
 	
 ######################################################################################
 @route(PREFIX + "/interfaceoptions")
-def InterfaceOptions(session, **kwargs):
+def InterfaceOptions(session, refresh=0, **kwargs):
 	
 	if AuthTools.CheckAdmin() == False:
 		return MC.message_container('Admin Access Only', 'Only the Admin can perform this action !')
-
+		
 	oc = ObjectContainer(title2='Interface Options', no_cache=common.isForceNoCache())
 	
-	try:
-		proxy_n = None
-		curr_proxies = None
-		LOAD_T = Dict['OPTIONS_PROXY']
-		curr_proxies = LOAD_T
-		proxy = JSON.ObjectFromString(D(curr_proxies))
-		#Log("proxy %s" % proxy)
-		proxy_n = E(JSON.StringFromObject(proxy[0]))
-	except Exception as e:
-		Log("Proxy Loading > %s" % e.args)
-		pass
-	oc.add(DirectoryObject(key = Callback(ExtProxies,n=proxy_n, curr_proxies=curr_proxies, session=session), title = "Proxies", summary='List all the Proxies that are installed.', thumb = R(ICON_PROXY)))
+	if common.interface.isInitialized():
 	
-	try:
-		sources_n = None
-		curr_sources = None
-		LOAD_T = Dict['INTERNAL_SOURCES']
-		curr_sources = LOAD_T
-		sources = JSON.ObjectFromString(D(curr_sources))
-		#Log("sources %s" % sources)
-		sources_n = E(JSON.StringFromObject(sources[0]))
-	except:
-		pass
-	oc.add(DirectoryObject(key = Callback(ExtHosts,n=sources_n, curr_sources=curr_sources, session=session), title = "External Hosts", summary='List all the External Hosts that are installed.', thumb = R(ICON_OTHERHOSTS)))
+		try:
+			proxy_n = None
+			curr_proxies = None
+			LOAD_T = Dict['OPTIONS_PROXY']
+			curr_proxies = LOAD_T
+			proxy = JSON.ObjectFromString(D(curr_proxies))
+			#Log("proxy %s" % proxy)
+			proxy_n = E(JSON.StringFromObject(proxy[0]))
+		except Exception as e:
+			Log("Proxy Loading > %s" % e.args)
+			pass
+		oc.add(DirectoryObject(key = Callback(ExtProxies,n=proxy_n, curr_proxies=curr_proxies, session=session), title = "Proxies", summary='List all the Proxies that are installed.', thumb = R(ICON_PROXY)))
 		
-	try:
-		curr_provs = None
-		LOAD_T = Dict['OPTIONS_PROVIDERS']
-		curr_provs = LOAD_T
-	except:
-		pass
-	oc.add(DirectoryObject(key = Callback(ExtProviders,curr_provs=curr_provs, session=session), title = "External Providers", summary='Enable/Disable External Host Providers.', thumb = R(ICON_OTHERPROVIDERS)))
-	
-	oc.add(DirectoryObject(key = Callback(ExtHostsQuals, session=session), title = "Qualities Allowed", summary='Enable/Disable External Host Qualities.', thumb = R(ICON_QUALITIES)))
-	oc.add(DirectoryObject(key = Callback(ExtHostsRipType, session=session), title = "Rip Type Allowed", summary='Enable/Disable External Host Rip Type.', thumb = R(ICON_RIPTYPE)))
-	oc.add(DirectoryObject(key = Callback(ExtHostsFileType, session=session), title = "Video Type Allowed", summary='Enable/Disable External Host Video Type.', thumb = R(ICON_VIDTYPE)))
-	oc.add(DirectoryObject(key = Callback(ExtHostsSizes, session=session), title = "Sizes Allowed", summary='Enable/Disable External Host File Sizes.', thumb = R(ICON_FILESIZES)))
-	oc.add(DirectoryObject(key = Callback(Summarize, session=session), title = "Summarize Options", summary='Shows a quick glance of all options', thumb = R(ICON_SUMMARY)))
+		try:
+			sources_n = None
+			curr_sources = None
+			LOAD_T = Dict['INTERNAL_SOURCES']
+			curr_sources = LOAD_T
+			sources = JSON.ObjectFromString(D(curr_sources))
+			#Log("sources %s" % sources)
+			sources_n = E(JSON.StringFromObject(sources[0]))
+		except:
+			pass
+		oc.add(DirectoryObject(key = Callback(ExtHosts,n=sources_n, curr_sources=curr_sources, session=session), title = "External Hosts", summary='List all the External Hosts that are installed.', thumb = R(ICON_OTHERHOSTS)))
+			
+		try:
+			curr_provs = None
+			LOAD_T = Dict['OPTIONS_PROVIDERS']
+			curr_provs = LOAD_T
+		except:
+			pass
+		oc.add(DirectoryObject(key = Callback(ExtProviders,curr_provs=curr_provs, session=session), title = "External Providers", summary='Enable/Disable External Host Providers.', thumb = R(ICON_OTHERPROVIDERS)))
+		
+		oc.add(DirectoryObject(key = Callback(ExtHostsQuals, session=session), title = "Qualities Allowed", summary='Enable/Disable External Host Qualities.', thumb = R(ICON_QUALITIES)))
+		oc.add(DirectoryObject(key = Callback(ExtHostsRipType, session=session), title = "Rip Type Allowed", summary='Enable/Disable External Host Rip Type.', thumb = R(ICON_RIPTYPE)))
+		oc.add(DirectoryObject(key = Callback(ExtHostsFileType, session=session), title = "Video Type Allowed", summary='Enable/Disable External Host Video Type.', thumb = R(ICON_VIDTYPE)))
+		oc.add(DirectoryObject(key = Callback(ExtHostsSizes, session=session), title = "Sizes Allowed", summary='Enable/Disable External Host File Sizes.', thumb = R(ICON_FILESIZES)))
+		oc.add(DirectoryObject(key = Callback(Summarize, session=session), title = "Summarize Options", summary='Shows a quick glance of all options', thumb = R(ICON_SUMMARY)))
+		
+		oc.add(DirectoryObject(key = Callback(ResetExtOptions, session=session, reset='0'), title = "Refresh", summary='Refresh Interface options', thumb = R(ICON_REFRESH)))
+	else:
+		oc.add(DirectoryObject(key = Callback(InterfaceOptions, session=session, refresh=int(refresh)+1), title = 'Interface Initializing.. Please wait & retry', thumb = R(ICON_ALERT)))
 	
 	oc.add(DirectoryObject(key = Callback(MainMenu),title = '<< Main Menu',thumb = R(ICON)))
 	
@@ -1466,29 +1472,34 @@ def ResetCookies(**kwargs):
 	
 ######################################################################################
 @route(PREFIX + "/ResetExtOptions")
-def ResetExtOptions(session, **kwargs):
+def ResetExtOptions(session, reset='1', **kwargs):
 
 	if AuthTools.CheckAdmin() == False:
 		return MC.message_container('Admin Access Only', 'Only the Admin can perform this action !')
 	
-	FilterExt_Search.clear()
-	FilterExt.clear()
-	
-	del common.OPTIONS_PROVIDERS[:]
-	del common.OPTIONS_PROXY[:]
-	del common.INTERNAL_SOURCES[:]
-	Dict['OPTIONS_PROXY'] = None
-	Dict['OPTIONS_PROVIDERS'] = None
-	Dict['INTERNAL_SOURCES'] = None
-	Dict['INTERNAL_SOURCES_QUALS'] = None
-	Dict['INTERNAL_SOURCES_SIZES'] = None
-	Dict['INTERNAL_SOURCES_RIPTYPE'] = None
-	Dict['INTERNAL_SOURCES_FILETYPE'] = None
-	Dict.Save()
-	
-	Thread.Create(SleepAndUpdateThread,{},True,False,session)
-	
-	return MC.message_container('Reset Options', 'Interface Options have been Reset !')
+	if reset == '1':
+		FilterExt_Search.clear()
+		FilterExt.clear()
+		
+		del common.OPTIONS_PROVIDERS[:]
+		del common.OPTIONS_PROXY[:]
+		del common.INTERNAL_SOURCES[:]
+		Dict['OPTIONS_PROXY'] = None
+		Dict['OPTIONS_PROVIDERS'] = None
+		Dict['INTERNAL_SOURCES'] = None
+		Dict['INTERNAL_SOURCES_QUALS'] = None
+		Dict['INTERNAL_SOURCES_SIZES'] = None
+		Dict['INTERNAL_SOURCES_RIPTYPE'] = None
+		Dict['INTERNAL_SOURCES_FILETYPE'] = None
+		Dict.Save()
+		
+		Thread.Create(SleepAndUpdateThread,{},True,False,session)
+		
+		return MC.message_container('Reset Options', 'Interface Options have been Reset !')
+	else:
+		Thread.Create(SleepAndUpdateThread,{},True,False,session)
+		
+		return MC.message_container('Refresh Options', 'Interface Options are being Refreshed !')
 	
 ######################################################################################
 @route(PREFIX + "/ResetAllOptions")
@@ -3084,6 +3095,8 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 										pair = ' *Pairing required* '
 									else:
 										pair = ' *Paired* '
+									if Prefs["use_linkchecker"] == True and isVideoOnline == 'false':
+										pair = ' *Vid Unavailable* '
 								else:
 									server_info_t = u1
 								if Prefs["use_debug"]:
@@ -3123,7 +3136,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 								Log("ERROR: %s with key:%s returned %s" % (url,url_s,server_info))
 								Log('ERROR init.py>EpisodeDetail>Movie2a %s' % (title + ' - ' + title_s))
 								
-							if captcha != None and captcha != False:
+							if captcha != None and captcha != False and (Prefs["use_linkchecker"] == False or (Prefs["use_linkchecker"] == True and isVideoOnline == 'true')):
 								try:
 									DumbKeyboard(PREFIX, oc, SolveCaptcha, dktitle = 'Solve Captcha: ' + title, dkHistory = False, dkthumb = captcha, dkart=captcha, url = server_info, dlt = dlt, vco=vco, title=title + ' - ' + title_s + redirector_stat)
 									po = create_photo_object(url = captcha, title = 'View Captcha')
@@ -3325,6 +3338,8 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 								pair = ' *Pairing required* '
 							else:
 								pair = ' *Paired* '
+							if Prefs["use_linkchecker"] == True and isVideoOnline == 'false':
+								pair = ' *Vid Unavailable* '
 						else:
 							server_info_t = u1
 							
@@ -3364,7 +3379,7 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 						Log('ERROR init.py>TvShowDetail %s, %s' % (e.args, (title + ' - ' + title_s)))
 						Log("ERROR: %s with key:%s returned %s" % (url,url_s,server_info))
 						
-					if captcha != None and captcha != False:
+					if captcha != None and captcha != False and (Prefs["use_linkchecker"] == False or (Prefs["use_linkchecker"] == True and isVideoOnline == 'true')):
 						try:
 							DumbKeyboard(PREFIX, oc, SolveCaptcha, dktitle = 'Solve Captcha: ' + title, dkHistory = False, dkthumb = captcha, dkart=captcha, url = server_info, dlt = dlt, vco=vco, title=title + ' (' + label + ')' + redirector_stat)
 							po = create_photo_object(url = captcha, title = 'View Captcha')
@@ -3480,20 +3495,27 @@ def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary
 				isVideoOnline = common.isItemVidAvailable(isTargetPlay=isTargetPlay, data=data, host=host)
 				
 			if isTargetPlay == True and 'openload' in host and (Prefs['use_openload_pairing'] or not common.is_uss_installed()):
-			
+
 				pair_required, u1 = common.host_openload.isPairingRequired(url=server_info, session=session)
-				
+
 				if pair_required == True:
-					a1,a2,captcha,dlt,err = common.host_openload.link_from_api(server_info)
+					openload_vars = common.host_openload.link_from_api(server_info)
+					a1,a2,captcha,dlt,err = openload_vars
 					if common.host_openload.isPairingDone() == False:
 						pair = ' *Pairing required* '
 					else:
 						pair = ' *Paired* '
+					if Prefs["use_linkchecker"] == True and isVideoOnline == 'false':
+						pair = ' *Vid Unavailable* '
 				else:
 					server_info_t = u1
 					
 				if Prefs["use_debug"]:
 					Log("%s --- %s : Pairing required: %s" % (server_info, pair, pair_required))
+				if isVideoOnline != 'true':
+					error = common.host_misc_resolvers.error(server_info, Prefs["use_https_alt"])
+					if error != '':
+						raise Exception(error)
 			elif isTargetPlay == True:
 				if isVideoOnline != 'true':
 					error = common.host_misc_resolvers.error(server_info, Prefs["use_https_alt"])
@@ -3526,11 +3548,11 @@ def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary
 					year = int(year),
 					art = art,
 					summary = summary,
-					key = AddRecentWatchList(title=title, url=url, summary=summary, thumb=thumb)
+					key = AddRecentWatchList(title=watch_title if watch_title != None else title, url=url, summary=summary, thumb=thumb)
 					)
 				oc.add(vco)
 				
-				if captcha != None and captcha != False:
+				if captcha != None and captcha != False and (Prefs["use_linkchecker"] == False or (Prefs["use_linkchecker"] == True and isVideoOnline == 'true')):
 					try:
 						DumbKeyboard(PREFIX, oc, SolveCaptcha, dktitle = 'Solve Captcha: ' + title, dkHistory=False, dkthumb=captcha, dkart=captcha, url=server_info, dlt=dlt, vco=vco, title=title + ' - ' + title_s + redirector_stat)
 						po = create_photo_object(url = captcha, title = 'View Captcha')
@@ -4488,11 +4510,11 @@ def RecentWatchList(title, session=None, **kwargs):
 		
 	newlist = sorted(urls_list, key=lambda k: k['time'], reverse=True)
 
-	m = re.findall(r'(.*?.)(bmovie|fmovie)', fmovies.BASE_URL)
-	if len(m) > 0:
-		fmovies_base = fmovies.BASE_URL.replace(m[0][0], '')
-	fmovies_base = fmovies.BASE_URL.replace('https://www.','')
-	fmovies_base = fmovies_base.replace('https://','')
+	# m = re.findall(r'(.*?.)(bmovie|fmovie)', fmovies.BASE_URL)
+	# if len(m) > 0:
+		# fmovies_base = fmovies.BASE_URL.replace(m[0][0], '')
+	# fmovies_base = fmovies.BASE_URL.replace('https://www.','')
+	fmovies_base = fmovies.BASE_URL.replace('https://','')
 	
 	c=0
 	for each in newlist:
@@ -4505,7 +4527,7 @@ def RecentWatchList(title, session=None, **kwargs):
 		thumb = longstringsplit[3]
 		timestr = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(longstringsplit[4])))
 		
-		Log("%s %s" % (stitle, url))
+		#Log("%s %s" % (stitle, url))
 		url = common.FixUrlInconsistencies(url)
 		url = url.replace('www.','')
 		
@@ -4528,7 +4550,10 @@ def RecentWatchList(title, session=None, **kwargs):
 			if 'fmovies.' in longstring or 'bmovies.' in longstring:
 				url = url.replace(common.client.geturlhost(url),fmovies_base)
 				
-			url = common.FixUrlInconsistencies(url)
+			#url = common.FixUrlInconsistencies(url)
+			
+			#Log("%s %s" % (stitle, url))
+			
 			items_in_recent.append(url)
 				
 			oc.add(DirectoryObject(
@@ -4593,8 +4618,7 @@ def Bookmarks(title, session = None, **kwargs):
 	
 	oc = ObjectContainer(title1=title, no_cache=common.isForceNoCache())
 	
-	fmovies_base = fmovies.BASE_URL.replace('https://www.','')
-	fmovies_base = fmovies_base.replace('https://','')
+	fmovies_base = fmovies.BASE_URL.replace('https://','')
 	
 	items_in_bm = []
 	items_to_del = []
@@ -4611,8 +4635,13 @@ def Bookmarks(title, session = None, **kwargs):
 			url = common.FixUrlInconsistencies(url)
 			url = url.replace('www.','')
 			
+			#Log("BM : %s" % url)
+			
 			for u in common.BASE_URLS:
-				url = url.replace(common.client.getUrlHost(u),fmovies_base)
+				u = common.client.getUrlHost(u)
+				if u in url:
+					url = url.replace(common.client.getUrlHost(u),fmovies_base)
+					break
 				
 			#Log("BM : %s" % url)
 				
@@ -4690,10 +4719,12 @@ def AddToDownloadsListPre(title, year, url, durl, purl, summary, thumb, quality,
 		
 	#if mode == common.DOWNLOAD_MODE[1]:
 	if fs == None or fsBytes == None or int(fsBytes) == 0:
+		err = ''
 		try:
 			if 'openload' in source:
 				isPairDone = common.host_openload.isPairingDone()
-				online, r1, err, fs_i, furl2, sub_url_t =  common.host_openload.check(url, usePairing = False, embedpage=True)
+				openload_vars =  common.host_openload.check(url, usePairing=False, embedpage=True)
+				online, r1, err, fs_i, furl2, sub_url_t = openload_vars
 				if sub_url == None:
 					sub_url = sub_url_t
 			elif 'rapidvideo' in source:
@@ -4723,6 +4754,7 @@ def AddToDownloadsListPre(title, year, url, durl, purl, summary, thumb, quality,
 				return MC.message_container('FileSize Error', 'File reporting %s bytes cannot be downloaded. Please try again later when it becomes available.' % fsBytes)
 
 		except Exception as e:
+			Log.Error('init.py > AddToDownloadsListPre : %s - %s' % (e,err))
 			return MC.message_container('Error', '%s. Sorry but file could not be added.' % e)
 
 	uid = 'Down5Split'+E(title+year+fs+quality+source)
@@ -5927,6 +5959,9 @@ def Search(query=None, surl=None, page_count='1', mode='default', thumb=None, su
 def AnimeSearchExt(query=None, session=None, **kwargs):
 
 	del common.ANIME_SEARCH[:]
+	
+	if query == None:
+		return
 	
 	url = common.ANIME_SEARCH_URL % String.Quote(query, usePlus=True)
 	page_data, error = common.GetPageElements(url=url, timeout=7)

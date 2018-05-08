@@ -294,7 +294,7 @@ def getAllQuals(url, online=None):
 		myheaders['User-Agent'] = 'Mozilla'
 		myheaders['Referer'] = url
 		
-		quals = [1080,720,480,360]
+		quals = [1080,720,480,360,256,128,64]
 		for qs in quals:
 			try:
 				if v_qs == qs:
@@ -322,7 +322,7 @@ def check(url, headers=None, cookie=None):
 			return False
 			
 		page_data_string = client.request(url=url, headers=headers, cookie=cookie)
-		if 'We are unable to find the video you\'re looking for' in page_data_string or 'Sorry!' in page_data_string:
+		if 'We are unable to find the video you\'re looking for' in page_data_string or 'Sorry!' in page_data_string or 'The file you are looking is currently converting' in page_data_string:
 			return False
 
 		return True

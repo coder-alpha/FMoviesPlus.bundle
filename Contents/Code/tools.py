@@ -174,8 +174,7 @@ def ClearCache(itemname, timeout=None, **kwargs):
 ######################################################################################
 def SaveBookmarks(**kwargs):
 
-	fmovies_base = fmovies.BASE_URL.replace('https://www.','')
-	fmovies_base = fmovies_base.replace('https://','')
+	fmovies_base = fmovies.BASE_URL.replace('https://','')
 	
 	items_in_bm = []
 	
@@ -190,17 +189,14 @@ def SaveBookmarks(**kwargs):
 			
 			url = common.FixUrlInconsistencies(url)
 			url = url.replace('www.','')
-			urlhost = common.client.getUrlHost(url)
 			
-			if urlhost in common.BASE_URLS:
-				for u in common.BASE_URLS:
+			#Log("BM : %s" % url)
+			
+			for u in common.BASE_URLS:
+				u = common.client.getUrlHost(u)
+				if u in url:
 					url = url.replace(common.client.getUrlHost(u),fmovies_base)
-			else:
-				if 'fmovies.' in longstring or 'bmovies.' in longstring:
-					urlhost = common.client.getUrlHost(url)
-					url = url.replace(urlhost,fmovies_base)
-			
-			url = common.FixUrlInconsistencies(url)
+					break
 				
 			#Log("BM : %s" % url)
 				
@@ -255,8 +251,7 @@ def LoadBookmarks(**kwargs):
 ######################################################################################
 def SaveConfig(**kwargs):
 		
-	fmovies_base = fmovies.BASE_URL.replace('https://www.','')
-	fmovies_base = fmovies_base.replace('https://','')
+	fmovies_base = fmovies.BASE_URL.replace('https://','')
 	
 	config = {}
 	items_in_recent = []
@@ -275,20 +270,16 @@ def SaveConfig(**kwargs):
 			summary = unicode(longstring.split('Key5Split')[2])
 			thumb = longstring.split('Key5Split')[3]
 			
-			url = url.replace('www.','')
 			url = common.FixUrlInconsistencies(url)
 			url = url.replace('www.','')
-			urlhost = common.client.getUrlHost(url)
 			
-			if urlhost in common.BASE_URLS:
-				for u in common.BASE_URLS:
+			#Log("BM : %s" % url)
+			
+			for u in common.BASE_URLS:
+				u = common.client.getUrlHost(u)
+				if u in url:
 					url = url.replace(common.client.getUrlHost(u),fmovies_base)
 					break
-		
-			if 'fmovies.' in longstring or 'bmovies.' in longstring:
-				urlhost = common.client.getUrlHost(url)
-				url = url.replace(urlhost,fmovies_base)
-				url = common.FixUrlInconsistencies(url)
 				
 			#Log("BM : %s" % url)
 				
@@ -309,8 +300,7 @@ def SaveConfig(**kwargs):
 		
 		newlist = sorted(urls_list, key=lambda k: k['time'], reverse=True)
 
-		fmovies_base = fmovies.BASE_URL.replace('https://www.','')
-		fmovies_base = fmovies_base.replace('https://','')
+		fmovies_base = fmovies.BASE_URL.replace('https://','')
 		
 		for each in newlist:
 		
@@ -322,10 +312,6 @@ def SaveConfig(**kwargs):
 			thumb = longstringsplit[3]
 			timestr = longstringsplit[4]
 			
-			#Log("%s %s" % (stitle, url))
-			url = url.replace('www.','')
-			url = common.FixUrlInconsistencies(url)
-			
 			ES = ''
 			if common.ES_API_URL.lower() in longstring.lower():
 				ES = common.EMOJI_EXT
@@ -333,17 +319,20 @@ def SaveConfig(**kwargs):
 				ES = common.EMOJI_ANIME
 				
 			show = True
-			urlhost = common.client.getUrlHost(url)
-			if urlhost in common.BASE_URLS:
-				for u in common.BASE_URLS:
-					if url.replace(common.client.getUrlHost(u),fmovies_base) in items_in_recent:
-						items_to_del.append(each['key'])
-						show = False
-						break
-			if show == True:
-				if 'fmovies.' in longstring or 'bmovies.' in longstring:
-					url = url.replace(common.client.geturlhost(url),fmovies_base)
-				url = common.FixUrlInconsistencies(url)
+			url = common.FixUrlInconsistencies(url)
+			url = url.replace('www.','')
+			
+			#Log("BM : %s" % url)
+			
+			for u in common.BASE_URLS:
+				u = common.client.getUrlHost(u)
+				if u in url:
+					url = url.replace(common.client.getUrlHost(u),fmovies_base)
+					break
+				
+			#Log("BM : %s" % url)
+						
+			if url not in items_in_recent:
 				items_in_recent.append(url)
 				items_in_recentlisting.append({'title':stitle, 'url':url, 'summary':summary, 'thumb':thumb, 'time':timestr})
 

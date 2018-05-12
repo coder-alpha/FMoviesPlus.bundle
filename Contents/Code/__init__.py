@@ -4608,94 +4608,6 @@ def ClearRecentWatchList(**kwargs):
 	Dict.Save()
 	return MC.message_container("My Recent WatchList", 'Your Recent WatchList list will be cleared soon.')
 	
-######################################################################################
-# Loads bookmarked shows from Dict.  Titles are used as keys to store the show urls.
-@route(PREFIX + "/bookmarks")
-def Bookmarks(title, session = None, **kwargs):
-
-	if not common.interface.isInitialized():
-		return MC.message_container("Please wait..", "Please wait a few seconds for the Interface to Load & Initialize plugins")
-	
-	oc = ObjectContainer(title1=title, no_cache=common.isForceNoCache())
-	
-	fmovies_base = fmovies.BASE_URL.replace('https://','')
-	
-	items_in_bm = []
-	items_to_del = []
-	
-	for each in Dict:
-		longstring = str(Dict[each])
-		
-		if (('fmovies.' in longstring or 'bmovies.' in longstring or '9anime.' in longstring) or common.isArrayValueInString(common.EXT_SITE_URLS, longstring) == True) and 'Key5Split' in longstring:	
-			stitle = unicode(longstring.split('Key5Split')[0])
-			url = longstring.split('Key5Split')[1]
-			summary = unicode(longstring.split('Key5Split')[2])
-			thumb = longstring.split('Key5Split')[3]
-			
-			url = common.FixUrlInconsistencies(url)
-			url = url.replace('www.','')
-			
-			#Log("BM : %s" % url)
-			
-			for u in common.BASE_URLS:
-				u = common.client.getUrlHost(u)
-				if u in url:
-					url = url.replace(common.client.getUrlHost(u),fmovies_base)
-					break
-				
-			#Log("BM : %s" % url)
-				
-			if url not in items_in_bm:
-				
-				items_in_bm.append(url)
-				is9anime = 'False'
-				ES = ''
-				if common.ES_API_URL.lower() in url.lower():
-					ES = common.EMOJI_EXT
-				if common.ANIME_URL.lower() in url.lower():
-					ES = common.EMOJI_ANIME
-					is9anime = 'True'
-				
-				if fmovies.FILTER_PATH in url or '(All Seasons)' in stitle:
-					oc.add(DirectoryObject(
-						key=Callback(Search, query=stitle.replace(' (All Seasons)',''), session = session, mode='other seasons', thumb=thumb, summary=summary, is9anime=is9anime),
-						title='%s%s' % (stitle,ES),
-						thumb=thumb,
-						summary=summary
-						)
-					)
-				else:
-					oc.add(DirectoryObject(
-						key=Callback(EpisodeDetail, title=stitle, url=url, thumb=thumb, session = session),
-						title='%s%s' % (stitle,ES),
-						thumb=thumb,
-						summary=summary
-						)
-					)
-			else:
-				items_to_del.append(each)
-					
-	if len(items_to_del) > 0:
-		for each in items_to_del:
-			del Dict[each]
-		Dict.Save()
-				
-	if len(oc) == 0:
-		return MC.message_container(title, 'No Bookmarked Videos Available')
-		
-	oc.objects.sort(key=lambda obj: obj.title, reverse=False)
-	
-	#add a way to clear bookmarks list
-	oc.add(DirectoryObject(
-		key = Callback(ClearBookmarks),
-		title = "Clear Bookmarks",
-		thumb = R(ICON_QUEUE),
-		summary = "CAUTION! This will clear your entire bookmark list!"
-		)
-	)
-		
-	return oc
-	
 #######################################################################################################
 @route(PREFIX + '/AddToDownloadsListPre')
 def AddToDownloadsListPre(title, year, url, durl, purl, summary, thumb, quality, source, type, resumable, source_meta, file_meta, mode, sub_url=None, fsBytes=None, fs=None, file_ext=None, vidtype=None, section_path=None, section_title=None, section_key=None, session=None, admin=False, update=False, **kwargs):
@@ -5604,6 +5516,93 @@ def convertbookmarks(**kwargs):
 		Dict.Save()
 	except:
 		pass
+		
+######################################################################################
+# Loads bookmarked shows from Dict.  Titles are used as keys to store the show urls.
+@route(PREFIX + "/bookmarks")
+def Bookmarks(title, session = None, **kwargs):
+
+	if not common.interface.isInitialized():
+		return MC.message_container("Please wait..", "Please wait a few seconds for the Interface to Load & Initialize plugins")
+	
+	oc = ObjectContainer(title1=title, no_cache=common.isForceNoCache())
+	
+	fmovies_base = fmovies.BASE_URL.replace('https://','')
+	
+	items_in_bm = []
+	items_to_del = []
+	
+	for each in Dict:
+		longstring = str(Dict[each])
+		
+		if (('fmovies.' in longstring or 'bmovies.' in longstring or '9anime.' in longstring) or common.isArrayValueInString(common.EXT_SITE_URLS, longstring) == True) and 'Key5Split' in longstring:	
+			stitle = unicode(longstring.split('Key5Split')[0])
+			url = longstring.split('Key5Split')[1]
+			summary = unicode(longstring.split('Key5Split')[2])
+			thumb = longstring.split('Key5Split')[3]
+			
+			url = common.FixUrlInconsistencies(url)
+			url = url.replace('www.','')
+			
+			for u in common.BASE_URLS:
+				u = common.client.getUrlHost(u)
+				if u in url:
+					url = url.replace(u,fmovies_base)
+					break
+				
+			#Log("BM : %s" % stitle)
+			#Log("BM : %s" % url)
+				
+			if url not in items_in_bm:
+				
+				items_in_bm.append(url)
+				is9anime = 'False'
+				ES = ''
+				if common.ES_API_URL.lower() in url.lower():
+					ES = common.EMOJI_EXT
+				if common.ANIME_URL.lower() in url.lower():
+					ES = common.EMOJI_ANIME
+					is9anime = 'True'
+				
+				if fmovies.FILTER_PATH in url or '(All Seasons)' in stitle:
+					oc.add(DirectoryObject(
+						key=Callback(Search, query=stitle.replace(' (All Seasons)',''), session = session, mode='other seasons', thumb=thumb, summary=summary, is9anime=is9anime),
+						title='%s%s' % (stitle,ES),
+						thumb=thumb,
+						summary=summary
+						)
+					)
+				else:
+					oc.add(DirectoryObject(
+						key=Callback(EpisodeDetail, title=stitle, url=url, thumb=thumb, session = session),
+						title='%s%s' % (stitle,ES),
+						thumb=thumb,
+						summary=summary
+						)
+					)
+			else:
+				items_to_del.append(each)
+					
+	if len(items_to_del) > 0:
+		for each in items_to_del:
+			del Dict[each]
+		Dict.Save()
+				
+	if len(oc) == 0:
+		return MC.message_container(title, 'No Bookmarked Videos Available')
+		
+	oc.objects.sort(key=lambda obj: obj.title, reverse=False)
+	
+	#add a way to clear bookmarks list
+	oc.add(DirectoryObject(
+		key = Callback(ClearBookmarks),
+		title = "Clear Bookmarks",
+		thumb = R(ICON_QUEUE),
+		summary = "CAUTION! This will clear your entire bookmark list!"
+		)
+	)
+		
+	return oc
 
 ######################################################################################
 # Checks a show to the bookmarks list using the title as a key for the url
@@ -5631,6 +5630,11 @@ def Check(title, url, **kwargs):
 	longstring = Dict[title+'-'+E(surl)]
 	if longstring != None and surl in longstring:
 		return True
+		
+	if '(All Seasons)' in title:
+		for each in Dict:
+			if title in each:
+				return True
 
 	return False
 
@@ -5643,6 +5647,8 @@ def AddBookmark(title, url, summary, thumb, **kwargs):
 	if Check(title=title, url=url):
 		return MC.message_container(title, 'This item has already been added to your bookmarks.')
 		
+	#Log("Added : %s %s" % (title, url))
+	
 	Dict[title+'-'+E(url)] = (title + 'Key5Split' + url +'Key5Split'+ summary + 'Key5Split' + thumb)
 	Dict.Save()
 	return MC.message_container(title, 'This item has been added to your bookmarks.')

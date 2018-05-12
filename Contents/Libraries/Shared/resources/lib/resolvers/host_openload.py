@@ -731,15 +731,17 @@ def isPairingDone():
 	
 	pairurl = 'https://openload.co/pair'
 	echourl = 'https://v4speed.oloadcdn.net/echoip'
-	checkpairurl = 'https://openload.co/checkpair/%s'
+	checkpairurl = 'https://olpair.com/checkpair/%s'
 	
-	r = client.request(echourl, headers=openloadhdr)
-	
-	checkpairurl_withip = checkpairurl % r
-	r = client.request(checkpairurl_withip, headers=openloadhdr)
-	
-	if r != None and '1' in r:
-		return True
+	try:
+		r = client.request(echourl, headers=openloadhdr)
+		checkpairurl_withip = checkpairurl % r
+		r = client.request(checkpairurl_withip, headers=openloadhdr)
+		
+		if r != None and '1' in r:
+			return True
+	except:
+		pass
 		
 	return False
 	

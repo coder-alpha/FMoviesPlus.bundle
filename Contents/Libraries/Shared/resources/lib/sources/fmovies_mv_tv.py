@@ -39,8 +39,8 @@ ENCRYPTED_URLS = False
 class source:
 	def __init__(self):
 		del loggertxt[:]
-		self.ver = '0.0.3'
-		self.update_date = 'Nov. 18, 2017'
+		self.ver = '0.1.0'
+		self.update_date = 'Apr. 25, 2018'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
 		self.disabled = False
@@ -192,6 +192,9 @@ class source:
 		
 	def testParser(self):
 		try:
+			if control.setting('Provider-%s' % name) == False:
+				log('INFO','testParser', 'Plugin Disabled by User - cannot test parser')
+				return False
 			if self.disabled == True:
 				log('INFO','testParser', 'Plugin Disabled - cannot test parser')
 				return False

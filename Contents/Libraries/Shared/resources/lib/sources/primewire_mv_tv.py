@@ -35,8 +35,8 @@ AVOID_DOMAINS = ['9c40a04e9732e6a6.com']
 class source:
 	def __init__(self):
 		del loggertxt[:]
-		self.ver = '0.0.1'
-		self.update_date = 'Nov. 13, 2017'
+		self.ver = '0.1.0'
+		self.update_date = 'Apr. 25, 2018'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
 		self.base_link_alts = ['http://www.primewire.ag','http://www.primewire.is','http://www.primewire.org']
@@ -127,6 +127,9 @@ class source:
 		
 	def testParser(self):
 		try:
+			if control.setting('Provider-%s' % name) == False:
+				log('INFO','testParser', 'Plugin Disabled by User - cannot test parser')
+				return False
 			if self.disabled == True:
 				log('INFO','testParser', 'Plugin Disabled - cannot test parser')
 				return False

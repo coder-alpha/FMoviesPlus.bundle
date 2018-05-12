@@ -54,8 +54,8 @@ class host:
 		self.init = False
 		self.logo = 'https://i.imgur.com/nbtnvDr.png'
 		self.name = name
-		self.host = ['imdb.com','media-imdb.com','einthusan.tv','vimeocdn.com','apple.com','akamaized.net']
-		self.netloc = ['imdb.com','media-imdb.com','einthusan.tv','vimeocdn.com','apple.com','akamaized.net']
+		self.host = ['imdb.com','media-imdb.com','einthusan.tv','vimeocdn.com','apple.com','akamaized.net','micetop.us','vidcdn.pro','fbcdn.net']
+		self.netloc = ['imdb.com','media-imdb.com','einthusan.tv','vimeocdn.com','apple.com','akamaized.net','micetop.us','vidcdn.pro','fbcdn.net']
 		self.quality = '1080p'
 		self.loggertxt = []
 		self.captcha = False

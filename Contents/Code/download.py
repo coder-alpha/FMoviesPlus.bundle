@@ -18,6 +18,7 @@ from __builtin__ import sum
 DLT = []
 Dict['DOWNLOAD_RATE_LIMIT_BUFFER'] = []
 Dict['DOWNLOAD_RATE_LIMIT_TIME'] = []
+REMAP_EXTRAS = {'behind the scenes':'behindthescenes', 'deleted scenes':'deleted', 'featurette':'featurette', 'interviews':'interview', 'misc.':'scene', 'music video':'short', 'trailer':'trailer'}
 
 QUEUE_RUN_ITEMS = {}
 WAIT_AND_RETRY_ON_429 = True
@@ -153,9 +154,9 @@ class Downloader(object):
 		path = file_meta['section_path']
 		
 		try:
-			vidtype = file_meta['vidtype']
+			vidtype = file_meta['vidtype'].lower()
 		except:
-			vidtype = 'Movie'
+			vidtype = 'movie'
 		
 		file_meta['last_error'] = 'Unknown Error'
 		file_meta['error'] = 'Unknown Error'
@@ -180,7 +181,10 @@ class Downloader(object):
 		source_meta = {}
 		f_meta = {}
 		
-		fname = '%s (%s)%s%s' % (file_meta['title'], file_meta['year'], file_ext, fid + common.DOWNLOAD_FMP_EXT)
+		if vidtype in 'movie/show':
+			fname = '%s (%s)%s%s' % (file_meta['title'], file_meta['year'], file_ext, fid + common.DOWNLOAD_FMP_EXT)
+		else:
+			fname = '%s (%s)-%s%s%s' % (file_meta['title'], file_meta['year'], REMAP_EXTRAS[vidtype], file_ext, fid + common.DOWNLOAD_FMP_EXT)
 		abs_path = Core.storage.join_path(path, fname)
 		file_meta['temp_file'] = abs_path
 		
@@ -222,7 +226,11 @@ class Downloader(object):
 			Log('Save path: %s' % abs_path)
 		
 		# https://support.plex.tv/articles/200220677-local-media-assets-movies/
-		fname = '%s (%s)%s' % (file_meta['title'], file_meta['year'], file_ext)
+		if vidtype in 'movie/show':
+			fname = '%s (%s)%s' % (file_meta['title'], file_meta['year'], file_ext)
+		else:
+			fname = '%s (%s)-%s%s' % (file_meta['title'], file_meta['year'], REMAP_EXTRAS[vidtype], file_ext)
+		
 		item_folder_name = '%s (%s)' % (file_meta['title'], file_meta['year'])
 		final_abs_path = Core.storage.join_path(path, fname)
 		
@@ -437,7 +445,12 @@ class Downloader(object):
 						
 						while (file_renamed_inc):
 							while Core.storage.file_exists(final_abs_path):
-								fname = '%s (%s)-%s%s' % (file_meta['title'], file_meta['year'], str(c), file_ext)
+								
+								if vidtype in 'movie/show':
+									fname = '%s (%s)-%s%s' % (file_meta['title'], file_meta['year'], str(c), file_ext)
+								else:
+									fname = '%s (%s)-%s%s%s' % (file_meta['title'], file_meta['year'], REMAP_EXTRAS[vidtype], str(c), file_ext)
+								
 								final_abs_path = Core.storage.join_path(path, fname)
 								fname = '%s (%s)%s' % (file_meta['title'], file_meta['year'], '.en.srt')
 								sub_file_path = Core.storage.join_path(path, fname)

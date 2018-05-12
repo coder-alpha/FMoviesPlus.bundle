@@ -15,8 +15,8 @@ loggertxt = []
 class source:
 	def __init__(self):
 		del loggertxt[:]
-		self.ver = '0.0.2'
-		self.update_date = 'Apr. 12, 2018'
+		self.ver = '0.1.0'
+		self.update_date = 'Apr. 25, 2018'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
 		self.base_link_alts = ['https://www3.fmovies.pe','https://www.fmovies.pe','https://www4.fmovies.pe','https://fmovies.io']
@@ -131,6 +131,9 @@ class source:
 		
 	def testParser(self):
 		try:
+			if control.setting('Provider-%s' % name) == False:
+				log('INFO','testParser', 'Plugin Disabled by User - cannot test parser')
+				return False
 			if self.disabled == True:
 				log('INFO','testParser', 'Plugin Disabled - cannot test parser')
 				return False

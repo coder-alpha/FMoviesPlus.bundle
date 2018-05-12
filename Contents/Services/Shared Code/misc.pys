@@ -53,7 +53,7 @@ RE_SOURCES = Regex(r'(?m)(^.+?\d+/(\d+).+$)')
 
 supported_hosts = ['mycloud.to','mcloud.to','rapidvideo.com','streamango.com']
 
-def resolve(url, https_skip, test=False, strip_url=True):
+def resolve(url, https_skip=True, test=False, strip_url=True):
 	video_urlf = None
 	
 	if 'https:' not in url and 'http:' not in url:
@@ -119,7 +119,7 @@ def resolve(url, https_skip, test=False, strip_url=True):
 				v_qs = re.sub(r'[^0-9]', "", v_qs)
 				v_qs = int(v_qs)
 				
-				quals = [1080,720,480,360]
+				quals = [1080,720,480,360,256,128,64]
 				for qs in quals:
 					try:
 						if v_qs == qs:
@@ -144,25 +144,12 @@ def resolve(url, https_skip, test=False, strip_url=True):
 			myParams['headers'] = myheaders
 			
 			if strip_url == True and 'mycloud.' in url or 'mcloud.' in url:
-				try:
-					if '?' in ourl:
-						data = urlparse.parse_qs(ourl.split('?')[1])
-						kurl = ourl.split('?')[0]
-					else:
-						kurl = ourl
-						data = {'a.url':'https%3A%2F%2Ffmovies.to%2Facode%2Fplayer.html','a.close':0,'ui':['ZwrN0oNRXfRP686L3Z3BPkXInMs']}
-				except:
-					data.update({'a.url':'https%3A%2F%2Ffmovies.to%2Facode%2Fplayer.html','a.close':0,'ui':['ZwrN0oNRXfRP686L3Z3BPkXInMs']})
-					kurl = ourl
-					
-				#Log(data)
-				url = kurl + '?ui=%s' % data['ui'][0].replace('=','')
-				if 'https:' not in url and 'http:' not in url:
-					url = 'http:' + url
+				pass
 			
-			page_data_string = request(url, headers=myheaders, httpsskip=True)
+			page_data_string = str(request(url, headers=myheaders, httpsskip=True))
+			#Log(page_data_string)
 			
-			if 'Sorry, the page you are looking for could not be found.' not in page_data_string and 'This video is in processing' not in page_data_string:	
+			if 'Sorry, the page you are looking for could not be found.' not in page_data_string and 'This video is in processing' not in page_data_string and 'We’re Sorry!' not in page_data_string and page_data_string.strip() != '404':	
 				json_data_str = re.findall(r'({\".*(.*m3u8|.mp4|.flv).*\"})', page_data_string)[0][0]
 				json_data = json.loads(json_data_str)
 				video_url = json_data['file']
@@ -236,37 +223,26 @@ def error(url, https_skip):
 	try:
 		headers = {}
 		headers['User-Agent'] = 'Mozilla5'
-		headers['Referer'] = 'http://mycloud.to'
 		data = {}
 		
 		if 'mycloud.' in url or 'mcloud.' in url:
-			try:
-				if '?' in ourl:
-					data = urlparse.parse_qs(ourl.split('?')[1])
-					kurl = ourl.split('?')[0]
-				else:
-					kurl = ourl
-					data = {'a.url':'https%3A%2F%2Ffmovies.to%2Facode%2Fplayer.html','a.close':0,'ui':['ZwrN0oNRXfRP686L3Z3BPkXInMs']}
-			except:
-				data.update({'a.url':'https%3A%2F%2Ffmovies.to%2Facode%2Fplayer.html','a.close':0,'ui':['ZwrN0oNRXfRP686L3Z3BPkXInMs']})
-				kurl = ourl
-				
-			#Log(data)
-			url = kurl + '?ui=%s' % data['ui'][0].replace('=','')
-			if 'https:' not in url and 'http:' not in url:
-				url = 'http:' + url
+			headers['Referer'] = 'http://mycloud.to'
 		
 		#Log('misc>error : %s' % url)
-		page_data_string = request(url, httpsskip=True)
-		#Log(page_data_string)
+		page_data_string = str(request(url, headers=headers, httpsskip=True))
+		Log(page_data_string)
 		
 		if page_data_string != None:
 			if ('mycloud.' in ourl or 'mcloud.' in ourl) and 'Sorry, the page you are looking for could not be found.' in page_data_string:
 				error = 'URL Error.'
 			elif ('mycloud.' in ourl or 'mcloud.' in ourl) and 'This video is in processing' in page_data_string:
 				error = 'Video is in processing, try again later.'
+			elif ('mycloud.' in ourl or 'mcloud.' in ourl) and 'We’re Sorry!' in page_data_string or page_data_string.strip() == '404':
+				error = 'Video removed or blocked.'
 			elif ('streamango.' in ourl or 'fruitstreams.' in ourl or 'streamcherry.' in ourl) and ('We are unable to find the video you\'re looking for' in page_data_string or 'Sorry!' in page_data_string):
 				error = 'Video removed by streamango.'
+			elif ('streamango.' in ourl or 'fruitstreams.' in ourl or 'streamcherry.' in ourl) and ('The file you are looking is currently converting' in page_data_string):
+				error = 'Video is processing, try again later.'
 		else:
 			error = 'Page returned None'
 	except:

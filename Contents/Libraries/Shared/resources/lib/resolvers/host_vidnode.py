@@ -2,11 +2,7 @@
 
 #########################################################################################################
 #
-# Streamango scrapper
-#
-# Adapted from tvaddonsco
-# https://github.com/tvaddonsco/script.module.urlresolver/blob/master/lib/urlresolver/plugins/streamango.py
-# and modified for use with Plex Media Server
+# Vidnode scrapper
 #
 # Coder Alpha
 # https://github.com/coder-alpha
@@ -30,6 +26,7 @@
 
 import re,urllib,json,time
 import os, sys, ast
+from __builtin__ import eval
 
 try:
 	from resources.lib.libraries import client
@@ -45,28 +42,28 @@ hdr = {
 	'Accept-Language': 'en-US,en;q=0.8',
 	'Connection': 'keep-alive'}
 
-name = 'streamango'
+name = 'vidnode'
 loggertxt = []
 	
 class host:
 	def __init__(self):
 		del loggertxt[:]
 		self.ver = '0.0.1'
-		self.update_date = 'Apr. 11, 2018'
+		self.update_date = 'Apr. 19, 2018'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
-		self.logo = 'https://i.imgur.com/9Zv3dU8.png'
+		self.logo = 'https://i.imgur.com/AG9ooWt.png'
 		self.name = name
-		self.host = ['streamango.com', 'streamcherry.com', 'fruitstreams.com']
-		self.netloc = ['streamango.com', 'streamcherry.com', 'fruitstreams.com']
-		self.quality = '720p'
+		self.host = ['vidnode.net']
+		self.netloc = ['vidnode.net']
+		self.quality = '1080p'
 		self.loggertxt = []
 		self.captcha = False
 		self.allowsDownload = True
 		self.resumeDownload = True
 		self.allowsStreaming = True
 		self.ac = False
-		self.pluginManagedPlayback = True
+		self.pluginManagedPlayback = False
 		self.speedtest = 0
 		testResults = self.testWorking()
 		self.working = testResults[0]
@@ -140,7 +137,7 @@ class host:
 		return bool
 		
 	def testUrl(self):
-		return ['https://streamango.com/embed/fnnnmermndekbbrf/']
+		return ['https://vidnode.net/streaming.php?id=MTc4ODc5']
 		
 	def createMeta(self, url, provider, logo, quality, links, key, riptype, vidtype='Movie', lang='en', sub_url=None, txt='', file_ext = '.mp4', testing=False, poster=None):
 	
@@ -153,11 +150,15 @@ class host:
 			return links
 			
 		orig_url = url
+		ua = client.randomagent()
+		headers = {'Referer':'https://vidnode.net/','User-Agent':'Mozilla'}
 			
 		urldata = client.b64encode(json.dumps('', encoding='utf-8'))
-		params = client.b64encode(json.dumps('', encoding='utf-8'))
+		params = {'headers':headers,'cookie':None}
+		params = json.dumps(params, encoding='utf-8')
+		params = client.b64encode(params)
 		
-		online = check(url)
+		online = check(url, headers=headers)
 		vidurls, err, sub_url_t = getAllQuals(url, online)
 		
 		if vidurls == None:
@@ -169,17 +170,23 @@ class host:
 			
 		files_ret = []
 		
+		#print vidurls
+		
 		for vv in vidurls:
 			durl = vv['page']
 			vidurl, r1, r2 = resolve(durl, online)
-			if vidurl != None:
+			
+			print vidurl
+			
+			if vidurl == None:
+				log(type='ERROR',method='createMeta', err=u'%s' % r1)
+			else:
 				quality = vv['label']
 				try:
-					#vidurl_t = client.request(vidurl, output='geturl')
+					online = check(vidurl, headers=headers)
 					fs = client.getFileSize(vidurl)
 					fs = int(fs)
-				except Exception as e:
-					log(type='ERROR',method='createMeta', err=u'%s' % e)
+				except:
 					fs = 0
 
 				try:
@@ -214,11 +221,8 @@ def resolve(url, online=None):
 		video_url = None
 		err = ''
 		try:
-			page_link = url
-			page_data_string = client.request(page_link, httpsskip=True)
-			video_url = decode(page_data_string)
-			if video_url[len(video_url)-1] == '@':
-				video_url = video_url[:-1]
+			if '.mp4' in url.lower() or '.m3u8' in url.lower():
+				video_url = url
 		except Exception as e:
 			err = r
 			log('ERROR', 'resolve', 'link > %s : %s' % (url, e), dolog=self.init)
@@ -228,54 +232,6 @@ def resolve(url, online=None):
 	except Exception as e:
 		e = '{}'.format(e)
 		return (None, e, None)
-		
-def decode(html):
-	
-	source = None
-	
-	try:
-		encoded = re.search('''srces\.push\({type:"video/mp4",src:\w+\('([^']+)',(\d+)''', html)
-		if encoded:
-			source = decode2(encoded.group(1), int(encoded.group(2)))
-	except Exception as e:
-		log('ERROR', 'decode', '%s' % (e), dolog=True)
-	
-	return source
-		
-def decode2(encoded, code):
-		
-	vid_url = ""
-	k = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/='
-	k = k[::-1]
-
-	count = 0
-
-	for index in range(0, len(encoded) - 1):
-		while count <= len(encoded) - 1:
-			dec1 = k.index(encoded[count])
-			count += 1
-			dec2 = k.index(encoded[count])
-			count += 1
-			dec3 = k.index(encoded[count])
-			count += 1
-			dec4 = k.index(encoded[count])
-			count += 1
-
-			t1 = ((dec1 << 2) | (dec2 >> 4))
-			t2 = (((dec2 & 15) << 4) | (dec3 >> 2))
-			t3 = ((dec3 & 3) << 6) | dec4
-			t1 = t1 ^ code
-
-			vid_url = str(vid_url) + chr(t1)
-
-			if dec3 != 64:
-				vid_url = str(vid_url) + chr(t2)
-			if dec3 != 64:
-				vid_url = str(vid_url) + chr(t3)
-
-	if 'http' not in vid_url:
-		vid_url = 'https:' + vid_url
-	return vid_url
 
 def getAllQuals(url, online=None):
 	try:
@@ -283,29 +239,27 @@ def getAllQuals(url, online=None):
 			if check(url) == False: 
 				raise Exception('Video not available')
 			
-		page_data_string = client.request(url, httpsskip=True)
-		video_url = decode(page_data_string)
-		v_qs = video_url.split('/')
-		v_qs = v_qs[len(v_qs)-1]
-		v_qs = re.sub(r'[^0-9]', "", v_qs)
-		v_qs = int(v_qs)
 		video_url_a = []
-		myheaders = {}
-		myheaders['User-Agent'] = 'Mozilla'
-		myheaders['Referer'] = url
+
+		page_data_string = client.request(url, httpsskip=True)
+		srcs = re.findall(r'{.*mp4.*}', page_data_string)[0]
+		srcs = srcs.replace("file","'file'").replace("label","'label'")
+		links = eval("{'file':'','label':''},"+srcs)
+		#print links
 		
-		quals = [1080,720,480,360,256,128,64]
-		for qs in quals:
+		for link in links:
 			try:
-				if v_qs == qs:
-					f_i = {'label': '%sp' % qs, 'page':url}
-					video_url_a.append(f_i)
-					break
-				elif v_qs > qs:
-					i = quals.index(qs)
-					f_i = {'label': '%sp' % quals[i-1], 'page':url}
-					video_url_a.append(f_i)
-					break
+				#print link
+				page_link = link['file']
+				if page_link != None and len(page_link) > 0:
+					qs = link['label'].replace(' ','').lower()
+					if 'auto' in qs:
+						qs = '720p'
+					if 'hls' in qs:
+						pass
+					else:
+						f_i = {'label':qs, 'page':page_link}
+						video_url_a.append(f_i)
 			except:
 				pass
 		
@@ -319,10 +273,6 @@ def check(url, headers=None, cookie=None):
 	try:
 		http_res, red_url = client.request(url=url, output='responsecodeext', followredirect=True, headers=headers, cookie=cookie)
 		if http_res not in client.HTTP_GOOD_RESP_CODES:
-			return False
-			
-		page_data_string = client.request(url=url, headers=headers, cookie=cookie)
-		if 'We are unable to find the video you\'re looking for' in page_data_string or 'Sorry!' in page_data_string or 'The file you are looking is currently converting' in page_data_string:
 			return False
 
 		return True

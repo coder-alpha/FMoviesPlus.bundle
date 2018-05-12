@@ -1,6 +1,6 @@
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.64' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.65' # Release notation (x.y - where x is major and y is minor)
 TAG = ''
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
@@ -22,6 +22,7 @@ except:
 	pass
 
 BASE_URL = "https://fmovies.taxi"
+BASE_URLS = ["https://bmovies.is","https://bmovies.to","https://bmovies.pro","https://bmovies.online","https://bmovies.club","https://bmovies.ru","https://fmovies.to","https://fmovies.is","https://fmovies.taxi","https://fmovies.se"]
 	
 JSEngines_ALLowed = ['Node']
 Engine_OK = False
@@ -85,6 +86,7 @@ EMOJI_TXT_NEG = u'(x)'
 EMOJI_TXT_QUES = u'(?)'
 
 INTERFACE_OPTIONS_LABELS = {'Provider':'Provider', 'Host':'Host', 'Proxy':'Proxy'}
+BOOT_UP_CONTROL_SETTINGS = {'Provider':{}, 'Host':{}, 'Proxy':{}}
 
 OPTIONS_PROXY = []
 INTERNAL_SOURCES = []
@@ -162,6 +164,7 @@ NO_MOVIE_INFO = False
 USE_CUSTOM_TIMEOUT = False
 MY_CLOUD_DISABLED = True
 FMOVIES_HOSTS_DISABLED = ['mycloud', 'server fm']
+SERVER_PLACEHOLDER = 'FMOVIES'
 ENCRYPTED_URLS = False
 DEV_DEBUG = False
 WBH = 'aHR0cHM6Ly9ob29rLmlvL2NvZGVyLWFscGhhL3Rlc3Q='
@@ -402,18 +405,29 @@ def isForceNoCache(**kwargs):
 	
 ####################################################################################################
 def FixUrlInconsistencies(url):
-	url = url.replace('//www0.www','//www')
-	url = url.replace('//www1.www','//www')
-	url = url.replace('//www2.www','//www')
-	url = url.replace('//www3.www','//www')
-	url = url.replace('//www4.www','//www')
-	url = url.replace('//www5.www','//www')
-	url = url.replace('www0.www0.','www0.')
-	url = url.replace('www1.www1.','www1.')
-	url = url.replace('www2.www2.','www2.')
-	url = url.replace('www3.www3.','www3.')
-	url = url.replace('www4.www4.','www4.')
-	url = url.replace('www5.www5.','www5.')
+	
+	try:
+		if ES_API_URL in url:
+			return url
+		m = re.findall(r'\:.*?(\w.*?.*?.)(fmovie|bmovie)', url)
+		if len(m) > 0:
+			url = url.replace(m[0][0], '')
+		else:
+			url = url.replace('//www0.www','//www')
+			url = url.replace('//www1.www','//www')
+			url = url.replace('//www2.www','//www')
+			url = url.replace('//www3.www','//www')
+			url = url.replace('//www4.www','//www')
+			url = url.replace('//www5.www','//www')
+			url = url.replace('www0.www0.','www0.')
+			url = url.replace('www1.www1.','www1.')
+			url = url.replace('www2.www2.','www2.')
+			url = url.replace('www3.www3.','www3.')
+			url = url.replace('www4.www4.','www4.')
+			url = url.replace('www5.www5.','www5.')
+	except:
+		pass
+	
 	return url
 
 ####################################################################################################

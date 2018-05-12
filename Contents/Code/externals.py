@@ -28,7 +28,8 @@ EXTERNALS = {
 							'darwin':{'url':'','file':'phantomjs','md5s':''},
 							'linux':{'url':'','file':'phantomjs','md5s':'0a6c36ddd62eee77a015d0592e009ce9'},
 							'linux2':{'url':'','file':'phantomjs','md5s':'0a6c36ddd62eee77a015d0592e009ce9'},
-							'freebsd9':{'url':'','file':'phantomjs','md5s':'c95484f0719e1cbbb39255316eea1997'},
+							'freebsd8':{'url':'','file':'phantomjs','md5s':'c95484f0719e1cbbb39255316eea1997'},
+							'freebsd9':{'url':'','file':'phantomjs','md5s':'1a811784bbacfa086513ae9f671e84f3'},
 							'generic':{'url':'','file':'phantomjs','md5s':''}
 							},
 				'Cryptodome': {

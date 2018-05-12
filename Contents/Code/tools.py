@@ -37,7 +37,7 @@ caches_path = os.path.join(support_path, 'Caches', identifier)
 
 MC = common.NewMessageContainer(PREFIX, TITLE)
 
-BACKUP_KEYS = ['DOWNLOAD_OPTIONS','INTERNAL_SOURCES_QUALS', 'INTERNAL_SOURCES_SIZES', 'INTERNAL_SOURCES_RIPTYPE', 'INTERNAL_SOURCES_FILETYPE', 'OPTIONS_PROVIDERS', 'OPTIONS_PROXY', 'INTERNAL_SOURCES']
+BACKUP_KEYS = ['DOWNLOAD_OPTIONS','INTERNAL_SOURCES_QUALS', 'INTERNAL_SOURCES_SIZES', 'INTERNAL_SOURCES_RIPTYPE', 'INTERNAL_SOURCES_FILETYPE', 'OPTIONS_PROVIDERS', 'OPTIONS_PROXY', 'INTERNAL_SOURCES','BOOT_UP_CONTROL_SETTINGS']
 	
 ####################################################################################################
 @route(PREFIX + "/DevToolsC")
@@ -98,10 +98,9 @@ def DevToolsC(title=None, header=None, message=None, **kwargs):
 					else:
 						message = 'Could not retrieve output from externals.'
 		elif title == 'set_base_url':
-			base_urls = ["https://bmovies.is","https://bmovies.to","https://bmovies.pro","https://bmovies.online","https://bmovies.club","https://bmovies.ru","https://fmovies.to","https://fmovies.is","https://fmovies.taxi"]
 			oc = ObjectContainer(title2='Set Base URL')
 			base_url_match = False
-			for u in base_urls:
+			for u in common.BASE_URLS:
 				if u == fmovies.BASE_URL:
 					base_url_match = True
 				ch = common.GetEmoji(type=True) if u == fmovies.BASE_URL else common.GetEmoji(type=False)
@@ -175,8 +174,7 @@ def ClearCache(itemname, timeout=None, **kwargs):
 ######################################################################################
 def SaveBookmarks(**kwargs):
 
-	fmovies_base = fmovies.BASE_URL.replace('https://www.','')
-	fmovies_base = fmovies_base.replace('https://','')
+	fmovies_base = fmovies.BASE_URL.replace('https://','')
 	
 	items_in_bm = []
 	
@@ -189,29 +187,16 @@ def SaveBookmarks(**kwargs):
 			summary = unicode(longstring.split('Key5Split')[2])
 			thumb = longstring.split('Key5Split')[3]
 			
+			url = common.FixUrlInconsistencies(url)
 			url = url.replace('www.','')
 			
-			if 'fmovies.to' in url:
-				url = url.replace('fmovies.to',fmovies_base)
-			elif 'bmovies.to' in url:
-				url = url.replace('bmovies.to',fmovies_base)
-			elif 'bmovies.online' in url:
-				url = url.replace('bmovies.online',fmovies_base)
-			elif 'bmovies.is' in url:
-				url = url.replace('bmovies.is',fmovies_base)
-			elif 'bmovies.pro' in url:
-				url = url.replace('bmovies.pro',fmovies_base)
-			elif 'fmovies.se' in url:
-				url = url.replace('fmovies.se',fmovies_base)
-			elif 'fmovies.is' in url:
-				url = url.replace('fmovies.is',fmovies_base)
-			elif 'fmovies.taxi' in url:
-				url = url.replace('fmovies.taxi',fmovies_base)
-			else:
-				if 'fmovies.' in longstring or 'bmovies.' in longstring:
-					urlhost = common.client.getUrlHost(url)
-					url = url.replace(urlhost,fmovies_base)
-					url = common.FixUrlInconsistencies(url)
+			#Log("BM : %s" % url)
+			
+			for u in common.BASE_URLS:
+				u = common.client.getUrlHost(u)
+				if u in url:
+					url = url.replace(common.client.getUrlHost(u),fmovies_base)
+					break
 				
 			#Log("BM : %s" % url)
 				
@@ -220,8 +205,9 @@ def SaveBookmarks(**kwargs):
 					
 	if len(items_in_bm) > 0:
 		bkup_file = Core.storage.join_path(resources_path, 'bookmarks.json')
-		with io.open(bkup_file, 'wb') as f:
-			json.dump(items_in_bm, f, indent=4, sort_keys=True, separators=(',', ': '))
+		with io.open(bkup_file, 'w', encoding='utf8') as f:
+			data = json.dumps(items_in_bm, indent=4, sort_keys=True, separators=(',', ': '), ensure_ascii=False)
+			f.write(unicode(data))
 		return len(items_in_bm)
 	else:
 		return 0
@@ -235,8 +221,11 @@ def LoadBookmarks(**kwargs):
 	bkup_file = Core.storage.join_path(resources_path, 'bookmarks.json')
 	
 	if Core.storage.file_exists(bkup_file) and (Core.storage.file_size(bkup_file) != 0):
-		with io.open(bkup_file, 'r') as f:
-			file_read = f.read()
+		try:
+			with io.open(bkup_file, 'r', encoding='utf8') as f:
+				file_read = f.read()
+		except Exception as e:
+			Log('Error accessing/reading file bookmarks.json ! %s' % e)
 			
 		if file_read != None:
 			items_in_bm = json.loads(file_read)
@@ -247,6 +236,8 @@ def LoadBookmarks(**kwargs):
 			url = item['url']
 			summary = item['summary']
 			thumb = item['thumb']
+			
+			url = common.FixUrlInconsistencies(url)
 			
 			Dict[title+'-'+E(url)] = (title + 'Key5Split' + url +'Key5Split'+ summary + 'Key5Split' + thumb)
 		
@@ -260,8 +251,7 @@ def LoadBookmarks(**kwargs):
 ######################################################################################
 def SaveConfig(**kwargs):
 		
-	fmovies_base = fmovies.BASE_URL.replace('https://www.','')
-	fmovies_base = fmovies_base.replace('https://','')
+	fmovies_base = fmovies.BASE_URL.replace('https://','')
 	
 	config = {}
 	items_in_recent = []
@@ -280,29 +270,16 @@ def SaveConfig(**kwargs):
 			summary = unicode(longstring.split('Key5Split')[2])
 			thumb = longstring.split('Key5Split')[3]
 			
+			url = common.FixUrlInconsistencies(url)
 			url = url.replace('www.','')
 			
-			if 'fmovies.to' in url:
-				url = url.replace('fmovies.to',fmovies_base)
-			elif 'bmovies.to' in url:
-				url = url.replace('bmovies.to',fmovies_base)
-			elif 'bmovies.online' in url:
-				url = url.replace('bmovies.online',fmovies_base)
-			elif 'bmovies.is' in url:
-				url = url.replace('bmovies.is',fmovies_base)
-			elif 'bmovies.pro' in url:
-				url = url.replace('bmovies.pro',fmovies_base)
-			elif 'fmovies.se' in url:
-				url = url.replace('fmovies.se',fmovies_base)
-			elif 'fmovies.is' in url:
-				url = url.replace('fmovies.is',fmovies_base)
-			elif 'fmovies.taxi' in url:
-				url = url.replace('fmovies.taxi',fmovies_base)
-			else:
-				if 'fmovies.' in longstring or 'bmovies.' in longstring:
-					urlhost = common.client.getUrlHost(url)
-					url = url.replace(urlhost,fmovies_base)
-					url = common.FixUrlInconsistencies(url)
+			#Log("BM : %s" % url)
+			
+			for u in common.BASE_URLS:
+				u = common.client.getUrlHost(u)
+				if u in url:
+					url = url.replace(common.client.getUrlHost(u),fmovies_base)
+					break
 				
 			#Log("BM : %s" % url)
 				
@@ -323,8 +300,7 @@ def SaveConfig(**kwargs):
 		
 		newlist = sorted(urls_list, key=lambda k: k['time'], reverse=True)
 
-		fmovies_base = fmovies.BASE_URL.replace('https://www.','')
-		fmovies_base = fmovies_base.replace('https://','')
+		fmovies_base = fmovies.BASE_URL.replace('https://','')
 		
 		for each in newlist:
 		
@@ -336,35 +312,27 @@ def SaveConfig(**kwargs):
 			thumb = longstringsplit[3]
 			timestr = longstringsplit[4]
 			
-			#Log("%s %s" % (stitle, url))
-			url = url.replace('www.','')
-			
 			ES = ''
 			if common.ES_API_URL.lower() in longstring.lower():
 				ES = common.EMOJI_EXT
 			if common.ANIME_URL.lower() in longstring.lower():
 				ES = common.EMOJI_ANIME
+				
+			show = True
+			url = common.FixUrlInconsistencies(url)
+			url = url.replace('www.','')
 			
-			if url.replace('fmovies.to',fmovies_base) in items_in_recent:
-				items_to_del.append(each['key'])
-			elif url.replace('bmovies.to',fmovies_base) in items_in_recent:
-				items_to_del.append(each['key'])
-			elif url.replace('bmovies.online',fmovies_base) in items_in_recent:
-				items_to_del.append(each['key'])
-			elif url.replace('bmovies.is',fmovies_base) in items_in_recent:
-				items_to_del.append(each['key'])
-			elif url.replace('bmovies.pro',fmovies_base) in items_in_recent:
-				items_to_del.append(each['key'])
-			elif url.replace('fmovies.se',fmovies_base) in items_in_recent:
-				items_to_del.append(each['key'])
-			elif url.replace('fmovies.is',fmovies_base) in items_in_recent:
-				items_to_del.append(each['key'])
-			elif url.replace('fmovies.taxi',fmovies_base) in items_in_recent:
-				items_to_del.append(each['key'])
-			else:
-				if 'fmovies.' in longstring or 'bmovies.' in longstring:
-					url = url.replace(common.client.geturlhost(url),fmovies_base)
-				url = common.FixUrlInconsistencies(url)
+			#Log("BM : %s" % url)
+			
+			for u in common.BASE_URLS:
+				u = common.client.getUrlHost(u)
+				if u in url:
+					url = url.replace(common.client.getUrlHost(u),fmovies_base)
+					break
+				
+			#Log("BM : %s" % url)
+						
+			if url not in items_in_recent:
 				items_in_recent.append(url)
 				items_in_recentlisting.append({'title':stitle, 'url':url, 'summary':summary, 'thumb':thumb, 'time':timestr})
 
@@ -397,9 +365,9 @@ def SaveConfig(**kwargs):
 	
 	try:
 		bkup_file = Core.storage.join_path(resources_path, 'config.json')
-		
-		with io.open(bkup_file, 'wb') as f:
-			json.dump(config, f, indent=4, sort_keys=True, separators=(',', ': '))
+		with io.open(bkup_file, 'w', encoding='utf8') as f:
+			data = json.dumps(config, indent=4, sort_keys=True, separators=(',', ': '), ensure_ascii=False)
+			f.write(unicode(data))
 		return True
 	except Exception as e:
 		Log.Exception("tools.py>SaveConfig >> : >>> %s" % (e))
@@ -419,8 +387,11 @@ def LoadConfig(**kwargs):
 	try:
 		bkup_file = Core.storage.join_path(resources_path, 'config.json')
 		if Core.storage.file_exists(bkup_file) and (Core.storage.file_size(bkup_file) != 0):
-			with io.open(bkup_file, 'r') as f:
-				file_read = f.read()
+			try:
+				with io.open(bkup_file, 'r', encoding='utf8') as f:
+					file_read = f.read()
+			except Exception as e:
+				raise Exception('Error accessing/reading file config.json ! %s' % e)
 				
 			if file_read != None:
 				try:
@@ -508,6 +479,11 @@ def LoadConfig(**kwargs):
 				
 			try:
 				common.INTERNAL_SOURCES = JSON.ObjectFromString(D(Dict['INTERNAL_SOURCES']))
+			except:
+				pass
+				
+			try:
+				common.BOOT_UP_CONTROL_SETTINGS = JSON.ObjectFromString(D(Dict['BOOT_UP_CONTROL_SETTINGS']))
 			except:
 				pass
 			

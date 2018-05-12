@@ -24,6 +24,10 @@ import base64
 import traceback
 import httplib
 import requests
+import cfscrape
+
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
+requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 from resources.lib.libraries import cache
 from resources.lib.libraries import control
@@ -219,13 +223,12 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 			if response.code == 503:
 				#Log("AAAA- CODE %s|%s " % (url, response.code))
 				if 'cf-browser-verification' in content:
-					control.log('cf-browser-verification: CF-OK')
 					
 					netloc = '%s://%s' % (urlparse.urlparse(url).scheme, urlparse.urlparse(url).netloc)
 					#cf = cache.get(cfcookie, 168, netloc, headers['User-Agent'], timeout)
 					cfc = cfcookie()
 					cf = cfc.get(netloc, headers['User-Agent'], timeout)
-					
+					control.log('INFO client.py>request : cf-browser-verification: CF-OK : %s' % cf)
 					headers['Cookie'] = cf
 					requestResp = urllib2.Request(url, data=post, headers=headers)
 					response = urllib2.urlopen(requestResp, timeout=int(timeout))
@@ -389,25 +392,31 @@ def simpleCheck(link, headers={}, cookie={}, retError=False, retry429=False, cl=
 		else:
 			return code, red_url, size
 			
-def getRedirectingUrl(url):
+def getRedirectingUrl(url, headers=None):
 	red = url
 	try:
 		response = requests.get(url)
+		if headers != None:
+			response.headers = headers
 		if response.history:
 			red = response.url
 	except:
 		pass
 	return red
 		
-def getFileSize(link, retError=False, retry429=False, cl=3):
+def getFileSize(link, headers=None, retError=False, retry429=False, cl=3):
 	try:
 		r = requests.get(link, stream=True, verify=False, allow_redirects=True)
+		if headers != None:
+			r.headers = headers
 		
 		if retry429 == True:
 			c = 0
 			while r.status_code == 429 and c < cl:
 				time.sleep(5)
 				r = requests.get(link, stream=True, verify=False, allow_redirects=True)
+				if headers != None:
+					r.headers = headers
 				c += 1
 		
 		if str(r.status_code) not in HTTP_GOOD_RESP_CODES and str(r.status_code) not in GOOGLE_HTTP_GOOD_RESP_CODES_1:
@@ -678,20 +687,35 @@ def geturlhost(url):
 	
 	return urlhost
 
+scraper = cfscrape.create_scraper()
 class cfcookie:
 	def __init__(self):
 		self.cookie = None
 
 
 	def get(self, netloc, ua, timeout):
-		threads = []
-
-		for i in range(0, 3): threads.append(workers.Thread(self.get_cookie, netloc, ua, timeout))
-		[i.start() for i in threads]
-
-		for i in range(0, 15):
+	
+		if True:
+			self.get_cookie_string(netloc, ua, timeout)
 			if not self.cookie == None: return self.cookie
-			time.sleep(1)
+		else:
+			threads = []
+
+			for i in range(0, 1): threads.append(workers.Thread(self.get_cookie_string, netloc, ua, timeout))
+			[i.start() for i in threads]
+
+			for i in range(0, 15):
+				if not self.cookie == None: return self.cookie
+				time.sleep(1)
+
+
+	def get_cookie_string(self, netloc, ua, timeout):
+		try:
+			cookie = scraper.get_cookie_string(url=netloc, user_agent=ua)[0]
+			#control.log('INFO client.py > get_cookie_string : cookie = %s' % cookie)
+			if 'cf_clearance' in cookie: self.cookie = cookie
+		except:
+			pass
 
 
 	def get_cookie(self, netloc, ua, timeout):
@@ -706,12 +730,16 @@ class cfcookie:
 				result = response.read(5242880)
 
 			jschl = re.findall('name="jschl_vc" value="(.+?)"/>', result)[0]
+			#control.log('client.py > get_cookie : jschl = %s' % jschl)
 
 			init = re.findall('setTimeout\(function\(\){\s*.*?.*:(.*?)};', result)[-1]
+			#control.log('client.py > get_cookie : init = %s' % init)
 
 			builder = re.findall(r"challenge-form\'\);\s*(.*)a.v", result)[0]
+			#control.log('client.py > get_cookie : builder = %s' % builder)
 
 			decryptVal = self.parseJSString(init)
+			#control.log('client.py > get_cookie : decryptVal = %s' % decryptVal)
 
 			lines = builder.split(';')
 
@@ -724,8 +752,10 @@ class cfcookie:
 					decryptVal = int(eval(str(decryptVal)+sections[0][-1]+str(line_val)))
 
 			answer = decryptVal + len(urlparse.urlparse(netloc).netloc)
+			#control.log('client.py > get_cookie : answer = %s' % answer)
 
 			query = '%s/cdn-cgi/l/chk_jschl?jschl_vc=%s&jschl_answer=%s' % (netloc, jschl, answer)
+			#control.log('client.py > get_cookie : query = %s' % query)
 
 			if 'type="hidden" name="pass"' in result:
 				passval = re.findall('name="pass" value="(.*?)"', result)[0]
@@ -744,16 +774,54 @@ class cfcookie:
 				pass
 
 			cookie = '; '.join(['%s=%s' % (i.name, i.value) for i in cookies])
-
+			#control.log('client.py > get_cookie : cookie = %s' % cookie)
+			
 			if 'cf_clearance' in cookie: self.cookie = cookie
 		except:
 			pass
 
 
-	def parseJSString(self, s):
+	def parseJSStringOld(self, s):
 		try:
 			offset=1 if s[0]=='+' else 0
 			val = int(eval(s.replace('!+[]','1').replace('!![]','1').replace('[]','0').replace('(','str(')[offset:]))
+			return val
+		except:
+			pass
+			
+	def parseJSString(self, s):
+		try:
+			offset=1 if s[0]=='+' else 0
+			chain = s.replace('!+[]','1').replace('!![]','1').replace('[]','0').replace('(','str(')[offset:]
+			
+			if '/' in chain:
+				
+				#print('division ok ')
+				#print('avant ' + chain)
+				
+				val = chain.split('/')
+				gauche,sizeg = checkpart(val[0],-1)
+				droite,sized = checkpart(val[1],1)
+				sign = ''
+
+				chain = droite.replace(droite,'')
+
+				if droite.startswith('+') or droite.startswith('-'):
+					sign = droite[0]
+					droite = droite[1:]
+				
+				#print('debug1 ' + str(gauche))
+				#print('debug2 ' + str(droite))
+				
+				gg = eval(gauche)
+				dd = eval(droite)
+				
+				chain = val[0][:-sizeg] + str(gg) + '/' + str(dd) + val[1][sized:]
+
+				#print('apres ' + chain)
+
+			val = float( eval(chain))
+
 			return val
 		except:
 			pass

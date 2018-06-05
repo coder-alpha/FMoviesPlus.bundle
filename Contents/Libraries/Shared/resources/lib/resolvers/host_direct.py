@@ -163,6 +163,7 @@ class host:
 					fs = client.getFileSize(u, retry429=True, headers=headers)
 					if fs == None or int(fs) == 0:
 						fs = client.getFileSize(u, retry429=True)
+					q = qual_based_on_fs(q,fs)
 					online = check(u)
 					urldata = client.b64encode(json.dumps('', encoding='utf-8'))
 					params = client.b64encode(json.dumps('', encoding='utf-8'))
@@ -198,11 +199,8 @@ class host:
 					fs = int(re.findall(r'Content-Length:(.*)', str(ret), re.MULTILINE)[0].strip())
 				except:
 					fs = 0
-					
-				if fs > 2 * float(1024*1024*1024):
-					q = '1080p'
-				elif fs > 1 * float(1024*1024*1024):
-					q = '720p'
+
+				q = qual_based_on_fs(q,fs)
 
 				online = False
 				if int(fs) > 0:
@@ -221,6 +219,7 @@ class host:
 			fs = client.getFileSize(url, retry429=True, headers=headers)
 			if fs == None or int(fs) == 0:
 				fs = client.getFileSize(url, retry429=True)
+			q = qual_based_on_fs(q,fs)
 			online = check(url)
 			urldata = client.b64encode(json.dumps('', encoding='utf-8'))
 			params = client.b64encode(json.dumps('', encoding='utf-8'))
@@ -230,6 +229,17 @@ class host:
 			items.append({'quality':q, 'riptype':r, 'src':url, 'fs':fs, 'online':online, 'params':params, 'urldata':urldata})
 			
 		return items
+		
+def qual_based_on_fs(q,fs):
+	try:
+		if int(fs) > 2 * float(1024*1024*1024):
+			q = '1080p'
+		elif int(fs) > 1 * float(1024*1024*1024):
+			q = '720p'
+	except:
+		pass
+	return q
+
 		
 def T3DonlineFilms(url):
 	error = ''

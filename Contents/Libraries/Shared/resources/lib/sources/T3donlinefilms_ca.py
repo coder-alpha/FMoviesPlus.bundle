@@ -161,7 +161,7 @@ class source:
 			for pg in range(100):
 				query_url = urlparse.urljoin(self.base_link, self.search_link) % (pg, urllib.quote_plus(cleantitle.query(title)))
 				
-				if max != None and int(pg) > int(max):
+				if max != None and int(pg) >= int(max):
 					raise
 					
 				log(type='INFO', method='get_movie', err='Searching - %s' % (query_url), dolog=False, logToControl=False, doPrint=True)
@@ -312,8 +312,8 @@ class source:
 
 def lose_match_title(title1, title2):
 	try:
-		t1 = title1.split(' ')
-		t2 = title2.split(' ')
+		t1 = cleantitle.get(title1).split(' ')
+		t2 = cleantitle.get(title2).split(' ')
 		
 		c_min = min(len(t1), len(t2))
 		c = 0

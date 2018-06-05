@@ -1,7 +1,7 @@
 ################################################################################
 TITLE = "FMoviesPlus"
 VERSION = '0.66' # Release notation (x.y - where x is major and y is minor)
-TAG = 'dev 0.1 - June 05, 2018'
+TAG = 'dev 0.2 - June 06, 2018'
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
 ################################################################################
@@ -159,6 +159,7 @@ USE_JSFDECODER = True
 USE_JSENGINE = True
 USE_JSWEBHOOK = True
 ALT_PLAYBACK = True
+ALT_PLAYBACK_INLINE = True
 SEARCH_EXT_SOURCES_FROM_SEARCH_MENU = True
 CHECK_BASE_URL_REDIRECTION = True
 DEV_BM_CONVERSION = False

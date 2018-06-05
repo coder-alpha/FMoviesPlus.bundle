@@ -23,13 +23,17 @@ import re,unicodedata,base64,urlparse
 
 
 def movie(title):
-    title = re.sub('\n|([[].+?[]])|([(].+?[)])|\s(vs|v[.])\s|(:|;|-|"|,|\'|\_|\.|\?)|\s', '', title).lower()
-    return title
+	title = re.sub('\n|([[].+?[]])|([(].+?[)])|\s(vs|v[.])\s|(:|;|-|"|,|\'|\_|\.|\?)|\s', '', title).lower()
+	if title.endswith(' 3d'):
+		title = title.replace(' 3d','')
+	if ' 3d ' in title:
+		title = title.replace(' 3d ',' ')
+	return title
 
 
 def tv(title):
-    title = re.sub('\n|\s(|[(])(UK|US|AU|\d{4})(|[)])$|\s(vs|v[.])\s|(:|;|-|"|,|\'|\_|\.|\?)|\s', '', title).lower()
-    return title
+	title = re.sub('\n|\s(|[(])(UK|US|AU|\d{4})(|[)])$|\s(vs|v[.])\s|(:|;|-|"|,|\'|\_|\.|\?)|\s', '', title).lower()
+	return title
 	
 def removeParanthesis(title):
 	p = re.compile('(.())\(([^()]|())*\)')
@@ -122,11 +126,15 @@ def title_from_key(key):
 	return title
 
 def get(title):
-    if title == None: return
-    title = re.sub('(&#[0-9]+)([^;^0-9]+)', '\\1;\\2', title)
-    title = title.replace('&quot;', '\"').replace('&amp;', '&')
-    title = re.sub('\n|([[].+?[]])|([(].+?[)])|\s(vs|v[.])\s|(:|;|-|"|,|\'|\_|\.|\?)|\s', '', title).lower()
-    return title
+	if title == None: return
+	title = re.sub('(&#[0-9]+)([^;^0-9]+)', '\\1;\\2', title)
+	title = title.replace('&quot;', '\"').replace('&amp;', '&')
+	title = re.sub('\n|([[].+?[]])|([(].+?[)])|\s(vs|v[.])\s|(:|;|-|"|,|\'|\_|\.|\?)|\s', '', title).lower()
+	if title.endswith(' 3d'):
+		title = title.replace(' 3d','')
+	if ' 3d ' in title:
+		title = title.replace(' 3d ',' ')
+	return title
 	
 def windows_filename(title):
 	title = re.sub(r'[^0-9a-zA-Z -!.&@#$()]', ' ', title)
@@ -203,43 +211,43 @@ def getQuality2(qual):
 	return q, t
 
 def query(title):
-    if title == None: return
-    title = title.replace('\'', '').rsplit(':', 1)[0]
-    return title
+	if title == None: return
+	title = title.replace('\'', '').rsplit(':', 1)[0]
+	return title
 
 def query2(title):
-    if title == None: return
-    title = title.replace('\'', '').replace('-','')
-    return title
+	if title == None: return
+	title = title.replace('\'', '').replace('-','')
+	return title
 
 def query10(title):
-    if title == None: return
-    title = title.replace('\'', '').replace(':','').replace('.','').replace(' ','-').lower()
-    return title
+	if title == None: return
+	title = title.replace('\'', '').replace(':','').replace('.','').replace(' ','-').lower()
+	return title
 
 def geturl(title):
-    if title == None: return
-    title = title.lower()
-    title = title.translate(None, ':*?"\'\.<>|&!,')
-    title = title.replace('/', '-')
-    title = title.replace(' ', '+')
-    title = title.replace('--', '-')
-    title = title.replace('\'', '-')
-    return title
+	if title == None: return
+	title = title.lower()
+	title = title.translate(None, ':*?"\'\.<>|&!,')
+	title = title.replace('/', '-')
+	title = title.replace(' ', '+')
+	title = title.replace('--', '-')
+	title = title.replace('\'', '-')
+	return title
 
 def normalize(title):
-    try:
-        try: return title.decode('ascii').encode("utf-8")
-        except: pass
+	try:
+		try: return title.decode('ascii').encode("utf-8")
+		except: pass
 
-        t = ''
-        for i in title:
-            c = unicodedata.normalize('NFKD',unicode(i,"ISO-8859-1"))
-            c = c.encode("ascii","ignore").strip()
-            if i == ' ': c = i
-            t += c
+		t = ''
+		for i in title:
+			c = unicodedata.normalize('NFKD',unicode(i,"ISO-8859-1"))
+			c = c.encode("ascii","ignore").strip()
+			if i == ' ': c = i
+			t += c
 
-        return t.encode("utf-8")
-    except:
-        return title
+		return t.encode("utf-8")
+	except:
+		return title
 

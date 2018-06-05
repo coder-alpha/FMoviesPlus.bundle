@@ -3775,9 +3775,16 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 			filter_extSources.append(i)
 	internal_extSources = filter_extSources
 	
+	thumbx = thumb
+	
 	for source in internal_extSources:
 		status = common.GetEmoji(type=source['online'], session=session)
 		vidUrl = source['url']
+		
+		if 'poster' in source.keys() and source['poster'] != None and source['poster'].startswith('http'):
+			thumb = source['poster']
+		else:
+			thumb = thumbx
 		
 		isTargetPlay = True if source['source'] not in ['gvideo','mega'] else False
 		isVideoOnline = source['online']
@@ -3855,16 +3862,36 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 		# all source links that can be attempted via the Generic Playback
 		elif vidUrl != None and source['vidtype'] in 'Movie/Show' and source['enabled'] and source['allowsStreaming'] and not source['misc']['gp']:
 			try:
-				generic_playback_links.append((title_msg + source['titleinfo'] + ' | (via Generic Playback)', summary, GetThumb(thumb, session=session), source['params'], duration, genre, vidUrl, source['quality'], watch_title))
+				if common.ALT_PLAYBACK_INLINE == False:
+					generic_playback_links.append((title_msg + source['titleinfo'] + ' | (via Generic Playback)', summary, GetThumb(thumb, session=session), source['params'], duration, genre, vidUrl, source['quality'], watch_title))
+				else:
+					gen_play = (title_msg + source['titleinfo'] + ' | (via Generic Playback)', summary, GetThumb(thumb, session=session), source['params'], duration, genre, vidUrl, source['quality'], watch_title)
+					title, summary, thumb, params, duration, genres, videoUrl, videoRes, watch_title = gen_play
+					try:
+						oc.append(CreateVideoObject(url, title, summary, thumb, params, duration, genres, videoUrl, videoRes, watch_title))
+					except Exception as e:
+						if Prefs["use_debug"]:
+							Log(gen_play)
+						Log(e)
 			except:
 				pass
 		if vidUrl != None and source['vidtype'] in 'Movie/Show' and source['enabled'] and source['allowsStreaming'] and source['misc']['gp']:
 			try:
-				generic_playback_links.append((title_msg + source['titleinfo'] + ' | (via Generic Playback)', summary, GetThumb(thumb, session=session), source['params'], duration, genre, vidUrl, source['quality'], watch_title))
+				if common.ALT_PLAYBACK_INLINE == False:
+					generic_playback_links.append((title_msg + source['titleinfo'] + ' | (via Generic Playback)', summary, GetThumb(thumb, session=session), source['params'], duration, genre, vidUrl, source['quality'], watch_title))
+				else:
+					gen_play = (title_msg + source['titleinfo'] + ' | (via Generic Playback)', summary, GetThumb(thumb, session=session), source['params'], duration, genre, vidUrl, source['quality'], watch_title)
+					title, summary, thumb, params, duration, genres, videoUrl, videoRes, watch_title = gen_play
+					try:
+						oc.append(CreateVideoObject(url, title, summary, thumb, params, duration, genres, videoUrl, videoRes, watch_title))
+					except Exception as e:
+						if Prefs["use_debug"]:
+							Log(gen_play)
+						Log(e)
 			except:
 				pass
 
-	if  common.ALT_PLAYBACK:
+	if  common.ALT_PLAYBACK and common.ALT_PLAYBACK_INLINE == False:
 		for gen_play in generic_playback_links:
 			title, summary, thumb, params, duration, genres, videoUrl, videoRes, watch_title = gen_play
 			try:

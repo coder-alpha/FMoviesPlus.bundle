@@ -267,7 +267,9 @@ class sources:
 					str.append('%s (%ss. %s)' % (s['source'], round(s['e_time']-s['s_time'], 2), u'\u2713'))
 				elif s['status'] == 'idle':
 					str.append('%s (%ss. %s)' % (s['source'], '0.00', u'\u21AD'))
-				elif s['status'] == 'active':
+				elif s['status'] == 'active' and 's_time' not in s.keys():
+					str.append('%s (%ss. %s)' % (s['source'], round(0.01, 2), u'\u21AF'))
+				elif s['status'] == 'active' and 's_time' in s.keys():
 					str.append('%s (%ss. %s)' % (s['source'], round(time.time()-s['s_time'], 2), u'\u21AF'))
 					
 		ret_str = (' ,'.join(x for x in str))

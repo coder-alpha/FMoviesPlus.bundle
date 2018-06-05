@@ -161,7 +161,7 @@ class source:
 			for pg in range(100):
 				query_url = urlparse.urljoin(self.base_link, self.search_link) % (pg, urllib.quote_plus(cleantitle.query(title)))
 				
-				if max != None and int(pg) > int(max):
+				if max != None and int(pg) >= int(max):
 					raise
 					
 				log(type='INFO', method='get_movie', err='Searching - %s' % (query_url), dolog=False, logToControl=False, doPrint=True)
@@ -192,7 +192,7 @@ class source:
 					except:
 						poster = None
 					
-					if title in titlex or titlex in title:
+					if cleantitle.get(title) in cleantitle.get(titlex) or cleantitle.get(titlex) in cleantitle.get(title) or lose_match_title(title, titlex):
 						url = url.replace(' ','%20')
 						log(type='INFO', method='get_movie', err='Verifying - %s' % url, dolog=False, logToControl=False, doPrint=True)
 						result = proxies.request(url, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, headers=headers, timeout=60)
@@ -336,6 +336,26 @@ class source:
 			log('ERROR', 'get_sources', '%s' % e, dolog=not testing)
 			return sources
 
+def lose_match_title(title1, title2):
+	try:
+		t1 = cleantitle.get(title1).split(' ')
+		t2 = cleantitle.get(title2).split(' ')
+		
+		c_min = min(len(t1), len(t2))
+		c = 0
+		for tt1 in t1:
+			for tt2 in t2:
+				if tt1.strip() == tt2.strip():
+					c += 1
+					break
+				
+		if c >= c_min:
+			return True
+		else:
+			raise
+	except:
+		False
+		
 def lose_match_year(yr1, yr2, seasonNr):
 	try:
 		yr1 = str(yr1)

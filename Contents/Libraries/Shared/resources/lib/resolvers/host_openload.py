@@ -153,7 +153,7 @@ class host:
 				bool, p, retmsg, fs, r1, sub_url = check(testUrl, usePairing = False, embedpage=True)
 				self.speedtest = time.time() - x1
 				if bool == True:
-					vidurl, err, sub_url = resolve(testUrl)
+					vidurl, err, sub_url, page_html = resolve(testUrl)
 					#vidurl = testUrl
 					if vidurl != None or err != None and 'pair' in err.lower():
 						#print vidurl
@@ -177,6 +177,9 @@ class host:
 			
 	def testResolver(self):
 		try:
+			if control.setting('use_quick_init') == True:
+				log('INFO','testResolver', 'Disabled testing - Using Quick Init setting in Prefs.')
+				return False
 			testUrls = self.testUrl()
 			links = []
 			bool = False
@@ -197,7 +200,7 @@ class host:
 			testUrls.append('http://openload.co/f/%s' % v)
 		return testUrls
 		
-	def createMeta(self, url, provider, logo, quality, links, key, riptype, vidtype='Movie', lang='en', sub_url=None, txt='', file_ext = '.mp4', testing=False, poster=None):
+	def createMeta(self, url, provider, logo, quality, links, key, riptype, vidtype='Movie', lang='en', sub_url=None, txt='', file_ext = '.mp4', testing=False, poster=None, headers=None):
 	
 		if testing == True:
 			links.append(url)
@@ -210,8 +213,9 @@ class host:
 		url = url.replace('oload.tv','openload.co').replace('/embed/','/f/')
 		orig_url = url
 		durl = url
+		
 		if testing == False:
-			log(type='INFO',method='createMeta-1', err=u'creating meta for url: %s' % url)
+			log(type='INFO',method='createMeta-0', err=u'creating meta for url: %s' % url)
 		
 		urldata = client.b64encode(json.dumps('', encoding='utf-8'))
 		params = client.b64encode(json.dumps('', encoding='utf-8'))
@@ -225,18 +229,20 @@ class host:
 		else:
 			isPairRequired = False
 			
+		page_html = client.request(url)
+			
 		if a1 != None:
 			vidurl = a1
 		else:
-			vidurl, err, sub_url_t = resolve(url, usePairing=False)
+			vidurl, err, sub_url_t, r1 = resolve(url, usePairing=False)
 			if sub_url == None:
 				sub_url = sub_url_t
 			
 		if vidurl != None:
 			isPairRequired = False
-			
+
 		pair = ''
-		
+
 		if isPairRequired == True:
 			pair = ' *Pairing required* '
 			if isPairingDone():
@@ -244,8 +250,26 @@ class host:
 				
 		if vidurl == None:
 			vidurl = url
-			
-		online, r1, r2, fs, r3, sub_url_t = check(vidurl, usePairing=False, embedpage=True)
+		
+		online, r1, r2, fs, r3, sub_url_t = check(vidurl, videoData=page_html, usePairing=False, embedpage=True)
+		
+		if online == False:
+			pair = ' *Vid Unavailable* '
+		
+		file_title = ''
+		try:
+			file_title = client.parseDOM(page_html, 'title')[0]
+		except:
+			try:
+				file_title = client.parseDOM(page_html, 'span', attrs = {'class': 'title'})[0]
+			except:
+				try:
+					file_title = client.parseDOM(page_html, 'h3', attrs = {'class': 'other-title-bold'})[0]
+				except:
+					pass
+					
+		log(type='INFO',method='createMeta-1', err=u'File Title: %s' % file_title)
+		
 		if sub_url == None:
 			sub_url = sub_url_t
 		
@@ -256,7 +280,7 @@ class host:
 			log(type='INFO',method='createMeta-2', err=u'pair: %s online: %s resolved url: %s' % (isPairRequired,online,vidurl))
 
 		try:
-			files_ret.append({'source':self.name, 'maininfo':pair, 'titleinfo':titleinfo, 'quality':file_quality(vidurl, quality), 'vidtype':vidtype, 'rip':rip_type(vidurl, riptype), 'provider':provider, 'url':vidurl, 'durl':durl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(url), 'misc':{'pair':isPairRequired, 'player':'iplayer', 'gp':False}})
+			files_ret.append({'source':self.name, 'maininfo':pair, 'titleinfo':titleinfo, 'quality':file_quality(vidurl, quality, file_title), 'vidtype':vidtype, 'rip':rip_type(vidurl, riptype, file_title), 'provider':provider, 'url':vidurl, 'durl':durl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(url), 'misc':{'pair':isPairRequired, 'player':'iplayer', 'gp':False}})
 		except Exception as e:
 			log(type='ERROR',method='createMeta-3', err=u'%s' % e)
 			files_ret.append({'source':urlhost, 'maininfo':pair, 'titleinfo':titleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'url':vidurl, 'durl':durl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(url), 'misc':{'pair':isPairRequired, 'player':'eplayer', 'gp':False}})
@@ -291,26 +315,27 @@ def getVideoMetaData(url):
 def resolve(url, embedpage=False, usePairing=True, session=None):
 
 	try:
+		videoData = ''
 		bool, videoData, msg, fs, result, sub_url = check(url, usePairing=usePairing, session=session) 
 		if bool == False: 
-			return (None, msg, sub_url)
+			return (None, msg, sub_url, videoData)
 		if '/stream/' in url or '.oloadcdn.' in url:
-			return (url, msg, sub_url)
+			return (url, msg, sub_url, videoData)
 		if result != None and '/stream/' in result or '.oloadcdn.' in result:
-			return (result, msg, sub_url)
+			return (result, msg, sub_url, videoData)
 
 		id = re.compile('//.+?/(?:embed|f)/([0-9a-zA-Z-_]+)').findall(url)[0]
 		embedpageURL = 'https://openload.co/embed/%s' % id
 		
 		if embedpage == True:
-			return (embedpageURL, msg, sub_url)
+			return (embedpageURL, msg, sub_url, videoData)
 
 		videourl, videoData, msg = openloadS(embedpageURL, videoData=videoData, usePairing=usePairing, session=session)
 
-		return (videourl, msg, sub_url)
+		return (videourl, msg, sub_url, videoData)
 	except Exception as e:
 		e = '{}'.format(e)
-		return (None, e, None)
+		return (None, e, None, videoData)
 
 def check(url, videoData=None, skipPageCheck=False, usePairing=True, embedpage=False, headers=None, cookie=None, session=None):
 	try:
@@ -322,6 +347,11 @@ def check(url, videoData=None, skipPageCheck=False, usePairing=True, embedpage=F
 		#ifstream = re.search('//.+?/(?:embed|f)/([0-9a-zA-Z-_]+)',(url)[0])
 		#if ifstream:
 		#	return True
+		
+		if videoData != None:
+			if 'File not found' in videoData or 'deleted by the owner' in videoData or 'Sorry!' in videoData:
+				log(type='FAIL', method='check', err='File deleted by the owner or was removed. : %s' % url)
+				return (False, videoData, 'File not found', fs, None, sub_url)
 
 		if '/stream/' not in url and '.oloadcdn.' not in url:
 			id = re.compile('//.+?/(?:embed|f)/([0-9a-zA-Z-_]+)').findall(url)[0]
@@ -335,11 +365,9 @@ def check(url, videoData=None, skipPageCheck=False, usePairing=True, embedpage=F
 
 				videoData = client.request(url, headers=openloadhdrx, cookie=cookie)
 				if videoData == None:
-					print '%s : File not found' % url
 					log(type='FAIL', method='check', err='File deleted by the owner or was removed. : %s' % url)
 					return (False, videoData, 'File not found', fs, None, sub_url)
 				if 'File not found' in videoData or 'deleted by the owner' in videoData or 'Sorry!' in videoData: 
-					print '%s : File not found' % url
 					log(type='FAIL', method='check', err='File deleted by the owner or was removed. : %s' % url)
 					return (False, videoData, 'File not found', fs, None, sub_url)
 					
@@ -405,7 +433,7 @@ def checkVidPresence(streamurl, headers=None, cookie=None):
 def urldata(url, qual):
 
 	try:
-		mfile, err, sub_url = resolve(url)
+		mfile, err, sub_url, page_html = resolve(url)
 		files = []
 		jsondata = {
 					"label": qual,
@@ -422,23 +450,26 @@ def urldata(url, qual):
 	except:
 		return client.b64encode(json.dumps('', encoding='utf-8'))
 	
-def rip_type(url, riptype):
+def rip_type(url, riptype, title=''):
 	try:
 		url = url.lower()
-		if '.brrip.' in url:
+		title = title.lower()
+		if '.3d.' in url or '.hsbs.' in url or '.3d.' in title or '.hsbs.' in title or ' 3d ' in title or ' hsbs ' in title:
+			type = '3d-brrip'
+		elif '.brrip.' in url or '.brrip.' in title or ' brrip ' in title:
 			type = 'brrip'
-		elif '.ts.' in url:
+		elif '.ts.' in url or '.ts.' in title or ' ts ' in title:
 			type = 'ts'
-		elif '.cam.' in url:
+		elif '.cam.' in url or '.cam.' in title or ' cam ' in title:
 			type = 'cam'
-		elif '.scr.' in url:
+		elif '.scr.' in url or '.scr.' in title or ' ts ' in title:
 			type = 'scr'
 		else:
 			type = riptype
 			
 		type = type.lower()
 
-		if type == 'brrip' or type == 'ts' or type == 'cam' or type == 'scr':
+		if type == '3d-brrip' or type == 'brrip' or type == 'ts' or type == 'cam' or type == 'scr':
 			pass
 		else:
 			type = 'unknown'
@@ -447,17 +478,19 @@ def rip_type(url, riptype):
 	except:
 		return unicode('Unknown'.upper())
 	
-def file_quality(url, quality):
+def file_quality(url, quality, title=''):
 	#print "%s - %s" % (self.name, url)
-	
 	try:
-		if '1080' in url:
+		url = url.lower()
+		title = title.lower()
+	
+		if '1080' in url or '.1080p.' in title or ' 1080p ' in title:
 			return '1080p'
-		elif '720' in url:
+		elif '720' in url or '.720p.' in title or ' 720p ' in title:
 			return '720p'
-		elif '480' in url:
+		elif '480' in url or '.480p.' in title or ' 480p ' in title:
 			return '480p'
-		elif '360' in url:
+		elif '360' in url or '.360p.' in title or ' 360p ' in title:
 			return '360p'
 		else:
 			return unicode(quality)
@@ -720,7 +753,7 @@ def match_id(url):
 	return m.group('id')
 	
 def isPairingRequired(url, session=None):
-	resolved_url, err, sub_url = resolve(url=url, usePairing=False, session=session)
+	resolved_url, err, sub_url, page_html = resolve(url=url, usePairing=False, session=session)
 	
 	if resolved_url != None:
 		return False, resolved_url
@@ -805,7 +838,7 @@ def link_from_api(fid, lk=None, test=False):
 		data = json.loads(data)
 	except Exception as e:
 		msg = str(e)
-		print e
+		log(type='ERROR', method='link_from_api', err='%s' % e)
 		log(type='FAIL', method='link_from_api', err='cannot handle 1st api link %s' % url)
 		return None, cont, captcha_url, dlticket, msg
 

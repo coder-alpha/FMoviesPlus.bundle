@@ -171,6 +171,10 @@ def MediaObjectsForURL(url, **kwargs):
 			if 'openload' not in host:
 				furl, params, direct_play_file = host_misc_resolvers.resolve(url=ourl, https_skip=https_skip)
 				
+				if furl == None:
+					err = host_misc_resolvers.resolve(url=ourl, https_skip=https_skip)
+					raise Exception(err)
+				
 				if direct_play == False:
 					pass
 				else:

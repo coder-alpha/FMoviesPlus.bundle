@@ -1,12 +1,8 @@
 # -*- coding: utf-8 -*-
 
 import re,urllib,urlparse,json,random,time,base64
-from resources.lib.libraries import control
-from resources.lib.libraries import cleantitle
-from resources.lib.libraries import client
-from resources.lib.libraries import testparams
-from resources.lib import resolvers
-from resources.lib import proxies
+from resources.lib.libraries import client, control, cleantitle, source_utils, testparams
+from resources.lib import resolvers, proxies
 from __builtin__ import ord, format
 
 name = 'FMovies.io'
@@ -15,8 +11,8 @@ loggertxt = []
 class source:
 	def __init__(self):
 		del loggertxt[:]
-		self.ver = '0.1.0'
-		self.update_date = 'Apr. 25, 2018'
+		self.ver = '0.1.1'
+		self.update_date = 'May 25, 2018'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
 		self.base_link_alts = ['https://www3.fmovies.pe','https://www.fmovies.pe','https://www4.fmovies.pe','https://fmovies.io']
@@ -134,6 +130,9 @@ class source:
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','testParser', 'Plugin Disabled by User - cannot test parser')
 				return False
+			if control.setting('use_quick_init') == True:
+				log('INFO','testParser', 'Disabled testing - Using Quick Init setting in Prefs.')
+				return False
 			if self.disabled == True:
 				log('INFO','testParser', 'Plugin Disabled - cannot test parser')
 				return False
@@ -196,8 +195,11 @@ class source:
 	def get_sources(self, url, hosthdDict=None, hostDict=None, locDict=None, proxy_options=None, key=None, testing=False):
 		try:
 			sources = []
+			if control.setting('Provider-%s' % name) == False:
+				log('INFO','get_sources','Provider Disabled by User')
+				return sources
 			if url == None: 
-				log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key), dolog=not testing)
+				log('FAIL','get_sources','url == None. Could not find a matching title: %s' % cleantitle.title_from_key(key), dolog=not testing)
 				return sources
 			
 			urls = []
@@ -268,22 +270,32 @@ class source:
 					quality = '480p'
 					type = 'BRRIP'
 					
+					atr = ''
+					qtr = ''
+					
 					try:
-						atr = client.parseDOM(result, 'span', attrs = {'class': 'quanlity'})[0]
-						q, t = cleantitle.getQuality(atr)
-						if q != None:
-							quality = q
-							type = t
+						qtr = client.parseDOM(result, 'span', attrs = {'class': 'quanlity'})[0]
+						# q, t = cleantitle.getQuality(atr)
+						# if q != None:
+							# quality = q
+							# type = t
 					except:
 						try:
-							atr = client.parseDOM(result, 'span', attrs = {'class': 'quality'})[0]
-							q, t = cleantitle.getQuality(atr)
-							if q != None:
-								quality = q
-								type = t
+							qtr = client.parseDOM(result, 'span', attrs = {'class': 'quality'})[0]
+							# q, t = cleantitle.getQuality(atr)
+							# if q != None:
+								# quality = q
+								# type = t
 						except:
 							pass
-					
+							
+					try:
+						quality = source_utils.check_sd_url(qtr)
+						type = source_utils.check_sd_url_rip(qtr)
+					except Exception as e:
+						quality = '480p'
+						type = 'BRRIP'
+						
 					try:
 						atr = client.parseDOM(result, 'span', attrs = {'class': 'year'})[0]
 					except:
@@ -297,9 +309,9 @@ class source:
 					if 'season' in data:
 						pass
 					else:
-						resultx = result if str(int(year)) in atr or str(int(year)+1) in atr or str(int(year)-1) in atr else None
+						resultx = result if str(int(year)) in atr else None
 						if resultx == None:
-							resultx = result if str(int(year)) in atr_release or str(int(year)+1) in atr_release or str(int(year)-1) in atr_release else None
+							resultx = result if str(int(year)) in atr_release else None
 						if resultx == None:
 							raise Exception()
 							
@@ -308,8 +320,6 @@ class source:
 					#r = client.parseDOM(result, 'article', attrs = {'class': 'player current'})[0]
 					#r = client.parseDOM(r, 'iframe', ret='src')[0]
 					#r = r.split('?')
-					
-					#print r
 						
 					try:
 						servers = re.findall(r'link_server_.*\"(.*)\";', page)
@@ -323,7 +333,7 @@ class source:
 									if 'http' not in server:
 										server = 'http:' + server
 								
-								links_m = resolvers.createMeta(server, self.name, self.logo, quality, links_m, key, testing=testing)
+								links_m = resolvers.createMeta(server, self.name, self.logo, quality, links_m, key, riptype=type, testing=testing)
 							except Exception as e:
 								pass
 							if testing and len(links_m) > 0:
@@ -338,14 +348,16 @@ class source:
 								if 'http' not in server:
 									server = 'http:' + server
 								try:
-									links_m = resolvers.createMeta(server, self.name, self.logo, quality, links_m, key, testing=testing)	
+									links_m = resolvers.createMeta(server, self.name, self.logo, quality, links_m, key, riptype=type, testing=testing)	
 								except:
 									pass
 					except:
 						pass
+						
+					break
 				except:
 					pass
-
+				
 			for link in links_m:
 				sources.append(link)
 				

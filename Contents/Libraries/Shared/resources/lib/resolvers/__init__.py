@@ -126,7 +126,7 @@ def testLink(url):
 	except:
 		return 'Unknown'
 		
-def createMeta(url, provider, logo, quality, links, key, riptype=None, vidtype='Movie', lang='en', sub_url=None, txt='', file_ext='.mp4', testing=False, urlhost=None, poster=None):
+def createMeta(url, provider, logo, quality, links, key, riptype=None, vidtype='Movie', lang='en', sub_url=None, txt='', file_ext='.mp4', testing=False, urlhost=None, poster=None, headers=None):
 
 	if url == None or url == '':
 		return links
@@ -151,6 +151,7 @@ def createMeta(url, provider, logo, quality, links, key, riptype=None, vidtype='
 				urlhost = re.findall('([\w]+[.][\w]+).*$', urlparse.urlparse(url.strip().lower()).netloc)[0]
 				urlhost = urlhost.split('.')[1]
 				
+		if urlhost != None:
 			if riptype == None:
 				riptype_def = 'BRRIP'
 			else:
@@ -160,7 +161,7 @@ def createMeta(url, provider, logo, quality, links, key, riptype=None, vidtype='
 
 				if urlhost in host['host']:
 					log("Found %s in %s" % (urlhost, host['host']))
-					return host['call'].createMeta(url, provider, logo, quality, links, key, riptype_def, vidtype=vidtype, lang=lang, sub_url=sub_url, txt=txt, file_ext=file_ext, testing=testing, poster=poster)
+					return host['call'].createMeta(url, provider, logo, quality, links, key, riptype_def, vidtype=vidtype, lang=lang, sub_url=sub_url, txt=txt, file_ext=file_ext, testing=testing, poster=poster, headers=headers)
 				
 		log("urlhost '%s' not found in host/resolver plugins - creating generic meta for external services" % urlhost)
 				

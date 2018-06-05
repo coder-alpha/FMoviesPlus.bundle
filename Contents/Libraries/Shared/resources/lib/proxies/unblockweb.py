@@ -72,7 +72,7 @@ def requestdirect(url, close=True, redirect=True, followredirect=False, error=Fa
 			headers = {'Connection' : 'keep-alive'}
 			headers['User-Agent'] = client.randomagent()
 		
-		res = client.request(url = PROXY_URL + url, close=close, redirect=redirect, followredirect=followredirect, error=error, proxy=proxy, post=post, headers=headers, mobile=mobile, limit=limit, referer=referer, cookie=cookie, output=output, timeout=timeout, httpsskip=httpsskip, use_web_proxy=use_web_proxy, XHR=XHR, IPv4=IPv4)
+		res = client.request(url = PROXY_URL + urllib.urlencode(url), close=close, redirect=redirect, followredirect=followredirect, error=error, proxy=proxy, post=post, headers=headers, mobile=mobile, limit=limit, referer=referer, cookie=cookie, output=output, timeout=timeout, httpsskip=httpsskip, use_web_proxy=use_web_proxy, XHR=XHR, IPv4=IPv4)
 		
 		page_data_string = client.getPageDataBasedOnOutput(res, output)
 		

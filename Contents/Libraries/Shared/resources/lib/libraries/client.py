@@ -406,16 +406,17 @@ def getRedirectingUrl(url, headers=None):
 		
 def getFileSize(link, headers=None, retError=False, retry429=False, cl=3):
 	try:
-		r = requests.get(link, stream=True, verify=False, allow_redirects=True)
-		if headers != None:
+		r = requests.get(link, headers=headers, stream=True, verify=False, allow_redirects=True)
+		
+		if headers != None and 'Content-length' in headers:
 			r.headers = headers
 		
 		if retry429 == True:
 			c = 0
 			while r.status_code == 429 and c < cl:
 				time.sleep(5)
-				r = requests.get(link, stream=True, verify=False, allow_redirects=True)
-				if headers != None:
+				r = requests.get(link, headers=headers, stream=True, verify=False, allow_redirects=True)
+				if headers != None and 'Content-length' in headers:
 					r.headers = headers
 				c += 1
 		

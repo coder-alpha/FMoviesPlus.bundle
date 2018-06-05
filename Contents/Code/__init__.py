@@ -270,6 +270,14 @@ def SleepAndUpdateThread(update=True, startthread=True, session=None, **kwargs):
 	doSave = False
 	
 	try:
+		if common.BOOT_UP_CONTROL_SETTINGS_FROM_PREFS != None:
+			for item_name in common.BOOT_UP_CONTROL_SETTINGS_FROM_PREFS:
+				item_val = Prefs[item_name]
+				common.set_settings_to_control(item_name, item_val)
+	except Exception as e:
+		Log(e)
+		
+	try:
 		BOOT_UP_CONTROL_SETTINGS = Dict['BOOT_UP_CONTROL_SETTINGS']
 		if BOOT_UP_CONTROL_SETTINGS != None:
 			BOOT_UP_CONTROL_SETTINGS = JSON.ObjectFromString(D(BOOT_UP_CONTROL_SETTINGS))
@@ -295,6 +303,7 @@ def SleepAndUpdateThread(update=True, startthread=True, session=None, **kwargs):
 		
 	if update == True:
 		
+		Log("Interface Initializing... Please wait for a few minutes !")
 		x1 = time.time()
 		ret = common.interface.init()
 		x2 = time.time()
@@ -3692,13 +3701,19 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 			time.sleep(7)
 			doSleepForProgress = False
 		prog = common.interface.checkProgress(key)
+		desc_prog = common.interface.getDescProgress(key)
+		eta = common.interface.getETAProgress(key=key, type='movie' if tvshowtitle == None else 'tv')
+		if eta == None:
+			eta_txt =  ''
+		else:
+			eta_txt =  ' ETA: %ss.' % eta
 		if use_prog_conc:
 			if prog < 100:
-				oc_conc = ObjectContainer(title2='External Sources - Progress %s%s' % (prog, '%'), no_history=True, no_cache=True)
+				oc_conc = ObjectContainer(title2='External Sources - Progress %s%s.%s' % (prog, '%', eta_txt), no_history=True, no_cache=True)
 				oc.append(DirectoryObject(
 					key = Callback(ExtSources, movtitle=movtitle, tvshowtitle=tvshowtitle, season=season, episode=episode, title=title, url=url, summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, session=session, refresh=int(refresh)+1),
-					title = 'Refresh - %s%s Done' % (prog,'%'),
-					summary = 'List sources by External Providers.',
+					title = 'Refresh - %s%s Done.%s' % (prog,'%', eta_txt),
+					summary = 'List sources by External Providers. %s' % desc_prog,
 					art = art,
 					thumb = GetThumb(R(ICON_REFRESH), session=session)
 					)
@@ -3851,12 +3866,13 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 
 	if  common.ALT_PLAYBACK:
 		for gen_play in generic_playback_links:
-			#Log(gen_play)
 			title, summary, thumb, params, duration, genres, videoUrl, videoRes, watch_title = gen_play
 			try:
-				oc.append(CreateVideoObject(url, title, summary, thumb, params, duration, genres, videoUrl, videoRes, watch_title)) # ToDo
-			except:
-				pass
+				oc.append(CreateVideoObject(url, title, summary, thumb, params, duration, genres, videoUrl, videoRes, watch_title))
+			except Exception as e:
+				if Prefs["use_debug"]:
+					Log(gen_play)
+				Log(e)
 	
 	if common.USE_EXT_URLSERVICES:
 		external_extSources = extSourKey
@@ -3947,14 +3963,19 @@ def ExtSourcesDownload(title, url, summary, thumb, art, rating, duration, genre,
 			time.sleep(7)
 			doSleepForProgress = False
 		prog = common.interface.checkProgress(key)
-		
+		desc_prog = common.interface.getDescProgress(key)
+		eta = common.interface.getETAProgress(key=key, type='movie' if tvshowtitle == None else 'tv')
+		if eta == None:
+			eta_txt =  ''
+		else:
+			eta_txt =  ' ETA: %ss.' % eta
 		if use_prog_conc:
 			if prog < 100:
-				oc = ObjectContainer(title2='Download Sources - Progress %s%s' % (prog, '%'), no_history=True, no_cache=True)
+				oc = ObjectContainer(title2='Download Sources - Progress %s%s.%s' % (prog, '%', eta_txt), no_history=True, no_cache=True)
 				oc.add(DirectoryObject(
 					key = Callback(ExtSourcesDownload, movtitle=movtitle, tvshowtitle=tvshowtitle, season=season, episode=episode, title=title, url=url, summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, session=session, mode=mode, refresh=int(refresh)+1),
-					title = 'Refresh - %s%s Done' % (prog,'%'),
-					summary = 'List sources by External Providers.',
+					title = 'Refresh - %s%s Done.%s' % (prog,'%',eta_txt),
+					summary = 'List sources by External Providers. %s' % desc_prog,
 					art = art,
 					thumb = GetThumb(R(ICON_REFRESH), session=session)
 					)
@@ -4047,7 +4068,7 @@ def ExtSourcesDownload(title, url, summary, thumb, art, rating, duration, genre,
 			try:
 				libtype='movie' if tvshowtitle == None else 'show'
 				oc.add(DirectoryObject(
-					key = Callback(AddToDownloadsListPre, title=watch_title_x, purl=url, url=source['url'], durl=source['durl'], sub_url=source['sub_url'], summary=summary, thumb=thumb, year=year, fsBytes=fsBytes, fs=fs, file_ext=source['file_ext'], quality=source['quality'], source=source['source'], source_meta={}, file_meta={}, type=libtype, vidtype=source['vidtype'].lower(), resumable=source['resumeDownload'], mode=mode, session=session, admin=True if mode==common.DOWNLOAD_MODE[0] else False),
+					key = Callback(AddToDownloadsListPre, title=watch_title_x, purl=url, url=source['url'], durl=source['durl'], sub_url=source['sub_url'], summary=summary, thumb=thumb, year=year, fsBytes=fsBytes, fs=fs, file_ext=source['file_ext'], quality=source['quality'], source=source['source'], source_meta={}, file_meta={}, type=libtype, vidtype=source['vidtype'].lower(), resumable=source['resumeDownload'], mode=mode, session=session, admin=True if mode==common.DOWNLOAD_MODE[0] else False, params=source['params'], riptype=source['rip']),
 					title = title_msg,
 					summary = 'Adds the current video to %s List' % 'Download' if mode==common.DOWNLOAD_MODE[0] else 'Request',
 					art = art,
@@ -4232,12 +4253,13 @@ def PSExtSources(extSources_play, con_title, session, watch_title, year, summary
 				
 	if  common.ALT_PLAYBACK:
 		for gen_play in generic_playback_links:
-			#Log(gen_play)
 			title, summary, thumb, params, duration, genres, videoUrl, videoRes, watch_title = gen_play
 			try:
 				oc.add(CreateVideoObject(url, title, summary, thumb, params, duration, genres, videoUrl, videoRes, watch_title))
-			except:
-				pass
+			except Exception as e:
+				if Prefs["use_debug"]:
+					Log(gen_play)
+				Log(e)
 				
 	for o in ocx:
 		oc.add(o)
@@ -4610,7 +4632,7 @@ def ClearRecentWatchList(**kwargs):
 	
 #######################################################################################################
 @route(PREFIX + '/AddToDownloadsListPre')
-def AddToDownloadsListPre(title, year, url, durl, purl, summary, thumb, quality, source, type, resumable, source_meta, file_meta, mode, sub_url=None, fsBytes=None, fs=None, file_ext=None, vidtype=None, section_path=None, section_title=None, section_key=None, session=None, admin=False, update=False, **kwargs):
+def AddToDownloadsListPre(title, year, url, durl, purl, summary, thumb, quality, source, type, resumable, source_meta, file_meta, mode, sub_url=None, fsBytes=None, fs=None, file_ext=None, vidtype=None, section_path=None, section_title=None, section_key=None, session=None, admin=False, update=False, params=None, riptype=None, **kwargs):
 	
 	admin = True if str(admin) == 'True' else False
 	update = True if str(update) == 'True' else False
@@ -4685,7 +4707,7 @@ def AddToDownloadsListPre(title, year, url, durl, purl, summary, thumb, quality,
 			return MC.message_container('Item Update', 'Item has been updated with new download url')
 		elif admin == True and update == False and EncTxt['url'] != url:
 			oc = ObjectContainer(title1='Item exists in Downloads List', no_cache=common.isForceNoCache())
-			oc.add(DirectoryObject(key = Callback(AddToDownloadsListPre, title=title, purl=purl, url=url, durl=durl, summary=summary, thumb=thumb, year=year, quality=quality, source=source, source_meta=source_meta, file_meta=file_meta, type=type, resumable=resumable, sub_url=sub_url, fsBytes=fsBytes, fs=fs, file_ext=file_ext, mode=mode, vidtype=vidtype, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, update=True), title = 'Update this item'))
+			oc.add(DirectoryObject(key = Callback(AddToDownloadsListPre, title=title, purl=purl, url=url, durl=durl, summary=summary, thumb=thumb, year=year, quality=quality, source=source, source_meta=source_meta, file_meta=file_meta, type=type, resumable=resumable, sub_url=sub_url, fsBytes=fsBytes, fs=fs, file_ext=file_ext, mode=mode, vidtype=vidtype, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, update=True, params=params, riptype=riptype), title = 'Update this item'))
 			oc.add(DirectoryObject(key = Callback(MyMessage, title='Return', msg='Use back to Return to previous screen'), title = 'Return'))
 			return oc
 		elif admin == True and update == True and EncTxt['url'] == url:
@@ -4722,12 +4744,12 @@ def AddToDownloadsListPre(title, year, url, durl, purl, summary, thumb, quality,
 			Dict['DOWNLOAD_OPTIONS_SECTION_TEMP'][tuec][x] = common.DOWNLOAD_OPTIONS[x]
 		Dict.Save()
 		
-	return AddToDownloadsList(title=title, purl=purl, url=url, durl=durl, summary=summary, thumb=thumb, year=year, quality=quality, source=source, source_meta=source_meta, file_meta=file_meta, type=type, vidtype=vidtype, resumable=resumable, sub_url=sub_url, fsBytes=fsBytes, fs=fs, file_ext=file_ext, mode=mode, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, update=update, user=user)
+	return AddToDownloadsList(title=title, purl=purl, url=url, durl=durl, summary=summary, thumb=thumb, year=year, quality=quality, source=source, source_meta=source_meta, file_meta=file_meta, type=type, vidtype=vidtype, resumable=resumable, sub_url=sub_url, fsBytes=fsBytes, fs=fs, file_ext=file_ext, mode=mode, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, update=update, user=user,params=params, riptype=riptype)
 	
 ######################################################################################
 # Adds a movie to the DownloadsList list using the (title + 'Down5Split') as a key for the url
 @route(PREFIX + "/addToDownloadsList")
-def AddToDownloadsList(title, year, url, durl, purl, summary, thumb, quality, source, type, resumable, source_meta, file_meta, sub_url=None, fsBytes=None, fs=None, file_ext=None, vidtype=None, section_path=None, section_title=None, section_key=None, session=None, admin=False, update=False, user=None, **kwargs):
+def AddToDownloadsList(title, year, url, durl, purl, summary, thumb, quality, source, type, resumable, source_meta, file_meta, sub_url=None, fsBytes=None, fs=None, file_ext=None, vidtype=None, section_path=None, section_title=None, section_key=None, session=None, admin=False, update=False, user=None, params=None, riptype=None, **kwargs):
 
 	admin = True if str(admin) == 'True' else False
 	update = True if str(update) == 'True' else False
@@ -4772,13 +4794,13 @@ def AddToDownloadsList(title, year, url, durl, purl, summary, thumb, quality, so
 					LOCS.append(item)
 			if len(LOCS) == 1:
 				item = LOCS[0]
-				return AddToDownloadsList(title=title, year=year, url=url, durl=durl, purl=purl, summary=summary, thumb=thumb, fs=fs, fsBytes=fsBytes, file_ext=file_ext, quality=quality, source=source, source_meta=source_meta, file_meta=file_meta, type=type, vidtype=vidtype, resumable=resumable, sub_url=sub_url, section_path=item['path'], section_title=item['title'], section_key=item['key'], session=session, admin=admin, update=update, user=user)
+				return AddToDownloadsList(title=title, year=year, url=url, durl=durl, purl=purl, summary=summary, thumb=thumb, fs=fs, fsBytes=fsBytes, file_ext=file_ext, quality=quality, source=source, source_meta=source_meta, file_meta=file_meta, type=type, vidtype=vidtype, resumable=resumable, sub_url=sub_url, section_path=item['path'], section_title=item['title'], section_key=item['key'], session=session, admin=admin, update=update, user=user, params=params, riptype=riptype)
 			else:
 				oc = ObjectContainer(title1='Select Location', no_cache=common.isForceNoCache())
 				for item in DOWNLOAD_OPTIONS_SECTION_TEMP[type]:
 					if item['enabled']:
 						oc.add(DirectoryObject(
-							key = Callback(AddToDownloadsList, title=title, year=year, url=url, durl=durl, purl=purl, summary=summary, thumb=thumb, fs=fs, fsBytes=fsBytes, file_ext=file_ext, quality=quality, source=source, source_meta=source_meta, file_meta=file_meta, type=type, vidtype=vidtype, resumable=resumable, sub_url=sub_url, section_path=item['path'], section_title=item['title'], section_key=item['key'], session=session, admin=admin, update=update, user=user),
+							key = Callback(AddToDownloadsList, title=title, year=year, url=url, durl=durl, purl=purl, summary=summary, thumb=thumb, fs=fs, fsBytes=fsBytes, file_ext=file_ext, quality=quality, source=source, source_meta=source_meta, file_meta=file_meta, type=type, vidtype=vidtype, resumable=resumable, sub_url=sub_url, section_path=item['path'], section_title=item['title'], section_key=item['key'], session=session, admin=admin, update=update, user=user, params=params, riptype=riptype),
 							title = '%s | %s' % (item['title'], item['path'])
 							)
 						)
@@ -4796,7 +4818,7 @@ def AddToDownloadsList(title, year, url, durl, purl, summary, thumb, quality, so
 						pair_required, u1 = common.host_openload.isPairingRequired(url=url, session=session)
 						if pair_required == False:
 							fs_i, err = common.client.getFileSize(u1, retError=True, retry429=True, cl=2)
-					online, r1, err, fs_i =  common.host_openload.check(url, usePairing = False, embedpage=True)
+					online, r1, err, fs_i, r2, r3 =  common.host_openload.check(url, usePairing = False, embedpage=True)
 				else:
 					fs_i, err = common.client.getFileSize(url, retError=True, retry429=True, cl=2)
 
@@ -4832,7 +4854,7 @@ def AddToDownloadsList(title, year, url, durl, purl, summary, thumb, quality, so
 			chunk_size = int(1024.0 * 1024.0 * float(common.DOWNLOAD_CHUNK_SIZE)) # in bytes
 			fid = '.'+common.id_generator()
 			
-			EncTxt = E(JSON.StringFromObject({'title':title, 'year':year, 'url':url, 'durl':durl, 'purl':purl, 'sub_url':sub_url, 'summary':summary, 'thumb':thumb, 'fsBytes':int(fsBytes), 'fs':fs, 'chunk_size':chunk_size, 'file_ext':file_ext, 'quality':quality, 'source':source, 'source_meta':source_meta, 'file_meta':file_meta, 'uid':uid, 'fid':fid, 'type':type, 'vidtype':vidtype, 'resumable':resumable, 'status':common.DOWNLOAD_STATUS[0], 'startPos':0, 'timeAdded':time.time(), 'first_time':time.time(), 'progress':0, 'chunk_speed':0,'avg_speed':0,'avg_speed_curr':0, 'eta':0, 'error':'', 'last_error':'Unknown Error', 'action':common.DOWNLOAD_ACTIONS[4],'section_path':section_path, 'section_title':section_title, 'section_key':section_key, 'user':user})) 
+			EncTxt = E(JSON.StringFromObject({'title':title, 'year':year, 'url':url, 'durl':durl, 'purl':purl, 'sub_url':sub_url, 'summary':summary, 'thumb':thumb, 'fsBytes':int(fsBytes), 'fs':fs, 'chunk_size':chunk_size, 'file_ext':file_ext, 'quality':quality, 'source':source, 'source_meta':source_meta, 'file_meta':file_meta, 'uid':uid, 'fid':fid, 'type':type, 'vidtype':vidtype, 'resumable':resumable, 'status':common.DOWNLOAD_STATUS[0], 'startPos':0, 'timeAdded':time.time(), 'first_time':time.time(), 'progress':0, 'chunk_speed':0,'avg_speed':0,'avg_speed_curr':0, 'eta':0, 'error':'', 'last_error':'Unknown Error', 'action':common.DOWNLOAD_ACTIONS[4],'section_path':section_path, 'section_title':section_title, 'section_key':section_key, 'user':user, 'params':params, 'riptype':riptype})) 
 			Dict[uid] = EncTxt
 			Dict.Save()
 			Thread.Create(download.trigger_que_run)
@@ -7450,12 +7472,14 @@ def DumpPrefs(changed='False', **kwargs):
 	Log(common.TITLE + ' v. %s %s' % (common.VERSION, common.TAG))
 	Log("Channel Preferences:")
 	Log("Base site url: %s" % (fmovies.BASE_URL))
+	Log("Enable quick Initialization: %s" % (Prefs["use_quick_init"]))
 	Log("Cache Expiry Time (in mins.): %s" % (Prefs["cache_expiry_time"]))
 	Log("No Extra Info. for Nav. Pages (Speeds Up Navigation): %s" % (Prefs["dont_fetch_more_info"]))
 	Log("Use SSL Web-Proxy: %s" % (Prefs["use_web_proxy"]))
 	Log("Use Alternate SSL/TLS: %s" % (Prefs["use_https_alt"]))
 	Log("Disable External Sources: %s" % (Prefs["disable_extsources"]))
 	Log("Disable Downloading Sources: %s" % (Prefs["disable_downloader"]))
+	Log("Number of concurrent Source Searching Threads: %s" % (Prefs["control_concurrent_src_threads"]))
 	Log("Number of concurrent Download Threads: %s" % (Prefs["download_connections"]))
 	Log("Limit Aggregate Download Speed (KB/s): %s" % (Prefs["download_speed_limit"]))
 	Log("Use LinkChecker for Videos: %s" % (Prefs["use_linkchecker"]))
@@ -7525,6 +7549,7 @@ def DisplayMsgs(**kwargs):
 def CreateVideoObject(url, title, summary, thumb, params, duration, genres, videoUrl, videoRes, watch_title, include_container=False, **kwargs):
 
 	videoUrl = videoUrl.decode('unicode_escape')
+	url = url if url != None else videoUrl
 	
 	if include_container:
 		video = MovieObject(
@@ -7577,6 +7602,10 @@ def PlayVideo(videoUrl, params, retResponse, url, title, summary, thumb, watch_t
 
 	if 'googleusercontent.com' in videoUrl:
 		pass
+	elif '3donlinefilms.com' in url:
+		videoUrl, params_enc, err = common.host_direct.resolve(url)
+		#params = JSON.ObjectFromString(D(params_enc))
+		params = params_enc
 	elif common.client.geturlhost(videoUrl) in common.host_misc_resolvers.supported_hosts:
 		videoUrl, params_enc, b = common.host_misc_resolvers.resolve(videoUrl, Prefs["use_https_alt"])
 		#params = JSON.ObjectFromString(D(params_enc))

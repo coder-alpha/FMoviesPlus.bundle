@@ -19,7 +19,7 @@
 '''
 
 
-import os, base64, jsunpack
+import os, base64, jsunpack, json, io, time
 
 tmdb_key = jsunpack.jsunpack_keys()
 tvdb_key = base64.urlsafe_b64decode('MUQ2MkYyRjkwMDMwQzQ0NA==')
@@ -28,9 +28,11 @@ trakt_key = base64.urlsafe_b64decode('NDFjYzI1NjY5Y2Y2OTc0NTg4ZjA0MTMxYjcyZjc4Mj
 trakt_secret = base64.urlsafe_b64decode('Y2I4OWExYTViN2ZlYmJiMDM2NmQ3Y2EyNzJjZDc4YTU5MWQ1ODI2Y2UyMTQ1NWVmYzE1ZDliYzQ1ZWNjY2QyZQ==')
 all_uc_api = 'WXpFeE1qZzROV0k0WTJWall6Rm1aR1ZtWlRNNU1tVXdaR1E1WlRneVlqRT0='
 openload_api = 'WW1ReU9USmxNalkzTjJZd016RTFOenBmWjNnMU5GTkROUT09'
+flix_up = 'Wm0xd0xXUmxiVzg2Wm0xd0xXUmxiVzh0TWpBeE9BPT0='
 
 loggertxt = []
 setting_dict = {}
+control_json = {}
 doPrint = False
 
 def setting(key):
@@ -39,21 +41,70 @@ def setting(key):
 	else:
 		return None
 
+def get_setting(key):
+	return setting(key)
+
 def set_setting(key, value):
 	if key == base64.b64decode('Y29udHJvbF9hbGxfdWNfYXBpX2tleQ==') and (value == None or value == '' or len(value) == 0):
 		value = base64.b64decode(base64.b64decode(all_uc_api))
 	elif key == base64.b64decode('Y29udHJvbF9vcGVubG9hZF9hcGlfa2V5') and (value == None or value == '' or len(value) == 0 or ':' not in value):
 		value = base64.b64decode(base64.b64decode(openload_api))
+	elif key == base64.b64decode('Y29udHJvbF9mbGl4YW5pdHlfdXNlcl9wYXNz') and (value == None or value == '' or len(value) == 0 or ':' not in value):
+		value = base64.b64decode(base64.b64decode(flix_up))
 	
 	setting_dict[key] = value
+	
+def savePermStore():
+	try:
+		bkup_file = 'control.json'
+		with io.open(bkup_file, 'w', encoding='utf8') as f:
+			data = json.dumps(control_json, indent=4, sort_keys=True, separators=(',', ': '), ensure_ascii=False)
+			f.write(unicode(data))
+		return True
+	except Exception as e:
+		#log2('Error reading/saving file control.json ! %s' % e)
+		pass
+		
+	return False
+	
+def loadPermStore():
+	try:
+		bkup_file = 'control.json'
+		file_read = None
+		with io.open(bkup_file, 'r', encoding='utf8') as f:
+			file_read = f.read()
+			
+		if file_read != None:
+			ret = json.loads(file_read)
+			log2('Loaded file control.json !')
+			return ret
+
+	except Exception as e:
+		# if os.path.exists(bkup_file):
+			# log2('Error loading/reading file control.json ! %s' % e)
+		# else:
+			# log2('File not found ! Error loading/reading file control.json ! %s' % e)
+		pass
+
+	#log2('Error Loading file control.json !')
+	return None
+	
+def log2(err='', type='INFO', logToControl=True, doPrint=True):
+	try:
+		msg = '%s: %s > %s : %s' % (time.ctime(time.time()), type, 'control', err)
+		if logToControl == True:
+			log(msg)
+		if doPrint == True:
+			print msg
+	except Exception as e:
+		log('Error in Logging: %s >>> %s' % (msg,e))
 
 def log(msg):
 	try:
 		if isinstance(msg, unicode):
 			msg = msg.encode('utf-8')
-			
 		loggertxt.append(msg)
-		print('%s' % msg)
+		#print('%s' % msg)
 	except Exception as e:
 		pass  # just give up
 
@@ -66,3 +117,5 @@ set_setting('control_openload_api_key',None)
 set_setting('use_phantomjs', False)
 set_setting('%s-%s' % (None,'Use-PhantomJS'), False)
 set_setting('ca', 'CA2017')
+set_setting('control_flixanity_user_pass', None)
+set_setting('control_concurrent_src_threads', 4)

@@ -160,6 +160,47 @@ def getQuality(qual):
 	if q == '':
 		q = ql
 	return q, t
+	
+def getQuality2(qual):
+	if qual == None: return
+	ql = '360p'
+	q = qual.lower()
+	t = 'BRRIP'
+	
+	if '3D'.lower() in qual.lower() or 'Half-SBS'.lower() in qual.lower():
+		t = '3D-BRRIP'
+	
+	if '0' in q:
+		if '360p' in q:
+			q = '360p'
+		elif '480p' in q:
+			q = '480p'
+		elif '720p' in q:
+			q = '720p'
+		elif '1080p' in q:
+			q = '1080p'
+		else:
+			q = '360p'
+	elif 'cam' in q or 'ts' in q or 'scr' in q:
+		t = 'CAM'
+	elif 'hd' in q or 'vod' in q:
+		ql = '720p'
+	elif 'sd' in q:
+		ql = '480p'
+
+	q = q.replace('hdrip','')
+	q = q.replace('hd rip','')
+	q = q.replace('cam','')
+	q = q.replace('ts','')
+	q = q.replace('hd','')
+	q = q.replace('sd','')
+	q = q.replace('vod','')
+	
+	q = q.strip()
+	
+	if q == '':
+		q = ql
+	return q, t
 
 def query(title):
     if title == None: return

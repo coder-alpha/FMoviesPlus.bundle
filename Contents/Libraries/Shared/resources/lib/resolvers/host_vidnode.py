@@ -52,7 +52,7 @@ class host:
 		self.update_date = 'Apr. 19, 2018'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
-		self.logo = 'https://i.imgur.com/AG9ooWt.png'
+		self.logo = 'https://i.imgur.com/IUyAW22.png'
 		self.name = name
 		self.host = ['vidnode.net']
 		self.netloc = ['vidnode.net']
@@ -122,6 +122,9 @@ class host:
 			
 	def testResolver(self):
 		try:
+			if control.setting('use_quick_init') == True:
+				log('INFO','testResolver', 'Disabled testing - Using Quick Init setting in Prefs.')
+				return False
 			testUrls = self.testUrl()
 			links = []
 			bool = False
@@ -139,7 +142,7 @@ class host:
 	def testUrl(self):
 		return ['https://vidnode.net/streaming.php?id=MTc4ODc5']
 		
-	def createMeta(self, url, provider, logo, quality, links, key, riptype, vidtype='Movie', lang='en', sub_url=None, txt='', file_ext = '.mp4', testing=False, poster=None):
+	def createMeta(self, url, provider, logo, quality, links, key, riptype, vidtype='Movie', lang='en', sub_url=None, txt='', file_ext = '.mp4', testing=False, poster=None, headers=None):
 	
 		if testing == True:
 			links.append(url)

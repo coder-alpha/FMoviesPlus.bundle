@@ -125,6 +125,9 @@ class host:
 			
 	def testResolver(self):
 		try:
+			if control.setting('use_quick_init') == True:
+				log('INFO','testResolver', 'Disabled testing - Using Quick Init setting in Prefs.')
+				return False
 			testUrls = self.testUrl()
 			links = []
 			bool = False
@@ -142,7 +145,7 @@ class host:
 	def testUrl(self):
 		return ['https://streamango.com/embed/fnnnmermndekbbrf/']
 		
-	def createMeta(self, url, provider, logo, quality, links, key, riptype, vidtype='Movie', lang='en', sub_url=None, txt='', file_ext = '.mp4', testing=False, poster=None):
+	def createMeta(self, url, provider, logo, quality, links, key, riptype, vidtype='Movie', lang='en', sub_url=None, txt='', file_ext = '.mp4', testing=False, poster=None, headers=None):
 	
 		if testing == True:
 			links.append(url)
@@ -217,6 +220,8 @@ def resolve(url, online=None):
 			page_link = url
 			page_data_string = client.request(page_link, httpsskip=True)
 			video_url = decode(page_data_string)
+			if video_url == None:
+				raise Exception('Streamango decoding error !')
 			if video_url[len(video_url)-1] == '@':
 				video_url = video_url[:-1]
 		except Exception as e:
@@ -234,7 +239,7 @@ def decode(html):
 	source = None
 	
 	try:
-		encoded = re.search('''srces\.push\({type:"video/mp4",src:\w+\('([^']+)',(\d+)''', html)
+		encoded = re.search('''srces\.push\(.*src:\w+\('([^']+)',(\d+)''', html)
 		if encoded:
 			source = decode2(encoded.group(1), int(encoded.group(2)))
 	except Exception as e:

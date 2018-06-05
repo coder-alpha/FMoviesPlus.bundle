@@ -38,7 +38,7 @@ def isInitialized():
 	else:
 		return False
 	
-def wait_for_init(timeout=300):
+def wait_for_init(timeout=60*15):
 
 	if len(initA) == 0 and len(initBool) == 0:
 		initBool.append(True)
@@ -236,6 +236,24 @@ def checkProgress(key, useCached=True):
 	# if Prefs['use_debug']:
 		# Log("Progress request: %s" % prog)
 	return prog
+	
+def getDescProgress(key):
+	if wait_for_init() == False:
+		return
+
+	desc_prog = initA[0].getDescProgress(key=key)
+	# if Prefs['use_debug']:
+		# Log("Progress request: %s" % desc_prog)
+	return desc_prog
+	
+def getETAProgress(key=None, type='movie'):
+	if wait_for_init() == False:
+		return
+
+	eta = initA[0].getETAProgress(key=key, type=type)
+	# if Prefs['use_debug']:
+		# Log("ETA : %s" % eta)
+	return eta
 	
 def getCacheItemsNo():
 	if wait_for_init() == False:

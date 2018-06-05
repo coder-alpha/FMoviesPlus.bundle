@@ -111,6 +111,9 @@ def resolve(url, https_skip=True, test=False, strip_url=True):
 			page_data_string = request(ourl, headers=myheaders, httpsskip=True)
 			if 'Sorry!' not in page_data_string and 'We are unable to find the video you\'re looking for' not in page_data_string:
 				video_url = decode_streamango(page_data_string)
+				if video_url == None:
+					raise Exception('Streamango decoding error !')
+					
 				if video_url[len(video_url)-1] == '@':
 					video_url = video_url[:-1]
 					
@@ -160,7 +163,7 @@ def resolve(url, https_skip=True, test=False, strip_url=True):
 				video_urls_data = request(video_url, headers=myheaders, httpsskip=True)
 				
 				if video_urls_data == None or video_urls_data == '':
-					raise ValueError('M3U8 URL is empty')
+					raise Exception('M3U8 URL is empty')
 				#Log('video_urls_data ------------> %s' % video_urls_data)
 				
 				try:
@@ -230,7 +233,7 @@ def error(url, https_skip):
 		
 		#Log('misc>error : %s' % url)
 		page_data_string = str(request(url, headers=headers, httpsskip=True))
-		Log(page_data_string)
+		#Log(page_data_string)
 		
 		if page_data_string != None:
 			if ('mycloud.' in ourl or 'mcloud.' in ourl) and 'Sorry, the page you are looking for could not be found.' in page_data_string:
@@ -256,7 +259,7 @@ def decode_streamango(html):
 	source = None
 	
 	try:
-		encoded = re.search('''srces\.push\({type:"video/mp4",src:\w+\('([^']+)',(\d+)''', html)
+		encoded = re.search('''srces\.push\(.*src:\w+\('([^']+)',(\d+)''', html)
 		if encoded:
 			source = decode2(encoded.group(1), int(encoded.group(2)))
 	except Exception as e:

@@ -127,6 +127,9 @@ class source:
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','testParser', 'Plugin Disabled by User - cannot test parser')
 				return False
+			if control.setting('use_quick_init') == True:
+				log('INFO','testParser', 'Disabled testing - Using Quick Init setting in Prefs.')
+				return False
 			if self.disabled == True:
 				log('INFO','testParser', 'Plugin Disabled - cannot test parser')
 				return False
@@ -184,8 +187,11 @@ class source:
 	def get_sources(self, url, hosthdDict=None, hostDict=None, locDict=None, proxy_options=None, key=None, testing=False):
 		try:
 			sources = []
+			if control.setting('Provider-%s' % name) == False:
+				log('INFO','get_sources','Provider Disabled by User')
+				return sources
 			if url == None: 
-				log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key), dolog=not testing)
+				log('FAIL','get_sources','url == None. Could not find a matching title: %s' % cleantitle.title_from_key(key), dolog=not testing)
 				return sources
 			
 			url_arr=[]

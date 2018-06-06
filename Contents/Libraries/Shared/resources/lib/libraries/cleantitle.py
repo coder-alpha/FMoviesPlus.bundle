@@ -111,6 +111,12 @@ def onlytitle(title):
 
 	return title
 	
+def simpletitle(title):
+	title = re.sub(r'[^0-9a-zA-Z -!.&@#$()]', ' ', title)
+	title = title.replace('   ',' ').replace('  ',' ')
+	title = title.replace('()','').strip()
+	return title
+	
 def title_from_key(key):
 	try:
 		if key != None:

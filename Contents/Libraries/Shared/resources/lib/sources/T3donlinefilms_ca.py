@@ -156,6 +156,7 @@ class source:
 			
 			headers = {'Referer': self.base_link, 'User-Agent': self.user_agent}
 			max = None
+			title = title.replace('(3D)','').strip()
 			title = title.replace('3D','').strip()
 			
 			for pg in range(100):
@@ -312,8 +313,9 @@ class source:
 
 def lose_match_title(title1, title2):
 	try:
-		t1 = cleantitle.get(title1).split(' ')
-		t2 = cleantitle.get(title2).split(' ')
+		t1 = cleantitle.simpletitle(title1).split(' ')
+		t2 = cleantitle.simpletitle(title2).split(' ')
+		print t1, t2
 		
 		c_min = min(len(t1), len(t2))
 		c = 0

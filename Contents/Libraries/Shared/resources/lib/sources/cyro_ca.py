@@ -33,8 +33,8 @@ loggertxt = []
 class source:
 	def __init__(self):
 		del loggertxt[:]
-		self.ver = '0.1.0'
-		self.update_date = 'Apr. 25, 2018'
+		self.ver = '0.1.1'
+		self.update_date = 'June 13, 2018'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
 		self.base_link_alts = ['http://xpau.se','http://xpau.se.prx2.unblocksites.co','http://xpau.se.prx.proxyunblocker.org']
@@ -376,6 +376,76 @@ class source:
 			return
 			
 	def returnFinalLink(self, url):
+		#url = 'http://xpau.se/watch/war-for-the-planet-of-the-apes'
+		site = self.base_link
+		headers = {'Accept':'text/html,application/xhtml+xml,application/xml;q=0.9,*//**;q=0.8',
+					'Accept-Language':'en-US,en;q=0.8',
+					'Cache-Control':'max-age=0',
+					'Connection':'keep-alive'}
+		headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.100 Safari/537.36'
+		headers['Cookie'] = ''
+		headers['Referer'] = url
+		
+		for x in range(0,15):
+			
+			if 'wait' in url:
+				cookie = client.request(url, output='cookie', headers=headers)
+				if cookie != None and len(cookie) > 0:
+					headers['Cookie'] += cookie
+				#url = client.request(url, output='geturl', headers=headers)
+				#print 'wait-url', url
+				
+			resp = client.request(url, headers=headers)
+			headers['Referer'] = url
+			#print resp
+			if 'playthevid' in resp:
+				#print '---> playthevid'
+				r = client.parseDOM(resp, 'a', ret='href', attrs = {'id': 'playthevid'})[0]
+				cookie = client.request(url, output='cookie', headers=headers)
+				#print cookie
+				if cookie != None and len(cookie) > 0:
+					if len(headers['Cookie']) == 0:
+						headers['Cookie'] += '%s' % cookie
+					else:
+						headers['Cookie'] += '; %s' % cookie
+			elif 'skipper' in resp:
+				#print '---> skipper'
+				try:
+					r = client.parseDOM(resp, 'a', ret='href', attrs = {'id': 'skipper'})[0]
+					try:
+						parts = re.findall(r'var.*\"(.*I.*l.*)\".*;', resp)
+						r = '/watch/' + parts[1] + parts[0] + parts[2]
+					except:
+						log('FAIL','returnFinalLink','Parts decoding failed in skipper')
+				except:
+					pass
+				if 'http' not in r:
+					r = site + r
+				cookie = client.request(r, output='cookie', headers=headers)
+				#print cookie
+				if cookie != None and len(cookie) > 0:
+					if len(headers['Cookie']) == 0:
+						headers['Cookie'] += '%s' % cookie
+					else:
+						headers['Cookie'] += '; %s' % cookie
+			else:
+				#print '---> iframe'
+				#print resp
+				try:
+					r = client.parseDOM(resp, 'iframe', ret='src')[0]
+				except:
+					log('FAIL','returnFinalLink','Could not find final url in iframe')
+					return None
+
+			if 'google' in r:
+				return r
+			
+			if 'http' not in r:
+				url = site + r
+			else:
+				url = r
+		
+	def returnFinalLinkOld(self, url):
 		site = self.base_link
 		headers = {'Accept':'text/html,application/xhtml+xml,application/xml;q=0.9,*//**;q=0.8',
 					'Accept-Language':'en-US,en;q=0.8',
@@ -388,6 +458,7 @@ class source:
 		for x in range(0,15):
 
 			if 'wait' in url:
+				url = url.replace('watch','llIllIIIlIIlllIIlI')
 				url = client.request(url, output='geturl')
 				
 			resp = client.request(url, headers=headers)

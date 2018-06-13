@@ -1239,7 +1239,7 @@ def SetHostOptions(session, refresh=False, n=None, curr_sources=None, option='0'
 		
 	oc.add(DirectoryObject(key = Callback(ExtHosts, session=session, n=E(JSON.StringFromObject(host)), curr_sources=curr_sources), title = 'Move to Top in Host List', summary = title_msg, thumb = R(ICON_UPARROW)))
 	
-	oc.add(DirectoryObject(title = "Tools", summary='Tools for hosts', key = Callback(IntHostTools, choice=None, myhost=host['name']), thumb = R(ICON_TOOLS)))
+	oc.add(DirectoryObject(title = "Tools", summary='Tools for hosts', key = Callback(IntHostTools, choice=None, myhost=host['name'], session=session), thumb = R(ICON_TOOLS)))
 	
 	oc.add(DirectoryObject(
 		key = Callback(InterfaceOptions, session=session, update = MakeSelectionHosts()),
@@ -1336,7 +1336,7 @@ def MakeSelectionProxies(**kwargs):
 
 ####################################################################################################
 @route(PREFIX + "/IntHostTools")
-def IntHostTools(choice=None, myhost=None, mssg=None):
+def IntHostTools(choice=None, myhost=None, mssg=None, session=None):
 	
 	oc = ObjectContainer(title2='%s Tools' % myhost.title())
 
@@ -1345,6 +1345,16 @@ def IntHostTools(choice=None, myhost=None, mssg=None):
 			Thread.Create(common.OpenLoadUnpair)
 			time.sleep(7)
 			mssg = 'UnPairing will be completed in a few seconds. Please return to previous screen.'
+		if choice == 'openload_input_id':
+			if AuthTools.CheckAdmin() == False:
+				return MC.message_container('Admin Access Only', 'Only the Admin can perform this action !')
+			if common.UsingOption(key=common.DEVICE_OPTIONS[0], session=session):
+				DumbKeyboard(PREFIX, oc, OpenLoad_via_ID,
+						dktitle = 'Input OpenLoad ID',
+						dkthumb = R(common.host_openload.logo)
+				)
+			else:
+				oc.add(InputDirectoryObject(key = Callback(OpenLoad_via_ID, session = session), thumb = R(common.host_openload.logo), title='Input OpenLoad ID', summary='Input OpenLoad ID', prompt='Input OpenLoad ID...'))
 		if choice == 'show_dump_log':
 			oc = ObjectContainer(title2='%s Log' % myhost.title())
 			items = common.interface.getHostsLoggerTxts(choice=myhost, dumpToLog=False)
@@ -1374,15 +1384,19 @@ def IntHostTools(choice=None, myhost=None, mssg=None):
 		if mssg != None:
 			return MC.message_container('Info', mssg)	
 	else:
-		oc.add(DirectoryObject(key=Callback(IntHostTools, choice='show_dump_log', myhost=myhost),
+		oc.add(DirectoryObject(key=Callback(IntHostTools, choice='show_dump_log', myhost=myhost, session=session),
 			title=u'Show/Dump log',
 			thumb = R(ICON_TOOLS),
 			summary=u'List the logged events and dumps to Channel log'))
 		if myhost == 'openload':
-			oc.add(DirectoryObject(key=Callback(IntHostTools, choice='openload_unpair', myhost=myhost),
+			oc.add(DirectoryObject(key=Callback(IntHostTools, choice='openload_unpair', myhost=myhost, session=session),
 				title=u'*Paired* - UnPair OpenLoad' if common.host_openload.isPairingDone() == True else u'*Not Paired*',
 				thumb = R(ICON_TOOLS),
 				summary=u'UnPair with OpenLoad'))
+			oc.add(DirectoryObject(key=Callback(IntHostTools, choice='openload_input_id', myhost=myhost, session=session),
+				title=u'Enter OpenLoad Video ID',
+				thumb = R(ICON_TOOLS),
+				summary=u'Enter an OpenLoad Video ID for playback and download options.'))
 
 	if len(oc) == 0:
 		return MC.message_container('Info', 'No tools available for %s' % myhost)
@@ -1550,7 +1564,9 @@ def ResetAllOptions(session, doReset=False, **kwargs):
 	Thread.Create(SleepAndUpdateThread, {}, session=session)
 	
 	return MC.message_container('Reset All Options', 'All Dictionary stored Options have been Reset to Factory Defaults !')
-	
+
+######################################################################################
+
 ######################################################################################
 @route(PREFIX + "/testSite")
 def testSite(url, **kwargs):
@@ -7760,6 +7776,66 @@ def SolveCaptcha(query, url, dlt, vco, title, page_url, **kwargs):
 		oc.add(DirectoryObject(key = Callback(MainMenu), title = '<< Main Menu',thumb = R(ICON)))
 		return oc
 		#return MC.message_container('Captcha Solved', 'Captcha Solved Successfully')
+		
+####################################################################################################
+def OpenLoad_via_ID(query, session=None, **kwargs):
+
+	try:
+		url = 'https://openload.co/f/%s' % query
+		sources = common.host_openload.vid_link_from_id(query)
+	except Exception as e:
+		if Prefs['use_debug']:
+			Log("ERROR init.py>OpenLoad_via_ID 1: %s" % e)
+		sources = None
+	
+	if sources == None or len(sources) == 0:
+		return MC.message_container('OpenLoad via ID Error', 'OpenLoad via ID Error !')
+	else:
+		oc = ObjectContainer(title2 = query , no_cache=common.isForceNoCache())
+		for source in sources:
+		
+			#Log(source)
+			try:
+				year = re.findall('(\d{4})', source['fileName'])[0]
+			except:
+				year = '0000'
+		
+			gen_play = (source['fileName'] + source['titleinfo'] + ' | (via Generic Playback)', None, GetThumb(source['poster'], session=session), source['params'], None, None, source['url'], source['quality'], source['fileName'])
+			
+			title, summary, thumb, params, duration, genres, videoUrl, videoRes, watch_title = gen_play
+			
+			try:
+				fs = source['fs']
+				fsBytes = int(fs)
+				file_size = '%s GB' % str(round(float(fs)/common.TO_GB, 3))
+			except:
+				fs = None
+				fsBytes = 0
+				file_size = '? GB'
+			
+			status = common.GetEmoji(type=source['online'], session=session)
+			title_msg = "%s %s| %s | %s | %s | %s | %s | %s" % (status, source['maininfo'], source['fileName'], source['rip'], source['quality'], file_size, source['source']+':'+source['subdomain'] if source['source']=='gvideo' else source['source'], source['provider'])
+			
+			try:
+				oc.add(CreateVideoObject(url, title_msg, summary, thumb, params, duration, genres, videoUrl, videoRes, watch_title))
+			except Exception as e:
+				Log("ERROR init.py>OpenLoad_via_ID 2: %s" % e)
+				
+			try:
+				libtype='movie'
+				mode=common.DOWNLOAD_MODE[0]
+				oc.add(DirectoryObject(
+					key = Callback(AddToDownloadsListPre, title=watch_title, purl=None, url=source['url'], durl=source['durl'], sub_url=source['sub_url'], summary=summary, thumb=thumb, year=year, fsBytes=None, fs=None, file_ext=source['file_ext'], quality=source['quality'], source=source['source'], source_meta={}, file_meta={}, type=libtype, vidtype=source['vidtype'].lower(), resumable=source['resumeDownload'], mode=mode, session=session, admin=True if mode==common.DOWNLOAD_MODE[0] else False, params=source['params'], riptype=source['rip']),
+					title = title_msg,
+					summary = 'Adds the current video to %s List' % 'Download' if mode==common.DOWNLOAD_MODE[0] else 'Request',
+					art = None,
+					thumb = GetThumb(R('%s' % ICON_OTHERSOURCESDOWNLOAD if mode==common.DOWNLOAD_MODE[0] else ICON_REQUESTS), session=session)
+					)
+				)
+			except Exception as e:
+				Log("ERROR init.py>OpenLoad_via_ID 3: %s" % e)
+
+		return oc
 		
 ####################################################################################################
 def create_photo_object(url, title, include_container=False, **kwargs):

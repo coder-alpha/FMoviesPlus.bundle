@@ -56,6 +56,8 @@ try:
 	import phantomjs
 except:
 	pass
+	
+INIT_HOST = []
 
 API_URL = 'https://api.openload.co/1'
 PAIR_INFO_URL = API_URL + '/streaming/info'
@@ -81,6 +83,7 @@ openloadhdr = {
 TEST_VIDEO_IDS = ['kUEfGclsU9o','RQaodwqBjek','XDCUk2CA_U0','L-eIQjFctxQ','o3v8nnBhPDY','M2bsX_p_ptg','G-WGlQ_9cec','UiZLdKPsoL4','RQaodwqBjek','XDCUk2CA_U0','L-eIQjFctxQ']
 
 name = 'openload'
+logo = 'http://i.imgur.com/OM7VzQs.png'
 loggertxt = []
 
 class DecodeError(Exception):
@@ -812,8 +815,42 @@ def unpair():
 		myLog.append(msg)
 		
 	return myLog
-		
 	
+def vid_link_from_id(id):
+	try:
+		h = None
+		if len(INIT_HOST) > 0:
+			h = INIT_HOST[0]
+		else:
+			h = host()
+
+		url = 'https://openload.co/f/%s' % id
+		
+		cm = h.createMeta(url, provider='SelfDefined', logo='https://i.imgur.com/BmGHAVP.png', quality='720p', links=[], key=None, riptype=None, vidtype='Movie', lang='en', sub_url=None, txt='', file_ext = '.mp4', testing=False, poster=None, headers=None)
+		
+		for c in cm:
+			c['fileName'] = id
+		
+		try:
+			vidData = client.request('https://openload.co/f/%s/' % id, headers=openloadhdr, timeout=5)
+			#print vidData
+			fileName = client.parseDOM(vidData, 'h3', attrs={'class': 'other-title-bold'})[0]
+			#print fileName
+			poster = client.parseDOM(vidData, 'meta', attrs={'name': 'og:image'}, ret='content')[0]
+			
+			for c in cm:
+				fn = fileName.rsplit('.',1)
+				c['fileName'] = fn[0]
+				c['file_ext'] = fn[1]
+				c['poster'] = poster
+		except:
+			pass
+		
+		return cm
+	except:
+		pass
+	return None
+		
 # Twoure's API method
 def link_from_api(fid, lk=None, test=False):
 	

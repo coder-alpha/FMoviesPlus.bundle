@@ -86,6 +86,8 @@ def decode(url, python_dir=None, debug=False, ssl=True, js='openload.js'):
 		PROCESSES[url_encode].update({'output':output})
 		if 'ERROR' in output:
 			raise Exception(output)
+		if len(output) == 0:
+			raise Exception('Empty output received !')
 		#print "1: %s" % output
 		output = re.findall(r'https://openload.co/stream/.*', output)[0]
 		#print "2: %s" % output

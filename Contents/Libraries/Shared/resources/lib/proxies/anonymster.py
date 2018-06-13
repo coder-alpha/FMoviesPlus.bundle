@@ -1,10 +1,7 @@
 import re,urllib,urlparse,base64,time,json
 
-from resources.lib.libraries import cleantitle
-from resources.lib.libraries import client
-from resources.lib.libraries import control
+from resources.lib.libraries import client, cleantitle, control
 from resources.lib import resolvers
-
 
 # Web Proxy
 name = 'Anonymster'
@@ -66,6 +63,8 @@ class proxy:
 def requestdirect(url, close=True, redirect=True, followredirect=False, error=False, proxy=None, post=None, headers=None, mobile=False, limit=None, referer=None, cookie=None, output='', timeout='30', httpsskip=False, use_web_proxy=False, XHR=False, IPv4=False):
 
 	try:
+		errors = ['403 Forbidden','The requested resource could not be loaded because the server returned an error']
+		
 		urlhost = re.findall('([\w]+[.][\w]+)$', urlparse.urlparse(url.strip().lower()).netloc)[0]
 		
 		if headers == None:
@@ -131,6 +130,10 @@ def requestdirect(url, close=True, redirect=True, followredirect=False, error=Fa
 			page_data_string = page_data_string.encode('utf-8')
 		except:
 			pass
+			
+		for e in errors:
+			if e in page_data_string:
+				raise Exception('Proxy Error for url: %s > %s' % (url, e))
 		
 		return client.getResponseDataBasedOnOutput(page_data_string, res, output)
 		

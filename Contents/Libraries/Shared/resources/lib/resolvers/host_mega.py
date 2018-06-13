@@ -181,6 +181,9 @@ class host:
 			
 	def testResolver(self):
 		try:
+			if control.setting('use_quick_init') == True:
+				log('INFO','testResolver', 'Disabled testing - Using Quick Init setting in Prefs.')
+				return False
 			testUrls = self.testUrl()
 			links = []
 			bool = False
@@ -198,7 +201,7 @@ class host:
 	def testUrl(self):
 		return ['https://mega.nz/#!R6xyBBpY!JmZlf7cn7w2scbWaPYESoppAY8UDbrkXKFz0e2FZASs']
 		
-	def createMeta(self, url, provider, logo, quality, links, key, riptype, vidtype='Movie', lang='en', sub_url=None, txt='', file_ext = '.mp4', testing=False, poster=None):
+	def createMeta(self, url, provider, logo, quality, links, key, riptype, vidtype='Movie', lang='en', sub_url=None, txt='', file_ext = '.mp4', testing=False, poster=None, headers=None):
 	
 		if testing == True:
 			links.append(url)

@@ -8,7 +8,7 @@
 # http://mikew.github.io/ss-plex.bundle/
 # 
 
-import os, io, time, traceback
+import os, io, time, traceback, base64, json
 import requests
 import common
 from resources.lib.libraries import workers
@@ -45,8 +45,8 @@ def section_info(section):
 	
 	#strobj = HTTP.Request(query_pms('/library/sections'))
 	#Log(strobj)
-	xmlobj   = XML.ElementFromURL(query_pms('/library/sections'))
-	query	= '//Directory[@type="%s"]' % section
+	xmlobj = XML.ElementFromURL(query_pms('/library/sections'), cacheTime = 0)
+	query = '//Directory[@type="%s"]' % section
 	matching = filter(lambda el: '.none' not in el.get('agent'), xmlobj.xpath(query))
 	locations_dir = []
 	
@@ -157,6 +157,20 @@ class Downloader(object):
 			vidtype = file_meta['vidtype'].lower()
 		except:
 			vidtype = 'movie'
+			
+		try:
+			riptype = file_meta['riptype']
+		except:
+			riptype = 'BRRIP'
+			
+		headers = None
+		try:
+			params_enc = file_meta['params']
+			params = json.loads(base64.b64decode(params_enc))
+			if 'headers' in params.keys():
+				headers = params['headers']
+		except:
+			params = None
 		
 		file_meta['last_error'] = 'Unknown Error'
 		file_meta['error'] = 'Unknown Error'
@@ -182,7 +196,10 @@ class Downloader(object):
 		f_meta = {}
 		
 		if vidtype in 'movie/show':
-			fname = '%s (%s)%s%s' % (file_meta['title'], file_meta['year'], file_ext, fid + common.DOWNLOAD_FMP_EXT)
+			if '3D-' in riptype:
+				fname = '%s (%s)%s%s%s' % (file_meta['title'],file_meta['year'],'.3D',file_ext,fid + common.DOWNLOAD_FMP_EXT)
+			else:
+				fname = '%s (%s)%s%s' % (file_meta['title'], file_meta['year'], file_ext, fid + common.DOWNLOAD_FMP_EXT)
 		else:
 			fname = '%s (%s)-%s%s%s' % (file_meta['title'], file_meta['year'], REMAP_EXTRAS[vidtype], file_ext, fid + common.DOWNLOAD_FMP_EXT)
 		abs_path = Core.storage.join_path(path, fname)
@@ -192,9 +209,9 @@ class Downloader(object):
 		
 		sub_url_t = None
 		if 'openload' in source.lower():
-			furl, error, sub_url_t = common.host_openload.resolve(furl)
+			furl, error, sub_url_t, page_html = common.host_openload.resolve(furl)
 			if error != '' or furl == None:
-				furl, error, sub_url_t = common.host_openload.resolve(durl)
+				furl, error, sub_url_t, page_html = common.host_openload.resolve(durl)
 			if error != '' or furl == None:
 				Log('OpenLoad URL: %s' % furl)
 				Log('OpenLoad Error: %s' % error)
@@ -218,6 +235,21 @@ class Downloader(object):
 				Log('Streamango Error: %s' % error)
 				download_failed(url, error, progress, startPos, purgeKey)
 				return
+		elif 'direct' in source.lower():
+			furl, params_enc, error = common.host_direct.resolve(furl)
+			if error != '' or furl == None:
+				furl, params_enc, error = common.host_direct.resolve(durl)
+			if error != '' or furl == None:
+				Log('3donlinefilms URL: %s' % furl)
+				Log('3donlinefilms Error: %s' % error)
+				download_failed(url, error, progress, startPos, purgeKey)
+				return
+			try:
+				params = json.loads(base64.b64decode(params_enc))
+				if 'headers' in params.keys():
+					headers = params['headers']
+			except:
+				pass
 		
 		if sub_url_t != None:
 			file_meta['sub_url'] = sub_url_t
@@ -225,9 +257,13 @@ class Downloader(object):
 		if Prefs['use_debug']:
 			Log('Save path: %s' % abs_path)
 		
+		# ToDo
 		# https://support.plex.tv/articles/200220677-local-media-assets-movies/
 		if vidtype in 'movie/show':
-			fname = '%s (%s)%s' % (file_meta['title'], file_meta['year'], file_ext)
+			if '3D-' in riptype:
+				fname = '%s (%s)%s%s' % (file_meta['title'],file_meta['year'],'.3D', file_ext)
+			else:
+				fname = '%s (%s)%s' % (file_meta['title'], file_meta['year'], file_ext)
 		else:
 			fname = '%s (%s)-%s%s' % (file_meta['title'], file_meta['year'], REMAP_EXTRAS[vidtype], file_ext)
 		
@@ -250,27 +286,27 @@ class Downloader(object):
 			if common.USE_DOWNLOAD_RESUME_GEN == True and Core.storage.file_exists(abs_path):
 				if Prefs['use_debug']:
 					Log('**Resuming download from position: %s**' % startPos)
-				r = resume_download(furl, startPos)
+				r = resume_download(furl, startPos, headers=headers)
 				
 				if WAIT_AND_RETRY_ON_429 == True and r.status_code == 429:
 					time.sleep(5)
-					r = resume_download(furl, startPos)
+					r = resume_download(furl, startPos, headers=headers)
 				
 				if r.status_code != 200 and r.status_code != 206:
 					if Prefs['use_debug']:
 						Log('Could not Resume (HTTP Code: %s) - New download' % str(r.status_code))
-					r = request_download(furl)
+					r = request_download(furl, headers=headers)
 				else:
 					write_mode = 'ab'
 					bytes_read = startPos
 			else:
 				if Prefs['use_debug']:
 					Log('**New download**')
-				r = request_download(furl)
+				r = request_download(furl, headers=headers)
 				
 				if WAIT_AND_RETRY_ON_429 == True and r.status_code == 429:
 					time.sleep(5)
-					r = request_download(furl)
+					r = request_download(furl, headers=headers)
 		
 		file_meta_temp = file_meta
 		file_meta_temp['status'] = common.DOWNLOAD_STATUS[1]
@@ -302,7 +338,7 @@ class Downloader(object):
 							Log('**Resuming download**')
 						dl_info = FMPdownloader.next()
 						furl = "%s/%s" % (dl_info['url'],dl_info['name'])
-						r = resume_download(furl, startPos)
+						r = resume_download(furl, startPos, headers=headers)
 						
 						if r.status_code == 200 or r.status_code == 206:
 							FMPdownloader = r.iter_content(chunk_size)
@@ -537,11 +573,14 @@ def download_subtitle(url, sub_file_path):
 		if r != None:
 			r.close()
 	
-def request_download(url):
-	return requests.get(url, stream=True, verify=False, allow_redirects=True, timeout=CONNECTION_TIMEOUT)
+def request_download(url, headers=None):
+	return requests.get(url, headers=headers, stream=True, verify=False, allow_redirects=True, timeout=CONNECTION_TIMEOUT)
 	
-def resume_download(url, resume_byte_pos):
+def resume_download(url, resume_byte_pos, headers=None):
 	resume_header = {'Range': 'bytes=%s-' % int(resume_byte_pos)}
+	if headers != None:
+		for h in headers.keys():
+			resume_header[h] = headers[h]
 	return requests.get(url, headers=resume_header, stream=True, verify=False, allow_redirects=True, timeout=CONNECTION_TIMEOUT)
 	
 def download_completed(final_abs_path, section_title, section_key, purgeKey):

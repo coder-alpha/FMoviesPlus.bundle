@@ -1,14 +1,9 @@
 # -*- coding: utf-8 -*-
 
-#########################################################################################################
-#
-# IMDb
-#
-# Coder Alpha
-# https://github.com/coder-alpha
-#
-
 '''
+    Specto Add-on
+    Copyright (C) 2015 lambda
+
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
     the Free Software Foundation, either version 3 of the License, or
@@ -22,42 +17,34 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
-#########################################################################################################
 
 
-import re,urllib,urlparse,json,time
+import re,urllib,urlparse,base64,time
 
-from resources.lib.libraries import cleantitle
-from resources.lib import resolvers
-from resources.lib.libraries import client
-from resources.lib.libraries import testparams
-from resources.lib.libraries import control
-from resources.lib import proxies
+from resources.lib.libraries import client, control, cleantitle, testparams
+from resources.lib import resolvers, proxies
 
-name = 'IMDb'
+name = 'Ganool'
 loggertxt = []
 
 class source:
 	def __init__(self):
 		del loggertxt[:]
-		self.ver = '0.1.0'
-		self.update_date = 'Apr. 25, 2018'
+		self.ver = '0.0.1'
+		self.update_date = 'May. 21, 2018'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
-		self.priority = 1
-		self.disabled = False
-		self.language = ['en']
-		self.type_filter = ['movie', 'show', 'anime']
-		self.domains = ['imdb.com']
-		self.base_link_alts = ['http://www.imdb.com']
+		self.base_link_alts = ['https://ganol.movie']
 		self.base_link = self.base_link_alts[0]
-		self.page_link = 'http://www.imdb.com/title/%s/videogallery'
-		self.MainPageValidatingContent = 'IMDb - Movies, TV and Celebrities - IMDb'
+		self.MainPageValidatingContent = 'Ganool : Download &amp; Watch Movies Online Free'
+		self.type_filter = ['movie', 'show', 'anime']
 		self.name = name
+		self.disabled = False
 		self.loggertxt = []
 		self.ssl = False
-		self.logo = 'https://i.imgur.com/LqO2Fn0.png'
-		self.headers = {}
+		self.logo = 'https://i.imgur.com/gRy6qYD.png'
+		self.search_link = '/?s=%s'
+		self.headers = {'Connection' : 'keep-alive'}
 		self.speedtest = 0
 		if len(proxies.sourceProxies)==0:
 			proxies.init()
@@ -69,13 +56,13 @@ class source:
 		self.firstRunDisabled = False
 		self.init = True
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s End --' % (name, self.ver, self.update_date))
-
+		
 	def info(self):
 		return {
 			'url': self.base_link,
-			'speed': round(self.speedtest,3),
 			'name': self.name,
 			'msg' : self.msg,
+			'speed': round(self.speedtest,3),
 			'logo': self.logo,
 			'ssl' : self.ssl,
 			'frd' : self.firstRunDisabled,
@@ -83,7 +70,7 @@ class source:
 			'online_via_proxy' : self.proxyrequired,
 			'parser': self.testparser
 		}
-		
+			
 	def getLog(self):
 		self.loggertxt = loggertxt
 		return self.loggertxt
@@ -125,12 +112,12 @@ class source:
 						log('SUCCESS', 'testSite', 'HTTP Resp : %s via proxy for %s' % (http_res,site))
 						return True
 					else:
-						log('FAIL', 'testSite', 'Validation content Not Found. HTTP Resp : %s via proxy for %s' % (http_res,site))
+						log('FAIL', 'testSite', 'Validation content Not Found. HTTP Resp : %s via proxy for %s' % (http_res,site))			
 			return False
 		except Exception as e:
 			log('ERROR','testSite', '%s' % e)
 			return False
-
+		
 	def testParser(self):
 		try:
 			if control.setting('Provider-%s' % name) == False:
@@ -145,9 +132,9 @@ class source:
 			if self.siteonline == False:
 				log('INFO', 'testParser', '%s is offline - cannot test parser' % self.base_link)
 				return False
-				
+		
 			for movie in testparams.test_movies:
-				getmovieurl = self.get_movie(title=movie['title'], year=movie['year'], imdb=movie['imdb'])
+				getmovieurl = self.get_movie(title=movie['title'], year=movie['year'], imdb=movie['imdb'], testing=True)
 				movielinks = self.get_sources(url=getmovieurl, testing=True)
 				
 				if movielinks != None and len(movielinks) > 0:
@@ -159,53 +146,137 @@ class source:
 		except Exception as e:
 			log('ERROR', 'testParser', '%s' % e)
 			return False
-			
-	def get_movie(self, imdb, title, year, proxy_options=None, key=None):
+
+	def get_movie(self, imdb, title, year, proxy_options=None, key=None, testing=False):
 		try:
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_movie','Provider Disabled by User')
 				return None
+			
+			query_url = urlparse.urljoin(self.base_link, self.search_link) % (urllib.quote_plus(cleantitle.query(title)) + ('+' + str(year)) if year != None else '')
+			
+			log(type='INFO', method='get_movie', err='Searching - %s' % (query_url), dolog=False, logToControl=False, doPrint=True)
+			
+			result = proxies.request(query_url, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+			
+			url_data = client.parseDOM(result, 'div', attrs = {'class': 'item'})
+			
+			links_data = []
+			
+			for data in url_data:
+				#print data
+				link = client.parseDOM(data, 'a', ret='href')[0]
+				titlex = client.parseDOM(data, 'span', attrs = {'class': 'tt'})[0]
+				title = titlex
+				year2 = client.parseDOM(data, 'span', attrs = {'class': 'year'})[0]
 				
-			if imdb == None:
-				raise
-				
-			return self.page_link % imdb
+				if str(year) == str(year2):
+					xyear = ' (%s)' % year2
+					if xyear in title:
+						title = title.split(xyear)[0]
+					quality, riptype = cleantitle.getQuality2(client.parseDOM(data, 'span', attrs = {'class': 'calidad2'})[0])
+					
+					#print link, title, year2, quality, riptype
+					log(type='INFO', method='get_movie', err='Processing %s - %s' % (titlex, link), dolog=False, logToControl=False, doPrint=True)
+					result = proxies.request(link, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+					
+					elems = client.parseDOM(result, 'li', attrs = {'class': 'elemento'})
+					for elem in elems:
+						url = client.parseDOM(elem, 'a', ret='href')[0]
+						type = client.parseDOM(elem, 'span', attrs = {'class': 'a'})[0]
+						
+						result = proxies.request(link, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+						
+						elems = client.parseDOM(result, 'li', attrs = {'class': 'elemento'})
+						for elem in elems:
+							url = client.parseDOM(elem, 'a', ret='href')[0]
+							type = client.parseDOM(elem, 'span', attrs = {'class': 'a'})[0]
+							
+							if 'play' in type:
+								link_data = {'link':url, 'page':link, 'title':title, 'year':year2, 'qual':quality, 'rip':riptype}
+								links_data.append(link_data)
+
+						if testing == True:
+							break
+
+			return links_data
+			
 		except Exception as e: 
 			log('ERROR', 'get_movie','%s: %s' % (title,e), dolog=self.init)
 			return
-		
-	def get_show(self, tvshowtitle, season, imdb=None, tvdb=None, year=None, proxy_options=None, key=None):
+
+	def get_show(self, imdb=None, tvdb=None, tvshowtitle=None, year=None, season=None, proxy_options=None, key=None, testing=False):
 		try:
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_show','Provider Disabled by User')
 				return None
+			
+			query_url = urlparse.urljoin(self.base_link, self.search_link) % (urllib.quote_plus(cleantitle.query(tvshowtitle)) + ('+season+' + str(season)) if season != None else '')
+			
+			log(type='INFO', method='get_show', err='Searching - %s' % (query_url), dolog=False, logToControl=False, doPrint=True)
+			result = proxies.request(query_url, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+			
+			url_data = client.parseDOM(result, 'div', attrs = {'class': 'item'})
+			
+			links_data = []
+			
+			for data in url_data:
+				#print data
+				link = client.parseDOM(data, 'a', ret='href')[0]
+				title = client.parseDOM(data, 'span', attrs = {'class': 'tt'})[0]
+				year2 = client.parseDOM(data, 'span', attrs = {'class': 'year'})[0]
 				
-			if imdb == None:
-				raise
-				
-			return self.page_link % imdb
-		except Exception as e:
+				if lose_match_year(year, year2, season):
+					xyear = ' (%s)' % year2
+					if xyear in title:
+						title = title.split(xyear)[0]
+					quality, riptype = cleantitle.getQuality2(client.parseDOM(data, 'span', attrs = {'class': 'calidad2'})[0])
+					
+					#print link, title, year2, quality, riptype
+					
+					link_data = {'page':link, 'title':title, 'year':year2, 'qual':quality, 'rip':riptype}
+					links_data.append(link_data)
+					if testing == True:
+						break
+
+			return links_data
+			
+		except Exception as e: 
 			log('ERROR', 'get_show','%s: %s' % (tvshowtitle,e), dolog=self.init)
 			return
 
 
-	def get_episode(self, url, episode, imdb=None, tvdb=None, title=None, year=None, season=None, proxy_options=None, key=None):
+	def get_episode(self, url=None, imdb=None, tvdb=None, title=None, year=None, season=None, episode=None, proxy_options=None, key=None, testing=False):
 		try:
 			if control.setting('Provider-%s' % name) == False:
 				return None
-				
-			if url != None:
-				return url
-				
-			if imdb == None:
-				raise
-				
-			return self.page_link % imdb
 			
-		except Exception as e:
+			if url == None: return
+			
+			links_data = []
+			for data in url:
+				#print data
+				log(type='INFO', method='get_episode', err='Processing %s - %s' % (data['title'], data['page']), dolog=False, logToControl=False, doPrint=True)
+				result = proxies.request(data['page'], proxy_options=proxy_options, use_web_proxy=self.proxyrequired)	
+				elems = client.parseDOM(result, 'li', attrs = {'class': 'elemento'})
+				
+				for elem in elems:
+					ep = client.parseDOM(elem, 'span', attrs = {'class': 'c'})[0]
+					
+					if ep.lower().replace('episode','').strip() == str(episode):
+						type = client.parseDOM(elem, 'span', attrs = {'class': 'a'})[0]
+						
+						if 'play' in type:
+							url = client.parseDOM(elem, 'a', ret='href')[0]
+							link_data = {'link':url, 'page':data['page'], 'title':data['title'], 'year':data['year'], 'qual':data['qual'], 'rip':data['rip']}
+							links_data.append(link_data)
+				if testing == True:
+					break
+
+			return url
+		except Exception as e: 
 			log('ERROR', 'get_episode','%s: %s' % (title,e), dolog=self.init)
 			return
-
 
 	def get_sources(self, url, hosthdDict=None, hostDict=None, locDict=None, proxy_options=None, key=None, testing=False):
 		try:
@@ -217,91 +288,18 @@ class source:
 				log('FAIL','get_sources','url == None. Could not find a matching title: %s' % cleantitle.title_from_key(key), dolog=not testing)
 				return sources
 
-			# get IMDb item page
-			result = proxies.request(url, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
-			r = client.parseDOM(result, 'div', attrs = {'class': 'aux-content-widget-3'})[1]
-				
-			# get types of videos available
-			types = {'content_type-trailer':'Trailer', 'content_type-clip':'Clip', 'content_type-interview':'Interviews', 'content_type-other':'Misc.','content_type-featurette':'Featurette'}
-			re_map_types = {'Featurette':'Featurette','Clip':'Trailer','Trailer':'Trailer','Interviews':'Interviews','Misc.':'Misc.'}
-			
-			r1 = client.parseDOM(r, 'a', ret='href')
-			
-			types_map = {}
-			
-			for r1_url in r1:
-				type = 'Trailer'
-				for t in types.keys():
-					if t in r1_url:
-						type = types[t]
+			links_m = []
+			for data in url:
+				try:
+					links_m = resolvers.createMeta(data['link'], self.name, self.logo, data['qual'], links_m, key, data['rip'], testing=testing)
+					if testing == True and len(links_m) > 0:
 						break
-						
-				if type not in types_map.keys():
-					types_map[type] = []
-						
-				result_r1 = proxies.request(urlparse.urljoin(self.base_link, r1_url), proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
-				
-				r2 = client.parseDOM(result_r1, 'div', attrs = {'class': 'search-results'})[0]
-				r2a = client.parseDOM(r2, 'a', ret='href')
-				
-				for r2a1 in r2a:
-					if 'ref_' in r2a1:
-						types_map[type].append(urlparse.urljoin(self.base_link, r2a1))
-				
-			links = []
-			quality = u'720p'
-			selection_map = {}
-			
-			for vidtype in types_map.keys():
-				page_links = types_map[vidtype]
-				for page_link in page_links:
-					try:
-						res = proxies.request(page_link, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
-						vidurls = re.findall(r'encodings\":(.*?\])', res)[0]
-						poster = client.parseDOM(res, 'meta', attrs = {'itemprop': 'image'}, ret='content')[0]
-						vidurls_json = json.loads(vidurls)
-						txt = re.findall(r'<title>(.*?)</title>', res)[0]
-						txt = txt.replace('&quot;','')
-
-						for viddata in vidurls_json:
-							try:
-								vidurl = viddata['videoUrl']
-								if '.mp4' in vidurl:
-									if txt not in selection_map.keys():
-										selection_map[txt] = {}
-									quality = viddata['definition']
-									vidtype = re_map_types[vidtype]
-									try:
-										l = resolvers.createMeta(vidurl, self.name, self.logo, quality, [], key, vidtype=vidtype, testing=testing, txt=txt, poster=poster)
-										l = l[0]
-										if testing == True:
-											links.append(l)
-											break
-									except Exception as e:
-										log('ERROR', 'get_sources-0', '%s' % e, dolog=not testing)	
-									if l['quality'] in selection_map[txt].keys():
-										selection_map[txt][l['quality']].append({'fs' : int(l['fs']), 'link': l})
-									else:
-										selection_map[txt][l['quality']] = [{'fs' : int(l['fs']), 'link': l}]
-							except Exception as e:
-								log('ERROR', 'get_sources-1', '%s' % e, dolog=not testing)
-					except Exception as e:
-						log('ERROR', 'get_sources-2', '%s' % e, dolog=not testing)
-					if testing == True and len(links) > 0:
-						break
-				if testing == True and len(links) > 0:
-					break
-						
-			#print selection_map
-			for sel_titles in selection_map.keys():
-				for sel in selection_map[sel_titles].keys():
-					qls = selection_map[sel_titles][sel]
-					files = sorted(qls, key=lambda k: k['fs'], reverse=True)
-					file = files[0]
-					links.append(file['link'])
+				except:
+					pass
 					
-			for i in links: sources.append(i)
-			
+			for l in links_m:
+				sources.append(l)
+
 			if len(sources) == 0:
 				log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key))
 				return sources
@@ -312,9 +310,18 @@ class source:
 			log('ERROR', 'get_sources', '%s' % e, dolog=not testing)
 			return sources
 
-	def resolve(self, url):
-		return url
-		
+def lose_match_year(yr1, yr2, seasonNr):
+	try:
+		yr1 = str(yr1)
+		yr2 = str(yr2)
+		seasonNr = int(seasonNr)
+		if yr1 == yr2 or int(yr1) - seasonNr == int(yr2) or int(yr2) - seasonNr == int(yr1):
+			return True
+		else:
+			raise
+	except:
+		False
+			
 def log(type='INFO', method='undefined', err='', dolog=True, logToControl=False, doPrint=True):
 	try:
 		msg = '%s: %s > %s > %s : %s' % (time.ctime(time.time()), type, name, method, err)

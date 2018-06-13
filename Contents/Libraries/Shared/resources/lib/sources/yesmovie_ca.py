@@ -24,14 +24,8 @@
 
 import re,urllib,urlparse,json,hashlib,base64,time
 
-from resources.lib.libraries import cleantitle
-from resources.lib.libraries import client
-from resources.lib.libraries import testparams
-from resources.lib.libraries import cache
-from resources.lib import resolvers
-from resources.lib import proxies
-from resources.lib.libraries import control
-from resources.lib.libraries import jsunfuck
+from resources.lib.libraries import client, cleantitle, testparams, control, jsunfuck, source_utils
+from resources.lib import resolvers, proxies
 
 CODE = '''def retA():
 	class Infix:
@@ -60,8 +54,8 @@ loggertxt = []
 class source:
 	def __init__(self):
 		del loggertxt[:]
-		self.ver = '0.1.0'
-		self.update_date = 'Apr. 25, 2018'
+		self.ver = '0.1.1'
+		self.update_date = 'May. 25, 2018'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
 		self.base_link_alts = ['https://yesmovie.io']
@@ -83,7 +77,7 @@ class source:
 		self.embed_link = '/ajax/movie_embed/%s'
 		self.token_link = '/ajax/movie_token?eid=%s&mid=%s'
 		self.sourcelink = '/ajax/movie_sources/%s?x=%s&y=%s'
-		self.api_search = 'https://api.yesmovie.io/movie/search/%s'
+		self.api_search = 'https://api.yesmovie.io/movie/search/%s?link_web=%s'
 		self.speedtest = 0
 		if len(proxies.sourceProxies)==0:
 			proxies.init()
@@ -186,6 +180,9 @@ class source:
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','testParser', 'Plugin Disabled by User - cannot test parser')
 				return False
+			if control.setting('use_quick_init') == True:
+				log('INFO','testParser', 'Disabled testing - Using Quick Init setting in Prefs.')
+				return False
 			if self.disabled == True:
 				log('INFO','testParser', 'Plugin Disabled - cannot test parser')
 				return False
@@ -219,10 +216,11 @@ class source:
 				try:
 					t = cleantitle.get(title)
 
-					q = self.api_search % (urllib.quote_plus(cleantitle.query(title).replace(' ','-')))
+					q = self.api_search % (urllib.quote_plus(cleantitle.query(title).replace(' ','-')), self.base_link)
 					#q = urlparse.urljoin(self.base_link, q)
 					
-					r = client.request(q, headers=self.headers, IPv4=True)
+					#r = client.request(q, headers=self.headers, IPv4=True)
+					r = proxies.request(q, headers=self.headers, IPv4=True, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
 					#if not r == None: break
 
 					r = client.parseDOM(r, 'div', attrs = {'class': 'ml-item'})
@@ -231,7 +229,6 @@ class source:
 					r = [(i[0],i[2]) for i in r if t == cleantitle.get(i[1])][:2]
 					#r = [(i, re.findall('(\d+)', i)[-1]) for i in r]
 
-					#print r
 					for i in r:
 						try:
 							u = i[1]
@@ -241,7 +238,7 @@ class source:
 							if 'http' not in h:
 								h = urlparse.urljoin(self.base_link, h)
 							#print '%s == %s' % (y, year)
-							#print h
+
 							if str(y).strip() != str(year).strip() or h == None:
 								raise Exception()
 							url = h
@@ -302,7 +299,7 @@ class source:
 					#year = re.findall('(\d{4})', date)[0]
 					years = [str(year), str(int(year)+1), str(int(year)-1)]
 
-					r = self.ymovies_info_season(title, season)
+					r = self.ymovies_info_season(title, season, proxy_options=proxy_options)
 					if r == None or len(r) == 0: raise Exception()
 					#print r
 					
@@ -317,7 +314,7 @@ class source:
 							u = i[2]
 							if 'http' not in u:
 								u = urlparse.urljoin(self.base_link, u)
-							y, q, h = self.ymovies_info(u)
+							y, q, h = self.ymovies_info(u, proxy_options=proxy_options)
 							if 'http' not in h:
 								h = urlparse.urljoin(self.base_link, h)
 							mychk = False
@@ -337,7 +334,7 @@ class source:
 								u = i[2]
 								if 'http' not in u:
 									u = urlparse.urljoin(self.base_link, u)
-								y, q, h = self.ymovies_info(u)
+								y, q, h = self.ymovies_info(u, proxy_options=proxy_options)
 								if 'http' not in h:
 									h = urlparse.urljoin(self.base_link, h)
 								mychk = False
@@ -364,7 +361,7 @@ class source:
 			log('ERROR', 'get_episode','%s: %s' % (title,e), dolog=self.init)
 			return
 
-	def ymovies_info_season(self, title, season):
+	def ymovies_info_season(self, title, season, proxy_options=None):
 		try:
 			qs = []
 			q = '%s Season %s' % (cleantitle.query(title), season)
@@ -376,11 +373,12 @@ class source:
 			for qm in qs:
 				try:
 					#q = '/movie/search/%s' % (urllib.quote_plus(qm))
-					q = self.api_search % (urllib.quote_plus(cleantitle.query(qm).replace(' ','-')))
+					q = self.api_search % (urllib.quote_plus(cleantitle.query(qm).replace(' ','-')), self.base_link)
 					#q = urlparse.urljoin(self.base_link, q)
 					#print q
 					for i in range(3):
-						r = client.request(q, headers=self.headers, IPv4=True)
+						#r = client.request(q, headers=self.headers, IPv4=True)
+						r = proxies.request(q, headers=self.headers, IPv4=True, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
 						if not r == None: break
 					
 					r = client.parseDOM(r, 'div', attrs = {'class': 'ml-item'})
@@ -394,21 +392,23 @@ class source:
 		except:
 			return
 
-	def ymovies_info(self, url):
+	def ymovies_info(self, url, proxy_options=None):
 		try:
 			if 'ajax' not in url:
-				r = client.request(url, headers=self.headers, IPv4=True)
+				#r = client.request(url, headers=self.headers, IPv4=True)
+				r = proxies.request(url, headers=self.headers, IPv4=True, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
 				id = re.findall(r'var id = (.*);',r)[0]
 				url = self.info_link2 % id
 
-			r = client.request(url, headers=self.headers, IPv4=True)
+			#r = client.request('%s?link_web=%s' % (url, self.base_link), headers=self.headers, IPv4=True)
+			r = proxies.request('%s?link_web=%s' % (url, self.base_link), headers=self.headers, IPv4=True, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
 			r = r.replace('\\','')
 			#print r
 			q = client.parseDOM(r, 'div', attrs = {'class': 'jtip-quality'})[0]
 			q = cleantitle.getQuality(q)
 			y = client.parseDOM(r, 'div', attrs = {'class': 'jt-info'})[0]
 			h = client.parseDOM(r, 'div', attrs = {'class': 'jtip-bottom'})[0]
-			h = client.parseDOM(h, 'a', ret='href')[0]
+			h = client.parseDOM(h, 'a', ret='href')[0].replace(self.base_link,self.base_link+'/')
 			return (y, q, h)
 		except:
 			return
@@ -417,6 +417,9 @@ class source:
 		#try:
 		try:
 			sources = []
+			if control.setting('Provider-%s' % name) == False:
+				log('INFO','get_sources','Provider Disabled by User')
+				return sources
 			if url == None: 
 				log('FAIL','get_sources','url == None. Could not find a matching title: %s' % cleantitle.title_from_key(key), dolog=not testing)
 				return sources
@@ -429,7 +432,8 @@ class source:
 			
 			u = url[0]
 			ep = url[1]
-			r = client.request(u, headers=headers, IPv4=True)
+			#r = client.request(u, headers=headers IPv4=True)
+			r = proxies.request(u, headers=self.headers, IPv4=True, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
 			
 			if testing == False:
 				try:				
@@ -456,12 +460,19 @@ class source:
 				else:
 					srcs = client.parseDOM(r, 'a', ret='player-data', attrs = {'episode-data': str(ep)})
 					
+				try:
+					elem = client.parseDOM(r, 'span', attrs = {'class': 'quality'})[0]
+					qual = source_utils.check_sd_url(elem)
+					riptype = source_utils.check_sd_url_rip(elem)
+				except Exception as e:
+					qual = '480p'
+					riptype = 'BRRIP'
+					
 				for s in srcs:
 					try:
 						if s.startswith('//'):
 							s = 'https:%s' % s
-						print s
-						links_m = resolvers.createMeta(s, self.name, self.logo, '720p', links_m, key, vidtype='Movie', sub_url=sub_url, testing=testing)
+						links_m = resolvers.createMeta(s, self.name, self.logo, qual, links_m, key, riptype=riptype, vidtype='Movie', sub_url=sub_url, testing=testing)
 						if testing == True and len(links_m) > 0:
 							break
 					except:

@@ -1,6 +1,6 @@
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.65' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.66' # Release notation (x.y - where x is major and y is minor)
 TAG = ''
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
@@ -8,7 +8,7 @@ PREFIX = "/video/fmoviesplus"
 
 import time, base64, unicodedata, re, random, string
 from resources.lib.libraries import control, client, cleantitle, jsfdecoder, jsunpack
-from resources.lib.resolvers import host_openload, host_gvideo, host_mega, host_rapidvideo, host_streamango
+from resources.lib.resolvers import host_openload, host_gvideo, host_mega, host_rapidvideo, host_streamango, host_direct
 import interface
 from __builtin__ import ord, format, eval
 
@@ -73,6 +73,7 @@ EMOJI_CINEMA = u'\U0001F3A6'
 EMOJI_TV = u'\U0001F4FA'
 EMOJI_ANIME = u'\u2318'
 EMOJI_EXT = u'*'
+EMOJI_GLASSES = u'\U0001F453'
 
 # Simple Emoji's
 EMOJI_HEART = u'\u2665'
@@ -87,6 +88,7 @@ EMOJI_TXT_QUES = u'(?)'
 
 INTERFACE_OPTIONS_LABELS = {'Provider':'Provider', 'Host':'Host', 'Proxy':'Proxy'}
 BOOT_UP_CONTROL_SETTINGS = {'Provider':{}, 'Host':{}, 'Proxy':{}}
+BOOT_UP_CONTROL_SETTINGS_FROM_PREFS = ['use_quick_init','use_https_alt','control_all_uc_api_key','control_openload_api_key','use_openload_pairing','use_phantomjs','control_phantomjs_path','control_flixanity_user_pass','control_concurrent_src_threads']
 
 OPTIONS_PROXY = []
 INTERNAL_SOURCES = []
@@ -99,7 +101,7 @@ OPTIONS_PROVIDERS = []
 
 INTERNAL_SOURCES_SIZES_CONST = [{'label':'> 2GB','enabled': 'True','LL':2*TO_GB,'UL':100*TO_GB},{'label':'1GB >= 2GB','enabled': 'True','LL':1*TO_GB,'UL':2*TO_GB},{'label':'0.5GB >= 1GB','enabled': 'True','LL':0.5*TO_GB,'UL':1*TO_GB},{'label':'0GB >= 0.5GB','enabled': 'True','LL':999999,'UL':0.5*TO_GB},{'label':'0GB','enabled': 'False','LL':0,'UL':999999}]
 INTERNAL_SOURCES_QUALS_CONST = [{'label':'4K','enabled': 'True'},{'label':'1080p','enabled': 'True'},{'label':'720p','enabled': 'True'},{'label':'480p','enabled': 'True'},{'label':'360p','enabled': 'True'}]
-INTERNAL_SOURCES_RIPTYPE_CONST = [{'label':'BRRIP','enabled': 'True'},{'label':'PREDVD','enabled': 'True'},{'label':'CAM','enabled': 'True'},{'label':'TS','enabled': 'True'},{'label':'SCR','enabled': 'True'},{'label':'UNKNOWN','enabled': 'True'}]
+INTERNAL_SOURCES_RIPTYPE_CONST = [{'label':'BRRIP','enabled': 'True'},{'label':'3D-BRRIP','enabled': 'True'},{'label':'PREDVD','enabled': 'True'},{'label':'CAM','enabled': 'True'},{'label':'TS','enabled': 'True'},{'label':'SCR','enabled': 'True'},{'label':'UNKNOWN','enabled': 'True'}]
 INTERNAL_SOURCES_FILETYPE_CONST = [{'label':'Movie/Show','enabled':'True'},{'label':'Trailer','enabled':'True'},{'label':'Featurette','enabled':'False'},{'label':'Interviews','enabled':'False'},{'label':'Behind the scenes','enabled':'False'},{'label':'Music Video','enabled':'False'},{'label':'Deleted Scenes','enabled':'False'},{'label':'Misc.','enabled':'False'}]
 INTERNAL_SOURCES_SIZES = list(INTERNAL_SOURCES_SIZES_CONST)
 INTERNAL_SOURCES_QUALS = list(INTERNAL_SOURCES_QUALS_CONST)
@@ -157,6 +159,7 @@ USE_JSFDECODER = True
 USE_JSENGINE = True
 USE_JSWEBHOOK = True
 ALT_PLAYBACK = True
+ALT_PLAYBACK_INLINE = True
 SEARCH_EXT_SOURCES_FROM_SEARCH_MENU = True
 CHECK_BASE_URL_REDIRECTION = True
 DEV_BM_CONVERSION = False
@@ -217,7 +220,7 @@ def GetKeyFromVal(list, val_look):
 
 def set_control_settings(session=None):
 
-	keys = ['use_https_alt','control_all_uc_api_key','control_openload_api_key','use_openload_pairing','use_phantomjs','control_phantomjs_path']
+	keys = BOOT_UP_CONTROL_SETTINGS_FROM_PREFS
 	control.set_setting('ver', VERSION)
 	for i in range(0,len(keys)):
 		try:
@@ -269,9 +272,16 @@ def set_settings_to_control(key, val):
 		control.set_setting(key, val)
 	except Exception as e:
 		Log.Error('ERROR common.py>set_settings_to_control: %s' % e)
-	
+
 	if Prefs["use_debug"]:
-		Log("User Setting %s:%s set to Control" % (key,val))
+		if 'user_pass' in key or 'api_key' in key:
+			if 'user_pass' in key and val != None:
+				val = '***hidden***:***hidden***'
+			elif 'api_key' in key and val != None:
+				val = '***hidden***'
+			Log("User Setting %s:%s set to Control" % (key,val))
+		else:
+			Log("User Setting %s:%s set to Control" % (key,val))
 			
 ####################################################################################################
 # Gets a client specific identifier
@@ -585,7 +595,7 @@ def ResolveFinalUrl(isTargetPlay, data, pair_required=False, params=None, host=N
 		
 	if vidurl != None:
 		if isTargetPlay and 'openload' in host and pair_required == False:
-			vidurl, err, sub_url = host_openload.resolve(vidurl)
+			vidurl, err, sub_url, page_html = host_openload.resolve(vidurl)
 		else:
 			pass
 

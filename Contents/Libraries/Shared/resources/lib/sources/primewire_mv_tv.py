@@ -21,16 +21,12 @@
 
 import re,urllib,urlparse,base64,time
 
-from resources.lib.libraries import cleantitle
-from resources.lib.libraries import client
-from resources.lib.libraries import testparams
-from resources.lib.libraries import control
-from resources.lib import resolvers
-from resources.lib import proxies
+from resources.lib.libraries import client, cleantitle, source_utils, testparams, control
+from resources.lib import resolvers, proxies
 
 name = 'Primewire'
 loggertxt = []
-AVOID_DOMAINS = ['9c40a04e9732e6a6.com']
+AVOID_DOMAINS = ['9c40a04e9732e6a6.com','egresspath.com']
 
 class source:
 	def __init__(self):
@@ -41,7 +37,7 @@ class source:
 		self.init = False
 		self.base_link_alts = ['http://www.primewire.ag','http://www.primewire.is','http://www.primewire.org']
 		self.base_link = self.base_link_alts[0]
-		self.MainPageValidatingContent = '1Channel | PrimeWire.ag - Watch Movies Online'
+		self.MainPageValidatingContent = ['1Channel | PrimeWire.ag - Watch Movies Online']
 		self.type_filter = ['movie', 'show', 'anime']
 		self.name = name
 		self.disabled = False
@@ -97,7 +93,7 @@ class source:
 			x1 = time.time()
 			http_res, content = proxies.request(url=site, output='response', use_web_proxy=False)
 			self.speedtest = time.time() - x1
-			if content != None and content.find(self.MainPageValidatingContent) >-1:
+			if content != None and source_utils.isArrayStringInTxt(content, self.MainPageValidatingContent):
 				log('SUCCESS', 'testSite', 'HTTP Resp : %s for %s' % (http_res,site))
 				return True
 			else:
@@ -105,7 +101,7 @@ class source:
 				x1 = time.time()
 				http_res, content = proxies.request(url=site, output='response', use_web_proxy=True)
 				self.speedtest = time.time() - x1
-				if content != None and content.find(self.MainPageValidatingContent) >-1:
+				if content != None and source_utils.isArrayStringInTxt(content, self.MainPageValidatingContent):
 					self.proxyrequired = True
 					log('SUCCESS', 'testSite', 'HTTP Resp : %s via proxy for %s' % (http_res,site))
 					return True
@@ -114,7 +110,7 @@ class source:
 					x1 = time.time()
 					http_res, content = proxies.request(url=site, output='response', use_web_proxy=True)
 					self.speedtest = time.time() - x1
-					if content != None and content.find(self.MainPageValidatingContent) >-1:
+					if content != None and source_utils.isArrayStringInTxt(content, self.MainPageValidatingContent):
 						self.proxyrequired = True
 						log('SUCCESS', 'testSite', 'HTTP Resp : %s via proxy for %s' % (http_res,site))
 						return True
@@ -129,6 +125,9 @@ class source:
 		try:
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','testParser', 'Plugin Disabled by User - cannot test parser')
+				return False
+			if control.setting('use_quick_init') == True:
+				log('INFO','testParser', 'Disabled testing - Using Quick Init setting in Prefs.')
 				return False
 			if self.disabled == True:
 				log('INFO','testParser', 'Plugin Disabled - cannot test parser')
@@ -403,8 +402,11 @@ class source:
 	def get_sources(self, url, hosthdDict=None, hostDict=None, locDict=None, proxy_options=None, key=None, testing=False):
 		try:
 			sources = []
+			if control.setting('Provider-%s' % name) == False:
+				log('INFO','get_sources','Provider Disabled by User')
+				return sources
 			if url == None: 
-				log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key), dolog=not testing)
+				log('FAIL','get_sources','url == None. Could not find a matching title: %s' % cleantitle.title_from_key(key), dolog=not testing)
 				return sources
 
 			url = urlparse.urljoin(self.base_link, url)
@@ -432,7 +434,10 @@ class source:
 					links_m = resolvers.createMeta(trailer, self.name, self.logo, '720p', links_m, key, vidtype='Trailer', testing=testing)
 
 			links = client.parseDOM(result, 'tbody')
-			riptype = 'BRRIP'
+			try:
+				riptypex = client.parseDOM(result, 'div', attrs = {'class': 'warning_message'})[0]
+			except:
+				riptypex = 'BRRIP'
 			
 			for i in links:
 				try:
@@ -456,13 +461,16 @@ class source:
 					quality = client.parseDOM(i, 'span', ret='class')[0]
 					
 					if quality == 'quality_cam' or quality == 'quality_ts': # quality_ts
-						quality = 'CAM'
+						quality = '480p'
 						riptype = 'CAM'
 					elif quality == 'quality_dvd': 
 						quality = '720p'
-					else:  raise Exception()
-					
-					links_m = resolvers.createMeta(url, self.name, self.logo, quality, links_m, key, riptype, testing=testing)
+						riptype = 'BRRIP'
+					else:
+						riptype = riptypex
+						quality = '480p'
+						
+					links_m = resolvers.createMeta(url, self.name, self.logo, quality, links_m, key, riptype=riptype, testing=testing)
 				except:
 					pass
 					
@@ -478,13 +486,6 @@ class source:
 		except Exception as e:
 			log('ERROR', 'get_sources', '%s' % e, dolog=not testing)
 			return sources
-
-	def resolve(self, url):
-		try:
-			url = resolvers.request(url)
-			return url
-		except:
-			return
 
 def log(type='INFO', method='undefined', err='', dolog=True, logToControl=False, doPrint=True):
 	try:

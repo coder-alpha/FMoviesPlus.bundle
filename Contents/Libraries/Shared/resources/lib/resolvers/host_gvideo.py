@@ -148,6 +148,9 @@ class host:
 			
 	def testResolver(self):
 		try:
+			if control.setting('use_quick_init') == True:
+				log('INFO','testResolver', 'Disabled testing - Using Quick Init setting in Prefs.')
+				return False
 			testUrls = self.testUrl()
 			links = []
 			bool = False
@@ -165,7 +168,7 @@ class host:
 	def testUrl(self):
 		return ['https://drive.google.com/file/d/0B0JMGMGgxp9WMEdWb1hyQUhlOWs/view','https://drive.google.com/file/d/0B1XiKAQcEMeHc2ZIXzB4RDJ6Z1k/view']
 		
-	def createMeta(self, url, provider, logo, quality, links, key, riptype, showsplit=False, useGetlinkAPI=True, vidtype='Movie', lang='en', sub_url=None, txt='', file_ext = '.mp4', testing=False, poster=None):
+	def createMeta(self, url, provider, logo, quality, links, key, riptype, showsplit=False, useGetlinkAPI=True, vidtype='Movie', lang='en', sub_url=None, txt='', file_ext = '.mp4', testing=False, poster=None, headers=None):
 	
 		orig_url = url
 		

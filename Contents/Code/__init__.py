@@ -270,6 +270,14 @@ def SleepAndUpdateThread(update=True, startthread=True, session=None, **kwargs):
 	doSave = False
 	
 	try:
+		if common.BOOT_UP_CONTROL_SETTINGS_FROM_PREFS != None:
+			for item_name in common.BOOT_UP_CONTROL_SETTINGS_FROM_PREFS:
+				item_val = Prefs[item_name]
+				common.set_settings_to_control(item_name, item_val)
+	except Exception as e:
+		Log(e)
+		
+	try:
 		BOOT_UP_CONTROL_SETTINGS = Dict['BOOT_UP_CONTROL_SETTINGS']
 		if BOOT_UP_CONTROL_SETTINGS != None:
 			BOOT_UP_CONTROL_SETTINGS = JSON.ObjectFromString(D(BOOT_UP_CONTROL_SETTINGS))
@@ -295,6 +303,7 @@ def SleepAndUpdateThread(update=True, startthread=True, session=None, **kwargs):
 		
 	if update == True:
 		
+		Log("Interface Initializing... Please wait for a few minutes !")
 		x1 = time.time()
 		ret = common.interface.init()
 		x2 = time.time()
@@ -1230,7 +1239,7 @@ def SetHostOptions(session, refresh=False, n=None, curr_sources=None, option='0'
 		
 	oc.add(DirectoryObject(key = Callback(ExtHosts, session=session, n=E(JSON.StringFromObject(host)), curr_sources=curr_sources), title = 'Move to Top in Host List', summary = title_msg, thumb = R(ICON_UPARROW)))
 	
-	oc.add(DirectoryObject(title = "Tools", summary='Tools for hosts', key = Callback(IntHostTools, choice=None, myhost=host['name']), thumb = R(ICON_TOOLS)))
+	oc.add(DirectoryObject(title = "Tools", summary='Tools for hosts', key = Callback(IntHostTools, choice=None, myhost=host['name'], session=session), thumb = R(ICON_TOOLS)))
 	
 	oc.add(DirectoryObject(
 		key = Callback(InterfaceOptions, session=session, update = MakeSelectionHosts()),
@@ -1327,7 +1336,7 @@ def MakeSelectionProxies(**kwargs):
 
 ####################################################################################################
 @route(PREFIX + "/IntHostTools")
-def IntHostTools(choice=None, myhost=None, mssg=None):
+def IntHostTools(choice=None, myhost=None, mssg=None, session=None):
 	
 	oc = ObjectContainer(title2='%s Tools' % myhost.title())
 
@@ -1336,6 +1345,16 @@ def IntHostTools(choice=None, myhost=None, mssg=None):
 			Thread.Create(common.OpenLoadUnpair)
 			time.sleep(7)
 			mssg = 'UnPairing will be completed in a few seconds. Please return to previous screen.'
+		if choice == 'openload_input_id':
+			if AuthTools.CheckAdmin() == False:
+				return MC.message_container('Admin Access Only', 'Only the Admin can perform this action !')
+			if common.UsingOption(key=common.DEVICE_OPTIONS[0], session=session):
+				DumbKeyboard(PREFIX, oc, OpenLoad_via_ID,
+						dktitle = 'Input OpenLoad ID',
+						dkthumb = R(common.host_openload.logo)
+				)
+			else:
+				oc.add(InputDirectoryObject(key = Callback(OpenLoad_via_ID, session = session), thumb = R(common.host_openload.logo), title='Input OpenLoad ID', summary='Input OpenLoad ID', prompt='Input OpenLoad ID...'))
 		if choice == 'show_dump_log':
 			oc = ObjectContainer(title2='%s Log' % myhost.title())
 			items = common.interface.getHostsLoggerTxts(choice=myhost, dumpToLog=False)
@@ -1365,15 +1384,19 @@ def IntHostTools(choice=None, myhost=None, mssg=None):
 		if mssg != None:
 			return MC.message_container('Info', mssg)	
 	else:
-		oc.add(DirectoryObject(key=Callback(IntHostTools, choice='show_dump_log', myhost=myhost),
+		oc.add(DirectoryObject(key=Callback(IntHostTools, choice='show_dump_log', myhost=myhost, session=session),
 			title=u'Show/Dump log',
 			thumb = R(ICON_TOOLS),
 			summary=u'List the logged events and dumps to Channel log'))
 		if myhost == 'openload':
-			oc.add(DirectoryObject(key=Callback(IntHostTools, choice='openload_unpair', myhost=myhost),
+			oc.add(DirectoryObject(key=Callback(IntHostTools, choice='openload_unpair', myhost=myhost, session=session),
 				title=u'*Paired* - UnPair OpenLoad' if common.host_openload.isPairingDone() == True else u'*Not Paired*',
 				thumb = R(ICON_TOOLS),
 				summary=u'UnPair with OpenLoad'))
+			oc.add(DirectoryObject(key=Callback(IntHostTools, choice='openload_input_id', myhost=myhost, session=session),
+				title=u'Enter OpenLoad Video ID',
+				thumb = R(ICON_TOOLS),
+				summary=u'Enter an OpenLoad Video ID for playback and download options.'))
 
 	if len(oc) == 0:
 		return MC.message_container('Info', 'No tools available for %s' % myhost)
@@ -1541,7 +1564,9 @@ def ResetAllOptions(session, doReset=False, **kwargs):
 	Thread.Create(SleepAndUpdateThread, {}, session=session)
 	
 	return MC.message_container('Reset All Options', 'All Dictionary stored Options have been Reset to Factory Defaults !')
-	
+
+######################################################################################
+
 ######################################################################################
 @route(PREFIX + "/testSite")
 def testSite(url, **kwargs):
@@ -3692,13 +3717,19 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 			time.sleep(7)
 			doSleepForProgress = False
 		prog = common.interface.checkProgress(key)
+		desc_prog = common.interface.getDescProgress(key)
+		eta = common.interface.getETAProgress(key=key, type='movie' if tvshowtitle == None else 'tv')
+		if eta == None:
+			eta_txt =  ''
+		else:
+			eta_txt =  ' ETA: %ss.' % eta
 		if use_prog_conc:
 			if prog < 100:
-				oc_conc = ObjectContainer(title2='External Sources - Progress %s%s' % (prog, '%'), no_history=True, no_cache=True)
+				oc_conc = ObjectContainer(title2='External Sources - Progress %s%s.%s' % (prog, '%', eta_txt), no_history=True, no_cache=True)
 				oc.append(DirectoryObject(
 					key = Callback(ExtSources, movtitle=movtitle, tvshowtitle=tvshowtitle, season=season, episode=episode, title=title, url=url, summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, session=session, refresh=int(refresh)+1),
-					title = 'Refresh - %s%s Done' % (prog,'%'),
-					summary = 'List sources by External Providers.',
+					title = 'Refresh - %s%s Done.%s' % (prog,'%', eta_txt),
+					summary = 'List sources by External Providers. %s' % desc_prog,
 					art = art,
 					thumb = GetThumb(R(ICON_REFRESH), session=session)
 					)
@@ -3760,9 +3791,16 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 			filter_extSources.append(i)
 	internal_extSources = filter_extSources
 	
+	thumbx = thumb
+	
 	for source in internal_extSources:
 		status = common.GetEmoji(type=source['online'], session=session)
 		vidUrl = source['url']
+		
+		if 'poster' in source.keys() and source['poster'] != None and source['poster'].startswith('http'):
+			thumb = source['poster']
+		else:
+			thumb = thumbx
 		
 		isTargetPlay = True if source['source'] not in ['gvideo','mega'] else False
 		isVideoOnline = source['online']
@@ -3840,23 +3878,44 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 		# all source links that can be attempted via the Generic Playback
 		elif vidUrl != None and source['vidtype'] in 'Movie/Show' and source['enabled'] and source['allowsStreaming'] and not source['misc']['gp']:
 			try:
-				generic_playback_links.append((title_msg + source['titleinfo'] + ' | (via Generic Playback)', summary, GetThumb(thumb, session=session), source['params'], duration, genre, vidUrl, source['quality'], watch_title))
+				if common.ALT_PLAYBACK_INLINE == False:
+					generic_playback_links.append((title_msg + source['titleinfo'] + ' | (via Generic Playback)', summary, GetThumb(thumb, session=session), source['params'], duration, genre, vidUrl, source['quality'], watch_title))
+				else:
+					gen_play = (title_msg + source['titleinfo'] + ' | (via Generic Playback)', summary, GetThumb(thumb, session=session), source['params'], duration, genre, vidUrl, source['quality'], watch_title)
+					title, summary, thumb, params, duration, genres, videoUrl, videoRes, watch_title = gen_play
+					try:
+						oc.append(CreateVideoObject(url, title, summary, thumb, params, duration, genres, videoUrl, videoRes, watch_title))
+					except Exception as e:
+						if Prefs["use_debug"]:
+							Log(gen_play)
+						Log(e)
 			except:
 				pass
 		if vidUrl != None and source['vidtype'] in 'Movie/Show' and source['enabled'] and source['allowsStreaming'] and source['misc']['gp']:
 			try:
-				generic_playback_links.append((title_msg + source['titleinfo'] + ' | (via Generic Playback)', summary, GetThumb(thumb, session=session), source['params'], duration, genre, vidUrl, source['quality'], watch_title))
+				if common.ALT_PLAYBACK_INLINE == False:
+					generic_playback_links.append((title_msg + source['titleinfo'] + ' | (via Generic Playback)', summary, GetThumb(thumb, session=session), source['params'], duration, genre, vidUrl, source['quality'], watch_title))
+				else:
+					gen_play = (title_msg + source['titleinfo'] + ' | (via Generic Playback)', summary, GetThumb(thumb, session=session), source['params'], duration, genre, vidUrl, source['quality'], watch_title)
+					title, summary, thumb, params, duration, genres, videoUrl, videoRes, watch_title = gen_play
+					try:
+						oc.append(CreateVideoObject(url, title, summary, thumb, params, duration, genres, videoUrl, videoRes, watch_title))
+					except Exception as e:
+						if Prefs["use_debug"]:
+							Log(gen_play)
+						Log(e)
 			except:
 				pass
 
-	if  common.ALT_PLAYBACK:
+	if  common.ALT_PLAYBACK and common.ALT_PLAYBACK_INLINE == False:
 		for gen_play in generic_playback_links:
-			#Log(gen_play)
 			title, summary, thumb, params, duration, genres, videoUrl, videoRes, watch_title = gen_play
 			try:
-				oc.append(CreateVideoObject(url, title, summary, thumb, params, duration, genres, videoUrl, videoRes, watch_title)) # ToDo
-			except:
-				pass
+				oc.append(CreateVideoObject(url, title, summary, thumb, params, duration, genres, videoUrl, videoRes, watch_title))
+			except Exception as e:
+				if Prefs["use_debug"]:
+					Log(gen_play)
+				Log(e)
 	
 	if common.USE_EXT_URLSERVICES:
 		external_extSources = extSourKey
@@ -3947,14 +4006,19 @@ def ExtSourcesDownload(title, url, summary, thumb, art, rating, duration, genre,
 			time.sleep(7)
 			doSleepForProgress = False
 		prog = common.interface.checkProgress(key)
-		
+		desc_prog = common.interface.getDescProgress(key)
+		eta = common.interface.getETAProgress(key=key, type='movie' if tvshowtitle == None else 'tv')
+		if eta == None:
+			eta_txt =  ''
+		else:
+			eta_txt =  ' ETA: %ss.' % eta
 		if use_prog_conc:
 			if prog < 100:
-				oc = ObjectContainer(title2='Download Sources - Progress %s%s' % (prog, '%'), no_history=True, no_cache=True)
+				oc = ObjectContainer(title2='Download Sources - Progress %s%s.%s' % (prog, '%', eta_txt), no_history=True, no_cache=True)
 				oc.add(DirectoryObject(
 					key = Callback(ExtSourcesDownload, movtitle=movtitle, tvshowtitle=tvshowtitle, season=season, episode=episode, title=title, url=url, summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, session=session, mode=mode, refresh=int(refresh)+1),
-					title = 'Refresh - %s%s Done' % (prog,'%'),
-					summary = 'List sources by External Providers.',
+					title = 'Refresh - %s%s Done.%s' % (prog,'%',eta_txt),
+					summary = 'List sources by External Providers. %s' % desc_prog,
 					art = art,
 					thumb = GetThumb(R(ICON_REFRESH), session=session)
 					)
@@ -4047,7 +4111,7 @@ def ExtSourcesDownload(title, url, summary, thumb, art, rating, duration, genre,
 			try:
 				libtype='movie' if tvshowtitle == None else 'show'
 				oc.add(DirectoryObject(
-					key = Callback(AddToDownloadsListPre, title=watch_title_x, purl=url, url=source['url'], durl=source['durl'], sub_url=source['sub_url'], summary=summary, thumb=thumb, year=year, fsBytes=fsBytes, fs=fs, file_ext=source['file_ext'], quality=source['quality'], source=source['source'], source_meta={}, file_meta={}, type=libtype, vidtype=source['vidtype'].lower(), resumable=source['resumeDownload'], mode=mode, session=session, admin=True if mode==common.DOWNLOAD_MODE[0] else False),
+					key = Callback(AddToDownloadsListPre, title=watch_title_x, purl=url, url=source['url'], durl=source['durl'], sub_url=source['sub_url'], summary=summary, thumb=thumb, year=year, fsBytes=fsBytes, fs=fs, file_ext=source['file_ext'], quality=source['quality'], source=source['source'], source_meta={}, file_meta={}, type=libtype, vidtype=source['vidtype'].lower(), resumable=source['resumeDownload'], mode=mode, session=session, admin=True if mode==common.DOWNLOAD_MODE[0] else False, params=source['params'], riptype=source['rip']),
 					title = title_msg,
 					summary = 'Adds the current video to %s List' % 'Download' if mode==common.DOWNLOAD_MODE[0] else 'Request',
 					art = art,
@@ -4232,12 +4296,13 @@ def PSExtSources(extSources_play, con_title, session, watch_title, year, summary
 				
 	if  common.ALT_PLAYBACK:
 		for gen_play in generic_playback_links:
-			#Log(gen_play)
 			title, summary, thumb, params, duration, genres, videoUrl, videoRes, watch_title = gen_play
 			try:
 				oc.add(CreateVideoObject(url, title, summary, thumb, params, duration, genres, videoUrl, videoRes, watch_title))
-			except:
-				pass
+			except Exception as e:
+				if Prefs["use_debug"]:
+					Log(gen_play)
+				Log(e)
 				
 	for o in ocx:
 		oc.add(o)
@@ -4610,7 +4675,7 @@ def ClearRecentWatchList(**kwargs):
 	
 #######################################################################################################
 @route(PREFIX + '/AddToDownloadsListPre')
-def AddToDownloadsListPre(title, year, url, durl, purl, summary, thumb, quality, source, type, resumable, source_meta, file_meta, mode, sub_url=None, fsBytes=None, fs=None, file_ext=None, vidtype=None, section_path=None, section_title=None, section_key=None, session=None, admin=False, update=False, **kwargs):
+def AddToDownloadsListPre(title, year, url, durl, purl, summary, thumb, quality, source, type, resumable, source_meta, file_meta, mode, sub_url=None, fsBytes=None, fs=None, file_ext=None, vidtype=None, section_path=None, section_title=None, section_key=None, session=None, admin=False, update=False, params=None, riptype=None, **kwargs):
 	
 	admin = True if str(admin) == 'True' else False
 	update = True if str(update) == 'True' else False
@@ -4685,7 +4750,7 @@ def AddToDownloadsListPre(title, year, url, durl, purl, summary, thumb, quality,
 			return MC.message_container('Item Update', 'Item has been updated with new download url')
 		elif admin == True and update == False and EncTxt['url'] != url:
 			oc = ObjectContainer(title1='Item exists in Downloads List', no_cache=common.isForceNoCache())
-			oc.add(DirectoryObject(key = Callback(AddToDownloadsListPre, title=title, purl=purl, url=url, durl=durl, summary=summary, thumb=thumb, year=year, quality=quality, source=source, source_meta=source_meta, file_meta=file_meta, type=type, resumable=resumable, sub_url=sub_url, fsBytes=fsBytes, fs=fs, file_ext=file_ext, mode=mode, vidtype=vidtype, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, update=True), title = 'Update this item'))
+			oc.add(DirectoryObject(key = Callback(AddToDownloadsListPre, title=title, purl=purl, url=url, durl=durl, summary=summary, thumb=thumb, year=year, quality=quality, source=source, source_meta=source_meta, file_meta=file_meta, type=type, resumable=resumable, sub_url=sub_url, fsBytes=fsBytes, fs=fs, file_ext=file_ext, mode=mode, vidtype=vidtype, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, update=True, params=params, riptype=riptype), title = 'Update this item'))
 			oc.add(DirectoryObject(key = Callback(MyMessage, title='Return', msg='Use back to Return to previous screen'), title = 'Return'))
 			return oc
 		elif admin == True and update == True and EncTxt['url'] == url:
@@ -4722,12 +4787,12 @@ def AddToDownloadsListPre(title, year, url, durl, purl, summary, thumb, quality,
 			Dict['DOWNLOAD_OPTIONS_SECTION_TEMP'][tuec][x] = common.DOWNLOAD_OPTIONS[x]
 		Dict.Save()
 		
-	return AddToDownloadsList(title=title, purl=purl, url=url, durl=durl, summary=summary, thumb=thumb, year=year, quality=quality, source=source, source_meta=source_meta, file_meta=file_meta, type=type, vidtype=vidtype, resumable=resumable, sub_url=sub_url, fsBytes=fsBytes, fs=fs, file_ext=file_ext, mode=mode, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, update=update, user=user)
+	return AddToDownloadsList(title=title, purl=purl, url=url, durl=durl, summary=summary, thumb=thumb, year=year, quality=quality, source=source, source_meta=source_meta, file_meta=file_meta, type=type, vidtype=vidtype, resumable=resumable, sub_url=sub_url, fsBytes=fsBytes, fs=fs, file_ext=file_ext, mode=mode, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, update=update, user=user,params=params, riptype=riptype)
 	
 ######################################################################################
 # Adds a movie to the DownloadsList list using the (title + 'Down5Split') as a key for the url
 @route(PREFIX + "/addToDownloadsList")
-def AddToDownloadsList(title, year, url, durl, purl, summary, thumb, quality, source, type, resumable, source_meta, file_meta, sub_url=None, fsBytes=None, fs=None, file_ext=None, vidtype=None, section_path=None, section_title=None, section_key=None, session=None, admin=False, update=False, user=None, **kwargs):
+def AddToDownloadsList(title, year, url, durl, purl, summary, thumb, quality, source, type, resumable, source_meta, file_meta, sub_url=None, fsBytes=None, fs=None, file_ext=None, vidtype=None, section_path=None, section_title=None, section_key=None, session=None, admin=False, update=False, user=None, params=None, riptype=None, **kwargs):
 
 	admin = True if str(admin) == 'True' else False
 	update = True if str(update) == 'True' else False
@@ -4772,13 +4837,13 @@ def AddToDownloadsList(title, year, url, durl, purl, summary, thumb, quality, so
 					LOCS.append(item)
 			if len(LOCS) == 1:
 				item = LOCS[0]
-				return AddToDownloadsList(title=title, year=year, url=url, durl=durl, purl=purl, summary=summary, thumb=thumb, fs=fs, fsBytes=fsBytes, file_ext=file_ext, quality=quality, source=source, source_meta=source_meta, file_meta=file_meta, type=type, vidtype=vidtype, resumable=resumable, sub_url=sub_url, section_path=item['path'], section_title=item['title'], section_key=item['key'], session=session, admin=admin, update=update, user=user)
+				return AddToDownloadsList(title=title, year=year, url=url, durl=durl, purl=purl, summary=summary, thumb=thumb, fs=fs, fsBytes=fsBytes, file_ext=file_ext, quality=quality, source=source, source_meta=source_meta, file_meta=file_meta, type=type, vidtype=vidtype, resumable=resumable, sub_url=sub_url, section_path=item['path'], section_title=item['title'], section_key=item['key'], session=session, admin=admin, update=update, user=user, params=params, riptype=riptype)
 			else:
 				oc = ObjectContainer(title1='Select Location', no_cache=common.isForceNoCache())
 				for item in DOWNLOAD_OPTIONS_SECTION_TEMP[type]:
 					if item['enabled']:
 						oc.add(DirectoryObject(
-							key = Callback(AddToDownloadsList, title=title, year=year, url=url, durl=durl, purl=purl, summary=summary, thumb=thumb, fs=fs, fsBytes=fsBytes, file_ext=file_ext, quality=quality, source=source, source_meta=source_meta, file_meta=file_meta, type=type, vidtype=vidtype, resumable=resumable, sub_url=sub_url, section_path=item['path'], section_title=item['title'], section_key=item['key'], session=session, admin=admin, update=update, user=user),
+							key = Callback(AddToDownloadsList, title=title, year=year, url=url, durl=durl, purl=purl, summary=summary, thumb=thumb, fs=fs, fsBytes=fsBytes, file_ext=file_ext, quality=quality, source=source, source_meta=source_meta, file_meta=file_meta, type=type, vidtype=vidtype, resumable=resumable, sub_url=sub_url, section_path=item['path'], section_title=item['title'], section_key=item['key'], session=session, admin=admin, update=update, user=user, params=params, riptype=riptype),
 							title = '%s | %s' % (item['title'], item['path'])
 							)
 						)
@@ -4796,7 +4861,7 @@ def AddToDownloadsList(title, year, url, durl, purl, summary, thumb, quality, so
 						pair_required, u1 = common.host_openload.isPairingRequired(url=url, session=session)
 						if pair_required == False:
 							fs_i, err = common.client.getFileSize(u1, retError=True, retry429=True, cl=2)
-					online, r1, err, fs_i =  common.host_openload.check(url, usePairing = False, embedpage=True)
+					online, r1, err, fs_i, r2, r3 =  common.host_openload.check(url, usePairing = False, embedpage=True)
 				else:
 					fs_i, err = common.client.getFileSize(url, retError=True, retry429=True, cl=2)
 
@@ -4832,7 +4897,7 @@ def AddToDownloadsList(title, year, url, durl, purl, summary, thumb, quality, so
 			chunk_size = int(1024.0 * 1024.0 * float(common.DOWNLOAD_CHUNK_SIZE)) # in bytes
 			fid = '.'+common.id_generator()
 			
-			EncTxt = E(JSON.StringFromObject({'title':title, 'year':year, 'url':url, 'durl':durl, 'purl':purl, 'sub_url':sub_url, 'summary':summary, 'thumb':thumb, 'fsBytes':int(fsBytes), 'fs':fs, 'chunk_size':chunk_size, 'file_ext':file_ext, 'quality':quality, 'source':source, 'source_meta':source_meta, 'file_meta':file_meta, 'uid':uid, 'fid':fid, 'type':type, 'vidtype':vidtype, 'resumable':resumable, 'status':common.DOWNLOAD_STATUS[0], 'startPos':0, 'timeAdded':time.time(), 'first_time':time.time(), 'progress':0, 'chunk_speed':0,'avg_speed':0,'avg_speed_curr':0, 'eta':0, 'error':'', 'last_error':'Unknown Error', 'action':common.DOWNLOAD_ACTIONS[4],'section_path':section_path, 'section_title':section_title, 'section_key':section_key, 'user':user})) 
+			EncTxt = E(JSON.StringFromObject({'title':title, 'year':year, 'url':url, 'durl':durl, 'purl':purl, 'sub_url':sub_url, 'summary':summary, 'thumb':thumb, 'fsBytes':int(fsBytes), 'fs':fs, 'chunk_size':chunk_size, 'file_ext':file_ext, 'quality':quality, 'source':source, 'source_meta':source_meta, 'file_meta':file_meta, 'uid':uid, 'fid':fid, 'type':type, 'vidtype':vidtype, 'resumable':resumable, 'status':common.DOWNLOAD_STATUS[0], 'startPos':0, 'timeAdded':time.time(), 'first_time':time.time(), 'progress':0, 'chunk_speed':0,'avg_speed':0,'avg_speed_curr':0, 'eta':0, 'error':'', 'last_error':'Unknown Error', 'action':common.DOWNLOAD_ACTIONS[4],'section_path':section_path, 'section_title':section_title, 'section_key':section_key, 'user':user, 'params':params, 'riptype':riptype})) 
 			Dict[uid] = EncTxt
 			Dict.Save()
 			Thread.Create(download.trigger_que_run)
@@ -7450,12 +7515,14 @@ def DumpPrefs(changed='False', **kwargs):
 	Log(common.TITLE + ' v. %s %s' % (common.VERSION, common.TAG))
 	Log("Channel Preferences:")
 	Log("Base site url: %s" % (fmovies.BASE_URL))
+	Log("Enable quick Initialization: %s" % (Prefs["use_quick_init"]))
 	Log("Cache Expiry Time (in mins.): %s" % (Prefs["cache_expiry_time"]))
 	Log("No Extra Info. for Nav. Pages (Speeds Up Navigation): %s" % (Prefs["dont_fetch_more_info"]))
 	Log("Use SSL Web-Proxy: %s" % (Prefs["use_web_proxy"]))
 	Log("Use Alternate SSL/TLS: %s" % (Prefs["use_https_alt"]))
 	Log("Disable External Sources: %s" % (Prefs["disable_extsources"]))
 	Log("Disable Downloading Sources: %s" % (Prefs["disable_downloader"]))
+	Log("Number of concurrent Source Searching Threads: %s" % (Prefs["control_concurrent_src_threads"]))
 	Log("Number of concurrent Download Threads: %s" % (Prefs["download_connections"]))
 	Log("Limit Aggregate Download Speed (KB/s): %s" % (Prefs["download_speed_limit"]))
 	Log("Use LinkChecker for Videos: %s" % (Prefs["use_linkchecker"]))
@@ -7525,6 +7592,7 @@ def DisplayMsgs(**kwargs):
 def CreateVideoObject(url, title, summary, thumb, params, duration, genres, videoUrl, videoRes, watch_title, include_container=False, **kwargs):
 
 	videoUrl = videoUrl.decode('unicode_escape')
+	url = url if url != None else videoUrl
 	
 	if include_container:
 		video = MovieObject(
@@ -7577,6 +7645,10 @@ def PlayVideo(videoUrl, params, retResponse, url, title, summary, thumb, watch_t
 
 	if 'googleusercontent.com' in videoUrl:
 		pass
+	elif '3donlinefilms.com' in url:
+		videoUrl, params_enc, err = common.host_direct.resolve(url)
+		#params = JSON.ObjectFromString(D(params_enc))
+		params = params_enc
 	elif common.client.geturlhost(videoUrl) in common.host_misc_resolvers.supported_hosts:
 		videoUrl, params_enc, b = common.host_misc_resolvers.resolve(videoUrl, Prefs["use_https_alt"])
 		#params = JSON.ObjectFromString(D(params_enc))
@@ -7704,6 +7776,66 @@ def SolveCaptcha(query, url, dlt, vco, title, page_url, **kwargs):
 		oc.add(DirectoryObject(key = Callback(MainMenu), title = '<< Main Menu',thumb = R(ICON)))
 		return oc
 		#return MC.message_container('Captcha Solved', 'Captcha Solved Successfully')
+		
+####################################################################################################
+def OpenLoad_via_ID(query, session=None, **kwargs):
+
+	try:
+		url = 'https://openload.co/f/%s' % query
+		sources = common.host_openload.vid_link_from_id(query)
+	except Exception as e:
+		if Prefs['use_debug']:
+			Log("ERROR init.py>OpenLoad_via_ID 1: %s" % e)
+		sources = None
+	
+	if sources == None or len(sources) == 0:
+		return MC.message_container('OpenLoad via ID Error', 'OpenLoad via ID Error !')
+	else:
+		oc = ObjectContainer(title2 = query , no_cache=common.isForceNoCache())
+		for source in sources:
+		
+			#Log(source)
+			try:
+				year = re.findall('(\d{4})', source['fileName'])[0]
+			except:
+				year = '0000'
+		
+			gen_play = (source['fileName'] + source['titleinfo'] + ' | (via Generic Playback)', None, GetThumb(source['poster'], session=session), source['params'], None, None, source['url'], source['quality'], source['fileName'])
+			
+			title, summary, thumb, params, duration, genres, videoUrl, videoRes, watch_title = gen_play
+			
+			try:
+				fs = source['fs']
+				fsBytes = int(fs)
+				file_size = '%s GB' % str(round(float(fs)/common.TO_GB, 3))
+			except:
+				fs = None
+				fsBytes = 0
+				file_size = '? GB'
+			
+			status = common.GetEmoji(type=source['online'], session=session)
+			title_msg = "%s %s| %s | %s | %s | %s | %s | %s" % (status, source['maininfo'], source['fileName'], source['rip'], source['quality'], file_size, source['source']+':'+source['subdomain'] if source['source']=='gvideo' else source['source'], source['provider'])
+			
+			try:
+				oc.add(CreateVideoObject(url, title_msg, summary, thumb, params, duration, genres, videoUrl, videoRes, watch_title))
+			except Exception as e:
+				Log("ERROR init.py>OpenLoad_via_ID 2: %s" % e)
+				
+			try:
+				libtype='movie'
+				mode=common.DOWNLOAD_MODE[0]
+				oc.add(DirectoryObject(
+					key = Callback(AddToDownloadsListPre, title=watch_title, purl=None, url=source['url'], durl=source['durl'], sub_url=source['sub_url'], summary=summary, thumb=thumb, year=year, fsBytes=None, fs=None, file_ext=source['file_ext'], quality=source['quality'], source=source['source'], source_meta={}, file_meta={}, type=libtype, vidtype=source['vidtype'].lower(), resumable=source['resumeDownload'], mode=mode, session=session, admin=True if mode==common.DOWNLOAD_MODE[0] else False, params=source['params'], riptype=source['rip']),
+					title = title_msg,
+					summary = 'Adds the current video to %s List' % 'Download' if mode==common.DOWNLOAD_MODE[0] else 'Request',
+					art = None,
+					thumb = GetThumb(R('%s' % ICON_OTHERSOURCESDOWNLOAD if mode==common.DOWNLOAD_MODE[0] else ICON_REQUESTS), session=session)
+					)
+				)
+			except Exception as e:
+				Log("ERROR init.py>OpenLoad_via_ID 3: %s" % e)
+
+		return oc
 		
 ####################################################################################################
 def create_photo_object(url, title, include_container=False, **kwargs):

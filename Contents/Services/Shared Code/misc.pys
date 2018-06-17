@@ -117,10 +117,13 @@ def resolve(url, https_skip=True, test=False, strip_url=True):
 				if video_url[len(video_url)-1] == '@':
 					video_url = video_url[:-1]
 					
-				v_qs = video_url.split('/')
-				v_qs = v_qs[len(v_qs)-1]
-				v_qs = re.sub(r'[^0-9]', "", v_qs)
-				v_qs = int(v_qs)
+				try:
+					v_qs = video_url.rsplit('/')
+					v_qs = v_qs[1]
+					v_qs = re.sub(r'[^0-9]', "", v_qs)
+					v_qs = int(v_qs)
+				except:
+					v_qs = 720
 				
 				quals = [1080,720,480,360,256,128,64]
 				for qs in quals:

@@ -315,6 +315,13 @@ class source:
 						if resultx == None:
 							raise Exception()
 							
+					try:
+						poster = client.parseDOM(page, 'div', attrs = {'class': 'detail-l'})[0]
+						poster = client.parseDOM(poster, 'img', ret='src')[0]
+						if 'http' not in poster:
+							server = 'http:' + poster
+					except:
+						poster = None
 					#print result
 
 					#r = client.parseDOM(result, 'article', attrs = {'class': 'player current'})[0]
@@ -333,7 +340,7 @@ class source:
 									if 'http' not in server:
 										server = 'http:' + server
 								
-								links_m = resolvers.createMeta(server, self.name, self.logo, quality, links_m, key, riptype=type, testing=testing)
+								links_m = resolvers.createMeta(server, self.name, self.logo, quality, links_m, key, poster=poster, riptype=type, testing=testing)
 							except Exception as e:
 								pass
 							if testing and len(links_m) > 0:
@@ -348,7 +355,7 @@ class source:
 								if 'http' not in server:
 									server = 'http:' + server
 								try:
-									links_m = resolvers.createMeta(server, self.name, self.logo, quality, links_m, key, riptype=type, testing=testing)	
+									links_m = resolvers.createMeta(server, self.name, self.logo, quality, links_m, key, poster=poster, riptype=type, testing=testing)	
 								except:
 									pass
 					except:

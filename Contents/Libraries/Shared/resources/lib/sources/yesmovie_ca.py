@@ -468,11 +468,17 @@ class source:
 					qual = '480p'
 					riptype = 'BRRIP'
 					
+				try:
+					poster = client.parseDOM(r, 'div', attrs = {'class': 'dm-thumb'})[0]
+					poster = client.parseDOM(poster, 'img', ret='src')[0]
+				except:
+					poster = None
+					
 				for s in srcs:
 					try:
 						if s.startswith('//'):
 							s = 'https:%s' % s
-						links_m = resolvers.createMeta(s, self.name, self.logo, qual, links_m, key, riptype=riptype, vidtype='Movie', sub_url=sub_url, testing=testing)
+						links_m = resolvers.createMeta(s, self.name, self.logo, qual, links_m, key, poster=poster, riptype=riptype, vidtype='Movie', sub_url=sub_url, testing=testing)
 						if testing == True and len(links_m) > 0:
 							break
 					except:

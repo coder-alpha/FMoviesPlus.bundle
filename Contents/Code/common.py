@@ -1,6 +1,6 @@
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.66' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.67' # Release notation (x.y - where x is major and y is minor)
 TAG = ''
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
@@ -88,7 +88,7 @@ EMOJI_TXT_QUES = u'(?)'
 
 INTERFACE_OPTIONS_LABELS = {'Provider':'Provider', 'Host':'Host', 'Proxy':'Proxy'}
 BOOT_UP_CONTROL_SETTINGS = {'Provider':{}, 'Host':{}, 'Proxy':{}}
-BOOT_UP_CONTROL_SETTINGS_FROM_PREFS = ['use_quick_init','use_https_alt','control_all_uc_api_key','control_openload_api_key','use_openload_pairing','use_phantomjs','control_phantomjs_path','control_flixanity_user_pass','control_concurrent_src_threads']
+BOOT_UP_CONTROL_SETTINGS_FROM_PREFS = ['use_quick_init','use_https_alt','control_all_uc_api_key','control_videospider_api_key','control_openload_api_key','use_openload_pairing','use_phantomjs','control_phantomjs_path','control_flixanity_user_pass','control_concurrent_src_threads']
 
 OPTIONS_PROXY = []
 INTERNAL_SOURCES = []
@@ -146,6 +146,62 @@ ANIME_SEARCH_URL = ANIME_URL + '/search?keyword=%s'
 ES_API_URL = 'http://movies-v2.api-fetch.website'
 
 EXT_SITE_URLS = [ANIME_URL, ES_API_URL]
+
+ART = "art-default.jpg"
+ICON = "icon-fmovies.png"
+ICON_LIST = "icon-list.png"
+ICON_COVER = "icon-cover.png"
+ICON_SEARCH = "icon-search.png"
+ICON_SEARCH_QUE = "icon-search-queue.png"
+ICON_NEXT = "icon-next.png"
+ICON_MOVIES = "icon-movies.png"
+ICON_FILTER = "icon-filter.png"
+ICON_GENRE = "icon-genre.png"
+ICON_LATEST = "icon-latest.png"
+ICON_SIMILAR = "icon-similar.png"
+ICON_OTHERSEASONS = "icon-otherseasons.png"
+ICON_HOT = "icon-hot.png"
+ICON_UPARROW = "icon-uparrow.png"
+ICON_ENTER = "icon-enter.png"
+ICON_QUEUE = "icon-bookmark.png"
+ICON_UNAV = "MoviePosterUnavailable.jpg"
+ICON_PREFS = "icon-prefs.png"
+ICON_UPDATE = "icon-update.png"
+ICON_UPDATE_NEW = "icon-update-new.png"
+ICON_DEVICE_OPTIONS = "icon-device-options.png"
+ICON_OPTIONS = "icon-options.png"
+ICON_CLEAR = "icon-clear.png"
+ICON_DK_ENABLE = "icon-dumbKeyboardE.png"
+ICON_DK_DISABLE = "icon-dumbKeyboardD.png"
+ICON_GL_ENABLE = "icon-gl-enable.png"
+ICON_GL_DISABLE = "icon-gl-disable.png"
+ICON_INFO = "icon-info.png"
+ICON_STAR = "icon-star.png"
+ICON_PEOPLE = "icon-people.png"
+ICON_TAG = "icon-tag.png"
+ICON_OTHERPROVIDERS = "icon-otherproviders.png"
+ICON_OTHERHOSTS = "icon-otherhosts.png"
+ICON_OTHERSOURCES = "icon-othersources.png"
+ICON_OTHERSOURCESDOWNLOAD = "icon-othersourcesdownload.png"
+ICON_SAVE = "icon-save.png"
+ICON_QUALITIES = "icon-qualities.png"
+ICON_FILESIZES = "icon-filesizes.png"
+ICON_RIPTYPE = "icon-riptype.png"
+ICON_QUESTION = "icon-question.png"
+ICON_PROXY = "icon-proxy.png"
+ICON_PROXY_DEFAULT = "icon-proxy-default.png"
+ICON_REFRESH = "icon-refresh.png"
+ICON_ALERT = "icon-alert.png"
+ICON_HELP = "icon-help.png"
+ICON_OK = "icon-ok.png"
+ICON_NOTOK = "icon-error.png"
+ICON_SUMMARY = "icon-summary.png"
+ICON_VIDTYPE = "icon-videotype.png"
+ICON_PLEX = "icon-plex.png"
+ICON_DOWNLOADS = "icon-downloads.png"
+ICON_REQUESTS = "icon-requests.png"
+ICON_TOOLS = "icon-tools.png"
+ICON_WARNING = "icon-warning.png"
 
 # Golbal Overrides - to disable
 SHOW_EXT_SRC_WHILE_LOADING = True
@@ -394,6 +450,7 @@ def setDictVal(key, val, session=None):
 		
 	return ObjectContainer(header=key, message=key + ' has been ' + val + ' for this device.', title1=key)
 
+####################################################################################################
 @route(PREFIX + "/UsingOption")
 def UsingOption(key, session=None):
 	if session == None:
@@ -403,7 +460,7 @@ def UsingOption(key, session=None):
 	else:
 		return True
 		
-######################################################################################
+####################################################################################################
 @route(PREFIX + "/isForceNoCache")
 def isForceNoCache(**kwargs):
 	# no_cache=isForceNoCache()
@@ -532,6 +589,16 @@ def FilterBasedOn(srcs, use_quality=True, use_riptype=True, use_vidtype=True, us
 	
 	return srcs
 		
+####################################################################################################
+@route(PREFIX + "/GetThumb")	
+def GetThumb(thumb, session=None, **kwargs):
+	if UsingOption(key=DEVICE_OPTIONS[1], session=session):
+		return None
+	
+	if thumb != None and thumb == 'N/A':
+		thumb = R(ICON_UNAV)
+	return thumb
+	
 ####################################################################################################
 # Get HTTP response code (200 == good)
 @route(PREFIX + '/gethttpstatus')
@@ -721,7 +788,8 @@ def GetPageElements(url, headers=None, referer=None, timeout=15):
 		Log('ERROR common.py>GetPageElements: %s URL: %s DATA: %s' % (error,url,page_data_string))
 
 	return page_data_elems, error
-	
+
+####################################################################################################
 def make_cookie_str():
 	try:
 		cookie_str = ''
@@ -766,6 +834,7 @@ def make_cookie_str():
 		Log("common.py > make_cookie_str : %s" % e)
 		return cookie_str, e
 		
+####################################################################################################
 def cleanCookie(str):
 	str = str.replace('\n','')
 	str_s = str.split(';')
@@ -858,6 +927,7 @@ def GetPageAsString(url, headers=None, timeout=15, referer=None):
 		
 	return page_data_string, error
 	
+####################################################################################################
 @route(PREFIX + "/request")
 def request(url, close=True, redirect=True, followredirect=False, error=False, proxy=None, post=None, headers=None, mobile=False, limit=None, referer=None, cookie=None, output='', timeout=15, httpsskip=False, use_web_proxy=False):
 

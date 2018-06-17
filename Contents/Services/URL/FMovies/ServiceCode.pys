@@ -302,7 +302,7 @@ def MediaObjectsForURL(url, **kwargs):
 				media_obj.append(mo)
 	except Exception as e:
 		Log('ERROR FMovies.ServiceCode MediaObjectsForURL > %s : URL:%s' % (e.args, data['server']))
-		raise Ex.MediaNotAvailable
+		#raise Ex.MediaNotAvailable
 		
 	return media_obj
 

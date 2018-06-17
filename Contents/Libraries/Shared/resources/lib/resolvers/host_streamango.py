@@ -290,10 +290,15 @@ def getAllQuals(url, online=None):
 			
 		page_data_string = client.request(url, httpsskip=True)
 		video_url = decode(page_data_string)
-		v_qs = video_url.split('/')
-		v_qs = v_qs[len(v_qs)-1]
-		v_qs = re.sub(r'[^0-9]', "", v_qs)
-		v_qs = int(v_qs)
+		
+		try:
+			v_qs = video_url.rsplit('/')
+			v_qs = v_qs[1]
+			v_qs = re.sub(r'[^0-9]', "", v_qs)
+			v_qs = int(v_qs)
+		except:
+			v_qs = 720
+		
 		video_url_a = []
 		myheaders = {}
 		myheaders['User-Agent'] = 'Mozilla'

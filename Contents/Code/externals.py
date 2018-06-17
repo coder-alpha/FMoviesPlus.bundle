@@ -25,7 +25,7 @@ EXTERNALS = {
 							'isFile':True,
 							'local_path':os.path.join(modules_path,'phantomjs'),
 							'win32':{'url':'','file':'phantomjs.exe','md5s':'339f74c735e683502c43512a508e53d6'},
-							'darwin':{'url':'','file':'phantomjs','md5s':''},
+							'darwin':{'url':'','file':'phantomjs','md5s':'bbebe2381435309431c9d4e989aefdeb'},
 							'linux':{'url':'','file':'phantomjs','md5s':'0a6c36ddd62eee77a015d0592e009ce9'},
 							'linux2':{'url':'','file':'phantomjs','md5s':'0a6c36ddd62eee77a015d0592e009ce9'},
 							'freebsd8':{'url':'','file':'phantomjs','md5s':'c95484f0719e1cbbb39255316eea1997'},

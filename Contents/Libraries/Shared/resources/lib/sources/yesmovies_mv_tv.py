@@ -407,6 +407,12 @@ class source:
 			except Exception as e:
 				qual = '480p'
 				riptype = 'BRRIP'
+				
+			try:
+				poster = client.parseDOM(r, 'div', attrs = {'class': 'dm-thumb'})[0]
+				poster = client.parseDOM(poster, 'img', ret='src')[0]
+			except:
+				poster = None
 								
 			if testing == False:
 				try:		
@@ -492,7 +498,7 @@ class source:
 								pass
 							
 							for s in url:
-								links_m = resolvers.createMeta(s, self.name, self.logo, qual, links_m, key, riptype=riptype, vidtype='Movie', sub_url=sub_url, testing=testing)
+								links_m = resolvers.createMeta(s, self.name, self.logo, qual, links_m, key, poster=poster, riptype=riptype, vidtype='Movie', sub_url=sub_url, testing=testing)
 					except:
 						pass
 			except:

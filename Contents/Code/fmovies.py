@@ -321,17 +321,46 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 		try:
 			if len(TOKEN_KEY) == 0:
 				try:
-					all_js_url = urlparse.urljoin(BASE_URL, ALL_JS)
+					if 'http' in ALL_JS:
+						all_js_url = ALL_JS
+					else:
+						all_js_url = urlparse.urljoin(BASE_URL, ALL_JS)
 					all_js_pack_code = common.interface.request_via_proxy_as_backup(all_js_url, httpsskip=use_https_alt, hideurl=True)
-					unpacked_code = common.jsunpack.unpack(all_js_pack_code)
+					unpacked_code = all_js_pack_code
+					
 					try:
-						cch = re.findall(r'%s' % common.client.b64decode('ZnVuY3Rpb25cKHQsaSxuXCl7XCJ1c2Ugc3RyaWN0XCI7ZnVuY3Rpb24gZVwoXCl7cmV0dXJuICguKj8pfWZ1bmN0aW9uIHJcKHRcKQ=='), unpacked_code)[0]
-						token_key = re.findall(r'%s=.*?\"(.*?)\"' % cch, unpacked_code)[0]
-						if token_key !=None and token_key != '':
-							#cookie_dict.update({'token_key':token_key})
-							TOKEN_KEY.append(token_key)
-					except Exception as e:
-						Log('ERROR fmovies.py>Token-fetch-1.1a: %s' % e)
+						if common.jsunpack.detect(all_js_pack_code):
+							unpacked_code = common.jsunpack.unpack(all_js_pack_code)
+					except:
+						pass
+						
+					if len(TOKEN_KEY) == 0:
+						try:
+							parts = re.findall(r'%s' % common.client.b64decode('ZnVuY3Rpb24gZlwoXClce3JldHVybiguKj8pXH0='), unpacked_code)[0].strip()
+							parts_s = parts.split('+')
+							val_str = ''
+							if len(parts_s) > 0:
+								for p in parts_s:
+									p = re.escape(p)
+									val_str += re.findall(r'%s\=\"(.*?)\",' % p, unpacked_code)[0]
+								token_key = val_str
+							else:
+								raise Exception("ALL JS Parts were not found !")
+							if token_key !=None and token_key != '':
+								#cookie_dict.update({'token_key':token_key})
+								TOKEN_KEY.append(token_key)
+						except Exception as e:
+							Log('ERROR fmovies.py>Token-fetch-1.1a: %s' % e)
+						
+					if len(TOKEN_KEY) == 0:
+						try:
+							cch = re.findall(r'%s' % common.client.b64decode('ZnVuY3Rpb25cKHQsaSxuXCl7XCJ1c2Ugc3RyaWN0XCI7ZnVuY3Rpb24gZVwoXCl7cmV0dXJuICguKj8pfWZ1bmN0aW9uIHJcKHRcKQ=='), unpacked_code)[0]
+							token_key = re.findall(r'%s=.*?\"(.*?)\"' % cch, unpacked_code)[0]
+							if token_key !=None and token_key != '':
+								#cookie_dict.update({'token_key':token_key})
+								TOKEN_KEY.append(token_key)
+						except Exception as e:
+							Log('ERROR fmovies.py>Token-fetch-1.2a: %s' % e)
 						
 					if len(TOKEN_KEY) == 0:
 						try:
@@ -341,7 +370,8 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 								#cookie_dict.update({'token_key':token_key})
 								TOKEN_KEY.append(token_key)
 						except Exception as e:
-							Log('ERROR fmovies.py>Token-fetch-1.2a: %s' % e)
+							Log('ERROR fmovies.py>Token-fetch-1.3a: %s' % e)
+							
 				except Exception as e:
 					Log('ERROR fmovies.py>Token-fetch-1a: %s' % e)
 					
@@ -369,7 +399,7 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 			Log('ERROR fmovies.py>Token-fetch-2: %s' % e)
 			
 		if len(TOKEN_KEY) > 0:
-			cookie_dict.update({'token_key':token_key})
+			cookie_dict.update({'token_key':TOKEN_KEY[0]})
 			
 		try:
 			if len(TOKEN_OPER) == 0 or common.DOWNLOAD_BACKUP_OPER == True:
@@ -541,7 +571,7 @@ def get_reqkey_cookie(token, use_debug=False, use_https_alt=False, quiet=True):
 			return common.cleanCookie(cookie_string)
 	except Exception as e:
 		if quiet == False:
-			Log.Exception("fmovies.py >> : Cannot handle token cookie >>> {}".format(e))
+			Log.Error("fmovies.py >> : Cannot handle token cookie >>> {}".format(e))
 			Log.Debug("No method available to decode JSF code - use manual method")
 	return ''
 	
@@ -642,7 +672,6 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 			if use_debug:
 				Log("Using cookies : %s" % headers['Cookie'])
 			
-			#print hash_url
 			if use_debug:
 				Log("get_sources Request-3: %s" % hash_url)
 				
@@ -650,7 +679,7 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 			
 			if use_debug:
 				Log("Request-3 result: %s" % result)
-			#print result
+
 			result = json.loads(result)
 
 			if is9Anime == True:
@@ -889,7 +918,8 @@ def decode_ts(t):
 def get_token(n, token_error=False, is9Anime=False, **kwargs):
 	try:
 		if is9Anime == False:
-			d = TOKEN_KEY[0]
+			d = TOKEN_KEY[0] # kx + Nz + YG + Nz + o$ + Nz + zR
+			# = 'xd' + '' + 'Wd51' + '' +'P' + '' + 'K'
 		else:
 			d = common.control.setting('9animeVidToken')
 		

@@ -39,8 +39,8 @@ ENCRYPTED_URLS = False
 class source:
 	def __init__(self):
 		del loggertxt[:]
-		self.ver = '0.1.0'
-		self.update_date = 'Apr. 25, 2018'
+		self.ver = '0.1.1'
+		self.update_date = 'June 17, 2018'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
 		self.disabled = False
@@ -49,7 +49,7 @@ class source:
 		self.base_link = self.base_link_alts[0]
 		self.grabber_api = "grabber-api/"
 		self.search_link = '/sitemap'
-		self.ALL_JS = "/assets/min/public/all.js"
+		self.ALL_JS = "https://static1.akacdn.ru/assets/min/public/all.js"
 		self.TOKEN_KEY_PASTEBIN_URL = "https://pastebin.com/raw/VNn1454k"
 		self.hash_link = '/ajax/episode/info'
 		self.hash_menu_link = "/user/ajax/menu-bar"
@@ -430,12 +430,10 @@ class source:
 					headers = {'X-Requested-With': 'XMLHttpRequest'}
 					hash_url = urlparse.urljoin(self.base_link, self.hash_link)
 					query = {'ts': myts, 'id': s[0], 'update': '0', 'server':'36'}
-
 					query.update(self.__get_token(query))
 					hash_url = hash_url + '?' + urllib.urlencode(query)
 					headers['Referer'] = urlparse.urljoin(url, s[0])
 					headers['Cookie'] = self.headers['Cookie']
-					
 					log('INFO','get_sources-4', '%s' % hash_url, dolog=False)
 					result = proxies.request(hash_url, headers=headers, limit='0', proxy_options=proxy_options, use_web_proxy=self.proxyrequired, httpsskip=True)
 					result = json.loads(result)
@@ -481,6 +479,7 @@ class source:
 					else:
 						grabber = result['grabber']
 						grab_data = grabber
+
 						grabber_url = urlparse.urljoin(self.base_link, self.grabber_api)
 						
 						if '?' in grabber:
@@ -488,7 +487,6 @@ class source:
 							grabber_url = grab_data[0]
 							grab_data = grab_data[1]
 							
-						print grab_data
 						grab_server = str(urlparse.parse_qs(grab_data)['server'][0])
 						
 						b, resp = self.decode_t(result['params']['token'], -18)
@@ -623,6 +621,7 @@ class source:
 				d = self.TOKEN_KEY[1]
 			else:
 				d = self.TOKEN_KEY[0]
+
 			s = self.a01(d, token_error)
 			for i in n: 
 				s += self.a01(self.r01(d + i, n[i]), token_error)
@@ -639,19 +638,48 @@ class source:
 		
 	def getVidToken(self):
 		try:
-			all_js_url = urlparse.urljoin(self.base_link, self.ALL_JS)
-			unpacked_code = ''
+			if 'http' in self.ALL_JS:
+				all_js_url = self.ALL_JS
+			else:
+				all_js_url = urlparse.urljoin(self.base_link, self.ALL_JS)
+
+			all_js_pack_code = proxies.request(all_js_url, use_web_proxy=self.proxyrequired, httpsskip=True)
+			unpacked_code = all_js_pack_code
+			
+			try:
+				if jsunpack.detect(all_js_pack_code):
+					unpacked_code = jsunpack.unpack(all_js_pack_code)
+			except:
+				pass
+			token_key = None
 			cch = ''
 			if len(self.TOKEN_KEY) == 0:
 				try:
-					all_js_pack_code = proxies.request(all_js_url, use_web_proxy=self.proxyrequired, httpsskip=True)
-					unpacked_code = jsunpack.unpack(all_js_pack_code)
+					parts = re.findall(r'%s' % client.b64decode('ZnVuY3Rpb24gZlwoXClce3JldHVybiguKj8pXH0='), unpacked_code)[0].strip()
+					parts_s = parts.split('+')
+					val_str = ''
+					if len(parts_s) > 0:
+						for p in parts_s:
+							p = re.escape(p)
+							val_str += re.findall(r'%s\=\"(.*?)\",' % p, unpacked_code)[0]
+						token_key = val_str
+					else:
+						raise Exception("ALL JS Parts were not found !")
+					
+					if token_key !=None and token_key != '':
+						#cookie_dict.update({'token_key':token_key})
+						self.TOKEN_KEY.append(token_key)
+				except Exception as e:
+					log('ERROR', 'getVidToken-1.1a','%s' % e, dolog=False)
+							
+			if len(self.TOKEN_KEY) == 0:
+				try:
 					cch = re.findall(r'%s' % client.b64decode('ZnVuY3Rpb25cKHQsaSxuXCl7XCJ1c2Ugc3RyaWN0XCI7ZnVuY3Rpb24gZVwoXCl7cmV0dXJuICguKj8pfWZ1bmN0aW9uIHJcKHRcKQ=='), unpacked_code)[0]
 					token_key = re.findall(r'%s=.*?\"(.*?)\"' % cch, unpacked_code)[0]
 					if token_key !=None and token_key != '':
 						self.TOKEN_KEY.append(token_key)
 				except Exception as e:
-					log('ERROR', 'getVidToken-1.1','%s' % e, dolog=False)
+					log('ERROR', 'getVidToken-1.1b','%s' % e, dolog=False)
 					
 			if len(self.TOKEN_KEY) == 0:
 				try:
@@ -661,10 +689,10 @@ class source:
 						#cookie_dict.update({'token_key':token_key})
 						self.TOKEN_KEY.append(token_key)
 				except Exception as e:
-					log('ERROR', 'getVidToken-1.2','%s' % e, dolog=False)
+					log('ERROR', 'getVidToken-1.1c','%s' % e, dolog=False)
 		except Exception as e:
 			log('ERROR', 'getVidToken-1','%s' % e, dolog=False)
-			log('ERROR', 'getVidToken-1','%s' % unpacked_code, dolog=False)
+			#log('ERROR', 'getVidToken-1','%s' % unpacked_code, dolog=False)
 			log('ERROR', 'getVidToken-1','%s' % cch, dolog=False)
 
 		try:

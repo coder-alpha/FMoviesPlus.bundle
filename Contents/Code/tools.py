@@ -5,10 +5,11 @@
 # Author: Twoure
 #
 
-import os, io
-import shutil
-import json, time
-import common, fmovies, AuthTools, externals
+import os, io, re, shutil, urllib, urllib2, json, sys, time, random, urlparse
+import common, updater, fmovies, tools, download, playback, downloadsmenu, externals
+from DumbTools import DumbKeyboard
+import AuthTools
+from __builtin__ import eval
 
 TITLE = common.TITLE
 PREFIX = common.PREFIX
@@ -41,7 +42,7 @@ BACKUP_KEYS = ['DOWNLOAD_OPTIONS','INTERNAL_SOURCES_QUALS', 'INTERNAL_SOURCES_SI
 	
 ####################################################################################################
 @route(PREFIX + "/DevToolsC")
-def DevToolsC(title=None, header=None, message=None, **kwargs):
+def DevToolsC(title=None, header=None, message=None, session=None, **kwargs):
 	"""Tools to Remove all Covers/URLs cached files"""
 	
 	if not common.interface.isInitialized():
@@ -111,6 +112,24 @@ def DevToolsC(title=None, header=None, message=None, **kwargs):
 				oc.add(DirectoryObject(title='%s | Base URL : %s (set by redirection detector)' % (ch, u),key=Callback(SetBaseUrl, url=u)))
 				
 			return oc
+		elif title == 'openload_input_id':
+			oc = ObjectContainer(title2='OpenLoad Video ID')
+			if common.UsingOption(key=common.DEVICE_OPTIONS[0], session=session):
+				DumbKeyboard(PREFIX, oc, openloadID,
+						dktitle = 'OpenLoad Video ID'
+				)
+			else:
+				oc.add(InputDirectoryObject(key = Callback(openloadID, session = session), title='OpenLoad Video ID', summary='OpenLoad Video ID', prompt='OpenLoad Video ID...'))
+			return oc
+		elif title == 'imdb_input_id':
+			oc = ObjectContainer(title2='Input IMDb ID')
+			if common.UsingOption(key=common.DEVICE_OPTIONS[0], session=session):
+				DumbKeyboard(PREFIX, oc, imdbID,
+						dktitle = 'Input IMDb ID'
+				)
+			else:
+				oc.add(InputDirectoryObject(key = Callback(imdbID, session = session), title='Input IMDb ID', summary='Input IMDb ID', prompt='Input IMDb ID...'))
+			return oc
 
 		return MC.message_container('Info', message)
 
@@ -142,6 +161,14 @@ def DevToolsC(title=None, header=None, message=None, **kwargs):
 		title=u'Set Base URL',
 		thumb = R(ICON_TOOLS),
 		summary=u'Set the Base URL to be used by the Channel'))
+	oc.add(DirectoryObject(key=Callback(DevToolsC, title='openload_input_id', session=session),
+		title=u'OpenLoad Video ID',
+		thumb = R(ICON_TOOLS),
+		summary=u'OpenLoad Video ID'))
+	oc.add(DirectoryObject(key=Callback(DevToolsC, title='imdb_input_id', session=session),
+		title=u'IMDB Video Search (requires VideoSpider API Key)',
+		thumb = R(ICON_TOOLS),
+		summary=u'IMDB Video Search (requires VideoSpider API Key in Prefs)'))
 
 	return oc
 	
@@ -530,6 +557,117 @@ def SetAnimeBaseUrl():
 	common.ANIME_SEARCH_URL = common.ANIME_URL + '/search?keyword=%s'
 	common.EXT_SITE_URLS = [common.ANIME_URL, common.ES_API_URL]
 	
+####################################################################################################
+@route(PREFIX+'/imdbID')
+def imdbID(query, session=None, **kwargs):
+
+	oc = None
+	try:
+		u1 = 'https://videospider.in/getvideo?key=%s&video_id=%s' % (common.control.get_setting('control_videospider_api_key'),query)
+		u2 = common.client.request(u1, output='geturl')
+		if u1 == u2:
+			resp = common.client.request(u1)
+			if 'Wrong API key.' in resp:
+				return MC.message_container('Info', 'Wrong or No VideoSpider API key defined in Prefs.')
+
+		if 'openload' in u2:
+			u3 = u2.rsplit('/',1)
+			if len(u3[1]) > 0:
+				u4 = u3[1]
+			else:
+				u4 = u3[0].rsplit('/',1)[1]
+			oc = ObjectContainer(title2 = 'Continue >> Video ID: %s >>>' % u4, no_cache=common.isForceNoCache())
+			oc.add(DirectoryObject(key=Callback(openloadID, query=u4, session=session),
+				title=u'Continue >> Video ID: %s >>>' % u4,
+				thumb = common.host_openload.logo,
+				summary=u'Continue >> Video ID: %s >>>' % u4))
+		else:
+			return MC.message_container('Info', 'Did not find a Video for your Search !')
+	except Exception as e:
+		if Prefs['use_debug']:
+			Log("ERROR tools.py>IMDb_ID : %s" % e)
+			
+	return oc
+
+####################################################################################################
+@route(PREFIX+'/openloadID')
+def openloadID(query, session=None, **kwargs):
+
+	oc = None
+	try:
+		oc = OpenLoad_via_ID(query, session)
+	except Exception as e:
+		if Prefs['use_debug']:
+			Log("ERROR tools.py>openloadID : %s" % e)
+			
+	return oc
+	
+####################################################################################################
+def OpenLoad_via_ID(query, session=None, **kwargs):
+
+	try:
+		url = 'https://openload.co/f/%s' % query
+		sources = common.host_openload.vid_link_from_id(query)
+	except Exception as e:
+		if Prefs['use_debug']:
+			Log("ERROR tools.py>OpenLoad_via_ID 1: %s" % e)
+		sources = None
+	
+	if sources == None or len(sources) == 0:
+		return MC.message_container('OpenLoad via ID Error', 'OpenLoad via ID Error !')
+	else:
+		oc = None
+		for source in sources:
+		
+			#Log(source)
+			try:
+				year = re.findall('(\d{4})', source['fileName'])[0]
+			except:
+				year = '0000'
+				
+			if oc == None:
+				try:
+					oc = ObjectContainer(title2 = source['fileName'] , no_cache=common.isForceNoCache())
+				except:
+					oc = ObjectContainer(title2 = query , no_cache=common.isForceNoCache())
+		
+			gen_play = (source['fileName'] + source['titleinfo'] + ' | (via Generic Playback)', None, common.GetThumb(source['poster'], session=session), source['params'], None, None, source['url'], source['quality'], source['fileName'])
+			
+			title, summary, thumb, params, duration, genres, videoUrl, videoRes, watch_title = gen_play
+			
+			try:
+				fs = source['fs']
+				fsBytes = int(fs)
+				file_size = '%s GB' % str(round(float(fs)/common.TO_GB, 3))
+			except:
+				fs = None
+				fsBytes = 0
+				file_size = '? GB'
+			
+			status = common.GetEmoji(type=source['online'], session=session)
+			title_msg = "%s %s| %s | %s | %s | %s | %s | %s" % (status, source['maininfo'], source['fileName'], source['rip'], source['quality'], file_size, source['source']+':'+source['subdomain'] if source['source']=='gvideo' else source['source'], source['provider'])
+			
+			try:
+				oc.add(playback.CreateVideoObject(url, title_msg, summary, thumb, params, duration, genres, videoUrl, videoRes, watch_title))
+			except Exception as e:
+				Log("ERROR tools.py>OpenLoad_via_ID 2: %s" % e)
+				
+			try:
+				libtype='movie'
+				mode=common.DOWNLOAD_MODE[0]
+				oc.add(DirectoryObject(
+					key = Callback(downloadsmenu.AddToDownloadsListPre, title=watch_title, purl=None, url=source['url'], durl=source['durl'], sub_url=source['sub_url'], summary=summary, thumb=thumb, year=year, fsBytes=None, fs=None, file_ext=source['file_ext'], quality=source['quality'], source=source['source'], source_meta={}, file_meta={}, type=libtype, vidtype=source['vidtype'].lower(), resumable=source['resumeDownload'], mode=mode, session=session, admin=True if mode==common.DOWNLOAD_MODE[0] else False, params=source['params'], riptype=source['rip']),
+					title = title_msg,
+					summary = 'Adds the current video to %s List' % 'Download' if mode==common.DOWNLOAD_MODE[0] else 'Request',
+					art = None,
+					thumb = common.GetThumb(R('%s' % common.ICON_OTHERSOURCESDOWNLOAD if mode==common.DOWNLOAD_MODE[0] else common.ICON_REQUESTS), session=session)
+					)
+				)
+			except Exception as e:
+				Log("ERROR tools.py>OpenLoad_via_ID 3: %s" % e)
+
+		return oc
+		
 ####################################################################################################
 @route(PREFIX+'/MyMessage')
 def MyMessage(title, msg, **kwargs):	

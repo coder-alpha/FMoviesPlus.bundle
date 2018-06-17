@@ -559,11 +559,19 @@ def DownloadingFilesMenu(title, uid, choice=None, session=None, status=None, con
 					thumb = common.GetThumb(R(common.ICON_ENTER), session=session)
 					)
 				)
-			if longstringObjs['purl'] != None:
+			if longstringObjs['purl'] != None and common.REFACTOR_WIP == False:
 				oc.add(DirectoryObject(
 					title = 'Video Page (Other Download Sources)',
 					summary = 'Video Page: %s' % longstringObjs['title'],
 					key = Callback(EpisodeDetail, title=longstringObjs['title'], url=longstringObjs['purl'], thumb=longstringObjs['thumb'], session = session),
+					thumb = common.GetThumb(R(common.ICON_ENTER), session=session)
+					)
+				)
+			elif longstringObjs['purl'] != None and common.REFACTOR_WIP == True:
+				oc.add(DirectoryObject(
+					title = 'Video Page (Unavailable) while code refactoring in progress',
+					summary = 'Video Page: %s' % longstringObjs['title'],
+					key = Callback(MyMessage, title='Video Page', msg='This Video Page is Unavailable while code refactoring in progress. Sorry !'),
 					thumb = common.GetThumb(R(common.ICON_ENTER), session=session)
 					)
 				)
@@ -876,4 +884,7 @@ def RetryFailedDownloads(session):
 
 	return MC.message_container('Retry Failed', 'Failed Videos have been added to Queue')
 	
-######################################################################################
+####################################################################################################
+@route(PREFIX+'/MyMessage')
+def MyMessage(title, msg, **kwargs):	
+	return MC.message_container(title,msg)

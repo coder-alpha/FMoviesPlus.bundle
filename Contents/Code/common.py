@@ -226,6 +226,7 @@ FMOVIES_HOSTS_DISABLED = ['mycloud', 'server fm']
 SERVER_PLACEHOLDER = 'FMOVIES'
 ENCRYPTED_URLS = False
 DEV_DEBUG = False
+REFACTOR_WIP = True
 WBH = 'aHR0cHM6Ly9ob29rLmlvL2NvZGVyLWFscGhhL3Rlc3Q='
 
 ####################################################################################################

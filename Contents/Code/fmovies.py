@@ -26,6 +26,7 @@ SITE_MAP_HTML_ELEMS = []
 ALL_JS = "/assets/min/public/all.js"
 TOKEN_KEY_PASTEBIN_URL = "https://pastebin.com/raw/VNn1454k"
 TOKEN_OPER_PASTEBIN_URL = "https://pastebin.com/raw/9zFcNJuP"
+TOKEN_PAIRS_PASTEBIN_URL = "https://pastebin.com/raw/LT7Kvzre"
 DEV_NOTICE_URL = "https://pastebin.com/raw/1HDhMggt"
 TOKEN_KEY = []
 TOKEN_OPER = []
@@ -33,13 +34,15 @@ DEV_NOTICE = []
 
 CACHE_IGNORELIST = ['apidata.googleusercontent.com']
 
+PAIRS = []
+
 newmarketgidstorage = 'MarketGidStorage=%7B%220%22%3A%7B%22svspr%22%3A%22%22%2C%22svsds%22%3A15%2C%22TejndEEDj%22%3A%22MTQ5MzIxMTc0OTQ0NDExMDAxNDc3NDE%3D%22%7D%2C%22C110014%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493215038742%7D%2C%22C110025%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493216772437%7D%2C%22C110023%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493216771928%7D%7D'
 
 ####################################################################################################
 
 # Get FMovies-API
 #@route(PREFIX + '/getapiurl')
-def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web_proxy=False, cache_expiry_time=60, **kwargs):
+def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web_proxy=False, cache_expiry_time=60, session=None, **kwargs):
 
 	try:
 		use_debug = Prefs["use_debug"]
@@ -85,8 +88,11 @@ def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web
 		try:
 			if use_debug:
 				Log("Retrieving Fresh Movie Link")
-				
-			ret, isTargetPlay, error, host, res_subtitle = get_sources(url=url, key=key, use_debug=use_debug, serverts=serverts, myts=myts, use_https_alt=use_https_alt, use_web_proxy=use_web_proxy)
+			
+			if common.control.setting('use_phantomjs') == True and common.control.setting('%s-%s' % (session, 'Use-PhantomJS')) == True:
+				ret, isTargetPlay, error, host, res_subtitle = get_sources2(url=url, key=key, use_debug=use_debug, session=session)
+			else:
+				ret, isTargetPlay, error, host, res_subtitle = get_sources(url=url, key=key, use_debug=use_debug, serverts=serverts, myts=myts, use_https_alt=use_https_alt, use_web_proxy=use_web_proxy)
 			if use_debug:
 				Log("get_sources url: %s, key: %s" % (url,key))
 				Log("get_sources ret: %s" % ret)
@@ -98,16 +104,19 @@ def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web
 			# if the request ever fails - clear CACHE right away and make 2nd attempt
 			# if token error make 2nd attempt using modified code
 			if common.USE_SECOND_REQUEST == True and (ret == None or token_error == True):
-				common.CACHE.clear()
+				if key in common.CACHE.keys():
+					common.CACHE[key].clear()
 				if use_debug:
 					Log("Using Second Request due to token error")
-					Log("CACHE cleared due to null response from API - maybe cookie issue for %s" % url)
+					Log("CACHE cleared due to null response from API - maybe cookie/token issue for %s" % url)
 				time.sleep(1.0)
-				ret, isTargetPlay, error, host, res_subtitle = get_sources(url=url, key=key, use_debug=use_debug, serverts=serverts, myts=myts, use_https_alt=use_https_alt, use_web_proxy=use_web_proxy, token_error=token_error)
-				if use_debug:
-					Log("API - attempt 2nd")
-					Log("get_sources url: %s, key: %s" % (url,key))
-					Log("get_sources ret: %s" % ret)
+				# ret, isTargetPlay, error, host, res_subtitle = get_sources(url=url, key=key, use_debug=use_debug, serverts=serverts, myts=myts, use_https_alt=use_https_alt, use_web_proxy=use_web_proxy, token_error=token_error)
+				ret, isTargetPlay, error, host, res_subtitle = get_sources2(url=url, key=key, prev_error=error, use_debug=use_debug, session=session)
+				if ret != None:
+					if use_debug:
+						Log("PhantomJS - attempt 2nd")
+						Log("get_sources url: %s, key: %s" % (url,key))
+						Log("get_sources ret: %s" % ret)
 
 			if ret == None:
 				if use_debug:
@@ -319,12 +328,31 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 		cookie_dict = {}
 		
 		try:
+			try:
+				token_pairs = common.interface.request_via_proxy_as_backup(TOKEN_PAIRS_PASTEBIN_URL, httpsskip=use_https_alt, hideurl=True)
+				if token_pairs !=None and token_pairs != '':
+					token_pairs = json.loads(token_pairs)
+					#cookie_dict.update({'token_pairs':token_pairs})
+					del PAIRS[:]
+					PAIRS.append(token_pairs)
+			except Exception as e:
+				Log('ERROR fmovies.py>Token-fetch-3: %s' % e)
+				
 			if len(TOKEN_KEY) == 0:
 				try:
 					if 'http' in ALL_JS:
 						all_js_url = ALL_JS
 					else:
 						all_js_url = urlparse.urljoin(BASE_URL, ALL_JS)
+						
+					try:
+						vid_token_key = all_js_url.split('?')[1]
+			
+						if vid_token_key in PAIRS[0].keys():
+							TOKEN_KEY.append(PAIRS[0][vid_token_key])
+					except:
+						pass
+						
 					all_js_pack_code = common.interface.request_via_proxy_as_backup(all_js_url, httpsskip=use_https_alt, hideurl=True)
 					unpacked_code = all_js_pack_code
 					
@@ -806,14 +834,49 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 		Log('ERROR fmovies.py>get_sources-2 %s, %s' % (e.args,url))
 		return magic_url, isTargetPlay, error, host_type, subtitle
 		
+def get_sources2(url, key, prev_error=None, use_debug=True, session=None, **kwargs):
+	try:
+		video_url = None
+		isTargetPlay = True
+		error = ''
+		host_type = None
+		subtitle = None
+		if common.control.setting('use_phantomjs') == True and common.control.setting('%s-%s' % (session, 'Use-PhantomJS')) == True:
+			vx_url = '%s/%s' % (url,key)
+			Log(u'Trying phantomjs method: %s' % vx_url)
+			try:
+				v_url, bool = common.phantomjs.decode(vx_url, js='fmovies.js')
+				if bool == False:
+					ret_error = v_url
+					raise Exception(ret_error)
+				else:
+					video_url = v_url
+					ret_error = ''
+					Log(u'*PhantomJS* method is working: %s' % vx_url)
+					host_type = common.client.geturlhost(video_url)
+			except:
+				raise Exception('phantomjs not working')
+		else:
+			raise Exception('phantomjs is disabled')
+	except Exception as e:
+		error = u'%s' % e
+		Log(error)
+		if prev_error != None:
+			error = prev_error + ' and ' + error
+	return video_url, isTargetPlay, error, host_type, subtitle
+		
 def r01(t, e, token_error=False):
 	i = 0
 	n = 0
+	x = 0
 	for i in range(0, max(len(t), len(e))):
 		if i < len(e):
 			n += ord(e[i])
 		if i < len(t):
 			n += ord(t[i])
+		if i >= len(e):
+			x = int(i)
+			n += x
 	h = format(int(hex(n),16),'x')
 	return h
 

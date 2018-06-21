@@ -1,6 +1,6 @@
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.67' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.68' # Release notation (x.y - where x is major and y is minor)
 TAG = ''
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
@@ -9,6 +9,7 @@ PREFIX = "/video/fmoviesplus"
 import time, base64, unicodedata, re, random, string
 from resources.lib.libraries import control, client, cleantitle, jsfdecoder, jsunpack
 from resources.lib.resolvers import host_openload, host_gvideo, host_mega, host_rapidvideo, host_streamango, host_direct
+import phantomjs
 import interface
 from __builtin__ import ord, format, eval
 
@@ -88,7 +89,7 @@ EMOJI_TXT_QUES = u'(?)'
 
 INTERFACE_OPTIONS_LABELS = {'Provider':'Provider', 'Host':'Host', 'Proxy':'Proxy'}
 BOOT_UP_CONTROL_SETTINGS = {'Provider':{}, 'Host':{}, 'Proxy':{}}
-BOOT_UP_CONTROL_SETTINGS_FROM_PREFS = ['use_quick_init','use_https_alt','control_all_uc_api_key','control_videospider_api_key','control_openload_api_key','use_openload_pairing','use_phantomjs','control_phantomjs_path','control_flixanity_user_pass','control_concurrent_src_threads']
+BOOT_UP_CONTROL_SETTINGS_FROM_PREFS = ['use_quick_init','use_https_alt','control_videospider_api_key','control_openload_api_key','use_openload_pairing','use_phantomjs','control_phantomjs_path','control_flixanity_user_pass','control_concurrent_src_threads']
 
 OPTIONS_PROXY = []
 INTERNAL_SOURCES = []
@@ -299,17 +300,7 @@ def set_control_settings(session=None):
 			control.set_setting('%s-%s' % (session,key), UsingOption(key, session=session))
 	except Exception as e:
 		Log.Error('ERROR common.py-3>set_control_settings: %s' % e)
-		
-	try:
-		control_all_uc_api_key = Prefs['control_all_uc_api_key']
-		if control_all_uc_api_key == None or len(control_all_uc_api_key) == 0:
-			is_control_all_uc_api_key = False
-		else:
-			is_control_all_uc_api_key = True
-		control.set_setting('is_control_all_uc_api_key', is_control_all_uc_api_key)
-	except Exception as e:
-		Log.Error('ERROR common.py-2>set_control_settings: %s' % e)
-		
+			
 	try:
 		control_openload_api_key = Prefs['control_openload_api_key']
 		if control_openload_api_key == None or len(control_openload_api_key) == 0:

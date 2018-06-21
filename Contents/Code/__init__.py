@@ -3046,7 +3046,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 						title_s = ''
 						if Prefs["use_debug"]:
 							Log("%s - %s" % (url, url_s))
-						server_info, isTargetPlay, error, host, sub_url = fmovies.GetApiUrl(url=url, key=url_s, serverts=serverts)
+						server_info, isTargetPlay, error, host, sub_url = fmovies.GetApiUrl(url=url, key=url_s, serverts=serverts, session=session)
 						server_info_t = server_info
 						captcha = None
 						dlt = None
@@ -3292,7 +3292,7 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 		url_s = servers_list_new[label]['loc']
 		if url_s != None:
 			if common.UsingOption(common.DEVICE_OPTIONS[5], session=session):	
-				server_info,isTargetPlay, error, host, sub_url = fmovies.GetApiUrl(url=url, key=url_s, serverts=serverts)
+				server_info,isTargetPlay, error, host, sub_url = fmovies.GetApiUrl(url=url, key=url_s, serverts=serverts, session=session)
 				server_info_t = server_info
 				captcha = None
 				dlt = None
@@ -3449,7 +3449,7 @@ def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary
 		title_s = ''
 		if Prefs["use_debug"]:
 			Log("%s - %s" % (url, url_s))
-		server_info, isTargetPlay, error, host, sub_url = fmovies.GetApiUrl(url=url, key=url_s, serverts=serverts)
+		server_info, isTargetPlay, error, host, sub_url = fmovies.GetApiUrl(url=url, key=url_s, serverts=serverts, session=session)
 		server_info_t = server_info
 		captcha = None
 		dlt = None

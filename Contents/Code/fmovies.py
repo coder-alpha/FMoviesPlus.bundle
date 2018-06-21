@@ -861,7 +861,7 @@ def get_sources2(url, key, prev_error=None, use_debug=True, session=None, **kwar
 	except Exception as e:
 		error = u'%s' % e
 		Log(error)
-		if prev_error != None:
+		if prev_error != None and prev_error != error:
 			error = prev_error + ' and ' + error
 	return video_url, isTargetPlay, error, host_type, subtitle
 		

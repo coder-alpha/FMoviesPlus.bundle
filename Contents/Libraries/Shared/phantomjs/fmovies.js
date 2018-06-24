@@ -22,11 +22,9 @@ page.onInitialized = function() {
     delete window.callPhantom;
 	window.outerHeight = 1200;
 	window.outerWidth = 1600;
-	window.innerHeight = 1200; 
-	window.innerWidth = 1600;
   });
 };
-page.settings.userAgent = "mozilla/5.0 (windows nt 6.1; win64; x64) applewebkit/537.36 (khtml, like gecko) chrome/67.0.3396.87 safari/537.36";
+page.settings.userAgent = "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.87 Safari/537.36";
 
 // thanks @skidank (https://forums.plex.tv/discussion/comment/1582115/#Comment_1582115)
 page.onError = function(msg, trace) {
@@ -37,16 +35,20 @@ page.open(page_url, function(status) {
 
 	//page.includeJs('https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js', function() {
 		var info = page.evaluate(function() {
-
 			function GetIframeLink() {
-				var elms = document.getElementsByTagName("iframe");
-				for (var j = 0; j < elms.length; j++) {
-					if (elms[j].src != null && elms[j].src.length > 0) {
-						var txt = elms[j].src;
-						return txt;
+				try {
+					var elms = document.getElementById("player").getElementsByTagName("iframe");
+					for (var j = 0; j < elms.length; j++) {
+						var srctxt = elms[j].src;
+						if (srctxt != null && srctxt.length > 0) {
+							var txt = srctxt;
+							return txt;
+						}
 					}
+					return null;
+				} catch(err) {
+					return 'Exception: ' + err.message;
 				}
-				return null;
 			};
 			
 			var spanID = GetIframeLink();
@@ -63,7 +65,7 @@ page.open(page_url, function(status) {
 
 		var myInfo = info.decoded_id;
 		if (myInfo == null || myInfo.length == 0 || myInfo.indexOf('Exception') > -1) {
-			console.log('ERROR: ID not found. ' + myInfo);
+			console.log('ERROR: Video not found. ' + myInfo);
 		} else {
 			var url = info.decoded_id;
 			console.log(url);

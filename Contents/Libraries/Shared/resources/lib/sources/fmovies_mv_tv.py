@@ -455,27 +455,6 @@ class source:
 					else:
 						quality = '480p'
 						#riptype = 'CAM'
-						
-					try:
-						if USE_PHANTOMJS == True and control.setting('use_phantomjs') == True:
-							vx_url = '%s/%s' % (page_url,s[0])
-							log(type='INFO',method='get_sources-4.a.1', err=u'trying phantomjs method: %s' % vx_url)
-							try:
-								v_url, bool = phantomjs.decode(vx_url, js='fmovies.js')
-								if bool == False:
-									ret_error = v_url
-									raise Exception(ret_error)
-								else:
-									video_url = v_url
-									ret_error = ''
-									log(type='SUCCESS',method='get_sources-4.a.2', err=u'*PhantomJS* method is working: %s' % vx_url)
-									links_m = resolvers.createMeta(video_url, self.name, self.logo, quality, links_m, key, riptype, sub_url=sub_url, testing=testing)
-							except:
-								raise Exception('phantomjs not working')
-						else:
-							raise Exception('phantomjs is disabled')
-					except Exception as e:
-						log(type='FAIL',method='get_sources-4.a.3', err=u'%s' % e)
 				
 					if video_url == None:
 						headers = {'X-Requested-With': 'XMLHttpRequest'}
@@ -566,6 +545,7 @@ class source:
 							result = [i['file'] for i in result['data'] if 'file' in i]
 							
 							for i in result:
+								video_url = i
 								links_m = resolvers.createMeta(i, self.name, self.logo, quality, links_m, key, riptype, sub_url=sub_url, testing=testing)
 						else:
 							target = result['target']
@@ -580,10 +560,32 @@ class source:
 							if target!=None and not target.startswith('http'):
 								target = 'http:' + target
 								
+							video_url = target
 							links_m = resolvers.createMeta(target, self.name, self.logo, quality, links_m, key, riptype, sub_url=sub_url, testing=testing)
 
 				except Exception as e:
 					log('FAIL', 'get_sources-7','%s' % e, dolog=False)
+					
+				try:
+					if video_url == None and USE_PHANTOMJS == True and control.setting('use_phantomjs') == True:
+						vx_url = '%s/%s' % (page_url,s[0])
+						log(type='INFO',method='get_sources-4.a.1', err=u'trying phantomjs method: %s' % vx_url)
+						try:
+							v_url, bool = phantomjs.decode(vx_url, js='fmovies.js')
+							if bool == False:
+								ret_error = v_url
+								raise Exception(ret_error)
+							else:
+								video_url = v_url
+								ret_error = ''
+								log(type='SUCCESS',method='get_sources-4.a.2', err=u'*PhantomJS* method is working: %s' % vx_url)
+								links_m = resolvers.createMeta(video_url, self.name, self.logo, quality, links_m, key, riptype, sub_url=sub_url, testing=testing)
+						except:
+							raise Exception('phantomjs not working')
+					else:
+						raise Exception('phantomjs is disabled')
+				except Exception as e:
+					log(type='FAIL',method='get_sources-4.a.3', err=u'%s' % e)
 
 			sources += [l for l in links_m]
 			

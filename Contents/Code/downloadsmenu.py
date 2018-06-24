@@ -1,5 +1,5 @@
 import re, urllib, urllib2, json, sys, time, random, urlparse
-import common, updater, fmovies, tools, download, playback
+import main, common, updater, fmovies, tools, download, playback
 from DumbTools import DumbKeyboard
 import AuthTools
 from __builtin__ import eval
@@ -559,19 +559,11 @@ def DownloadingFilesMenu(title, uid, choice=None, session=None, status=None, con
 					thumb = common.GetThumb(R(common.ICON_ENTER), session=session)
 					)
 				)
-			if longstringObjs['purl'] != None and common.REFACTOR_WIP == False:
+			if longstringObjs['purl'] != None:
 				oc.add(DirectoryObject(
 					title = 'Video Page (Other Download Sources)',
 					summary = 'Video Page: %s' % longstringObjs['title'],
-					key = Callback(EpisodeDetail, title=longstringObjs['title'], url=longstringObjs['purl'], thumb=longstringObjs['thumb'], session = session),
-					thumb = common.GetThumb(R(common.ICON_ENTER), session=session)
-					)
-				)
-			elif longstringObjs['purl'] != None and common.REFACTOR_WIP == True:
-				oc.add(DirectoryObject(
-					title = 'Video Page (Unavailable) while code refactoring in progress',
-					summary = 'Video Page: %s' % longstringObjs['title'],
-					key = Callback(MyMessage, title='Video Page', msg='This Video Page is Unavailable while code refactoring in progress. Sorry !'),
+					key = Callback(main.EpisodeDetail, title=longstringObjs['title'], url=longstringObjs['purl'], thumb=longstringObjs['thumb'], session = session),
 					thumb = common.GetThumb(R(common.ICON_ENTER), session=session)
 					)
 				)

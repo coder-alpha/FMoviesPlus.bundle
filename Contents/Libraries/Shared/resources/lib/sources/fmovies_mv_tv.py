@@ -58,7 +58,9 @@ class source:
 		self.ALL_JS = "https://static1.akacdn.ru/assets/min/public/all.js"
 		self.TOKEN_KEY_PASTEBIN_URL = "https://pastebin.com/raw/VNn1454k"
 		self.TOKEN_PAIRS_PASTEBIN_URL = "https://pastebin.com/raw/LT7Kvzre"
+		self.FLAGS_PASTEBIN_URL = "https://pastebin.com/raw/xt5SrJ2t"
 		self.PAIRS = {}
+		self.FLAGS = {}
 		self.hash_link = '/ajax/episode/info'
 		self.hash_menu_link = "/user/ajax/menu-bar"
 		self.token_link = "/token"
@@ -567,7 +569,7 @@ class source:
 					log('FAIL', 'get_sources-7','%s' % e, dolog=False)
 					
 				try:
-					if video_url == None and USE_PHANTOMJS == True and control.setting('use_phantomjs') == True:
+					if video_url == None and USE_PHANTOMJS == True and control.setting('use_phantomjs') != control.phantomjs_choices[0]:
 						vx_url = '%s/%s' % (page_url,s[0])
 						log(type='INFO',method='get_sources-4.a.1', err=u'trying phantomjs method: %s' % vx_url)
 						try:
@@ -605,30 +607,32 @@ class source:
 		except:
 			return
 	
-	def r01(self, t, e, token_error=False):
+	def r01(self, t, e, token_error=False, use_code=True):
 		i = 0
 		n = 0
 		x = 0
-
-		for i in range(0, max(len(t), len(e))):
-			if i < len(e):
-				n += ord(e[i])
-			if i < len(t):
-				n += ord(t[i])
-			if i >= len(e):
-				x = int(i)
-				n += x
-
+		if use_code == True:
+			for i in range(0, max(len(t), len(e))):
+				if i < len(e):
+					n += ord(e[i])
+				if i < len(t):
+					n += ord(t[i])
+				if i >= len(e):
+					x = int(i)
+					n += x
 		h = format(int(hex(n),16),'x')
 		return h
 
-	def a01(self, t, token_error=False):
+	def a01(self, t, token_error=False, use_code=True):
 		i = 0
-		for e in range(0, len(t)):
-			if token_error == False:
-				i += ord(t[e]) + e
-			else:
-				i += ord(t[e]) * e + e
+		if use_code == True:
+			for e in range(0, len(t)):
+				if token_error == False:
+					i += ord(t[e]) + e
+				else:
+					i += ord(t[e]) * e + e
+		else:
+			i = int(self.FLAGS["no_code_val"])
 		return i
 
 	def decode_t(self, t, i):
@@ -659,16 +663,31 @@ class source:
 			log('ERROR', 'decode_t','%s' % e, dolog=False)
 			False, 'Error in decoding'
 
-	def __get_token(self, n, token_error=False):
+	def __get_token(self, n, token_error=False, is9Anime=False):
 		try:
 			if token_error == True and len(self.TOKEN_KEY) > 1:
 				d = self.TOKEN_KEY[1]
 			else:
 				d = self.TOKEN_KEY[0]
+				
+			use_code = True
+			use_code2 = True
+			if len(self.FLAGS.keys()) > 0:
+				if is9Anime==True and 'use_code_anime' in FLAGS.keys():
+					use_code = FLAGS["use_code_anime"]
+				elif is9Anime==False and 'use_code' in FLAGS.keys():
+					use_code = FLAGS["use_code"]
+				if is9Anime==True and 'use_code_anime2' in FLAGS.keys():
+					use_code2 = FLAGS["use_code_anime2"]
+				elif is9Anime==False and 'use_code2' in FLAGS.keys():
+					use_code2 = FLAGS["use_code2"]
+				
+				use_code = True if str(use_code).lower()=='true' else False
+				use_code2 = True if str(use_code2).lower()=='true' else False
 
-			s = self.a01(d, token_error)
+			s = self.a01(d, token_error, use_code=use_code)
 			for i in n: 
-				s += self.a01(self.r01(d + i, n[i]), token_error)
+				s += self.a01(self.r01(d + i, n[i], use_code=use_code2), token_error)
 				
 			return {'_': str(s)}
 		except Exception as e:
@@ -698,7 +717,16 @@ class source:
 					#cookie_dict.update({'token_key':token_key})
 					self.PAIRS = token_pairs
 			except Exception as e:
-				log('ERROR', 'getVidToken-3-Token-Pairs','%s' % e, dolog=False)
+				log('ERROR', 'getVidToken-3.a-Token-Pairs','%s' % e, dolog=False)
+				
+			try:
+				fm_flags = proxies.request(self.FLAGS_PASTEBIN_URL, use_web_proxy=self.proxyrequired, httpsskip=True)
+				if fm_flags !=None and fm_flags != '':
+					fm_flags = json.loads(fm_flags)
+					#cookie_dict.update({'token_key':token_key})
+					self.FLAGS = fm_flags
+			except Exception as e:
+				log('ERROR', 'getVidToken-3.b-Token-Pairs','%s' % e, dolog=False)
 
 			all_js_pack_code = proxies.request(all_js_url, use_web_proxy=self.proxyrequired, httpsskip=True)
 			unpacked_code = all_js_pack_code

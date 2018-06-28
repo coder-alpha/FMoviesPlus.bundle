@@ -64,7 +64,6 @@ def Start():
 
 ######################################################################################
 # Menu hierarchy
-@handler(PREFIX, TITLE, art=main.common.ART, thumb=main.common.ICON)
 @route(PREFIX + "/MainMenu")
 def MainMenu(**kwargs):
 	

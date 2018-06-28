@@ -104,6 +104,7 @@ def MainMenu(**kwargs):
 	except:
 		pass
 	
+	common.set_control_settings()
 	return oc
 	
 
@@ -358,6 +359,7 @@ def GetCacheTimeString(**kwargs):
 @route(PREFIX + "/options")
 def Options(session, refresh=0, **kwargs):
 
+	common.set_control_settings()
 	oc = ObjectContainer(title2='Options', no_cache=common.isForceNoCache())
 	
 	oc.add(DirectoryObject(key = Callback(DeviceOptions, session=session), title = 'Device Options', thumb = R(common.ICON_DEVICE_OPTIONS), summary='Device Specific Options includes Enabling DumbKeyboard, Redirector and List View mode'))
@@ -407,6 +409,10 @@ def DeviceOptions(session, **kwargs):
 	for key in sorted(common.DEVICE_OPTIONS):
 		summary = common.DEVICE_OPTION[key]
 		bool = False if (Dict['Toggle'+key+session] == None or Dict['Toggle'+key+session] == 'disabled') else True
+		
+		if key == 'Use-PhantomJS' and bool == False:
+			bool = True if common.control.setting('use_phantomjs') == common.control.phantomjs_choices[2] else False
+		
 		title_msg = "%02d). %s %s | %s" % (c, common.GetEmoji(type=bool, mode='simple', session=session), key, summary)
 		oc.add(DirectoryObject(key=Callback(common.setDictVal, key=key, val=not bool, session=session), title = title_msg))
 		c += 1
@@ -1370,10 +1376,13 @@ def ResetCookies(**kwargs):
 	if not common.interface.isInitialized():
 		return MC.message_container("Please wait..", "Please wait a few seconds for the Interface to Load & Initialize plugins")
 	
-	if Prefs["webhook_url"] == String.Base64Decode(common.WBH):
-		c = Dict[common.WBH]
-		if c != None and int(c) >= 10:
-			return MC.message_container('Webhook', 'Please fork your own WebHook ! Refer forum thread.')
+	try:
+		if Prefs["webhook_url"] == String.Base64Decode(common.WBH):
+			c = Dict[common.WBH]
+			if c != None and int(c) >= 10:
+				return MC.message_container('Webhook', 'Please fork your own WebHook ! Refer forum thread.')
+	except:
+		pass
 	
 	del common.CACHE_COOKIE[:]
 	
@@ -1382,9 +1391,12 @@ def ResetCookies(**kwargs):
 	time.sleep(10.0)
 	
 	msg = ''
-	pref_cook = Prefs["reqkey_cookie"]
-	if pref_cook !=None and len(pref_cook) > 0:
-		msg = 'Please clear or update your reqkey Prefs field.'
+	try:
+		pref_cook = Prefs["reqkey_cookie"]
+		if pref_cook !=None and len(pref_cook) > 0:
+			msg = 'Please clear or update your reqkey Prefs field.'
+	except:
+		pass
 	
 	return MC.message_container('Reset Cookies', 'Cookies have been reset and token text dumped to log (if required) ! %s' % msg)
 	
@@ -1967,7 +1979,7 @@ def ShowCategory(title, key=' ', urlpath=None, page_count='1', session=None, **k
 ######################################################################################
 @route(PREFIX + "/episodedetail")
 def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **kwargs):
-
+	common.set_control_settings()
 	page_data, error = common.GetPageElements(url=url)
 	if error != '':
 		return MC.message_container("Error", "Error: %s." % error)
@@ -1992,6 +2004,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 	directors = 'Not Available'
 	roles = 'Not Available'
 	serverts = 0
+	serverid = None
 	similar_reccos = []
 	tags = 'Not Available'
 	
@@ -2165,7 +2178,10 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 			
 		for server in servers:
 			label = server.xpath(".//label[@class='name col-md-4 col-sm-5']//text()[2]")[0].strip()
-			
+			try:
+				serverid = server.xpath("./@data-id")[0]
+			except:
+				serverid = None
 			if label.lower() not in common.FMOVIES_HOSTS_DISABLED or (label.lower() in common.FMOVIES_HOSTS_DISABLED and common.MY_CLOUD_DISABLED == False) or len(servers) == 1:
 				if label in common.host_gvideo.FMOVIES_SERVER_MAP:
 					label = common.host_gvideo.FMOVIES_SERVER_MAP[label]
@@ -2193,6 +2209,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 					label_val = item.xpath(".//a//@data-id")[0]
 					servers_list[label][c]['quality'] = label_qual
 					servers_list[label][c]['loc'] = label_val
+					servers_list[label][c]['serverid'] = serverid
 					servers_list[common.SERVER_PLACEHOLDER][c] = servers_list[label][c]
 					c += 1
 
@@ -2214,12 +2231,12 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 				for label in servers_list:
 					servers_list_new[c][label] = {}
 					try:
-						servers_list_new[c][label] = {'quality':servers_list[label][c]['quality'], 'loc':servers_list[label][c]['loc']}
+						servers_list_new[c][label] = {'quality':servers_list[label][c]['quality'], 'loc':servers_list[label][c]['loc'], 'serverid':servers_list[label][c]['serverid']}
 					except:
 						if c > 99:
-							servers_list_new[c][label] = {'quality':"%03d" % (c+1), 'loc':''}
+							servers_list_new[c][label] = {'quality':"%03d" % (c+1), 'loc':'', 'serverid':None}
 						else:
-							servers_list_new[c][label] = {'quality':"%02d" % (c+1), 'loc':''}
+							servers_list_new[c][label] = {'quality':"%02d" % (c+1), 'loc':'', 'serverid':None}
 				c += 1
 			
 		#Log(servers_list)
@@ -2445,6 +2462,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 					label_val = item.xpath(".//a//@data-id")[0]
 					servers_list[label][c]['quality'] = label_qual
 					servers_list[label][c]['loc'] = label_val
+					servers_list[label][c]['serverid'] = dataname
 					servers_list[common.SERVER_PLACEHOLDER][c] = servers_list[label][c]
 					c += 1
 
@@ -2466,13 +2484,13 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 				for label in servers_list:
 					servers_list_new[c][label] = {}
 					try:
-						servers_list_new[c][label] = {'quality':servers_list[label][c]['quality'], 'loc':servers_list[label][c]['loc']}
+						servers_list_new[c][label] = {'quality':servers_list[label][c]['quality'], 'loc':servers_list[label][c]['loc'], 'serverid':servers_list[label][c]['serverid']}
 					except Exception as e:
 						Log(e)
 						if c > 99:
-							servers_list_new[c][label] = {'quality':"%03d" % (c+1), 'loc':''}
+							servers_list_new[c][label] = {'quality':"%03d" % (c+1), 'loc':'', 'serverid':None}
 						else:
-							servers_list_new[c][label] = {'quality':"%02d" % (c+1), 'loc':''}
+							servers_list_new[c][label] = {'quality':"%02d" % (c+1), 'loc':'', 'serverid':None}
 				c += 1
 				
 	##### Fix numbering #####
@@ -2990,12 +3008,13 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 		for label in server_lab:
 			for label_i in servers_list[label]:
 				url_s = label_i['loc']
+				serverid = label_i['serverid']
 				if common.UsingOption(common.DEVICE_OPTIONS[5], session=session):
 					try:
 						title_s = ''
 						if Prefs["use_debug"]:
 							Log("%s - %s" % (url, url_s))
-						server_info, isTargetPlay, error, host, sub_url = fmovies.GetApiUrl(url=url, key=url_s, serverts=serverts, session=session)
+						server_info, isTargetPlay, error, host, sub_url = fmovies.GetApiUrl(url=url, key=url_s, serverts=serverts, serverid=serverid, session=session)
 						server_info_t = server_info
 						captcha = None
 						dlt = None
@@ -3046,7 +3065,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 								if not Prefs['use_openload_pairing'] and 'openload' in host and common.is_uss_installed() and URLService.ServiceIdentifierForURL(server_info) != None:
 									durl = server_info
 								else:
-									durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":server_info_t, "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "roles":roles, "directors":directors, "roles":roles, "isTargetPlay":str(isTargetPlay), "useSSL":Prefs["use_https_alt"], "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled, 'urldata':'','quality':qual, 'pairrequired':pair_required, "host":host, "openloadApiKey":Prefs['control_openload_api_key', "force_transcode":common.UsingOption(key=common.DEVICE_OPTIONS[10], session=session)]}))
+									durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":server_info_t, "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "roles":roles, "directors":directors, "roles":roles, "isTargetPlay":str(isTargetPlay), "useSSL":Prefs["use_https_alt"], "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled, 'urldata':'','quality':qual, 'pairrequired':pair_required, "host":host, "openloadApiKey":None, "force_transcode":common.UsingOption(key=common.DEVICE_OPTIONS[10], session=session)}))
 									
 								vco = VideoClipObject(
 									url = durl,
@@ -3085,7 +3104,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 				else:
 					if common.UsingOption(common.DEVICE_OPTIONS[6], session=session):
 						oc.add(MovieObject(
-							key = Callback(VideoDetail, title=title, url=url, url_s=url_s, label=label, label_i_qual=label_i['quality'], serverts=serverts, summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, libtype='movie', session=session, watch_title=watch_title),
+							key = Callback(VideoDetail, title=title, url=url, url_s=url_s, label=label, label_i_qual=label_i['quality'], serverts=serverts, summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, libtype='movie', session=session, watch_title=watch_title, serverid=serverid),
 							title = label,
 							duration = int(duration) * 60 * 1000,
 							year = int(year),
@@ -3097,7 +3116,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 						)
 					else:
 						oc.add(DirectoryObject(
-							key = Callback(VideoDetail, title=title, url=url, url_s=url_s, label=label, label_i_qual=label_i['quality'], serverts=serverts, summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, libtype='movie', session=session, watch_title=watch_title),
+							key = Callback(VideoDetail, title=title, url=url, url_s=url_s, label=label, label_i_qual=label_i['quality'], serverts=serverts, summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, libtype='movie', session=session, watch_title=watch_title, serverid=serverid),
 							title = label,
 							summary = summary,
 							art = art,
@@ -3239,9 +3258,10 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 	pair_required = False
 	for label in server_lab:
 		url_s = servers_list_new[label]['loc']
+		serverid = servers_list_new[label]['serverid']
 		if url_s != None:
 			if common.UsingOption(common.DEVICE_OPTIONS[5], session=session):	
-				server_info,isTargetPlay, error, host, sub_url = fmovies.GetApiUrl(url=url, key=url_s, serverts=serverts, session=session)
+				server_info,isTargetPlay, error, host, sub_url = fmovies.GetApiUrl(url=url, key=url_s, serverts=serverts, serverid=serverid, session=session)
 				server_info_t = server_info
 				captcha = None
 				dlt = None
@@ -3288,7 +3308,7 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 					if not Prefs['use_openload_pairing'] and 'openload' in host and common.is_uss_installed() and URLService.ServiceIdentifierForURL(server_info) != None:
 						durl = server_info
 					else:
-						durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":server_info_t, "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "directors":directors, "roles":roles, "isTargetPlay":str(isTargetPlay), "useSSL":Prefs["use_https_alt"], "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled, 'urldata':'', 'pairrequired':pair_required, "host":host, "openloadApiKey":Prefs['control_openload_api_key'], "force_transcode":common.UsingOption(key=common.DEVICE_OPTIONS[10], session=session)}))
+						durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":server_info_t, "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "directors":directors, "roles":roles, "isTargetPlay":str(isTargetPlay), "useSSL":Prefs["use_https_alt"], "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled, 'urldata':'', 'pairrequired':pair_required, "host":host, "openloadApiKey":None, "force_transcode":common.UsingOption(key=common.DEVICE_OPTIONS[10], session=session)}))
 					
 					vco = None
 					try:
@@ -3323,7 +3343,7 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 			else:
 				if common.UsingOption(common.DEVICE_OPTIONS[6], session=session):
 					oc.add(MovieObject(
-						key = Callback(VideoDetail, title=title, url=url, url_s=url_s, label=label, label_i_qual=None, serverts=serverts, summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, libtype='show', session=session, watch_title=watch_title),
+						key = Callback(VideoDetail, title=title, url=url, url_s=url_s, label=label, label_i_qual=None, serverts=serverts, summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, libtype='show', session=session, watch_title=watch_title, serverid=serverid),
 						duration = int(duration) * 60 * 1000,
 						year = int(year),
 						title = label,
@@ -3335,7 +3355,7 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 					)
 				else:
 					oc.add(DirectoryObject(
-						key = Callback(VideoDetail, title=title, url=url, url_s=url_s, label=label, label_i_qual=None, serverts=serverts, summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, libtype='show', session=session, watch_title=watch_title),
+						key = Callback(VideoDetail, title=title, url=url, url_s=url_s, label=label, label_i_qual=None, serverts=serverts, summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, libtype='show', session=session, watch_title=watch_title, serverid=serverid),
 						title = label,
 						summary = summary,
 						art = art,
@@ -3382,7 +3402,7 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 	
 ######################################################################################
 @route(PREFIX + "/Videodetail")
-def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary, art, year, rating, duration, genre, directors, roles, libtype, session=None, watch_title=None, **kwargs):
+def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary, art, year, rating, duration, genre, directors, roles, libtype, session=None, watch_title=None, serverid=None, **kwargs):
 	
 	try:
 		summary = unicode(common.ascii_only(summary))
@@ -3398,7 +3418,7 @@ def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary
 		title_s = ''
 		if Prefs["use_debug"]:
 			Log("%s - %s" % (url, url_s))
-		server_info, isTargetPlay, error, host, sub_url = fmovies.GetApiUrl(url=url, key=url_s, serverts=serverts, session=session)
+		server_info, isTargetPlay, error, host, sub_url = fmovies.GetApiUrl(url=url, key=url_s, serverts=serverts, serverid=serverid, session=session)
 		server_info_t = server_info
 		captcha = None
 		dlt = None
@@ -3465,7 +3485,7 @@ def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary
 				if not Prefs['use_openload_pairing'] and 'openload' in host and common.is_uss_installed() and URLService.ServiceIdentifierForURL(server_info) != None:
 					durl = server_info
 				else:
-					durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":server_info_t, "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "roles":roles, "directors":directors, "roles":roles, "isTargetPlay":str(isTargetPlay), "useSSL":Prefs["use_https_alt"], "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled, 'urldata':'','quality':qual, 'pairrequired':pair_required, "host":host, "openloadApiKey":Prefs['control_openload_api_key'], "force_transcode":common.UsingOption(key=common.DEVICE_OPTIONS[10], session=session)}))
+					durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":server_info_t, "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "roles":roles, "directors":directors, "roles":roles, "isTargetPlay":str(isTargetPlay), "useSSL":Prefs["use_https_alt"], "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled, 'urldata':'','quality':qual, 'pairrequired':pair_required, "host":host, "openloadApiKey":None, "force_transcode":common.UsingOption(key=common.DEVICE_OPTIONS[10], session=session)}))
 					
 				vco = None
 				vco = VideoClipObject(
@@ -3755,7 +3775,7 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 			if not Prefs['use_openload_pairing'] and 'openload' in source['source'] and common.is_uss_installed() and URLService.ServiceIdentifierForURL(vidUrl) != None:
 					durl = vidUrl
 			else:
-				durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":vidUrl, "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "directors":directors, "roles":roles, "isTargetPlay":str(isTargetPlay), "useSSL":Prefs["use_https_alt"], "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled, 'quality':source['quality'], 'urldata':urldata, 'params':params, 'pairrequired':pair_required, "host":source['source'], "openloadApiKey":Prefs['control_openload_api_key'], "force_transcode":common.UsingOption(key=common.DEVICE_OPTIONS[10], session=session)}))
+				durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":vidUrl, "title":title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "directors":directors, "roles":roles, "isTargetPlay":str(isTargetPlay), "useSSL":Prefs["use_https_alt"], "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled, 'quality':source['quality'], 'urldata':urldata, 'params':params, 'pairrequired':pair_required, "host":source['source'], "openloadApiKey":None, "force_transcode":common.UsingOption(key=common.DEVICE_OPTIONS[10], session=session)}))
 			try:
 				oc.append(VideoClipObject(
 					url = durl,
@@ -4146,7 +4166,7 @@ def PSExtSources(extSources_play, con_title, session, watch_title, year, summary
 				if not Prefs['use_openload_pairing'] and 'openload' in source['source'] and common.is_uss_installed() and URLService.ServiceIdentifierForURL(vidUrl) != None:
 						durl = vidUrl
 				else:
-					durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":vidUrl, "title":watch_title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "directors":None, "roles":None, "isTargetPlay":str(isTargetPlay), "useSSL":Prefs["use_https_alt"], "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled, 'quality':source['quality'], 'urldata':urldata, 'params':params, 'pairrequired':pair_required, "host":source['source'], "openloadApiKey":Prefs['control_openload_api_key'], "force_transcode":common.UsingOption(key=common.DEVICE_OPTIONS[10], session=session)}))
+					durl = "fmovies://" + E(JSON.StringFromObject({"url":url, "server":vidUrl, "title":watch_title, "summary":summary, "thumb":thumb, "art":art, "year":year, "rating":rating, "duration":str(duration), "genre":genre, "directors":None, "roles":None, "isTargetPlay":str(isTargetPlay), "useSSL":Prefs["use_https_alt"], "isVideoOnline":str(isVideoOnline), "useRedirector": redirector_enabled, 'quality':source['quality'], 'urldata':urldata, 'params':params, 'pairrequired':pair_required, "host":source['source'], "openloadApiKey":None, "force_transcode":common.UsingOption(key=common.DEVICE_OPTIONS[10], session=session)}))
 				try:
 					oc.add(VideoClipObject(
 						url = durl,

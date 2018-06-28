@@ -34,6 +34,7 @@ loggertxt = []
 setting_dict = {}
 control_json = {}
 doPrint = False
+phantomjs_choices = ["No","Yes - Threads Only","Yes - Universally"]
 
 def setting(key):
 	if key in setting_dict.keys():
@@ -114,6 +115,7 @@ set_setting('is_uss_installed', False)
 set_setting('use_https_alt', True)
 set_setting('control_all_uc_api_key', None)
 set_setting('control_openload_api_key',None)
+set_setting('is_control_openload_api_key', False)
 set_setting('use_phantomjs', False)
 set_setting('%s-%s' % (None,'Use-PhantomJS'), False)
 set_setting('ca', 'CA2017')

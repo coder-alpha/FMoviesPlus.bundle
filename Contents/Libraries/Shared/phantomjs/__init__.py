@@ -163,4 +163,10 @@ def test2():
 	print resp[0]
 	log(PROCESSES)
 	
-#test2()
+def test3():
+	print "PhantomJS binary file presence: %s | MD5 Checksum: %s" % checkBinaryPresence()
+	resp = decode("https://www6.9anime.is/watch/ginga-eiyuu-densetsu-die-neue-these-kaikou.0y5r/j1xj1y", debug=False, js='fmovies.js')
+	print resp[0]
+	log(PROCESSES)
+	
+#test3()

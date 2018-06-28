@@ -1,6 +1,6 @@
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.70' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.71' # Release notation (x.y - where x is major and y is minor)
 TAG = ''
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
@@ -89,7 +89,7 @@ EMOJI_TXT_QUES = u'(?)'
 
 INTERFACE_OPTIONS_LABELS = {'Provider':'Provider', 'Host':'Host', 'Proxy':'Proxy'}
 BOOT_UP_CONTROL_SETTINGS = {'Provider':{}, 'Host':{}, 'Proxy':{}}
-BOOT_UP_CONTROL_SETTINGS_FROM_PREFS = ['use_quick_init','use_https_alt','control_videospider_api_key','control_openload_api_key','use_openload_pairing','use_phantomjs','control_phantomjs_path','control_flixanity_user_pass','control_concurrent_src_threads']
+BOOT_UP_CONTROL_SETTINGS_FROM_PREFS = ['use_quick_init','use_https_alt','control_videospider_api_key','use_openload_pairing','use_phantomjs','control_phantomjs_path','control_flixanity_user_pass','control_concurrent_src_threads']
 
 OPTIONS_PROXY = []
 INTERNAL_SOURCES = []
@@ -301,15 +301,15 @@ def set_control_settings(session=None):
 	except Exception as e:
 		Log.Error('ERROR common.py-3>set_control_settings: %s' % e)
 			
-	try:
-		control_openload_api_key = Prefs['control_openload_api_key']
-		if control_openload_api_key == None or len(control_openload_api_key) == 0:
-			is_control_openload_api_key = False
-		else:
-			is_control_openload_api_key = True
-		control.set_setting('is_control_openload_api_key', is_control_openload_api_key)
-	except Exception as e:
-		Log.Error('ERROR common.py-2>set_control_settings: %s' % e)
+	# try:
+		# control_openload_api_key = Prefs['control_openload_api_key']
+		# if control_openload_api_key == None or len(control_openload_api_key) == 0:
+			# is_control_openload_api_key = False
+		# else:
+			# is_control_openload_api_key = True
+		# control.set_setting('is_control_openload_api_key', is_control_openload_api_key)
+	# except Exception as e:
+		# Log.Error('ERROR common.py-2>set_control_settings: %s' % e)
 			
 	if Prefs["use_debug"]:
 		Log("User Preferences have been set to Control")
@@ -788,8 +788,11 @@ def make_cookie_str():
 		p_cookie = ''
 		error = ''
 		if len(CACHE_COOKIE) > 0:
-		
-			user_defined_reqkey_cookie = Prefs['reqkey_cookie']
+			user_defined_reqkey_cookie = None
+			try:
+				user_defined_reqkey_cookie = Prefs['reqkey_cookie']
+			except:
+				pass
 			reqCookie = CACHE_COOKIE[0]['reqkey']
 			if user_defined_reqkey_cookie != None and user_defined_reqkey_cookie != '':
 				reqCookie = user_defined_reqkey_cookie

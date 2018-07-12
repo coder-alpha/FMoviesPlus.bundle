@@ -69,3 +69,10 @@ def MainMenu(**kwargs):
 	
 	return main.Main()
 	
+####################################################################################################
+# ValidatePrefs
+####################################################################################################
+@route(PREFIX + "/ValidatePrefs")
+def ValidatePrefs():
+
+	return main.ValidatePrefs2()

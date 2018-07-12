@@ -129,7 +129,7 @@ class source:
 		
 	def InitSleepThread(self):
 		while True:
-			time.sleep(60*60) # 1 hr
+			time.sleep(60*10) # 10 min
 			self.initAndSleep()
 			
 	def initAndSleep(self):

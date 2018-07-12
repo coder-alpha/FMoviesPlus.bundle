@@ -103,8 +103,7 @@ def MainMenu(**kwargs):
 			oc.add(DirectoryObject(key = Callback(updater.menu, title='Update Plugin'), title = 'Update (Running Latest)', thumb = R(common.ICON_UPDATE)))
 	except:
 		pass
-	
-	common.set_control_settings()
+
 	return oc
 	
 
@@ -359,7 +358,6 @@ def GetCacheTimeString(**kwargs):
 @route(PREFIX + "/options")
 def Options(session, refresh=0, **kwargs):
 
-	common.set_control_settings()
 	oc = ObjectContainer(title2='Options', no_cache=common.isForceNoCache())
 	
 	oc.add(DirectoryObject(key = Callback(DeviceOptions, session=session), title = 'Device Options', thumb = R(common.ICON_DEVICE_OPTIONS), summary='Device Specific Options includes Enabling DumbKeyboard, Redirector and List View mode'))
@@ -407,15 +405,27 @@ def DeviceOptions(session, **kwargs):
 		oc.add(DirectoryObject(key=Callback(MyMessage, 'Info', summary), title = title_msg))
 	
 	for key in sorted(common.DEVICE_OPTIONS):
-		summary = common.DEVICE_OPTION[key]
-		bool = False if (Dict['Toggle'+key+session] == None or Dict['Toggle'+key+session] == 'disabled') else True
-		
-		if key == 'Use-PhantomJS' and bool == False:
-			bool = True if common.control.setting('use_phantomjs') == common.control.phantomjs_choices[2] else False
-		
-		title_msg = "%02d). %s %s | %s" % (c, common.GetEmoji(type=bool, mode='simple', session=session), key, summary)
-		oc.add(DirectoryObject(key=Callback(common.setDictVal, key=key, val=not bool, session=session), title = title_msg))
-		c += 1
+		try:
+			try:
+				summary = common.DEVICE_OPTION[key]
+				bool = False if (Dict['Toggle'+key+session] == None or Dict['Toggle'+key+session] == 'disabled') else True
+				
+				if key == 'Use-PhantomJS' and bool == False:
+					bool = True if common.control.setting('use_phantomjs') == common.control.phantomjs_choices[2] else False
+				
+				title_msg = "%02d). %s %s | %s" % (c, common.GetEmoji(type=bool, mode='simple', session=session), key, summary)
+				oc.add(DirectoryObject(key=Callback(common.setDictVal, key=key, val=not bool, session=session), title = title_msg))
+				c += 1
+			except Exception as e:
+				Log('DeviceOptions Error: %s' % e)
+				oc.add(DirectoryObject(key=Callback(common.setDictVal, key=key, val=not bool, session=session), title = key))
+				c += 1
+		except Exception as e:
+			err = '%s' % e
+			title_msg = "%02d). %s %s | %s" % (c, '-', key, err)
+			oc.add(DirectoryObject(key=Callback(MyMessage, 'Info', err), title = title_msg))
+			c += 1
+			Log('DeviceOptions Critical Error: %s' % e)
 	
 	return oc
 	
@@ -1979,7 +1989,7 @@ def ShowCategory(title, key=' ', urlpath=None, page_count='1', session=None, **k
 ######################################################################################
 @route(PREFIX + "/episodedetail")
 def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **kwargs):
-	common.set_control_settings()
+
 	page_data, error = common.GetPageElements(url=url)
 	if error != '':
 		return MC.message_container("Error", "Error: %s." % error)
@@ -6508,9 +6518,9 @@ def count2partcond(ep_title, **kwargs):
 # Supposed to run when Prefs are changed but doesnt seem to work on Plex as expected
 # https://forums.plex.tv/discussion/182523/validateprefs-not-working
 # Update - does not support producing a dialog - show dialog somewhere else/later
-#
-@route(PREFIX + "/ValidatePrefs")
-def ValidatePrefs(changed='True', **kwargs):
+#	
+@route(PREFIX + "/ValidatePrefs2")
+def ValidatePrefs2(changed='True', **kwargs):
 
 	if str(changed) == 'True':
 		Log("Your Channel Preferences have changed !")
@@ -6581,7 +6591,7 @@ def DumpPrefs(changed='False', **kwargs):
 	Log("=============================================")
 	
 	if changed == 'False':
-		ValidatePrefs(changed='False')
+		ValidatePrefs2(changed='False')
 
 ######################################################################################
 @route(PREFIX + "/ClientInfo")

@@ -23,6 +23,10 @@ page.onInitialized = function() {
 	window.outerHeight = 1200;
 	window.outerWidth = 1600;
   });
+  var MAXIMUM_EXECUTION_TIME = 2 * 60 * 1000; // 1 min. thanks @Zablon :)
+  setTimeout(function() {
+	phantom.exit();
+  }, MAXIMUM_EXECUTION_TIME);
 };
 page.settings.userAgent = "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.87 Safari/537.36";
 

@@ -273,6 +273,11 @@ class source:
 						sub_url = urlparse.urljoin(self.base_link, re.findall('\/.*srt', result)[0])
 					except:
 						pass
+						
+					try:
+						poster = sub_url = urlparse.urljoin(self.base_link, client.parseDOM(result, 'img', ret='src', attrs = {'id': 'nameimage'})[0])
+					except:
+						poster = None
 					
 					#print quality
 
@@ -284,14 +289,14 @@ class source:
 						#print r
 						r = client.parseDOM(r, 'a', ret='href', attrs = {'id': 'dm1'})[0]
 						#print r
-						links = resolvers.createMeta(r, self.name, self.logo, quality, links, key, vidtype='Movie', sub_url=sub_url, testing=testing)
+						links = resolvers.createMeta(r, self.name, self.logo, quality, links, key, poster=poster, vidtype='Movie', sub_url=sub_url, testing=testing)
 					except Exception as e:
 						log('FAIL', 'get_sources-1', e , dolog=False)	
 						
 					try:
 						r = self.returnFinalLink(url)
 						if r != None:
-							links = resolvers.createMeta(r, self.name, self.logo, quality, links, key, vidtype='Movie', sub_url=sub_url, testing=testing)
+							links = resolvers.createMeta(r, self.name, self.logo, quality, links, key, poster=poster, vidtype='Movie', sub_url=sub_url, testing=testing)
 					except Exception as e:
 						log('FAIL', 'get_sources-2', e , dolog=False)	
 				
@@ -343,10 +348,10 @@ class source:
 									
 								if part2:
 									#print '2-part video'
-									links = resolvers.createMeta(r, self.name, self.logo, qualityt, links, key, vidtype=vidtype, txt='Part-1', sub_url=sub_url, testing=testing)
-									links = resolvers.createMeta(rx, self.name, self.logo, qualityt, links, key, vidtype=vidtype, txt='Part-2', sub_url=sub_url, testing=testing)
+									links = resolvers.createMeta(r, self.name, self.logo, qualityt, links, key, poster=poster, vidtype=vidtype, txt='Part-1', sub_url=sub_url, testing=testing)
+									links = resolvers.createMeta(rx, self.name, self.logo, qualityt, links, key, poster=poster, vidtype=vidtype, txt='Part-2', sub_url=sub_url, testing=testing)
 								else:
-									links = resolvers.createMeta(r, self.name, self.logo, qualityt, links, key, vidtype=vidtype, sub_url=sub_url, testing=testing)
+									links = resolvers.createMeta(r, self.name, self.logo, qualityt, links, key, poster=poster, vidtype=vidtype, sub_url=sub_url, testing=testing)
 								
 							except:
 								pass

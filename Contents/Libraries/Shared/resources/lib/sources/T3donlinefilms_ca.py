@@ -210,20 +210,25 @@ class source:
 								srt = urlparse.urljoin(self.base_link,srt)
 							except:
 								srt = None
-							for sn in range(len(all_links)):
-								datax2 = all_links[sn].replace('file','\'file\'').replace('\'','"')
-								datax1 = all_srcs[sn].replace('file','"file"').replace('label','"label"').replace('type','"type"')
 								
-								data_j1 = json.loads(datax1)
-								file = data_j1['file']
-								label = data_j1['label']
-								data_j2 = json.loads(datax2)
-								src_file = data_j2['file']
-									
-								link_data = {'file':file, 'title':titlex, 'label':label, 'page':url, 'srt':srt, 'src_file':src_file, 'poster':poster}
-								links_data.append(link_data)
+							if len(all_links) > 0:
+								for sn in range(len(all_links)):
+									try:
+										datax2 = all_links[sn].replace('fileTV','file').replace('fileHD','file').replace('file','\'file\'').replace('\'','"')
+										datax1 = all_srcs[sn].replace('file','"file"').replace('label','"label"').replace('type','"type"')
+										
+										data_j1 = json.loads(datax1)
+										file = data_j1['file']
+										label = data_j1['label']
+										data_j2 = json.loads(datax2)
+										src_file = data_j2['file']
+											
+										link_data = {'file':file, 'title':titlex, 'label':label, 'page':url, 'srt':srt, 'src_file':src_file, 'poster':poster}
+										links_data.append(link_data)
+									except:
+										pass
 
-							return links_data
+								return links_data
 						
 			return
 			

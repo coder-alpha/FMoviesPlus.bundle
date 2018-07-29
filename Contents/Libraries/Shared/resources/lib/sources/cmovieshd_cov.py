@@ -30,13 +30,13 @@ loggertxt = []
 class source:
 	def __init__(self):
 		del loggertxt[:]
-		self.ver = '0.0.1'
-		self.update_date = 'May. 21, 2018'
+		self.ver = '0.0.2'
+		self.update_date = 'June 14, 2018'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
 		self.base_link_alts = ['http://cmovieshd.net']
 		self.base_link = self.base_link_alts[0]
-		self.MainPageValidatingContent = 'CmoviesHD - Watch Free Movies Online'
+		self.MainPageValidatingContent = 'Watch movies online-Free movies to watch online/CMoviesHD'
 		self.type_filter = ['movie', 'show', 'anime']
 		self.name = name
 		self.aliases = []
@@ -258,6 +258,10 @@ class source:
 
 			url = url if 'http' in url else urlparse.urljoin(self.base_link, url)
 			result = client.request(url)
+			try:
+				poster = client.parseDOM(result, 'img', attrs={'itemprop':'image'}, ret='src')[0]
+			except:
+				poster = None
 			src = re.findall('src\s*=\s*"(.*streamdor.co\/video\/\d+)"', result)[0]
 			if src.startswith('//'):
 				src = 'http:'+src
@@ -277,8 +281,6 @@ class source:
 				post = client.encodePostData({'id': episodeId})
 				
 				p2 = client.request('https://embed.streamdor.co/token.php?v=5', post=post, referer=src, XHR=True, timeout=60)
-				
-				#print 'p2 = %s' % p2
 				
 				js = json.loads(p2)
 				tok = js['token']
@@ -325,14 +327,14 @@ class source:
 						xs = client.googletag(url)
 						for x in xs:
 							try:
-								links_m = resolvers.createMeta(x['url'], self.name, self.logo, x['quality'], links_m, key, riptype, testing=testing)
+								links_m = resolvers.createMeta(x['url'], self.name, self.logo, x['quality'], links_m, key, riptype, poster=poster, testing=testing)
 								if testing == True and len(links_m) > 0:
 									break
 							except:
 								pass
 					else:
 						try:
-							links_m = resolvers.createMeta(link[0], self.name, self.logo, link[1], links_m, key, riptype, testing=testing)
+							links_m = resolvers.createMeta(link[0], self.name, self.logo, link[1], links_m, key, riptype, poster=poster, testing=testing)
 							if testing == True and len(links_m) > 0:
 								break
 						except:

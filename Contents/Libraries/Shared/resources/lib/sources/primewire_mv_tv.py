@@ -31,13 +31,13 @@ AVOID_DOMAINS = ['9c40a04e9732e6a6.com','egresspath.com']
 class source:
 	def __init__(self):
 		del loggertxt[:]
-		self.ver = '0.1.0'
-		self.update_date = 'Apr. 25, 2018'
+		self.ver = '0.1.2'
+		self.update_date = 'July 12, 2018'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
-		self.base_link_alts = ['http://www.primewire.ag','http://www.primewire.is','http://www.primewire.org']
+		self.base_link_alts = ['http://www.primewire.gr']
 		self.base_link = self.base_link_alts[0]
-		self.MainPageValidatingContent = ['1Channel | PrimeWire.ag - Watch Movies Online']
+		self.MainPageValidatingContent = ['PrimeWire | LetMeWatchThis | 1Channel']
 		self.type_filter = ['movie', 'show', 'anime']
 		self.name = name
 		self.disabled = False
@@ -174,29 +174,29 @@ class source:
 			
 			#key = proxies.request(key, 'searchform', proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
 			query = proxies.request(query, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
-			#log('SUCCESS', 'get_movie-1', 'query', dolog=testing, disp=False)
+			#log('SUCCESS', 'get_movie-1', 'query', doPrint=True)
 			
-			query = client.parseDOM(query, 'input', ret='value', attrs = {'name': 'key'})[0]
-			#log('SUCCESS', 'get_movie-1b', 'query', dolog=testing, disp=False)
+			query = client.parseDOM(query, 'input', ret='value', attrs = {'name': 'search_keywords'})[0]
+			#log('SUCCESS', 'get_movie-1b', query, doPrint=True)
 			#print "key ------------ %s" % key
 
-			query = self.moviesearch_link % (urllib.quote_plus(cleantitle.query(title)), query)
-			#log('SUCCESS', 'get_movie-1c', 'query', dolog=testing, disp=False)
+			query = self.moviesearch_link % (urllib.quote_plus(cleantitle.query(title)), query.replace(' ','%20'))
+			#log('SUCCESS', 'get_movie-1c', query, doPrint=True)
 			
 			query = urlparse.urljoin(self.base_link, query)
-			#log('SUCCESS', 'get_movie-1d', 'query', dolog=testing, disp=False)
+			#log('SUCCESS', 'get_movie-1d', query, doPrint=True)
 
 			#result = str(proxies.request(query, 'index_item', proxy_options=proxy_options, use_web_proxy=self.proxyrequired))
 			result = proxies.request(query, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
-			#log('SUCCESS', 'get_movie-2', 'result', dolog=testing, disp=False)
+			#log('SUCCESS', 'get_movie-2', 'result', doPrint=True)
 			
 			#if 'page=2' in result or 'page%3D2' in result: result += str(proxies.request(query + '&page=2', 'index_item', proxy_options=proxy_options, use_web_proxy=self.proxyrequired))
 			if 'page=2' in result or 'page%3D2' in result:
 				result += str(proxies.request(query + '&page=2', proxy_options=proxy_options, use_web_proxy=self.proxyrequired))
-				#log('SUCCESS', 'get_movie-3', '', dolog=testing, disp=False)
+				#log('SUCCESS', 'get_movie-3', '', doPrint=True)
 			
 			result = client.parseDOM(result, 'div', attrs = {'class': 'index_item.+?'})
-
+			
 			title = 'watch' + cleantitle.get(title)
 			years = ['(%s)' % str(year), '(%s)' % str(int(year)+1), '(%s)' % str(int(year)-1)]
 
@@ -233,7 +233,7 @@ class source:
 						if len(match) > 0: url = match[0] ; break
 						#r = proxies.request(urlparse.urljoin(self.base_link, i), 'choose_tabs', proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
 						r = proxies.request(urlparse.urljoin(self.base_link, i), proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
-						#log('SUCCESS', 'get_movie-4', 'r', dolog=testing, disp=False)
+						#log('SUCCESS', 'get_movie-4', 'r', dolog=testing, doPrint=False)
 						if imdb != None and imdb in str(r): url = i ; break
 						r = client.parseDOM(r, 'div', attrs={'class':'movie_info'})
 						#print "tag -- %s" % r

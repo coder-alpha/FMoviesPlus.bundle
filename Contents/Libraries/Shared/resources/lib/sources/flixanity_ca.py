@@ -230,9 +230,10 @@ class source:
 			for d in data:
 				vidurl = d['url']
 				quality = d['quality']
+				poster = d['poster']
 				headers = {'Referer':url}
 				try:
-					links_m = resolvers.createMeta(vidurl, self.name, self.logo, quality, links_m, key, testing=testing, headers=headers)
+					links_m = resolvers.createMeta(vidurl, self.name, self.logo, quality, links_m, key, poster=poster, testing=testing, headers=headers)
 					
 					if testing == True:
 						break
@@ -318,6 +319,12 @@ class Flixanity():
 				ajax_url = urlparse.urljoin(self.base_url, SOURCES_URL)
 				headers = {'authorization': 'Bearer %s' % (self.__get_bearer()), 'Referer': page_url, 'User-Agent':'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3325.181 Safari/537.36'}
 				#headers.update(XHR)
+				
+				try:
+					poster = client.parseDOM(html, 'div', attrs = {'class': 'poster'})[0]
+					poster = client.parseDOM(poster, 'img', ret='data-src')[0]
+				except:
+					poster = None
 
 				data = client.encodePostData(data)
 				html = client.request(ajax_url, post=data, cookie=self.cookie, headers=headers)
@@ -349,7 +356,7 @@ class Flixanity():
 							direct = False
 							host = urlparse.urlparse(url).hostname
 							
-						source = {'multi-part': False, 'url': url, 'host': host, 'quality': quality, 'views': None, 'rating': None, 'direct': direct}
+						source = {'multi-part': False, 'url': url, 'host': host, 'quality': quality, 'views': None, 'rating': None, 'direct': direct, 'poster':poster}
 						sources.append(source)
 		except:
 			pass

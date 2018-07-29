@@ -403,9 +403,10 @@ class sources:
 			filtered = []
 			curr_time = time.time()
 			if key == None:
-				return
+				return False
 			else:
 				# if cache time < 2min; then get the sources from last 2min. otherwise it will always return 0 sources
+				bool = False
 				if maxcachetimeallowed < 2*60:
 					maxcachetimeallowed = 2*60
 				for i in self.sources:
@@ -413,13 +414,18 @@ class sources:
 						pass
 					else:
 						self.sources.remove(i)
+						bool = True
 				
 				if self.checkKeyInThread(key) == True and self.checkProgress(key) == 100:
 					del self.threads[key]
 					del self.threadSlots[key]
+					bool = True
 
 		except Exception as e:
 			log(type='ERROR', err='purgeSourcesKey : %s' % e)
+			bool = False
+			
+		return bool
 
 	def sourcesFilter(self, key=None):
 		try:

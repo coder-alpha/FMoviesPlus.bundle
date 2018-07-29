@@ -26,12 +26,22 @@ SITE_MAP_HTML_ELEMS = []
 ALL_JS = "/assets/min/public/all.js"
 TOKEN_KEY_PASTEBIN_URL = "https://pastebin.com/raw/VNn1454k"
 TOKEN_OPER_PASTEBIN_URL = "https://pastebin.com/raw/9zFcNJuP"
+TOKEN_PAIRS_PASTEBIN_URL = "https://pastebin.com/raw/LT7Kvzre"
+FLAGS_PASTEBIN_URL = "https://pastebin.com/raw/xt5SrJ2t"
 DEV_NOTICE_URL = "https://pastebin.com/raw/1HDhMggt"
+ANNOUNCEMENT_URL = "https://pastebin.com/raw/XuewgLQj"
 TOKEN_KEY = []
 TOKEN_OPER = []
 DEV_NOTICE = []
+ANNOUNCEMENT = []
+ANNOUNCEMENT_READ = []
+ANNOUNCEMENT_UNREAD = []
+AVOID_NOTICE = ['Just a faster and better place for watching online movies for free!']
 
 CACHE_IGNORELIST = ['apidata.googleusercontent.com']
+
+PAIRS = []
+FLAGS = []
 
 newmarketgidstorage = 'MarketGidStorage=%7B%220%22%3A%7B%22svspr%22%3A%22%22%2C%22svsds%22%3A15%2C%22TejndEEDj%22%3A%22MTQ5MzIxMTc0OTQ0NDExMDAxNDc3NDE%3D%22%7D%2C%22C110014%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493215038742%7D%2C%22C110025%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493216772437%7D%2C%22C110023%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493216771928%7D%7D'
 
@@ -39,13 +49,18 @@ newmarketgidstorage = 'MarketGidStorage=%7B%220%22%3A%7B%22svspr%22%3A%22%22%2C%
 
 # Get FMovies-API
 #@route(PREFIX + '/getapiurl')
-def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web_proxy=False, cache_expiry_time=60, **kwargs):
+def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web_proxy=False, cache_expiry_time=60, serverid=None, session=None, **kwargs):
 
 	try:
 		use_debug = Prefs["use_debug"]
 		use_https_alt = Prefs["use_https_alt"]
 		use_web_proxy = Prefs["use_web_proxy"]
 		cache_expiry_time = int(Prefs["cache_expiry_time"])
+	except:
+		pass
+		
+	user_defined_reqkey_cookie = ''
+	try:
 		user_defined_reqkey_cookie = Prefs['reqkey_cookie']
 	except:
 		pass
@@ -57,6 +72,7 @@ def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web
 	res_subtitle = None
 	error = ''
 	myts = time.time()
+	is9Anime = True if common.ANIME_KEY in url else False
 	
 	try:
 		CACHE_EXPIRY = 60 * cache_expiry_time
@@ -85,29 +101,44 @@ def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web
 		try:
 			if use_debug:
 				Log("Retrieving Fresh Movie Link")
-				
-			ret, isTargetPlay, error, host, res_subtitle = get_sources(url=url, key=key, use_debug=use_debug, serverts=serverts, myts=myts, use_https_alt=use_https_alt, use_web_proxy=use_web_proxy)
+			
+			if (common.control.setting('use_phantomjs') == common.control.phantomjs_choices[1] and common.control.setting('%s-%s' % (session, 'Use-PhantomJS')) == True or common.control.setting('use_phantomjs') == common.control.phantomjs_choices[2]) and is9Anime == False:
+				ret, isTargetPlay, error, host, res_subtitle = get_sources2(url=url, key=key, use_debug=use_debug, session=session)
+			else:
+				ret, isTargetPlay, error, host, res_subtitle = get_sources(url=url, key=key, use_debug=use_debug, serverts=serverts, myts=myts, serverid=serverid, use_https_alt=use_https_alt, use_web_proxy=use_web_proxy)
 			if use_debug:
 				Log("get_sources url: %s, key: %s" % (url,key))
 				Log("get_sources ret: %s" % ret)
 				Log("get_sources error: %s" % error)
 			token_error = False
-			if error != None and 'token' in error:
-				token_error = True
+			phanjs_error = False
+			if (common.control.setting('use_phantomjs') == common.control.phantomjs_choices[1] and common.control.setting('%s-%s' % (session, 'Use-PhantomJS')) == True) or common.control.setting('use_phantomjs') == common.control.phantomjs_choices[2]:
+				if error != None and error != '':
+					phanjs_error = True
+			else:
+				if error != None and 'token' in error:
+					token_error = True
 			
 			# if the request ever fails - clear CACHE right away and make 2nd attempt
 			# if token error make 2nd attempt using modified code
-			if common.USE_SECOND_REQUEST == True and (ret == None or token_error == True):
-				common.CACHE.clear()
+			if common.USE_SECOND_REQUEST == True and (ret == None or token_error == True or phanjs_error == True):
+				if key in common.CACHE.keys():
+					common.CACHE[key].clear()
 				if use_debug:
-					Log("Using Second Request due to token error")
-					Log("CACHE cleared due to null response from API - maybe cookie issue for %s" % url)
+					Log("Using Second Request due to error")
+					Log("CACHE cleared due to null response from API - maybe cookie/token issue for %s" % url)
 				time.sleep(1.0)
-				ret, isTargetPlay, error, host, res_subtitle = get_sources(url=url, key=key, use_debug=use_debug, serverts=serverts, myts=myts, use_https_alt=use_https_alt, use_web_proxy=use_web_proxy, token_error=token_error)
-				if use_debug:
-					Log("API - attempt 2nd")
-					Log("get_sources url: %s, key: %s" % (url,key))
-					Log("get_sources ret: %s" % ret)
+				if phanjs_error == True:
+					ret, isTargetPlay, error, host, res_subtitle = get_sources(url=url, key=key, use_debug=use_debug, serverts=serverts, myts=myts, serverid=serverid, use_https_alt=use_https_alt, use_web_proxy=use_web_proxy, token_error=token_error)
+				elif is9Anime == True:
+					ret, isTargetPlay, error, host, res_subtitle = get_sources(url=url, key=key, use_debug=use_debug, serverts=serverts, myts=myts, serverid=serverid, use_https_alt=use_https_alt, use_web_proxy=use_web_proxy, token_error=True)
+				else:
+					ret, isTargetPlay, error, host, res_subtitle = get_sources2(url=url, key=key, prev_error=error, use_debug=use_debug, session=session)
+				if ret != None:
+					if use_debug:
+						Log("Request - attempt 2nd")
+						Log("get_sources url: %s, key: %s" % (url,key))
+						Log("get_sources ret: %s" % ret)
 
 			if ret == None:
 				if use_debug:
@@ -207,15 +238,37 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 	
 	if reset:
 		cookie_dict_Str = None
+		token_pairs_dict = None
+		token_flags_dict = None
 		Dict['CACHE_COOKIE'] = None
+		Dict['TOKEN_FLAGS'] = None
+		Dict['TOKEN_PAIRS'] = None
 	else:
 		cookie_dict_Str = Dict['CACHE_COOKIE']
-	
+		token_pairs_dict = Dict['TOKEN_PAIRS']
+		token_flags_dict = Dict['TOKEN_FLAGS']
+
 	cookie_dict = {'ts':0, 'cookie': '', 'UA': '', 'reqkey':''}
 	
 	if cookie_dict_Str != None:
 		try:
 			cookie_dict = JSON.ObjectFromString(D(cookie_dict_Str))
+		except:
+			pass
+			
+	if token_pairs_dict != None:
+		try:
+			token_pairs_dict_temp = JSON.ObjectFromString(D(token_pairs_dict))
+			del PAIRS[:]
+			PAIRS.append(token_pairs_dict_temp[0])
+		except:
+			pass
+			
+	if token_flags_dict != None:
+		try:
+			token_flags_dict_temp = JSON.ObjectFromString(D(token_flags_dict))
+			del FLAGS[:]
+			FLAGS.append(token_flags_dict_temp[0])
 		except:
 			pass
 	
@@ -231,8 +284,9 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 			TOKEN_OPER.append(token_oper)
 		except:
 			setTokenCookie(use_debug=use_debug, reset=True)
-			
+
 		Thread.Create(fetch_dev_notice)
+		Thread.Create(fetch_announcement)
 		
 		if dump or use_debug and quiet == False:
 			Log("=====================TOKEN START============================")
@@ -319,19 +373,79 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 		cookie_dict = {}
 		
 		try:
+			try:
+				token_pairs = common.interface.request_via_proxy_as_backup(TOKEN_PAIRS_PASTEBIN_URL, httpsskip=use_https_alt, hideurl=True)
+				if token_pairs != None and token_pairs != '':
+					token_pairs = json.loads(token_pairs)
+					#cookie_dict.update({'token_pairs':token_pairs})
+					del PAIRS[:]
+					PAIRS.append(token_pairs)
+					Dict['TOKEN_PAIRS'] = E(JSON.StringFromObject(PAIRS))
+			except Exception as e:
+				Log('ERROR fmovies.py>Token-fetch-3.a: %s' % e)
+				
+			try:
+				fm_flags = common.interface.request_via_proxy_as_backup(FLAGS_PASTEBIN_URL, httpsskip=use_https_alt, hideurl=True)
+				if fm_flags != None and fm_flags != '':
+					fm_flags = json.loads(fm_flags)
+					#cookie_dict.update({'token_pairs':token_pairs})
+					del FLAGS[:]
+					FLAGS.append(fm_flags)
+					Dict['TOKEN_FLAGS'] = E(JSON.StringFromObject(FLAGS))
+			except Exception as e:
+				Log('ERROR fmovies.py>Token-fetch-3.b: %s' % e)
+				
 			if len(TOKEN_KEY) == 0:
 				try:
-					all_js_url = urlparse.urljoin(BASE_URL, ALL_JS)
-					all_js_pack_code = common.interface.request_via_proxy_as_backup(all_js_url, httpsskip=use_https_alt, hideurl=True)
-					unpacked_code = common.jsunpack.unpack(all_js_pack_code)
+					if 'http' in ALL_JS:
+						all_js_url = ALL_JS
+					else:
+						all_js_url = urlparse.urljoin(BASE_URL, ALL_JS)
+						
 					try:
-						cch = re.findall(r'%s' % common.client.b64decode('ZnVuY3Rpb25cKHQsaSxuXCl7XCJ1c2Ugc3RyaWN0XCI7ZnVuY3Rpb24gZVwoXCl7cmV0dXJuICguKj8pfWZ1bmN0aW9uIHJcKHRcKQ=='), unpacked_code)[0]
-						token_key = re.findall(r'%s=.*?\"(.*?)\"' % cch, unpacked_code)[0]
-						if token_key !=None and token_key != '':
-							#cookie_dict.update({'token_key':token_key})
-							TOKEN_KEY.append(token_key)
-					except Exception as e:
-						Log('ERROR fmovies.py>Token-fetch-1.1a: %s' % e)
+						vid_token_key = all_js_url.split('?')[1]
+			
+						if len(PAIRS) > 0 and vid_token_key in PAIRS[0].keys():
+							TOKEN_KEY.append(PAIRS[0][vid_token_key])
+					except:
+						pass
+						
+					all_js_pack_code = common.interface.request_via_proxy_as_backup(all_js_url, httpsskip=use_https_alt, hideurl=True)
+					unpacked_code = all_js_pack_code
+					
+					try:
+						if common.jsunpack.detect(all_js_pack_code):
+							unpacked_code = common.jsunpack.unpack(all_js_pack_code)
+					except:
+						pass
+						
+					if len(TOKEN_KEY) == 0:
+						try:
+							parts = re.findall(r'%s' % common.client.b64decode('ZnVuY3Rpb24gZlwoXClce3JldHVybiguKj8pXH0='), unpacked_code)[0].strip()
+							parts_s = parts.split('+')
+							val_str = ''
+							if len(parts_s) > 0:
+								for p in parts_s:
+									p = re.escape(p)
+									val_str += re.findall(r'%s\=\"(.*?)\",' % p, unpacked_code)[0]
+								token_key = val_str
+							else:
+								raise Exception("ALL JS Parts were not found !")
+							if token_key !=None and token_key != '':
+								#cookie_dict.update({'token_key':token_key})
+								TOKEN_KEY.append(token_key)
+						except Exception as e:
+							Log('ERROR fmovies.py>Token-fetch-1.1a: %s' % e)
+						
+					if len(TOKEN_KEY) == 0:
+						try:
+							cch = re.findall(r'%s' % common.client.b64decode('ZnVuY3Rpb25cKHQsaSxuXCl7XCJ1c2Ugc3RyaWN0XCI7ZnVuY3Rpb24gZVwoXCl7cmV0dXJuICguKj8pfWZ1bmN0aW9uIHJcKHRcKQ=='), unpacked_code)[0]
+							token_key = re.findall(r'%s=.*?\"(.*?)\"' % cch, unpacked_code)[0]
+							if token_key !=None and token_key != '':
+								#cookie_dict.update({'token_key':token_key})
+								TOKEN_KEY.append(token_key)
+						except Exception as e:
+							Log('ERROR fmovies.py>Token-fetch-1.2a: %s' % e)
 						
 					if len(TOKEN_KEY) == 0:
 						try:
@@ -341,7 +455,8 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 								#cookie_dict.update({'token_key':token_key})
 								TOKEN_KEY.append(token_key)
 						except Exception as e:
-							Log('ERROR fmovies.py>Token-fetch-1.2a: %s' % e)
+							Log('ERROR fmovies.py>Token-fetch-1.3a: %s' % e)
+							
 				except Exception as e:
 					Log('ERROR fmovies.py>Token-fetch-1a: %s' % e)
 					
@@ -369,7 +484,7 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 			Log('ERROR fmovies.py>Token-fetch-2: %s' % e)
 			
 		if len(TOKEN_KEY) > 0:
-			cookie_dict.update({'token_key':token_key})
+			cookie_dict.update({'token_key':TOKEN_KEY[0]})
 			
 		try:
 			if len(TOKEN_OPER) == 0 or common.DOWNLOAD_BACKUP_OPER == True:
@@ -456,14 +571,14 @@ def get_reqkey_cookie(token, use_debug=False, use_https_alt=False, quiet=True):
 			if common.USE_JSFDECODER:
 				dec = common.jsfdecoder.JSFDecoder(token).ca_decode()
 				if 'function' in dec:
-					raise ValueError("JSFDecoder: No JSF code or mixed-mode code")
+					raise Exception("JSFDecoder: No JSF code or mixed-mode code")
 				if 'reqkey' not in dec:
-					raise ValueError("JSFDecoder: reqkey not found. No JSF code or mixed-mode code")
+					raise Exception("JSFDecoder: reqkey not found. No JSF code or mixed-mode code")
 				cookie_string = dec
 				success = True
 				Log.Debug("*** Using JSFDecoder for regkey cookie ***")
 			else:
-				raise ValueError("JSFDecoder: Disabled via Global overide")
+				raise Exception("JSFDecoder: Disabled via Global overide")
 		except Exception as e:
 			token, replaced = common.cleanJSS2(token)
 			use_webhook_when_no_engine_flag = False
@@ -486,7 +601,7 @@ def get_reqkey_cookie(token, use_debug=False, use_https_alt=False, quiet=True):
 						if quiet == False:
 							Log.Debug('execjs output >>> %s' % (cookie_string))
 				else:
-					raise ValueError("JSEngine: Disabled via Global overide")
+					raise Exception("JSEngine: Disabled via Global overide")
 			except Exception as e:
 				try:
 					if quiet == False:
@@ -528,7 +643,7 @@ def get_reqkey_cookie(token, use_debug=False, use_https_alt=False, quiet=True):
 							if quiet == False:
 								Log.Debug('webhook url not defined in Channel Settings/Prefs.')
 					else:
-						raise ValueError("JSWebHook: Disabled via Global overide")
+						raise Exception("JSWebHook: Disabled via Global overide")
 				except Exception as e:
 					if quiet == False:
 						Log.Debug('webhook failed, >>> {}'.format(e))
@@ -541,7 +656,7 @@ def get_reqkey_cookie(token, use_debug=False, use_https_alt=False, quiet=True):
 			return common.cleanCookie(cookie_string)
 	except Exception as e:
 		if quiet == False:
-			Log.Exception("fmovies.py >> : Cannot handle token cookie >>> {}".format(e))
+			Log.Error("fmovies.py >> : Cannot handle token cookie >>> {}".format(e))
 			Log.Debug("No method available to decode JSF code - use manual method")
 	return ''
 	
@@ -553,8 +668,24 @@ def fetch_dev_notice():
 			DEV_NOTICE.append(dev_notice)
 	except Exception as e:
 		Log('ERROR fmovies.py>fetch_dev_notice: %s' % e)
+		
+def fetch_announcement():
+	try:
+		announcement = common.interface.request_via_proxy_as_backup(ANNOUNCEMENT_URL, httpsskip=True, hideurl=True)
+		if announcement !=None and announcement != '' and len(announcement) > 1:
+			del ANNOUNCEMENT[:]
+			ANNOUNCEMENT.append(announcement)
+	except Exception as e:
+		Log('ERROR fmovies.py>fetch_announcement: %s' % e)
+		
+	del ANNOUNCEMENT_UNREAD[:]
+	if len(ANNOUNCEMENT) > 0:
+		for i in ANNOUNCEMENT:
+			if i not in ANNOUNCEMENT_READ:
+				ANNOUNCEMENT_READ.append(i)
+				ANNOUNCEMENT_UNREAD.append(True)
 
-def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=False, use_web_proxy=False, token_error=False, **kwargs):
+def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=False, use_web_proxy=False, token_error=False, serverid=None, **kwargs):
 
 	if serverts == 0:
 		#serverts = ((int(time.time())/3600)*3600)
@@ -627,10 +758,21 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 				headers['User-Agent'] = common.client.randomagent()
 			
 			hash_url = urlparse.urljoin(T_BASE_URL, HASH_PATH_INFO)
-			query = {'ts': serverts, 'id': key, 'update':'0', 'server':'36'}
+			
+			if is9Anime == True:
+				if serverid != None:
+					query = {'ts': serverts, 'id': key, 'server': serverid}
+				else:
+					query = {'ts': serverts, 'id': key, 'server':'36'}
+			else:
+				if serverid != None:
+					query = {'ts': serverts, 'id': key, 'server': serverid}
+				else:
+					query = {'ts': serverts, 'id': key, 'update':'0', 'server':'36'}
+			
 			tk = get_token(query, token_error, is9Anime)
 			if tk == None:
-				raise ValueError('video token algo')
+				raise Exception('video token algo')
 			
 			query.update(tk)
 			hash_url = hash_url + '?' + urllib.urlencode(query)
@@ -642,7 +784,6 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 			if use_debug:
 				Log("Using cookies : %s" % headers['Cookie'])
 			
-			#print hash_url
 			if use_debug:
 				Log("get_sources Request-3: %s" % hash_url)
 				
@@ -650,7 +791,7 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 			
 			if use_debug:
 				Log("Request-3 result: %s" % result)
-			#print result
+
 			result = json.loads(result)
 
 			if is9Anime == True:
@@ -703,7 +844,7 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 					grabber = result['target']
 					b, resp = decode_t(grabber, -18, is9Anime)
 					if b == False:
-						raise ValueError(resp)
+						raise Exception(resp)
 					grabber = resp
 					isTargetPlay = True
 					subtitle = result['subtitle']
@@ -715,7 +856,7 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 					grabber = result['target']
 					b, resp = decode_t(grabber, -18, is9Anime)
 					if b == False:
-						raise ValueError(resp)
+						raise Exception(resp)
 					grabber = resp
 					isTargetPlay = True
 					subtitle = result['subtitle']
@@ -733,18 +874,18 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 					
 					b, resp = decode_t(result['params']['token'], -18, is9Anime)
 					if b == False:
-						raise ValueError(resp)
+						raise Exception(resp)
 					token = resp
 					b, resp = decode_t(result['params']['options'], -18, is9Anime)
 					if b == False:
-						raise ValueError(resp)
+						raise Exception(resp)
 					options = resp
 					
 					grab_query = {'ts':serverts, grabber_url:'','id':result['params']['id'],'server':grab_server,'mobile':'0','token':token,'options':options}
 					tk = get_token(grab_query, token_error, is9Anime)
 
 					if tk == None:
-						raise ValueError('video token algo')
+						raise Exception('video token algo')
 					grab_info = {'token':token,'options':options}
 					del query['server']
 					query.update(grab_info)
@@ -764,43 +905,91 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 				
 			if grabber != None:
 				host_type = common.client.geturlhost(grabber)
+				if host_type != None:
+					try:
+						host_type_t = host_type.split('.')
+						host_type = host_type_t[0]
+					except:
+						pass
 				
 			magic_url = grabber
 		except Exception as e:
-			error = e
+			error = u'%s' % e
 			Log('ERROR fmovies.py>get_sources-1 %s, %s' % (e.args,url))
 			pass
 
 		return magic_url, isTargetPlay, error, host_type, subtitle
 	except Exception as e:
-		error = e
+		error = u'%s' % e
 		Log('ERROR fmovies.py>get_sources-2 %s, %s' % (e.args,url))
 		return magic_url, isTargetPlay, error, host_type, subtitle
 		
-def r01(t, e, token_error=False):
+def get_sources2(url, key, prev_error=None, use_debug=True, session=None, **kwargs):
+	try:
+		video_url = None
+		isTargetPlay = True
+		error = ''
+		host_type = None
+		subtitle = None
+		if (common.control.setting('use_phantomjs') == common.control.phantomjs_choices[1] and common.control.setting('%s-%s' % (session, 'Use-PhantomJS')) == True) or common.control.setting('use_phantomjs') == common.control.phantomjs_choices[2]:
+			vx_url = '%s/%s' % (url,key)
+			Log(u'Trying phantomjs method: %s' % vx_url)
+			try:
+				v_url, bool = common.phantomjs.decode(vx_url, js='fmovies.js')
+				if bool == False:
+					ret_error = v_url
+					raise Exception(ret_error)
+				else:
+					video_url = v_url
+					ret_error = ''
+					Log(u'*PhantomJS* method is working: %s' % vx_url)
+					host_type = common.client.geturlhost(video_url)
+			except:
+				raise Exception('phantomjs not working')
+		else:
+			raise Exception('phantomjs is disabled')
+	except Exception as e:
+		error = u'%s' % e
+		Log(error)
+		if prev_error != None and prev_error != error:
+			error = prev_error + ' and ' + error
+	return video_url, isTargetPlay, error, host_type, subtitle
+		
+def r01(t, e, token_error=False, use_code=True):
 	i = 0
 	n = 0
-	for i in range(0, max(len(t), len(e))):
-		if i < len(e):
-			n += ord(e[i])
-		if i < len(t):
-			n += ord(t[i])
+	x = 0
+	if use_code == True:
+		for i in range(0, max(len(t), len(e))):
+			if i < len(e):
+				n += ord(e[i])
+			if i < len(t):
+				n += ord(t[i])
+			if i >= len(e):
+				x = int(i) + 1
+				n += x
 	h = format(int(hex(n),16),'x')
 	return h
 
-def a01(t, token_error=False, is9Anime=False):
+def a01(t, token_error=False, is9Anime=False, use_code=True):
 	i = 0
-	for e in range(0, len(t)):
-		if token_error == False:
-			if is9Anime == False:
-				i += ord(t[e]) + e
+	if use_code == True:
+		for e in range(0, len(t)):
+			if token_error == False:
+				if is9Anime == False:
+					i += ord(t[e]) + e
+				else:
+					i += ord(t[e]) + e
 			else:
-				i += ord(t[e]) + e
+				try:
+					i += eval('ord(t[%s]) %s' % (e, TOKEN_OPER[0]))
+				except:
+					i += eval('ord(t[%s]) %s' % (e, TOKEN_OPER[1]))
+	else:
+		if is9Anime == True:
+			i = int(FLAGS[0]["no_code_val_anime"])
 		else:
-			try:
-				i += eval('ord(t[%s]) %s' % (e, TOKEN_OPER[0]))
-			except:
-				i += eval('ord(t[%s]) %s' % (e, TOKEN_OPER[1]))
+			i = int(FLAGS[0]["no_code_val"])
 	return i
 	
 #6856
@@ -889,13 +1078,31 @@ def decode_ts(t):
 def get_token(n, token_error=False, is9Anime=False, **kwargs):
 	try:
 		if is9Anime == False:
-			d = TOKEN_KEY[0]
+			d = TOKEN_KEY[0] # kx + Nz + YG + Nz + o$ + Nz + zR
+			# = 'xd' + '' + 'Wd51' + '' +'P' + '' + 'K'
 		else:
 			d = common.control.setting('9animeVidToken')
 		
-		s = a01(d, token_error, is9Anime)
+		use_code = True
+		use_code2 = True
+		
+		if len(FLAGS) > 0:
+			if is9Anime==True and 'use_code_anime' in FLAGS[0].keys():
+				use_code = FLAGS[0]["use_code_anime"]
+			elif is9Anime==False and 'use_code' in FLAGS[0].keys():
+				use_code = FLAGS[0]["use_code"]
+			if is9Anime==True and 'use_code_anime2' in FLAGS[0].keys():
+				use_code2 = FLAGS[0]["use_code_anime2"]
+			elif is9Anime==False and 'use_code2' in FLAGS[0].keys():
+				use_code2 = FLAGS[0]["use_code2"]
+			
+			use_code = True if str(use_code).lower()=='true' else False
+			use_code2 = True if str(use_code2).lower()=='true' else False
+				
+		s = a01(d, token_error, is9Anime, use_code=use_code)
+		
 		for i in n: 
-			s += a01(r01(d + i, n[i]), token_error, is9Anime)
+			s += a01(r01(d + i, n[i], token_error=token_error, use_code=use_code2), token_error, is9Anime)
 		return {'_': str(s)}
 	except Exception as e:
 		Log("fmovies.py > get_token > %s" % e)

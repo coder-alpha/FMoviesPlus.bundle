@@ -180,6 +180,11 @@ class source:
 					log(type='INFO', method='get_movie', err='Processing %s - %s' % (titlex, link), dolog=False, logToControl=False, doPrint=True)
 					result = proxies.request(link, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
 					
+					try:
+						poster = client.parseDOM(result, 'img', attrs = {'itemprop': 'image'}, ret='src')[0]
+					except:
+						poster = None
+					
 					elems = client.parseDOM(result, 'li', attrs = {'class': 'elemento'})
 					for elem in elems:
 						url = client.parseDOM(elem, 'a', ret='href')[0]
@@ -193,7 +198,7 @@ class source:
 							type = client.parseDOM(elem, 'span', attrs = {'class': 'a'})[0]
 							
 							if 'play' in type:
-								link_data = {'link':url, 'page':link, 'title':title, 'year':year2, 'qual':quality, 'rip':riptype}
+								link_data = {'link':url, 'page':link, 'title':title, 'year':year2, 'qual':quality, 'rip':riptype, 'poster':poster}
 								links_data.append(link_data)
 
 						if testing == True:
@@ -218,6 +223,11 @@ class source:
 			
 			url_data = client.parseDOM(result, 'div', attrs = {'class': 'item'})
 			
+			try:
+				poster = client.parseDOM(result, 'img', attrs = {'itemprop': 'image'}, ret='src')[0]
+			except:
+				poster = None
+			
 			links_data = []
 			
 			for data in url_data:
@@ -234,7 +244,7 @@ class source:
 					
 					#print link, title, year2, quality, riptype
 					
-					link_data = {'page':link, 'title':title, 'year':year2, 'qual':quality, 'rip':riptype}
+					link_data = {'page':link, 'title':title, 'year':year2, 'qual':quality, 'rip':riptype, 'poster':poster}
 					links_data.append(link_data)
 					if testing == True:
 						break
@@ -268,7 +278,7 @@ class source:
 						
 						if 'play' in type:
 							url = client.parseDOM(elem, 'a', ret='href')[0]
-							link_data = {'link':url, 'page':data['page'], 'title':data['title'], 'year':data['year'], 'qual':data['qual'], 'rip':data['rip']}
+							link_data = {'link':url, 'page':data['page'], 'title':data['title'], 'year':data['year'], 'qual':data['qual'], 'rip':data['rip'], 'poster':data['poster']}
 							links_data.append(link_data)
 				if testing == True:
 					break
@@ -291,7 +301,7 @@ class source:
 			links_m = []
 			for data in url:
 				try:
-					links_m = resolvers.createMeta(data['link'], self.name, self.logo, data['qual'], links_m, key, data['rip'], testing=testing)
+					links_m = resolvers.createMeta(data['link'], self.name, self.logo, data['qual'], links_m, key, poster=data['poster'], riptype=data['rip'], testing=testing)
 					if testing == True and len(links_m) > 0:
 						break
 				except:

@@ -117,7 +117,7 @@ def MetadataObjectForURL(url, **kwargs):
 def MediaObjectsForURL(url, **kwargs):
 
 	data = get_data(url)
-	isTargetPlay = data['isTargetPlay']
+	isTargetPlay = False
 	host = data['host']
 	title = data['title']
 	isVideoOnline = data['isVideoOnline'].lower()
@@ -126,6 +126,11 @@ def MediaObjectsForURL(url, **kwargs):
 	https_skip = data['useSSL']
 	pairrequired = False
 	direct_play = True
+	
+	try:
+		isTargetPlay = data['isTargetPlay']
+	except:
+		pass
 	
 	try:
 		direct_play = not data['force_transcode']
@@ -302,7 +307,7 @@ def MediaObjectsForURL(url, **kwargs):
 				media_obj.append(mo)
 	except Exception as e:
 		Log('ERROR FMovies.ServiceCode MediaObjectsForURL > %s : URL:%s' % (e.args, data['server']))
-		raise Ex.MediaNotAvailable
+		#raise Ex.MediaNotAvailable
 		
 	return media_obj
 

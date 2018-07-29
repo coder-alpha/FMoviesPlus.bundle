@@ -221,6 +221,9 @@ class host:
 
 		try:
 			furl, fs, file_ext = mega.get_mega_dl_link(url)
+			
+			quality = qual_based_on_fs(quality, fs)
+			
 			if int(fs) == 0:
 				fs = client.getFileSize(furl)
 			urldata = createurldata(furl, quality)
@@ -254,7 +257,6 @@ def resolve(url):
 	if check(url) == False: return
 	
 	return url
-
 	
 def check(url, headers=None, cookie=None):
 	try:			
@@ -286,6 +288,16 @@ def createurldata(mfile, qual):
 	ret = json.dumps(ret, encoding='utf-8')
 	
 	return client.b64encode(ret)
+	
+def qual_based_on_fs(q,fs):
+	try:
+		if int(fs) > 2 * float(1024*1024*1024):
+			q = '1080p'
+		elif int(fs) > 1 * float(1024*1024*1024):
+			q = '720p'
+	except:
+		pass
+	return q
 		
 def test(url):
 	return resolve(url)

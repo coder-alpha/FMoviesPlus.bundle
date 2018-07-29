@@ -34,7 +34,7 @@ class source:
 		self.update_date = 'June 01, 2018'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
-		self.base_link_alts = ['http://www.documentaryarea.net']
+		self.base_link_alts = ['http://www.documentaryarea.tv']
 		self.base_link = self.base_link_alts[0]
 		self.MainPageValidatingContent = 'Documentary Area - Simply the best Documentaries'
 		self.type_filter = ['movie', 'show', 'anime']

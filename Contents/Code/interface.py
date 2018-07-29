@@ -217,9 +217,12 @@ def purgeSources(key, maxcachetimeallowed=0):
 	if wait_for_init() == False:
 		return
 	#initA[0].purgeSources(maxcachetimeallowed=maxcachetimeallowed)
-	initA[0].purgeSourcesKey(key=key, maxcachetimeallowed=maxcachetimeallowed)
+	bool = initA[0].purgeSourcesKey(key=key, maxcachetimeallowed=maxcachetimeallowed)
 	if Prefs["use_debug"]:
-		Log('Purging source based on time-stamp. key: %s > maxcachetimeallowed: %s' % (key,maxcachetimeallowed))
+		if bool == True:
+			Log('Purging source based on time-stamp. key: %s > maxcachetimeallowed: %s' % (key,maxcachetimeallowed))
+		else:
+			Log('Not Purging source based on time-stamp. key: %s > maxcachetimeallowed: %s' % (key,maxcachetimeallowed))
 	
 def checkProgress(key, useCached=True):
 	if wait_for_init() == False:

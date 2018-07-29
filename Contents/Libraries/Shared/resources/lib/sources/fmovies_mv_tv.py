@@ -31,16 +31,22 @@ from resources.lib import resolvers
 from resources.lib import proxies
 from __builtin__ import ord, format, eval
 
+try:
+	import phantomjs
+except:
+	pass
+
 name = 'FMovies'
 loggertxt = []
 
 ENCRYPTED_URLS = False
+USE_PHANTOMJS = True
 
 class source:
 	def __init__(self):
 		del loggertxt[:]
-		self.ver = '0.1.0'
-		self.update_date = 'Apr. 25, 2018'
+		self.ver = '0.1.1'
+		self.update_date = 'June 17, 2018'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
 		self.disabled = False
@@ -49,8 +55,12 @@ class source:
 		self.base_link = self.base_link_alts[0]
 		self.grabber_api = "grabber-api/"
 		self.search_link = '/sitemap'
-		self.ALL_JS = "/assets/min/public/all.js"
+		self.ALL_JS = "https://static1.akacdn.ru/assets/min/public/all.js"
 		self.TOKEN_KEY_PASTEBIN_URL = "https://pastebin.com/raw/VNn1454k"
+		self.TOKEN_PAIRS_PASTEBIN_URL = "https://pastebin.com/raw/LT7Kvzre"
+		self.FLAGS_PASTEBIN_URL = "https://pastebin.com/raw/xt5SrJ2t"
+		self.PAIRS = {}
+		self.FLAGS = {}
 		self.hash_link = '/ajax/episode/info'
 		self.hash_menu_link = "/user/ajax/menu-bar"
 		self.token_link = "/token"
@@ -271,6 +281,8 @@ class source:
 			log('INFO','get_sources-1', 'url: %s' % url, dolog=False)
 			token_error = False
 			urls = []
+			sub_url = None
+			page_url = None
 			
 			if not str(url).startswith('http'):
 				try:
@@ -349,13 +361,21 @@ class source:
 					log('INFO','get_sources-3', url, dolog=False)
 
 					referer = url
+					page_url = url
+					
 					result = resultT = proxies.request(url, headers=self.headers, limit='0', proxy_options=proxy_options, use_web_proxy=self.proxyrequired, httpsskip=True)
+					
+					if 'data-type="series"' not in result:
+						raise Exception('Not a TV-Series')
 					
 					alina = client.parseDOM(result, 'title')[0]
 
 					atr = [i for i in client.parseDOM(result, 'title') if len(re.findall('(\d{4})', i)) > 0][-1]
 					if 'season' in data:
-						years = ['%s' % str(year), '%s' % str(int(year) + 1), '%s' % str(int(year) - 1)]
+						try: season = data['season']
+						except: pass
+						
+						years = ['%s' % str(year), '%s' % str(int(year) + 1), '%s' % str(int(year) - 1), '%s' % str(int(year) + int(season)), '%s' % str(int(year) - int(season))]
 						mychk = False
 						for y in years:
 							if y in atr: 
@@ -426,37 +446,7 @@ class source:
 			
 			for s in servers[:len(servers)]:
 				try:
-
-					headers = {'X-Requested-With': 'XMLHttpRequest'}
-					hash_url = urlparse.urljoin(self.base_link, self.hash_link)
-					query = {'ts': myts, 'id': s[0], 'update': '0', 'server':'36'}
-
-					query.update(self.__get_token(query))
-					hash_url = hash_url + '?' + urllib.urlencode(query)
-					headers['Referer'] = urlparse.urljoin(url, s[0])
-					headers['Cookie'] = self.headers['Cookie']
-					
-					log('INFO','get_sources-4', '%s' % hash_url, dolog=False)
-					result = proxies.request(hash_url, headers=headers, limit='0', proxy_options=proxy_options, use_web_proxy=self.proxyrequired, httpsskip=True)
-					result = json.loads(result)
-					
-					if 'error' in result and result['error'] == True:
-						token_error = True
-						query.update(self.__get_token(query, token_error=token_error))
-						hash_url = hash_url + '?' + urllib.urlencode(query)
-						result = proxies.request(hash_url, headers=headers, limit='0', proxy_options=proxy_options, use_web_proxy=self.proxyrequired, httpsskip=True)
-						result = json.loads(result)
-						
-						query = {'id': s[0], 'update': '0'}
-						query.update(self.__get_token(query, token_error=token_error))
-					else:
-						token_error = False
-						queryx = {'id': s[0], 'update': '0'}
-						query.update(self.__get_token(queryx))
-					
-					url = url + '?' + urllib.urlencode(query)
-					#result = client2.http_get(url, headers=headers)
-					
+					video_url = None
 					#quality = '360p'
 					if '1080' in s[1]: 
 						quality = '1080p'
@@ -473,83 +463,137 @@ class source:
 					else:
 						quality = '480p'
 						#riptype = 'CAM'
+				
+					if video_url == None:
+						headers = {'X-Requested-With': 'XMLHttpRequest'}
+						hash_url = urlparse.urljoin(self.base_link, self.hash_link)
 						
-					log('INFO','get_sources-5', result, dolog=False)
-					
-					if result['target'] != "":
-						pass
-					else:
-						grabber = result['grabber']
-						grab_data = grabber
-						grabber_url = urlparse.urljoin(self.base_link, self.grabber_api)
+						query = {'ts': myts, 'id': s[0], 'update': '0', 'server':'36'}
 						
-						if '?' in grabber:
-							grab_data = grab_data.split('?')
-							grabber_url = grab_data[0]
-							grab_data = grab_data[1]
-							
-						print grab_data
-						grab_server = str(urlparse.parse_qs(grab_data)['server'][0])
-						
-						b, resp = self.decode_t(result['params']['token'], -18)
-						if b == False:
-							raise Exception(resp)
-						token = resp
-						b, resp = self.decode_t(result['params']['options'], -18)
-						if b == False:
-							raise Exception(resp)
-						options = resp
-						
-						grab_query = {'ts':myts, grabber_url:'','id':result['params']['id'],'server':grab_server,'mobile':'0','token':token,'options':options}
-						tk = self.__get_token(grab_query, token_error)
-
-						if tk == None:
-							raise Exception('video token algo')
-						grab_info = {'token':token,'options':options}
-						del query['server']
-						query.update(grab_info)
-						query.update(tk)
-						
-						sub_url = result['subtitle']
-						if sub_url==None or len(sub_url) == 0:
-							sub_url = None
-						
-						if '?' in grabber:
-							grabber += '&' + urllib.urlencode(query)
-						else:
-							grabber += '?' + urllib.urlencode(query)
-					
-						if grabber!=None and not grabber.startswith('http'):
-							grabber = 'http:'+grabber
-							
-						log('INFO','get_sources-6', grabber, dolog=False)
-
-						result = proxies.request(grabber, headers=headers, referer=url, limit='0', proxy_options=proxy_options, use_web_proxy=self.proxyrequired, httpsskip=True)
-
+						query.update(self.__get_token(query))
+						hash_url = hash_url + '?' + urllib.urlencode(query)
+						headers['Referer'] = urlparse.urljoin(url, s[0])
+						headers['Cookie'] = self.headers['Cookie']
+						log('INFO','get_sources-4.b', '%s' % hash_url, dolog=False)
+						result = proxies.request(hash_url, headers=headers, limit='0', proxy_options=proxy_options, use_web_proxy=self.proxyrequired, httpsskip=True)
 						result = json.loads(result)
-					
-					if 'data' in result.keys():
-						result = [i['file'] for i in result['data'] if 'file' in i]
 						
-						for i in result:
-							links_m = resolvers.createMeta(i, self.name, self.logo, quality, links_m, key, riptype, sub_url=sub_url, testing=testing)
-					else:
-						target = result['target']
-						b, resp = self.decode_t(target, -18)
-						if b == False:
-							raise Exception(resp)
-						target = resp
-						sub_url = result['subtitle']
-						if sub_url==None or len(sub_url) == 0:
-							sub_url = None
-						
-						if target!=None and not target.startswith('http'):
-							target = 'http:' + target
+						if 'error' in result and result['error'] == True:
+							token_error = True
+							query.update(self.__get_token(query, token_error=token_error))
+							hash_url = hash_url + '?' + urllib.urlencode(query)
+							result = proxies.request(hash_url, headers=headers, limit='0', proxy_options=proxy_options, use_web_proxy=self.proxyrequired, httpsskip=True)
+							result = json.loads(result)
 							
-						links_m = resolvers.createMeta(target, self.name, self.logo, quality, links_m, key, riptype, sub_url=sub_url, testing=testing)
+							query = {'id': s[0], 'update': '0'}
+							query.update(self.__get_token(query, token_error=token_error))
+						else:
+							token_error = False
+							queryx = {'id': s[0], 'update': '0'}
+							query.update(self.__get_token(queryx))
+						
+						url = url + '?' + urllib.urlencode(query)
+						#result = client2.http_get(url, headers=headers)
+					
+						log('INFO','get_sources-5', result, dolog=False)
+						
+						if result['target'] != "":
+							pass
+						else:
+							grabber = result['grabber']
+							grab_data = grabber
+
+							grabber_url = urlparse.urljoin(self.base_link, self.grabber_api)
+							
+							if '?' in grabber:
+								grab_data = grab_data.split('?')
+								grabber_url = grab_data[0]
+								grab_data = grab_data[1]
+								
+							grab_server = str(urlparse.parse_qs(grab_data)['server'][0])
+							
+							b, resp = self.decode_t(result['params']['token'], -18)
+							if b == False:
+								raise Exception(resp)
+							token = resp
+							b, resp = self.decode_t(result['params']['options'], -18)
+							if b == False:
+								raise Exception(resp)
+							options = resp
+							
+							grab_query = {'ts':myts, grabber_url:'','id':result['params']['id'],'server':grab_server,'mobile':'0','token':token,'options':options}
+							tk = self.__get_token(grab_query, token_error)
+
+							if tk == None:
+								raise Exception('video token algo')
+							grab_info = {'token':token,'options':options}
+							del query['server']
+							query.update(grab_info)
+							query.update(tk)
+							
+							sub_url = result['subtitle']
+							if sub_url==None or len(sub_url) == 0:
+								sub_url = None
+							
+							if '?' in grabber:
+								grabber += '&' + urllib.urlencode(query)
+							else:
+								grabber += '?' + urllib.urlencode(query)
+						
+							if grabber!=None and not grabber.startswith('http'):
+								grabber = 'http:'+grabber
+								
+							log('INFO','get_sources-6', grabber, dolog=False)
+
+							result = proxies.request(grabber, headers=headers, referer=url, limit='0', proxy_options=proxy_options, use_web_proxy=self.proxyrequired, httpsskip=True)
+
+							result = json.loads(result)
+						
+						if 'data' in result.keys():
+							result = [i['file'] for i in result['data'] if 'file' in i]
+							
+							for i in result:
+								video_url = i
+								links_m = resolvers.createMeta(i, self.name, self.logo, quality, links_m, key, riptype, sub_url=sub_url, testing=testing)
+						else:
+							target = result['target']
+							b, resp = self.decode_t(target, -18)
+							if b == False:
+								raise Exception(resp)
+							target = resp
+							sub_url = result['subtitle']
+							if sub_url==None or len(sub_url) == 0:
+								sub_url = None
+							
+							if target!=None and not target.startswith('http'):
+								target = 'http:' + target
+								
+							video_url = target
+							links_m = resolvers.createMeta(target, self.name, self.logo, quality, links_m, key, riptype, sub_url=sub_url, testing=testing)
 
 				except Exception as e:
 					log('FAIL', 'get_sources-7','%s' % e, dolog=False)
+					
+				try:
+					if video_url == None and USE_PHANTOMJS == True and control.setting('use_phantomjs') != control.phantomjs_choices[0]:
+						vx_url = '%s/%s' % (page_url,s[0])
+						log(type='INFO',method='get_sources-4.a.1', err=u'trying phantomjs method: %s' % vx_url)
+						try:
+							v_url, bool = phantomjs.decode(vx_url, js='fmovies.js')
+							if bool == False:
+								ret_error = v_url
+								raise Exception(ret_error)
+							else:
+								video_url = v_url
+								ret_error = ''
+								log(type='SUCCESS',method='get_sources-4.a.2', err=u'*PhantomJS* method is working: %s' % vx_url)
+								links_m = resolvers.createMeta(video_url, self.name, self.logo, quality, links_m, key, riptype, sub_url=sub_url, testing=testing)
+						except:
+							raise Exception('phantomjs not working')
+					else:
+						raise Exception('phantomjs is disabled')
+				except Exception as e:
+					log(type='FAIL',method='get_sources-4.a.3', err=u'%s' % e)
 
 			sources += [l for l in links_m]
 			
@@ -569,24 +613,32 @@ class source:
 		except:
 			return
 	
-	def r01(self, t, e, token_error=False):
+	def r01(self, t, e, token_error=False, use_code=True):
 		i = 0
 		n = 0
-		for i in range(0, max(len(t), len(e))):
-			if i < len(e):
-				n += ord(e[i])
-			if i < len(t):
-				n += ord(t[i])
+		x = 0
+		if use_code == True:
+			for i in range(0, max(len(t), len(e))):
+				if i < len(e):
+					n += ord(e[i])
+				if i < len(t):
+					n += ord(t[i])
+				if i >= len(e):
+					x = int(i)
+					n += x
 		h = format(int(hex(n),16),'x')
 		return h
 
-	def a01(self, t, token_error=False):
+	def a01(self, t, token_error=False, use_code=True):
 		i = 0
-		for e in range(0, len(t)):
-			if token_error == False:
-				i += ord(t[e]) + e
-			else:
-				i += ord(t[e]) * e + e
+		if use_code == True:
+			for e in range(0, len(t)):
+				if token_error == False:
+					i += ord(t[e]) + e
+				else:
+					i += ord(t[e]) * e + e
+		else:
+			i = int(self.FLAGS["no_code_val"])
 		return i
 
 	def decode_t(self, t, i):
@@ -617,15 +669,32 @@ class source:
 			log('ERROR', 'decode_t','%s' % e, dolog=False)
 			False, 'Error in decoding'
 
-	def __get_token(self, n, token_error=False):
+	def __get_token(self, n, token_error=False, is9Anime=False):
 		try:
 			if token_error == True and len(self.TOKEN_KEY) > 1:
 				d = self.TOKEN_KEY[1]
 			else:
 				d = self.TOKEN_KEY[0]
-			s = self.a01(d, token_error)
+				
+			use_code = True
+			use_code2 = True
+			if len(self.FLAGS.keys()) > 0:
+				if is9Anime==True and 'use_code_anime' in FLAGS.keys():
+					use_code = FLAGS["use_code_anime"]
+				elif is9Anime==False and 'use_code' in FLAGS.keys():
+					use_code = FLAGS["use_code"]
+				if is9Anime==True and 'use_code_anime2' in FLAGS.keys():
+					use_code2 = FLAGS["use_code_anime2"]
+				elif is9Anime==False and 'use_code2' in FLAGS.keys():
+					use_code2 = FLAGS["use_code2"]
+				
+				use_code = True if str(use_code).lower()=='true' else False
+				use_code2 = True if str(use_code2).lower()=='true' else False
+
+			s = self.a01(d, token_error, use_code=use_code)
 			for i in n: 
-				s += self.a01(self.r01(d + i, n[i]), token_error)
+				s += self.a01(self.r01(d + i, n[i], use_code=use_code2), token_error)
+				
 			return {'_': str(s)}
 		except Exception as e:
 			log('ERROR', '__get_token','%s' % e, dolog=False)
@@ -639,19 +708,74 @@ class source:
 		
 	def getVidToken(self):
 		try:
-			all_js_url = urlparse.urljoin(self.base_link, self.ALL_JS)
-			unpacked_code = ''
+			page_html = proxies.request(self.base_link, use_web_proxy=self.proxyrequired, httpsskip=True)
+			try:
+				all_js_url = re.findall(r'<script src=\"(https://static1.*?all.js.*?)\"', page_html)[0]
+				vid_token_key = all_js_url.split('?')[1]
+			except:
+				all_js_url = self.ALL_JS
+				vid_token_key = 'None'
+				
+			try:
+				token_pairs = proxies.request(self.TOKEN_PAIRS_PASTEBIN_URL, use_web_proxy=self.proxyrequired, httpsskip=True)
+				if token_pairs !=None and token_pairs != '':
+					token_pairs = json.loads(token_pairs)
+					#cookie_dict.update({'token_key':token_key})
+					self.PAIRS = token_pairs
+			except Exception as e:
+				log('ERROR', 'getVidToken-3.a-Token-Pairs','%s' % e, dolog=False)
+				
+			try:
+				fm_flags = proxies.request(self.FLAGS_PASTEBIN_URL, use_web_proxy=self.proxyrequired, httpsskip=True)
+				if fm_flags !=None and fm_flags != '':
+					fm_flags = json.loads(fm_flags)
+					#cookie_dict.update({'token_key':token_key})
+					self.FLAGS = fm_flags
+			except Exception as e:
+				log('ERROR', 'getVidToken-3.b-Token-Pairs','%s' % e, dolog=False)
+
+			all_js_pack_code = proxies.request(all_js_url, use_web_proxy=self.proxyrequired, httpsskip=True)
+			unpacked_code = all_js_pack_code
+			
+			del self.TOKEN_KEY[:]
+			if vid_token_key in self.PAIRS.keys():
+				d = self.PAIRS[vid_token_key]
+				self.TOKEN_KEY.append(d)
+				
+			try:
+				if jsunpack.detect(all_js_pack_code):
+					unpacked_code = jsunpack.unpack(all_js_pack_code)
+			except:
+				pass
+			token_key = None
 			cch = ''
 			if len(self.TOKEN_KEY) == 0:
 				try:
-					all_js_pack_code = proxies.request(all_js_url, use_web_proxy=self.proxyrequired, httpsskip=True)
-					unpacked_code = jsunpack.unpack(all_js_pack_code)
+					parts = re.findall(r'%s' % client.b64decode('ZnVuY3Rpb24gZlwoXClce3JldHVybiguKj8pXH0='), unpacked_code)[0].strip()
+					parts_s = parts.split('+')
+					val_str = ''
+					if len(parts_s) > 0:
+						for p in parts_s:
+							p = re.escape(p)
+							val_str += re.findall(r'%s\=\"(.*?)\",' % p, unpacked_code)[0]
+						token_key = val_str
+					else:
+						raise Exception("ALL JS Parts were not found !")
+					
+					if token_key !=None and token_key != '':
+						#cookie_dict.update({'token_key':token_key})
+						self.TOKEN_KEY.append(token_key)
+				except Exception as e:
+					log('ERROR', 'getVidToken-1.1a','%s' % e, dolog=False)
+							
+			if len(self.TOKEN_KEY) == 0:
+				try:
 					cch = re.findall(r'%s' % client.b64decode('ZnVuY3Rpb25cKHQsaSxuXCl7XCJ1c2Ugc3RyaWN0XCI7ZnVuY3Rpb24gZVwoXCl7cmV0dXJuICguKj8pfWZ1bmN0aW9uIHJcKHRcKQ=='), unpacked_code)[0]
 					token_key = re.findall(r'%s=.*?\"(.*?)\"' % cch, unpacked_code)[0]
 					if token_key !=None and token_key != '':
 						self.TOKEN_KEY.append(token_key)
 				except Exception as e:
-					log('ERROR', 'getVidToken-1.1','%s' % e, dolog=False)
+					log('ERROR', 'getVidToken-1.1b','%s' % e, dolog=False)
 					
 			if len(self.TOKEN_KEY) == 0:
 				try:
@@ -661,10 +785,10 @@ class source:
 						#cookie_dict.update({'token_key':token_key})
 						self.TOKEN_KEY.append(token_key)
 				except Exception as e:
-					log('ERROR', 'getVidToken-1.2','%s' % e, dolog=False)
+					log('ERROR', 'getVidToken-1.1c','%s' % e, dolog=False)
 		except Exception as e:
 			log('ERROR', 'getVidToken-1','%s' % e, dolog=False)
-			log('ERROR', 'getVidToken-1','%s' % unpacked_code, dolog=False)
+			#log('ERROR', 'getVidToken-1','%s' % unpacked_code, dolog=False)
 			log('ERROR', 'getVidToken-1','%s' % cch, dolog=False)
 
 		try:
@@ -675,6 +799,7 @@ class source:
 					self.TOKEN_KEY.append(token_key)
 		except Exception as e:
 			log('ERROR', 'getVidToken-2','%s' % e, dolog=False)
+
 
 def log(type='INFO', method='undefined', err='', dolog=True, logToControl=False, doPrint=True):
 	try:

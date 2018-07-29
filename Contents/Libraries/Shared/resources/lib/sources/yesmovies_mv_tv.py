@@ -244,9 +244,7 @@ class source:
 				#print title
 				try:
 					season = '%01d' % int(season) ; episode = '%01d' % int(episode)
-					#year = re.findall('(\d{4})', date)[0]
-					years = [str(year), str(int(year)+1), str(int(year)-1)]
-
+					
 					r = cache.get(self.ymovies_info_season, 720, title, season, proxy_options=proxy_options)
 					if r == None or len(r) == 0: raise Exception()
 					#print r
@@ -284,6 +282,23 @@ class source:
 						except:
 							pass
 							
+					# yr variation for shows
+					try:
+						year = int(year) + int(season)
+						for i in r:
+							try:
+								y, q = cache.get(self.ymovies_info, 9000, i[1], proxy_options=proxy_options)
+								mychk = False
+								years = [str(year),str(int(year) + 1),str(int(year) - 1)]
+								for x in years:
+									if str(y) == x: mychk = True
+								if mychk == False: raise Exception()
+								return urlparse.urlparse(i[0]).path, (episode)
+							except:
+								pass
+					except:
+						pass
+						
 					# yr variation for shows
 					try:
 						year = int(year) - int(season)
@@ -407,6 +422,12 @@ class source:
 			except Exception as e:
 				qual = '480p'
 				riptype = 'BRRIP'
+				
+			try:
+				poster = client.parseDOM(r, 'div', attrs = {'class': 'dm-thumb'})[0]
+				poster = client.parseDOM(poster, 'img', ret='src')[0]
+			except:
+				poster = None
 								
 			if testing == False:
 				try:		
@@ -492,7 +513,7 @@ class source:
 								pass
 							
 							for s in url:
-								links_m = resolvers.createMeta(s, self.name, self.logo, qual, links_m, key, riptype=riptype, vidtype='Movie', sub_url=sub_url, testing=testing)
+								links_m = resolvers.createMeta(s, self.name, self.logo, qual, links_m, key, poster=poster, riptype=riptype, vidtype='Movie', sub_url=sub_url, testing=testing)
 					except:
 						pass
 			except:

@@ -518,7 +518,7 @@ def openloadS(url, videoData=None, usePairing=True, session=None):
 		video_url = None
 		e = ''
 		try:
-			if USE_PHANTOMJS == True and (session == None or control.setting('%s-%s' % (session, 'Use-PhantomJS')) == True) and control.setting('use_phantomjs') == True:
+			if USE_PHANTOMJS == True and ((session == None or control.setting('%s-%s' % (session, 'Use-PhantomJS')) == True) and control.setting('use_phantomjs') == control.phantomjs_choices[1]) or control.setting('use_phantomjs') == control.phantomjs_choices[2]:
 				log(type='INFO',method='openloadS', err=u'trying phantomjs method: %s' % (video_id))
 				try:
 					v_url, bool = phantomjs.decode(url)

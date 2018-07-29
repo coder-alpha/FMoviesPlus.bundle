@@ -213,16 +213,18 @@ class source:
 
 					if 'year' in data:
 						year = data['year']
-					try: episode = data['episode']
-					except: pass
-
-					query = {'keyword': title}
+					
+					if 'season' in data:
+						query = {'keyword': '%s %s %s' % (title, 'season', data['season'])}
+					else:
+						query = {'keyword': title}
+						
 					search_url = urlparse.urljoin(self.base_link, '/search.html')
 					search_url = search_url + '?' + urllib.urlencode(query)
 					
 					result = proxies.request(search_url, headers=self.headers, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, httpsskip=True)
-					
 					r = client.parseDOM(result, 'div', attrs = {'class': 'wrapper'})
+					
 					try:
 						r = r[1]
 					except:
@@ -235,23 +237,37 @@ class source:
 						t = client.parseDOM(res, 'div', attrs = {'class': 'title'})[0]
 						r = (l,t)
 						r2.append(r)
-					
+						
 					r = r2
 					
 					if 'season' in data:
+						episode = int(data['episode'])
+						
 						r = [(i[0], re.sub(' \(\w*\)', '', i[1])) for i in r]
-						#print r
-						#title += '%01d' % int(data['season'])
 						url = [(i[0], re.findall('(.+?) (\d+)$', i[1])) for i in r]
 						url = [(i[0], i[1][0][0], i[1][0][1]) for i in url if len(i[1]) > 0]
 						url = [i for i in url if cleantitle.get(title) in cleantitle.get(i[1])]
-						#for i in url:
-						#	print i[2],i[0],i[1]
-						#	print '%01d' % int(data['season']) == '%01d' % int(i[2])
-
 						url = [i for i in url if '%01d' % int(data['season']) == '%01d' % int(i[2])]
+						
+						ep_url = []
 						for i in url:
-							urls.append(urlparse.urljoin(self.base_link, i[0]))
+							result = proxies.request(urlparse.urljoin(self.base_link, i[0]), headers=self.headers, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, httpsskip=True)
+							t = client.parseDOM(result, 'div', attrs = {'class': 'eps'})
+							for tt in t:
+								if 'watch' in tt:
+									tt = client.parseDOM(tt, 'div', attrs = {'class': 'server'})[0]
+									section_links = client.parseDOM(tt, 'a', ret='href')
+									for a_link in section_links:
+										if episode < 100:
+											f_key = '-episode-%02d-' % episode
+										else:
+											f_key = '-episode-%03d-' % episode
+										if f_key in a_link:
+											log('INFO','get_sources','episode url = %s' % a_link)
+											ep_url.append(a_link)
+											break
+						for i in ep_url:
+							urls.append(urlparse.urljoin(self.base_link, i))
 					else:
 						for i in r:
 							if cleantitle.get(title) in cleantitle.get(i[1]):
@@ -265,6 +281,8 @@ class source:
 			page = None
 			for url in urls:
 				try:
+					log('INFO','get_sources','url == %s' % url, dolog=False, doPrint=True)
+					
 					page = result = proxies.request(url, headers=self.headers, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, httpsskip=True)
 					
 					quality = '480p'
@@ -315,6 +333,13 @@ class source:
 						if resultx == None:
 							raise Exception()
 							
+					try:
+						poster = client.parseDOM(page, 'div', attrs = {'class': 'detail-l'})[0]
+						poster = client.parseDOM(poster, 'img', ret='src')[0]
+						if 'http' not in poster:
+							server = 'http:' + poster
+					except:
+						poster = None
 					#print result
 
 					#r = client.parseDOM(result, 'article', attrs = {'class': 'player current'})[0]
@@ -333,7 +358,7 @@ class source:
 									if 'http' not in server:
 										server = 'http:' + server
 								
-								links_m = resolvers.createMeta(server, self.name, self.logo, quality, links_m, key, riptype=type, testing=testing)
+								links_m = resolvers.createMeta(server, self.name, self.logo, quality, links_m, key, poster=poster, riptype=type, testing=testing)
 							except Exception as e:
 								pass
 							if testing and len(links_m) > 0:
@@ -348,7 +373,7 @@ class source:
 								if 'http' not in server:
 									server = 'http:' + server
 								try:
-									links_m = resolvers.createMeta(server, self.name, self.logo, quality, links_m, key, riptype=type, testing=testing)	
+									links_m = resolvers.createMeta(server, self.name, self.logo, quality, links_m, key, poster=poster, riptype=type, testing=testing)	
 								except:
 									pass
 					except:

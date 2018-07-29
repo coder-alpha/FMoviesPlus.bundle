@@ -37,19 +37,21 @@ loggertxt = []
 class source:
 	def __init__(self):
 		del loggertxt[:]
-		self.ver = '0.1.0'
-		self.update_date = 'Apr. 25, 2018'
+		self.ver = '0.1.1'
+		self.update_date = 'June 26, 2018'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
 		self.serverts = None
 		self.disabled = False
 		self.TOKEN_KEY = []
-		self.base_link_alts = ['https://www4.9anime.is','https://9anime.is','https://9anime.to']
+		self.FLAGS = {}
+		self.base_link_alts = ['https://www6.9anime.is','https://9anime.is','https://9anime.to']
 		self.base_link = self.base_link_alts[0]
 		self.grabber_api = "grabber-api/"
 		self.search_link = '/sitemap'
 		self.ALL_JS = "/assets/min/frontend/all.js"
-		self.TOKEN_KEY_PASTEBIN_URL = "https://pastebin.com/raw/VNn1454k"
+		self.TOKEN_KEY_PASTEBIN_URL = "https://pastebin.com/raw/YWQr0z2F"
+		self.FLAGS_PASTEBIN_URL = "https://pastebin.com/raw/xt5SrJ2t"
 		self.hash_link = '/ajax/episode/info'
 		self.hash_menu_link = "/user/ajax/menu-bar"
 		self.token_link = "/token"
@@ -127,7 +129,7 @@ class source:
 		
 	def InitSleepThread(self):
 		while True:
-			time.sleep(60*60) # 1 hr
+			time.sleep(60*10) # 10 min
 			self.initAndSleep()
 			
 	def initAndSleep(self):
@@ -606,24 +608,28 @@ class source:
 		except:
 			return
 	
-	def r01(self, t, e, token_error=False):
+	def r01(self, t, e, token_error=False, code_use=False):
 		i = 0
 		n = 0
-		for i in range(0, max(len(t), len(e))):
-			if i < len(e):
-				n += ord(e[i])
-			if i < len(t):
-				n += ord(t[i])
+		if code_use == True:
+			for i in range(0, max(len(t), len(e))):
+				if i < len(e):
+					n += ord(e[i])
+				if i < len(t):
+					n += ord(t[i])
 		h = format(int(hex(n),16),'x')
 		return h
 
-	def a01(self, t, token_error=False):
+	def a01(self, t, token_error=False, use_code=True):
 		i = 0
-		for e in range(0, len(t)):
-			if token_error == False:
-				i += ord(t[e]) + e
-			else:
-				i += ord(t[e]) * e
+		if use_code == True:
+			for e in range(0, len(t)):
+				if token_error == False:
+					i += ord(t[e]) + e
+				else:
+					i += ord(t[e]) * e
+		else:
+			i = int(self.FLAGS["no_code_val_anime"])
 		return i
 
 	def decode_t(self, t):
@@ -685,12 +691,28 @@ class source:
 			log('ERROR', 'decode_t','%s' % e, dolog=False)
 			False, 'Error in decoding'
 
-	def __get_token(self, n, token_error=False):
+	def __get_token(self, n, token_error=False, is9Anime=True):
 		try:
 			d = self.TOKEN_KEY[0]
-			s = self.a01(d, token_error)
+			
+			use_code = True
+			use_code2 = True
+			if len(self.FLAGS.keys()) > 0:
+				if is9Anime==True and 'use_code_anime' in FLAGS.keys():
+					use_code = FLAGS["use_code_anime"]
+				elif is9Anime==False and 'use_code' in FLAGS.keys():
+					use_code = FLAGS["use_code"]
+				if is9Anime==True and 'use_code_anime2' in FLAGS.keys():
+					use_code2 = FLAGS["use_code_anime2"]
+				elif is9Anime==False and 'use_code2' in FLAGS.keys():
+					use_code2 = FLAGS["use_code2"]
+				
+				use_code = True if str(use_code).lower()=='true' else False
+				use_code2 = True if str(use_code2).lower()=='true' else False
+			
+			s = self.a01(d, token_error, use_code=use_code)
 			for i in n: 
-				s += self.a01(self.r01(d + i, n[i]), token_error)
+				s += self.a01(self.r01(d + i, n[i], use_code=use_code2), token_error)
 			return {'_': str(s)}
 		except Exception as e:
 			log('ERROR', '__get_token','%s' % e, dolog=False)
@@ -729,6 +751,15 @@ class source:
 					control.set_setting(name+'VidToken', token_key)
 		except Exception as e:
 			log('ERROR', 'getVidToken-2','%s' % e, dolog=False)
+			
+		try:
+			fm_flags = proxies.request(self.FLAGS_PASTEBIN_URL, use_web_proxy=self.proxyrequired, httpsskip=True)
+			if fm_flags !=None and fm_flags != '':
+				fm_flags = json.loads(fm_flags)
+				#cookie_dict.update({'token_key':token_key})
+				self.FLAGS = fm_flags
+		except Exception as e:
+			log('ERROR', 'getVidToken-3-Flags','%s' % e, dolog=False)
 
 def log(type='INFO', method='undefined', err='', dolog=True, logToControl=False, doPrint=True):
 	try:

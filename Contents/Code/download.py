@@ -23,6 +23,7 @@ REMAP_EXTRAS = {'behind the scenes':'behindthescenes', 'deleted scenes':'deleted
 QUEUE_RUN_ITEMS = {}
 WAIT_AND_RETRY_ON_429 = True
 CONNECTION_TIMEOUT = 60
+FLAG_3D = '.3D.HSBS'
 
 def query_pms(path):
 	return 'http://127.0.0.1:32400%s' % path
@@ -160,6 +161,8 @@ class Downloader(object):
 			
 		try:
 			riptype = file_meta['riptype']
+			if riptype == None:
+				riptype = 'BRRIP'
 		except:
 			riptype = 'BRRIP'
 			
@@ -189,20 +192,24 @@ class Downloader(object):
 		
 		if 'file_ext' in file_meta:
 			file_ext = file_meta['file_ext']
+			if file_ext == None:
+				file_ext = '.mp4'
 		else:
 			file_ext = '.mp4'
 			
 		source_meta = {}
 		f_meta = {}
 		
-		if vidtype in 'movie/show':
-			if '3D-' in riptype:
-				fname = '%s (%s)%s%s%s' % (file_meta['title'],file_meta['year'],'.3D',file_ext,fid + common.DOWNLOAD_FMP_EXT)
-			else:
-				fname = '%s (%s)%s%s' % (file_meta['title'], file_meta['year'], file_ext, fid + common.DOWNLOAD_FMP_EXT)
+		if vidtype == 'show':
+			item_folder_name = '%s' % (file_meta['title'])
 		else:
-			fname = '%s (%s)-%s%s%s' % (file_meta['title'], file_meta['year'], REMAP_EXTRAS[vidtype], file_ext, fid + common.DOWNLOAD_FMP_EXT)
-		abs_path = Core.storage.join_path(path, fname)
+			item_folder_name = '%s (%s)' % (file_meta['title'], file_meta['year'])
+	
+		fname = create_fname(file_meta, vidtype, riptype, file_ext, file_ext_temp = fid + common.DOWNLOAD_FMP_EXT)
+			
+		abs_path = Core.storage.join_path(path, item_folder_name, fname)
+		directory = Core.storage.join_path(path, item_folder_name)
+		
 		file_meta['temp_file'] = abs_path
 		
 		startPos = verifyStartPos(startPos, abs_path)
@@ -259,19 +266,13 @@ class Downloader(object):
 		
 		# ToDo
 		# https://support.plex.tv/articles/200220677-local-media-assets-movies/
-		if vidtype in 'movie/show':
-			if '3D-' in riptype:
-				fname = '%s (%s)%s%s' % (file_meta['title'],file_meta['year'],'.3D', file_ext)
-			else:
-				fname = '%s (%s)%s' % (file_meta['title'], file_meta['year'], file_ext)
-		else:
-			fname = '%s (%s)-%s%s' % (file_meta['title'], file_meta['year'], REMAP_EXTRAS[vidtype], file_ext)
+		fname = create_fname(file_meta, vidtype, riptype, file_ext)
 		
-		item_folder_name = '%s (%s)' % (file_meta['title'], file_meta['year'])
-		final_abs_path = Core.storage.join_path(path, fname)
+		final_abs_path = Core.storage.join_path(path, item_folder_name, fname)
 		
-		fname = '%s (%s)%s' % (file_meta['title'], file_meta['year'], '.en.srt')
-		sub_file_path = Core.storage.join_path(path, fname)
+		# subtitle
+		sub_fname = fname.replace(file_ext,'') + '.en.srt'
+		sub_file_path = Core.storage.join_path(directory, sub_fname)
 		
 		write_mode = 'wb'
 		chunk_speed = 0
@@ -326,6 +327,13 @@ class Downloader(object):
 		FMPdownloader = None
 		
 		try:
+			try:
+				if not os.path.exists(directory):
+					os.makedirs(directory)
+					while os.path.exists(directory) == False:
+						time.sleep(1)
+			except OSError as e:
+				raise Exception('%s' % e)
 			if source == 'mega' or r.status_code == 200 or r.status_code == 206:
 				
 				if source == 'mega':
@@ -482,14 +490,15 @@ class Downloader(object):
 						while (file_renamed_inc):
 							while Core.storage.file_exists(final_abs_path):
 								
-								if vidtype in 'movie/show':
-									fname = '%s (%s)-%s%s' % (file_meta['title'], file_meta['year'], str(c), file_ext)
-								else:
-									fname = '%s (%s)-%s%s%s' % (file_meta['title'], file_meta['year'], REMAP_EXTRAS[vidtype], str(c), file_ext)
+								fname = create_fname(file_meta, vidtype, riptype, file_ext, c=c)
 								
-								final_abs_path = Core.storage.join_path(path, fname)
-								fname = '%s (%s)%s' % (file_meta['title'], file_meta['year'], '.en.srt')
-								sub_file_path = Core.storage.join_path(path, fname)
+								# new progressive name
+								final_abs_path = Core.storage.join_path(directory, fname)
+								
+								# subtitle
+								sub_fname = fname.replace(file_ext,'') + '.en.srt'
+								sub_file_path = Core.storage.join_path(directory, sub_fname)
+								
 								c += 1
 							try:
 								os.rename(abs_path, final_abs_path)
@@ -531,6 +540,46 @@ class Downloader(object):
 				pass
 		
 ##############################################################################################
+
+def create_fname(file_meta, vidtype, riptype, file_ext, file_ext_temp='', c=None):
+
+	if c == None:
+		if vidtype in 'movie/show':
+			if vidtype == 'show':
+				if '3D-' in riptype:
+					fname = '%s (%s)%s%s%s' % (file_meta['watch_title'],file_meta['year'],FLAG_3D, file_ext, file_ext_temp)
+				else:
+					fname = '%s (%s)%s%s' % (file_meta['watch_title'], file_meta['year'], file_ext, file_ext_temp)
+			else:
+				if '3D-' in riptype:
+					fname = '%s (%s)%s%s%s' % (file_meta['title'],file_meta['year'],FLAG_3D, file_ext, file_ext_temp)
+				else:
+					fname = '%s (%s)%s%s' % (file_meta['title'], file_meta['year'], file_ext, file_ext_temp)
+		else:
+			fname = '%s (%s)-%s%s%s' % (file_meta['title'], file_meta['year'], REMAP_EXTRAS[vidtype], file_ext, file_ext_temp)
+			if '3D-' in riptype:
+				fname = '%s (%s)-%s%s%s%s' % (file_meta['title'], file_meta['year'], REMAP_EXTRAS[vidtype], FLAG_3D, file_ext, file_ext_temp)
+			else:
+				fname = '%s (%s)-%s%s%s' % (file_meta['title'], file_meta['year'], REMAP_EXTRAS[vidtype], file_ext, file_ext_temp)
+	else:
+		if vidtype in 'movie/show':
+			if vidtype == 'show':
+				if '3D-' in riptype:
+					fname = '%s (%s)%s%s%s' % (file_meta['watch_title'],file_meta['year'],FLAG_3D, str(c), file_ext, file_ext_temp)
+				else:
+					fname = '%s (%s)%s%s' % (file_meta['watch_title'], file_meta['year'], str(c), file_ext, file_ext_temp)
+			else:
+				if '3D-' in riptype:
+					fname = '%s (%s)%s%s%s' % (file_meta['title'],file_meta['year'],FLAG_3D, str(c), file_ext, file_ext_temp)
+				else:
+					fname = '%s (%s)%s%s' % (file_meta['title'], file_meta['year'], str(c), file_ext, file_ext_temp)
+		else:
+			if '3D-' in riptype:
+				fname = '%s (%s)-%s%s%s%s%s' % (file_meta['title'], file_meta['year'], REMAP_EXTRAS[vidtype], FLAG_3D, str(c), file_ext, file_ext_temp)
+			else:
+				fname = '%s (%s)-%s-%s%s%s' % (file_meta['title'], file_meta['year'], REMAP_EXTRAS[vidtype], str(c), file_ext, file_ext_temp)
+		
+	return fname
 	
 def do_download(file_meta_enc):
 
@@ -540,7 +589,8 @@ def do_download(file_meta_enc):
 		uid = longstringObjs['uid']
 		if uid in QUEUE_RUN_ITEMS.keys():
 			del QUEUE_RUN_ITEMS[uid]
-		Log("Downlod connections limit reached (%s of %s). This item will be queued !" % (str(len(common.DOWNLOAD_STATS.keys())), Prefs['download_connections']))
+		if Prefs['use_debug']:
+			Log("Downlod connections limit reached (%s of %s). This item will be queued !" % (str(len(common.DOWNLOAD_STATS.keys())), Prefs['download_connections']))
 		return
 
 	downloader = Downloader()
@@ -638,8 +688,18 @@ def end_download_by_user(title, url, purgeKey):
 	filepath = file_meta['temp_file']
 	try:
 		Core.storage.remove_data_item(filepath)
+		time.sleep(1)
 	except Exception as e:
-		Log("=============end_download_by_user Error============")
+		Log("=============end_download_by_user Error-1============")
+		Log(e)
+		
+	try:
+		dir_path = os.path.dirname(filepath)
+		num_files = os.listdir(dir_path)
+		if len(num_files) == 0:
+			os.rmdir(dir_path)
+	except Exception as e:
+		Log("=============end_download_by_user Error-2============")
 		Log(e)
 		
 	if purgeKey in common.DOWNLOAD_STATS.keys():
@@ -722,7 +782,7 @@ def trigger_que_run(skip = []):
 			Dict.Save()
 				
 	if len(items_for_que_run) > 0:
-		newlistSorted = sorted(items_for_que_run, key=lambda k: k['label'], reverse=True)
+		newlistSorted = sorted(items_for_que_run, key=lambda k: k['label'], reverse=False)
 		
 		for i in newlistSorted:
 			try:
@@ -742,10 +802,16 @@ def move_unfinished_to_failed():
 	#Log(common.DOWNLOAD_TEMP)
 	
 	if common.DOWNLOAD_TEMP != None:
+		
 		try:
 			common.DOWNLOAD_TEMP = JSON.ObjectFromString(D(common.DOWNLOAD_TEMP))
 		except:
 			common.DOWNLOAD_TEMP = {}
+			
+		if len(common.DOWNLOAD_TEMP.keys()) > 0:
+			if Prefs['use_debug']:
+				Log("Moving Unfinished Downloads to Failed !")
+			
 		c = 0
 		for key in common.DOWNLOAD_TEMP.keys():
 			try:
@@ -789,6 +855,36 @@ def move_unfinished_to_failed():
 		common.DOWNLOAD_TEMP = {}
 		Dict.Save()
 		
+def move_failed_to_queued():
+
+	items_to_change = []
+	
+	for each in Dict:
+		if 'Down5Split' in each:
+			try:
+				longstringObjs = JSON.ObjectFromString(D(Dict[each]))
+				if longstringObjs['status'] == common.DOWNLOAD_STATUS[3]:
+					items_to_change.append(each)
+			except Exception as e:
+				Log("============ move_failed_to_queued =============")
+				Log(e)
+				
+	if len(items_to_change) > 0:
+		if Prefs['use_debug']:
+			Log("Moving Failed Downloads to Queued !")
+		
+		for each in items_to_change:
+			file_meta_enc = Dict[each]
+			file_meta = JSON.ObjectFromString(D(file_meta_enc))
+			
+			file_meta['status'] = common.DOWNLOAD_STATUS[0]
+			file_meta['action'] = common.DOWNLOAD_ACTIONS[4]
+			
+			Dict[each] = E(JSON.StringFromObject(file_meta))
+			
+		Dict.Save()
+		time.sleep(2)
+		
 def verifyStartPos(startPos, filepath):
 	try:
 		if filepath != None and Core.storage.file_exists(filepath):
@@ -804,6 +900,9 @@ def verifyStartPos(startPos, filepath):
 def DownloadInit():
 	move_unfinished_to_failed()
 	time.sleep(1)
+	if common.UsingOption(key=common.DEVICE_OPTIONS[13], session='None') == True:
+		move_failed_to_queued()
+		time.sleep(1)
 	dlt = DownloadThrottler()
 	DLT.append(dlt)
 	DLT[0].start()

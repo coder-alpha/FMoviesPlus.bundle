@@ -88,8 +88,9 @@ def decode(url, python_dir=None, debug=False, ssl=True, js='openload.js'):
 			raise Exception(output)
 		if len(output) == 0:
 			raise Exception('Empty output received !')
-		#print "1: %s" % output
-		output = re.findall(r'https://openload.co/stream/.*', output)[0]
+		if js=='openload.js':
+			#print "1: %s" % output
+			output = re.findall(r'https://openload.co/stream/.*', output)[0]
 		#print "2: %s" % output
 		output = output.strip().replace('\n','').encode('utf8').decode('ascii')
 		#print "3: %s" % output
@@ -156,4 +157,16 @@ def test():
 	print resp[0]
 	log(PROCESSES)
 	
-#test()
+def test2():
+	print "PhantomJS binary file presence: %s | MD5 Checksum: %s" % checkBinaryPresence()
+	resp = decode("https://fmovies.taxi/film/incredibles-2.5kj1m/njpppj", debug=False, js='fmovies.js')
+	print resp[0]
+	log(PROCESSES)
+	
+def test3():
+	print "PhantomJS binary file presence: %s | MD5 Checksum: %s" % checkBinaryPresence()
+	resp = decode("https://www6.9anime.is/watch/ginga-eiyuu-densetsu-die-neue-these-kaikou.0y5r/j1xj1y", debug=False, js='fmovies.js')
+	print resp[0]
+	log(PROCESSES)
+	
+#test3()

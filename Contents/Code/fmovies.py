@@ -407,6 +407,8 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 			
 						if len(PAIRS) > 0 and vid_token_key in PAIRS[0].keys():
 							TOKEN_KEY.append(PAIRS[0][vid_token_key])
+						elif len(PAIRS) > 0:
+							TOKEN_KEY.append(PAIRS[0]["None"])
 					except:
 						pass
 						
@@ -954,6 +956,17 @@ def get_sources2(url, key, prev_error=None, use_debug=True, session=None, **kwar
 		if prev_error != None and prev_error != error:
 			error = prev_error + ' and ' + error
 	return video_url, isTargetPlay, error, host_type, subtitle
+	
+def get_servers(serverts, page_url, is9Anime=False, use_https_alt=False):
+	
+	T_BASE_URL = BASE_URL
+	T_BASE_URL = 'https://%s' % common.client.geturlhost(page_url)
+	page_id = page_url.rsplit('.', 1)[1]
+	server_query = '/ajax/film/servers/%s' % page_id
+	server_url = urlparse.urljoin(T_BASE_URL, server_query)
+	result = common.interface.request_via_proxy_as_backup(server_url, httpsskip=use_https_alt)
+	html = '<html><body><div id="servers-container">%s</div></body></html>' % json.loads(result)['html'].replace('\n','').replace('\\','')
+	return html
 		
 def r01(t, e, token_error=False, use_code=True):
 	i = 0

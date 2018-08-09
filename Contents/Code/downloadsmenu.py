@@ -143,14 +143,15 @@ def AutoPilotDownloadThread(item):
 	Dict.Save()
 	
 #######################################################################################################
-def AutoPilotDownloadThread1(item=None):
+def AutoPilotDownloadThread1(item=None, runForWaiting=False):
 	
 	removeEntry = False
 	removeEntry_item = None
+	
 	if item == None: # runs via Scheduler
 		for type in common.DOWNLOAD_AUTOPILOT.keys():
 			for item in common.DOWNLOAD_AUTOPILOT[type]:
-				if item['status'] != common.DOWNLOAD_AUTOPILOT_STATUS[2]:
+				if (item['status'] != common.DOWNLOAD_AUTOPILOT_STATUS[2] and runForWaiting == False) or (runForWaiting == True and item['status'] == common.DOWNLOAD_AUTOPILOT_STATUS[3]):
 					sources = None
 					if item['type'] == 'show':
 						key = main.generatemoviekey(movtitle=None, year=item['year'], tvshowtitle=item['short_title'], season=item['season'], episode=str(item['episode']))
@@ -235,6 +236,7 @@ def AutoPilotDownloadThread2(item, sources):
 	sources = common.OrderBasedOn(sources, use_filesize=True)
 	
 	for s in sources:
+		Log(s)
 		try:
 			fsBytes = int(s['fs'])
 			fs = '%s GB' % str(round(float(s['fs'])/common.TO_GB, 3))

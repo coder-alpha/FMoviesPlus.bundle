@@ -681,6 +681,7 @@ def isItemVidAvailable(isTargetPlay, data, params=None, host=None, **kwargs):
 	vidurl = None
 	httpsskip = Prefs["use_https_alt"]
 	use_web_proxy = Prefs["use_web_proxy"]
+	isTargetPlay = True if str(isTargetPlay).lower() == 'true' else False
 	
 	if isTargetPlay:
 		vidurl = data
@@ -896,9 +897,9 @@ def GetPageAsString(url, headers=None, timeout=15, referer=None):
 			if use_debug:
 				Log("Using SSL Alternate Option")
 				Log("Url: " + url)
-			page_data_string = interface.request(url = url, headers=headers, timeout=str(timeout), httpsskip=True)
+			page_data_string = interface.request(url=url, headers=headers, timeout=str(timeout), httpsskip=True)
 			if page_data_string == None:
-				error, page_data_string = interface.request(url = url, headers=headers, timeout=str(timeout), error=True, httpsskip=True)
+				error, page_data_string = interface.request(url=url, headers=headers, timeout=str(timeout), error=True, httpsskip=True)
 		elif Prefs["use_web_proxy"]:
 			page_data_string = None
 			if use_debug:
@@ -919,7 +920,7 @@ def GetPageAsString(url, headers=None, timeout=15, referer=None):
 			except:
 				pass
 			if page_data_string == None:
-				error, page_data_string = interface.request(url = url, headers=headers, timeout=str(timeout), error=True)
+				error, page_data_string = interface.request(url=url, headers=headers, timeout=str(timeout), error=True)
 				
 		if url not in CACHE_META.keys() and page_data_string != None and error == '':
 			CACHE_META[url] = {}

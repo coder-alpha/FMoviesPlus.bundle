@@ -50,8 +50,8 @@ loggertxt = []
 class source:
 	def __init__(self):
 		del loggertxt[:]
-		self.ver = '0.1.1'
-		self.update_date = 'May. 25, 2018'
+		self.ver = '0.1.2'
+		self.update_date = 'Aug. 09, 2018'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
 		self.base_link = 'https://yesmovies.to'
@@ -511,9 +511,13 @@ class source:
 								sub_url = json.loads(r)['playlist'][0]['tracks'][0]['file']
 							except:
 								pass
+								
+							vidtype='Movie'
+							if int(ep) > 0:
+								vidtype='Show'
 							
 							for s in url:
-								links_m = resolvers.createMeta(s, self.name, self.logo, qual, links_m, key, poster=poster, riptype=riptype, vidtype='Movie', sub_url=sub_url, testing=testing)
+								links_m = resolvers.createMeta(s, self.name, self.logo, qual, links_m, key, poster=poster, riptype=riptype, vidtype=vidtype, sub_url=sub_url, testing=testing)
 					except:
 						pass
 			except:

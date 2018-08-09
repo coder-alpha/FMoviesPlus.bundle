@@ -45,8 +45,8 @@ USE_PHANTOMJS = True
 class source:
 	def __init__(self):
 		del loggertxt[:]
-		self.ver = '0.1.1'
-		self.update_date = 'June 17, 2018'
+		self.ver = '0.1.2'
+		self.update_date = 'Aug. 09, 2018'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
 		self.disabled = False
@@ -353,6 +353,7 @@ class source:
 				except Exception as e:
 					raise Exception(e)
 
+			vidtype = 'Movie'
 			for url in urls:
 				try:
 					try: url, episode = re.compile('(.+?)\?episode=(\d*)$').findall(url)[0]
@@ -368,9 +369,11 @@ class source:
 					if 'data-type="series"' not in result:
 						raise Exception('Not a TV-Series')
 					
+					vidtype = 'Show'
 					alina = client.parseDOM(result, 'title')[0]
 
 					atr = [i for i in client.parseDOM(result, 'title') if len(re.findall('(\d{4})', i)) > 0][-1]
+
 					if 'season' in data:
 						try: season = data['season']
 						except: pass
@@ -432,14 +435,17 @@ class source:
 				quality = '480p'
 				riptype = 'BRRIP'
 
-			result = client.parseDOM(result, 'ul', attrs = {'data-range-id':"0"})
-
-			servers = []
+			result_servers = self.get_servers(url, proxy_options=proxy_options)
+			result_servers = client.parseDOM(result_servers, 'ul', attrs = {'data-range-id':"0"})
+			#print result_servers
+			#result_servers = []
 			#servers = client.parseDOM(result, 'li', attrs = {'data-type': 'direct'})
-			servers = zip(client.parseDOM(result, 'a', ret='data-id'), client.parseDOM(result, 'a'))
+			result_servers = zip(client.parseDOM(result_servers, 'a', ret='data-id'), client.parseDOM(result_servers, 'a'))
+			#print result_servers
 			
-			servers = [(i[0], re.findall('(\d+)', i[1])) for i in servers]
-			servers = [(i[0], ''.join(i[1][:1])) for i in servers]
+			result_servers = [(i[0], re.findall('(\d+)', i[1])) for i in result_servers]
+			
+			servers = [(i[0], ''.join(i[1][:1])) for i in result_servers]
 			
 			try: servers = [i for i in servers if '%01d' % int(i[1]) == '%01d' % int(episode)]
 			except: pass
@@ -554,7 +560,7 @@ class source:
 							
 							for i in result:
 								video_url = i
-								links_m = resolvers.createMeta(i, self.name, self.logo, quality, links_m, key, riptype, sub_url=sub_url, testing=testing)
+								links_m = resolvers.createMeta(i, self.name, self.logo, quality, links_m, key, riptype, vidtype=vidtype, sub_url=sub_url, testing=testing)
 						else:
 							target = result['target']
 							b, resp = self.decode_t(target, -18)
@@ -569,7 +575,7 @@ class source:
 								target = 'http:' + target
 								
 							video_url = target
-							links_m = resolvers.createMeta(target, self.name, self.logo, quality, links_m, key, riptype, sub_url=sub_url, testing=testing)
+							links_m = resolvers.createMeta(target, self.name, self.logo, quality, links_m, key, riptype, vidtype=vidtype, sub_url=sub_url, testing=testing)
 
 				except Exception as e:
 					log('FAIL', 'get_sources-7','%s' % e, dolog=False)
@@ -587,7 +593,7 @@ class source:
 								video_url = v_url
 								ret_error = ''
 								log(type='SUCCESS',method='get_sources-4.a.2', err=u'*PhantomJS* method is working: %s' % vx_url)
-								links_m = resolvers.createMeta(video_url, self.name, self.logo, quality, links_m, key, riptype, sub_url=sub_url, testing=testing)
+								links_m = resolvers.createMeta(video_url, self.name, self.logo, quality, links_m, key, riptype, vidtype=vidtype, sub_url=sub_url, testing=testing)
 						except:
 							raise Exception('phantomjs not working')
 					else:
@@ -612,6 +618,17 @@ class source:
 			return url
 		except:
 			return
+			
+	def get_servers(self, page_url, proxy_options=None):	
+		T_BASE_URL = self.base_link
+		T_BASE_URL = 'https://%s' % client.geturlhost(page_url)
+		page_id = page_url.rsplit('.', 1)[1]
+		server_query = '/ajax/film/servers/%s' % page_id
+		server_url = urlparse.urljoin(T_BASE_URL, server_query)
+		log('INFO','get_servers', server_url, dolog=False)
+		result = proxies.request(server_url, headers=self.headers, referer=page_url, limit='0', proxy_options=proxy_options, use_web_proxy=self.proxyrequired, httpsskip=True)
+		html = '<html><body><div id="servers-container">%s</div></body></html>' % json.loads(result)['html'].replace('\n','').replace('\\','')
+		return html
 	
 	def r01(self, t, e, token_error=False, use_code=True):
 		i = 0
@@ -679,14 +696,14 @@ class source:
 			use_code = True
 			use_code2 = True
 			if len(self.FLAGS.keys()) > 0:
-				if is9Anime==True and 'use_code_anime' in FLAGS.keys():
-					use_code = FLAGS["use_code_anime"]
-				elif is9Anime==False and 'use_code' in FLAGS.keys():
-					use_code = FLAGS["use_code"]
-				if is9Anime==True and 'use_code_anime2' in FLAGS.keys():
-					use_code2 = FLAGS["use_code_anime2"]
-				elif is9Anime==False and 'use_code2' in FLAGS.keys():
-					use_code2 = FLAGS["use_code2"]
+				if is9Anime==True and 'use_code_anime' in self.FLAGS.keys():
+					use_code = self.FLAGS["use_code_anime"]
+				elif is9Anime==False and 'use_code' in self.FLAGS.keys():
+					use_code = self.FLAGS["use_code"]
+				if is9Anime==True and 'use_code_anime2' in self.FLAGS.keys():
+					use_code2 = self.FLAGS["use_code_anime2"]
+				elif is9Anime==False and 'use_code2' in self.FLAGS.keys():
+					use_code2 = self.FLAGS["use_code2"]
 				
 				use_code = True if str(use_code).lower()=='true' else False
 				use_code2 = True if str(use_code2).lower()=='true' else False
@@ -738,8 +755,12 @@ class source:
 			unpacked_code = all_js_pack_code
 			
 			del self.TOKEN_KEY[:]
-			if vid_token_key in self.PAIRS.keys():
-				d = self.PAIRS[vid_token_key]
+			if len(self.PAIRS.keys()) > 0:
+				if vid_token_key in self.PAIRS.keys():
+					d = self.PAIRS[vid_token_key]
+					self.TOKEN_KEY.append(d)
+			elif len(self.PAIRS.keys()) > 0:
+				d = self.PAIRS["None"]
 				self.TOKEN_KEY.append(d)
 				
 			try:

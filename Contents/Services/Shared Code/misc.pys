@@ -102,7 +102,10 @@ def resolve(url, https_skip=True, test=False, strip_url=True):
 				except:
 					pass
 			
-			video_urlf = video_url_a
+			if len(video_url_a) > 0:
+				video_urlf = video_url_a
+			else:
+				raise Exception('No Data found in page')
 			
 		elif 'streamango.' in ourl:
 			myheaders = {}
@@ -251,6 +254,8 @@ def error(url, https_skip):
 				error = 'Video removed by streamango.'
 			elif ('streamango.' in ourl or 'fruitstreams.' in ourl or 'streamcherry.' in ourl) and ('The file you are looking is currently converting' in page_data_string):
 				error = 'Video is processing, try again later.'
+			elif ('rapidvideo.' in ourl) and "<script>top.location.href = '';</script>" in page_data_string:
+				error = 'No data found in page'
 		else:
 			error = 'Page returned None'
 	except:

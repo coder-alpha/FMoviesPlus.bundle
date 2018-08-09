@@ -164,7 +164,7 @@ def SleepPersistAndUpdateCookie(**kwargs):
 		now = datetime.datetime.now()
 		if now.hour == int(Prefs['autopilot_schedule']) and Dict['Autopilot_Schedule_Complete'] != True:
 			if Prefs["use_debug"]:
-				Log("Running the Auto-Pilot Scheduled Run: %s" % time.localtime(time.time()))
+				Log("Running the Auto-Pilot Scheduled Run: %s" % time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
 			Thread.Create(downloadsmenu.AutoPilotDownloadThread1)
 			Dict['Autopilot_Schedule_Complete'] = True
 			Dict.Save()
@@ -361,6 +361,7 @@ def SleepAndUpdateThread(update=True, startthread=True, session=None, **kwargs):
 	Dict.Save()
 		
 	Thread.Create(download.DownloadInit)
+	Thread.Create(downloadsmenu.AutoPilotDownloadThread1, {}, None, True)
 		
 	# time.sleep(120)
 	# if startthread == True:
@@ -2054,6 +2055,8 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 		
 	is9anime = 'True' if common.ANIME_KEY in url.lower() else 'False'
 	servers_list_new = []
+	
+	use_https_alt = Prefs["use_https_alt"]
 		
 	client_id = '%s-%s' % (Client.Product, session)
 	if client_id not in CUSTOM_TIMEOUT_DICT.keys():
@@ -2172,6 +2175,35 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 			servers = page_data.xpath(".//*[@id='servers']//div[@class='server row']")
 		except:
 			servers = []
+			
+		if len(servers) == 0:
+			server_page_data = fmovies.get_servers(serverts, url, is9Anime=True if str(is9anime)=='True' else False, use_https_alt=use_https_alt)
+			try:
+				server_page_data_elems = HTML.ElementFromString(server_page_data)
+				servers = server_page_data_elems.xpath(".//*[@id='servers']//div[@class='server row']")
+			except:
+				servers = []
+			# if url not in common.CACHE_META.keys()
+				# if (common.control.setting('use_phantomjs') == common.control.phantomjs_choices[1] and common.control.setting('%s-%s' % (session, 'Use-PhantomJS')) == True) or common.control.setting('use_phantomjs') == common.control.phantomjs_choices[2]:
+					# Log(u'Trying phantomjs method for encrypted page: %s' % url)
+					# try:
+						# page_data_string_from_pjs, bool = common.phantomjs.decode(url, js='fmoviesPage.js')
+						# if bool == False:
+							# ret_error = page_data_string_from_pjs
+							# raise Exception(ret_error)
+						# else:
+							# Log(u'*PhantomJS* method is working: %s' % url)
+							# try:
+								# if page_data_string_from_pjs != None and page_data_string_from_pjs == '':
+									# common.CACHE_META[url] = {}
+									# common.CACHE_META[url]['ts'] = time.time()
+									# common.CACHE_META[url]['data'] = E(page_data_string_from_pjs)
+							# except Exception as e:
+								# raise Exception(e)
+					# except:
+						# Log('phantomjs not working which is required for encrypted page')
+				# else:
+					# Log('phantomjs is required for encrypted page but is disabled')
 		
 		summary += '\n '
 		summary += 'Actors: ' + (roles) + '\n '
@@ -2242,12 +2274,16 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 		except:
 			pass
 			
+		#if Prefs["use_debug"]:
+		#	Log("servers : %s" % servers)
+			
 		for server in servers:
 			label = server.xpath(".//label[@class='name col-md-4 col-sm-5']//text()[2]")[0].strip()
 			try:
 				serverid = server.xpath("./@data-id")[0]
 			except:
 				serverid = None
+				
 			if label.lower() not in common.FMOVIES_HOSTS_DISABLED or (label.lower() in common.FMOVIES_HOSTS_DISABLED and common.MY_CLOUD_DISABLED == False) or len(servers) == 1:
 				if label in common.host_gvideo.FMOVIES_SERVER_MAP:
 					label = common.host_gvideo.FMOVIES_SERVER_MAP[label]
@@ -2283,8 +2319,6 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 		server_lab = sorted(server_lab)
 		if len(server_lab) == 0:
 			server_lab.append(common.SERVER_PLACEHOLDER)
-		
-		#Log(servers_list)
 		
 		# remap server list - this way its easier to iterate for tv-show episodes
 		servers_list_new = []
@@ -2435,6 +2469,37 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 			servers = page_data.xpath(".//div[contains(@class ,'server active') or contains(@class,'server hidden')]")
 		except:
 			servers = []
+			
+		server_page_data_elems = None
+		if len(servers) == 0:
+			server_page_data = fmovies.get_servers(serverts, url, is9Anime=True if str(is9anime)=='True' else False, use_https_alt=use_https_alt)
+			try:
+				server_page_data_elems = HTML.ElementFromString(server_page_data)
+				servers = server_page_data_elems.xpath(".//div[contains(@class ,'server active') or contains(@class,'server hidden')]")
+			except:
+				servers = []
+
+			# if url not in common.CACHE_META.keys()
+				# if (common.control.setting('use_phantomjs') == common.control.phantomjs_choices[1] and common.control.setting('%s-%s' % (session, 'Use-PhantomJS')) == True) or common.control.setting('use_phantomjs') == common.control.phantomjs_choices[2]:
+					# Log(u'Trying phantomjs method for encrypted page: %s' % url)
+					# try:
+						# page_data_string_from_pjs, bool = common.phantomjs.decode(url, js='fmoviesPage.js')
+						# if bool == False:
+							# ret_error = page_data_string_from_pjs
+							# raise Exception(ret_error)
+						# else:
+							# Log(u'*PhantomJS* method is working: %s' % url)
+							# try:
+								# if page_data_string_from_pjs != None and page_data_string_from_pjs == '':
+									# common.CACHE_META[url] = {}
+									# common.CACHE_META[url]['ts'] = time.time()
+									# common.CACHE_META[url]['data'] = E(page_data_string_from_pjs)
+							# except Exception as e:
+								# raise Exception(e)
+					# except:
+						# Log('phantomjs not working which is required for encrypted page')
+				# else:
+					# Log('phantomjs is required for encrypted page but is disabled')
 		
 		summary += '\n '
 		summary += 'Actors: ' + (roles) + '\n '
@@ -2499,7 +2564,10 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 		
 		for server in servers:
 			dataname = server.xpath(".//@data-name")[0]
-			label = page_data.xpath(".//span[contains(@data-name ,'%s')]//text()" % dataname)[0].strip()
+			if server_page_data_elems != None:
+				label = server_page_data_elems.xpath(".//span[contains(@data-name ,'%s')]//text()" % dataname)[0].strip()
+			else:
+				label = page_data.xpath(".//span[contains(@data-name ,'%s')]//text()" % dataname)[0].strip()
 			
 			if label.lower() not in common.FMOVIES_HOSTS_DISABLED or (label.lower() in common.FMOVIES_HOSTS_DISABLED and common.MY_CLOUD_DISABLED == False) or len(servers) == 1:
 				if label in common.host_gvideo.FMOVIES_SERVER_MAP:
@@ -2541,7 +2609,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 		servers_list_new = []
 		c=0
 		
-		#Log(servers_list)
+		Log(servers_list)
 		
 		if len(servers_list) > 0:
 			for no in servers_list[common.SERVER_PLACEHOLDER]:

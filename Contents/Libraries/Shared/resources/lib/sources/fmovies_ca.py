@@ -203,6 +203,7 @@ class source:
 				return sources
 			
 			urls = []
+			vidtype = 'Movie'
 			
 			if not str(url).startswith('http'):
 				try:
@@ -241,6 +242,7 @@ class source:
 					r = r2
 					
 					if 'season' in data:
+						vidtype = 'Show'
 						episode = int(data['episode'])
 						
 						r = [(i[0], re.sub(' \(\w*\)', '', i[1])) for i in r]
@@ -325,8 +327,10 @@ class source:
 						atr_release = ''
 					
 					if 'season' in data:
+						vidtype = 'Show'
 						pass
 					else:
+						vidtype = 'Movie'
 						resultx = result if str(int(year)) in atr else None
 						if resultx == None:
 							resultx = result if str(int(year)) in atr_release else None
@@ -337,7 +341,7 @@ class source:
 						poster = client.parseDOM(page, 'div', attrs = {'class': 'detail-l'})[0]
 						poster = client.parseDOM(poster, 'img', ret='src')[0]
 						if 'http' not in poster:
-							server = 'http:' + poster
+							poster = 'http:' + poster
 					except:
 						poster = None
 					#print result
@@ -358,7 +362,7 @@ class source:
 									if 'http' not in server:
 										server = 'http:' + server
 								
-								links_m = resolvers.createMeta(server, self.name, self.logo, quality, links_m, key, poster=poster, riptype=type, testing=testing)
+								links_m = resolvers.createMeta(server, self.name, self.logo, quality, links_m, key, poster=poster, riptype=type, vidtype=vidtype, testing=testing)
 							except Exception as e:
 								pass
 							if testing and len(links_m) > 0:
@@ -373,7 +377,7 @@ class source:
 								if 'http' not in server:
 									server = 'http:' + server
 								try:
-									links_m = resolvers.createMeta(server, self.name, self.logo, quality, links_m, key, poster=poster, riptype=type, testing=testing)	
+									links_m = resolvers.createMeta(server, self.name, self.logo, quality, links_m, key, poster=poster, riptype=type, vidtype=vidtype, testing=testing)	
 								except:
 									pass
 					except:

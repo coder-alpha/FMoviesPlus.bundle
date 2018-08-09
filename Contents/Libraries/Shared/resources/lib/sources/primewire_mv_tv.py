@@ -21,7 +21,7 @@
 
 import re,urllib,urlparse,base64,time
 
-from resources.lib.libraries import client, cleantitle, source_utils, testparams, control
+from resources.lib.libraries import client, cleantitle, source_utils, testparams, control, jsunpack
 from resources.lib import resolvers, proxies
 
 name = 'Primewire'
@@ -31,8 +31,8 @@ AVOID_DOMAINS = ['9c40a04e9732e6a6.com','egresspath.com']
 class source:
 	def __init__(self):
 		del loggertxt[:]
-		self.ver = '0.1.2'
-		self.update_date = 'July 12, 2018'
+		self.ver = '0.1.3'
+		self.update_date = 'Aug. 09, 2018'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
 		self.base_link_alts = ['http://www.primewire.gr']
@@ -43,10 +43,13 @@ class source:
 		self.disabled = False
 		self.loggertxt = []
 		self.ssl = False
+		self.headers = {}
+		ua = client.randomagent()
+		self.headers['User-Agent'] = ua
 		self.logo = 'http://i.imgur.com/6zeDNpu.png'
 		self.key_link = '/index.php?search'
 		self.moviesearch_link = '/index.php?search_keywords=%s&key=%s&search_section=1'
-		self.tvsearch_link = '/index.php?search_keywords=%s&key=%s&search_section=2'
+		self.tvsearch_link = '/index.php?tv=&search_keywords=%s&key=%s&search_section=1'
 		self.headers = {'Connection' : 'keep-alive'}
 		self.speedtest = 0
 		if len(proxies.sourceProxies)==0:
@@ -167,33 +170,28 @@ class source:
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_movie','Provider Disabled by User')
 				return None
-			#print "PRIMEWIRE get_movie %s" % title
+			
 			result = None
 			query = urlparse.urljoin(self.base_link, self.key_link)
-			#print "key ------------ %s" % key
-			
-			#key = proxies.request(key, 'searchform', proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+
+			log('INFO','get_movie-1', query, dolog=False)
 			query = proxies.request(query, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
-			#log('SUCCESS', 'get_movie-1', 'query', doPrint=True)
 			
-			query = client.parseDOM(query, 'input', ret='value', attrs = {'name': 'search_keywords'})[0]
+			keyx = client.parseDOM(query, 'input', ret='value', attrs = {'name': 'search_keywords'})[0]
 			#log('SUCCESS', 'get_movie-1b', query, doPrint=True)
 			#print "key ------------ %s" % key
 
-			query = self.moviesearch_link % (urllib.quote_plus(cleantitle.query(title)), query.replace(' ','%20'))
-			#log('SUCCESS', 'get_movie-1c', query, doPrint=True)
+			query = self.moviesearch_link % (urllib.quote_plus(cleantitle.query(title)), keyx.replace('Search ',''))
+			log('INFO','get_movie-2', query, dolog=False)
 			
 			query = urlparse.urljoin(self.base_link, query)
-			#log('SUCCESS', 'get_movie-1d', query, doPrint=True)
+			log('INFO','get_movie-3', query, dolog=False)
 
-			#result = str(proxies.request(query, 'index_item', proxy_options=proxy_options, use_web_proxy=self.proxyrequired))
 			result = proxies.request(query, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
-			#log('SUCCESS', 'get_movie-2', 'result', doPrint=True)
 			
 			#if 'page=2' in result or 'page%3D2' in result: result += str(proxies.request(query + '&page=2', 'index_item', proxy_options=proxy_options, use_web_proxy=self.proxyrequired))
 			if 'page=2' in result or 'page%3D2' in result:
 				result += str(proxies.request(query + '&page=2', proxy_options=proxy_options, use_web_proxy=self.proxyrequired))
-				#log('SUCCESS', 'get_movie-3', '', doPrint=True)
 			
 			result = client.parseDOM(result, 'div', attrs = {'class': 'index_item.+?'})
 			
@@ -213,20 +211,20 @@ class source:
 				except: pass
 				r += [(u, i[1])]
 
-			#print result
+			print r
 			match = [i[0] for i in r if title == cleantitle.get(i[1]) and self.lose_match_year(year, i[1])]
 			
-			#print "match %s" % match
+			log('INFO','get_movie-4', match, dolog=False)
 
 			match2 = [i[0] for i in r]
 			match2 = [x for y,x in enumerate(match2) if x not in match2[:y]]
 			if match2 == []: return
 			
-			#print "match2 %s" % match2
+			log('INFO','get_movie-5', match2, dolog=False)
 			
 			url = ''
 			if len(match2) == 1:
-				url = self.base_link + match2[0]
+				url = match2[0]
 			else:
 				for i in match2[:5]:
 					try:
@@ -244,7 +242,8 @@ class source:
 			url = re.findall('(?://.+?|)(/.+)', url)[0]
 			url = client.replaceHTMLCodes(url)
 			url = url.encode('utf-8')
-			#print "PRIMEWIRE get_movie %s" % url
+			url = urlparse.urljoin(self.base_link, url)
+			log('INFO','get_movie-6', url, dolog=False)
 			
 			return url
 		except Exception as e: 
@@ -258,37 +257,51 @@ class source:
 				return None
 			#print "PRIMEWIRE get_show %s" % tvshowtitle
 			oyear = year
-			key = urlparse.urljoin(self.base_link, self.key_link)
-			#key = proxies.request(key, 'searchform', proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
-			key = proxies.request(key, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
-			key = client.parseDOM(key, 'input', ret='value', attrs = {'name': 'key'})[0]
+			query = urlparse.urljoin(self.base_link, self.key_link)
 
-			query = self.tvsearch_link % (urllib.quote_plus(cleantitle.query(tvshowtitle)), key)
+			log('INFO','get_show-1', query, dolog=False)
+			query = proxies.request(query, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+			
+			keyx = client.parseDOM(query, 'input', ret='value', attrs = {'name': 'search_keywords'})[0]
+			#log('SUCCESS', 'get_movie-1b', query, doPrint=True)
+			#print "key ------------ %s" % key
+
+			query = self.tvsearch_link % (urllib.quote_plus(cleantitle.query(tvshowtitle).lower()), keyx.replace('Search ',''))
+			log('INFO','get_show-2', query, dolog=False)
+			
 			query = urlparse.urljoin(self.base_link, query)
+			log('INFO','get_show-3', query, dolog=False)
 
-			#result = str(proxies.request(query, 'index_item', proxy_options=proxy_options, use_web_proxy=self.proxyrequired))
-			result = str(proxies.request(query, proxy_options=proxy_options, use_web_proxy=self.proxyrequired))
+			result = proxies.request(query, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
 			
 			if 'Sorry but I couldn\'t find anything like that' in result:
-				query = self.tvsearch_link % (urllib.quote_plus(cleantitle.query(tvshowtitle).replace(str(season),'')), key)
+				query = self.tvsearch_link % urllib.quote_plus(cleantitle.query(tvshowtitle).lower().replace(str(season),''))
 				query = urlparse.urljoin(self.base_link, query)
 
 				#result = str(proxies.request(query, 'index_item', proxy_options=proxy_options, use_web_proxy=self.proxyrequired))
-				result = str(proxies.request(query, proxy_options=proxy_options, use_web_proxy=self.proxyrequired))
-				tvshowtitle = 'watch' + cleantitle.get(tvshowtitle).replace(str(season),'').strip()
+				result = proxies.request(query, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+				#tvshowtitle = 'watch' + cleantitle.get(tvshowtitle).replace(str(season),'').strip()
 			else:
-				tvshowtitle = 'watch' + cleantitle.get(tvshowtitle)
+				pass
+				#tvshowtitle = 'watch' + cleantitle.get(tvshowtitle)
 			
 			#if 'page=2' in result or 'page%3D2' in result: result += str(proxies.request(query + '&page=2', 'index_item', proxy_options=proxy_options, use_web_proxy=self.proxyrequired))
-			if 'page=2' in result or 'page%3D2' in result: result += str(proxies.request(query + '&page=2', proxy_options=proxy_options, use_web_proxy=self.proxyrequired))
+			if 'page=2' in result or 'page%3D2' in result: 
+				result = proxies.request(query + '&page=2', proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
 
-			result = client.parseDOM(result, 'div', attrs = {'class': 'index_item.+?'})
-
+			# .//div[@class='tv_container']/div[@data-id="2"]
+			result = client.parseDOM(result, 'div', attrs = {'class': 'index_item index_item_ie'})
+			#print result
 			
 			years = ['%s' % str(year)]
 			for iy in range(0,int(season)):
 				years.append('%s' % str(int(year)-int(iy)))
 				years.append('%s' % str(int(year)+int(iy)))
+			
+			syear = int(year) - int(season)
+			years.append('%s' % str(int(syear)))
+			years.append('%s' % str(int(syear)-int(1)))
+			years.append('%s' % str(int(syear)+int(1)))
 
 			years = list(set(years))
 			#print years
@@ -297,8 +310,6 @@ class source:
 			result = [(i[0][0], i[1][0]) for i in result if len(i[0]) > 0 and len(i[1]) > 0]
 			result = [i for i in result if any(x in i[1] for x in years)]
 			
-			#print result
-
 			r = []
 			for i in result:
 				u = i[0]
@@ -307,20 +318,16 @@ class source:
 				try: u = urlparse.parse_qs(urlparse.urlparse(u).query)['q'][0]
 				except: pass
 				r += [(u, i[1])]
-				
-			#print r
-
+			
 			for year in years:
 				match = [i[0] for i in r if tvshowtitle == cleantitle.get(i[1]) and '(%s)' % str(year) in i[1]]
 				if len(match) > 0:
 					break
 				
-				match = [i[0] for i in r if tvshowtitle.lower() == cleantitle.get(i[1]).replace('watchthe','watch') and '(%s)' % str(year) in i[1]]
+				match = [i[0] for i in r if tvshowtitle.lower() == cleantitle.get(i[1]) and ('(%s)' % str(year) in i[1] or '(%s)' % str(syear) in i[1])]
 				if len(match) > 0:
 					break
-				
-			#print match
-
+			
 			match2 = [i[0] for i in r]
 			match2 = [x for y,x in enumerate(match2) if x not in match2[:y]]
 			if match2 == []: return
@@ -329,8 +336,12 @@ class source:
 				try:
 					if len(match) > 0: url = match[0] ; break
 					#r = proxies.request(urlparse.urljoin(self.base_link, i), 'tv_episode_item', proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
-					r = proxies.request(urlparse.urljoin(self.base_link, i), proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
-					if imdb in str(r): url = i ; break
+					if imdb != None:
+						r = proxies.request(i, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+						if imdb in str(r): url = i ; break
+					else:
+						url = match2[0]
+						break
 				except:
 					pass
 
@@ -391,9 +402,11 @@ class source:
 			
 			#print url
 			
-			url = re.findall('(?://.+?|)(/.+)', url)[0]
-			url = client.replaceHTMLCodes(url)
-			url = url.encode('utf-8')
+			# url = re.findall('(?://.+?|)(/.+)', url)[0]
+			# url = client.replaceHTMLCodes(url)
+			# url = url.encode('utf-8')
+			url = urlparse.urljoin(self.base_link, url)
+			
 			return url
 		except Exception as e: 
 			log('ERROR', 'get_episode','%s: %s' % (title,e), dolog=self.init)
@@ -409,8 +422,7 @@ class source:
 				log('FAIL','get_sources','url == None. Could not find a matching title: %s' % cleantitle.title_from_key(key), dolog=not testing)
 				return sources
 
-			url = urlparse.urljoin(self.base_link, url)
-
+			log('INFO', 'get_sources-1',url, dolog=False)
 			#result = proxies.request(url, 'choose_tabs', proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
 			result = proxies.request(url, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
 			
@@ -434,23 +446,31 @@ class source:
 					links_m = resolvers.createMeta(trailer, self.name, self.logo, '720p', links_m, key, vidtype='Trailer', testing=testing)
 
 			links = client.parseDOM(result, 'tbody')
+			
 			try:
 				riptypex = client.parseDOM(result, 'div', attrs = {'class': 'warning_message'})[0]
 			except:
 				riptypex = 'BRRIP'
 			
+			c=0
 			for i in links:
 				try:
 					url = client.parseDOM(i, 'a', ret='href')[0]
-					try: url = urlparse.parse_qs(urlparse.urlparse(url).query)['u'][0]
-					except: pass
-					try: url = urlparse.parse_qs(urlparse.urlparse(url).query)['q'][0]
-					except: pass
-					url = urlparse.parse_qs(urlparse.urlparse(url).query)['url'][0]
-
-					url = base64.b64decode(url)
-					url = client.replaceHTMLCodes(url)
-					url = url.encode('utf-8')
+					url = urlparse.urljoin(self.base_link, url)
+					r = client.request(url)
+					links = client.parseDOM(r, 'script')
+					p = False
+					for l in links:
+						if 'eval' in l:
+							unpacked_code = jsunpack.unpack(l)
+							url = re.findall(r"'(http.*)'",unpacked_code)[0]
+							p = True
+							break
+					if p == False:
+						raise
+					c=c+1
+							
+					log('INFO', 'get_sources-2A-%s' % c, url, dolog=False)
 					
 					if 'http' not in url:
 						raise Exception()

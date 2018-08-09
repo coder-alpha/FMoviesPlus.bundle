@@ -38,7 +38,7 @@ caches_path = os.path.join(support_path, 'Caches', identifier)
 
 MC = common.NewMessageContainer(PREFIX, TITLE)
 
-BACKUP_KEYS = ['DOWNLOAD_OPTIONS','INTERNAL_SOURCES_QUALS', 'INTERNAL_SOURCES_SIZES', 'INTERNAL_SOURCES_RIPTYPE', 'INTERNAL_SOURCES_FILETYPE', 'OPTIONS_PROVIDERS', 'OPTIONS_PROXY', 'INTERNAL_SOURCES','BOOT_UP_CONTROL_SETTINGS']
+BACKUP_KEYS = ['DOWNLOAD_OPTIONS','INTERNAL_SOURCES_QUALS', 'INTERNAL_SOURCES_SIZES', 'INTERNAL_SOURCES_RIPTYPE', 'INTERNAL_SOURCES_FILETYPE', 'OPTIONS_PROVIDERS', 'OPTIONS_PROXY', 'INTERNAL_SOURCES', 'BOOT_UP_CONTROL_SETTINGS', 'DOWNLOAD_AUTOPILOT']
 	
 ####################################################################################################
 @route(PREFIX + "/DevToolsC")
@@ -471,6 +471,11 @@ def LoadConfig(**kwargs):
 			
 			try:
 				common.DOWNLOAD_OPTIONS = JSON.ObjectFromString(D(Dict['DOWNLOAD_OPTIONS']))
+			except:
+				pass
+				
+			try:
+				common.DOWNLOAD_AUTOPILOT = JSON.ObjectFromString(D(Dict['DOWNLOAD_AUTOPILOT']))
 			except:
 				pass
 				

@@ -97,9 +97,12 @@ def decode(url, python_dir=None, debug=False, ssl=True, js='openload.js'):
 		
 		PROCESSES[url_encode].update({'Completed':True})
 
-		if 'http' in output:
+		if js=='openload.js' and 'http' in output:
 			return output, True
-		return output, False
+		elif js=='openload.js':
+			return output, False
+
+		return output, True
 	except Exception as err:
 		log(type='ERROR', err= "%s > %s > %s" % (str(err), str(output), str(file_cmd)))
 		return str(err), False
@@ -168,5 +171,11 @@ def test3():
 	resp = decode("https://www6.9anime.is/watch/ginga-eiyuu-densetsu-die-neue-these-kaikou.0y5r/j1xj1y", debug=False, js='fmovies.js')
 	print resp[0]
 	log(PROCESSES)
+
+def test4():
+	print "PhantomJS binary file presence: %s | MD5 Checksum: %s" % checkBinaryPresence()
+	resp = decode("https://fmovies.taxi/film/avengers-infinity-war.z12k2/66nk3z", debug=False, js='fmoviesPage.js')
+	print resp[0]
+	log(PROCESSES)
 	
-#test3()
+#test4()

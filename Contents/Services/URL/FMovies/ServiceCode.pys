@@ -117,7 +117,7 @@ def MetadataObjectForURL(url, **kwargs):
 def MediaObjectsForURL(url, **kwargs):
 
 	data = get_data(url)
-	isTargetPlay = data['isTargetPlay']
+	isTargetPlay = False
 	host = data['host']
 	title = data['title']
 	isVideoOnline = data['isVideoOnline'].lower()
@@ -126,6 +126,11 @@ def MediaObjectsForURL(url, **kwargs):
 	https_skip = data['useSSL']
 	pairrequired = False
 	direct_play = True
+	
+	try:
+		isTargetPlay = data['isTargetPlay']
+	except:
+		pass
 	
 	try:
 		direct_play = not data['force_transcode']

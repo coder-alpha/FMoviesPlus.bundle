@@ -8,6 +8,10 @@ Desktop.ini
 # Recycle Bin used on file shares
 $RECYCLE.BIN/
 
+# Python compiled files
+*.pyc
+*.pyo
+
 # Windows Installer files
 *.cab
 *.msi
@@ -16,11 +20,6 @@ $RECYCLE.BIN/
 
 # Windows shortcuts
 *.lnk
-
-# =========================
-# Python compiled files
-# =========================
-*.pyc
 
 # =========================
 # Operating System Files
@@ -50,3 +49,4 @@ $RECYCLE.BIN/
 Network Trash Folder
 Temporary Items
 .apdisk
+bkup/

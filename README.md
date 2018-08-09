@@ -6,6 +6,8 @@ FMoviesPlus.bundle
 
 This is a plugin that creates a new channel in Plex Media Server to view content indexed by the website FMovies(.se|.to|.is), G2G, FMovies.io, YesMovies, Primewire
 
+**Note:** The author of this plugin has no affiliation with any of the sites or the owners of the content that it indexes.
+
 [Please read the FMoviesPlus wiki for more info](https://github.com/coder-alpha/FMoviesPlus.bundle/wiki)
 
 System Requirements

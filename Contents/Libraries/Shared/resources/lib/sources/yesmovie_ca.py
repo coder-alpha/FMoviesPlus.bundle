@@ -54,8 +54,8 @@ loggertxt = []
 class source:
 	def __init__(self):
 		del loggertxt[:]
-		self.ver = '0.1.1'
-		self.update_date = 'May. 25, 2018'
+		self.ver = '0.1.2'
+		self.update_date = 'Aug. 09, 2018'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
 		self.base_link_alts = ['https://yesmovie.io']
@@ -297,7 +297,7 @@ class source:
 				try:
 					season = '%01d' % int(season) ; episode = '%01d' % int(episode)
 					#year = re.findall('(\d{4})', date)[0]
-					years = [str(year), str(int(year)+1), str(int(year)-1)]
+					years = [str(year), str(int(year)+1), str(int(year)-1), str(int(year)-int(season)), str(int(year)+int(season))]
 
 					r = self.ymovies_info_season(title, season, proxy_options=proxy_options)
 					if r == None or len(r) == 0: raise Exception()
@@ -455,10 +455,13 @@ class source:
 					links_m = resolvers.createMeta(trailer, self.name, self.logo, '720p', links_m, key, vidtype='Trailer', testing=testing)
 			
 			try:
+				vidtype='Movie'
+
 				if ep == None:
 					srcs = client.parseDOM(r, 'a', ret='player-data')
 				else:
 					srcs = client.parseDOM(r, 'a', ret='player-data', attrs = {'episode-data': str(ep)})
+					vidtype='Show'
 					
 				try:
 					elem = client.parseDOM(r, 'span', attrs = {'class': 'quality'})[0]
@@ -474,11 +477,13 @@ class source:
 				except:
 					poster = None
 					
+				
+					
 				for s in srcs:
 					try:
 						if s.startswith('//'):
 							s = 'https:%s' % s
-						links_m = resolvers.createMeta(s, self.name, self.logo, qual, links_m, key, poster=poster, riptype=riptype, vidtype='Movie', sub_url=sub_url, testing=testing)
+						links_m = resolvers.createMeta(s, self.name, self.logo, qual, links_m, key, poster=poster, riptype=riptype, vidtype=vidtype, sub_url=sub_url, testing=testing)
 						if testing == True and len(links_m) > 0:
 							break
 					except:

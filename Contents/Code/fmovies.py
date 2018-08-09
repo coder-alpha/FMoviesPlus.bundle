@@ -29,9 +29,14 @@ TOKEN_OPER_PASTEBIN_URL = "https://pastebin.com/raw/9zFcNJuP"
 TOKEN_PAIRS_PASTEBIN_URL = "https://pastebin.com/raw/LT7Kvzre"
 FLAGS_PASTEBIN_URL = "https://pastebin.com/raw/xt5SrJ2t"
 DEV_NOTICE_URL = "https://pastebin.com/raw/1HDhMggt"
+ANNOUNCEMENT_URL = "https://pastebin.com/raw/XuewgLQj"
 TOKEN_KEY = []
 TOKEN_OPER = []
 DEV_NOTICE = []
+ANNOUNCEMENT = []
+ANNOUNCEMENT_READ = []
+ANNOUNCEMENT_UNREAD = []
+AVOID_NOTICE = ['Just a faster and better place for watching online movies for free!']
 
 CACHE_IGNORELIST = ['apidata.googleusercontent.com']
 
@@ -279,8 +284,9 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 			TOKEN_OPER.append(token_oper)
 		except:
 			setTokenCookie(use_debug=use_debug, reset=True)
-			
+
 		Thread.Create(fetch_dev_notice)
+		Thread.Create(fetch_announcement)
 		
 		if dump or use_debug and quiet == False:
 			Log("=====================TOKEN START============================")
@@ -401,6 +407,8 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 			
 						if len(PAIRS) > 0 and vid_token_key in PAIRS[0].keys():
 							TOKEN_KEY.append(PAIRS[0][vid_token_key])
+						elif len(PAIRS) > 0:
+							TOKEN_KEY.append(PAIRS[0]["None"])
 					except:
 						pass
 						
@@ -662,6 +670,22 @@ def fetch_dev_notice():
 			DEV_NOTICE.append(dev_notice)
 	except Exception as e:
 		Log('ERROR fmovies.py>fetch_dev_notice: %s' % e)
+		
+def fetch_announcement():
+	try:
+		announcement = common.interface.request_via_proxy_as_backup(ANNOUNCEMENT_URL, httpsskip=True, hideurl=True)
+		if announcement !=None and announcement != '' and len(announcement) > 1:
+			del ANNOUNCEMENT[:]
+			ANNOUNCEMENT.append(announcement)
+	except Exception as e:
+		Log('ERROR fmovies.py>fetch_announcement: %s' % e)
+		
+	del ANNOUNCEMENT_UNREAD[:]
+	if len(ANNOUNCEMENT) > 0:
+		for i in ANNOUNCEMENT:
+			if i not in ANNOUNCEMENT_READ:
+				ANNOUNCEMENT_READ.append(i)
+				ANNOUNCEMENT_UNREAD.append(True)
 
 def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=False, use_web_proxy=False, token_error=False, serverid=None, **kwargs):
 
@@ -883,6 +907,12 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 				
 			if grabber != None:
 				host_type = common.client.geturlhost(grabber)
+				if host_type != None:
+					try:
+						host_type_t = host_type.split('.')
+						host_type = host_type_t[0]
+					except:
+						pass
 				
 			magic_url = grabber
 		except Exception as e:
@@ -926,6 +956,17 @@ def get_sources2(url, key, prev_error=None, use_debug=True, session=None, **kwar
 		if prev_error != None and prev_error != error:
 			error = prev_error + ' and ' + error
 	return video_url, isTargetPlay, error, host_type, subtitle
+	
+def get_servers(serverts, page_url, is9Anime=False, use_https_alt=False):
+	
+	T_BASE_URL = BASE_URL
+	T_BASE_URL = 'https://%s' % common.client.geturlhost(page_url)
+	page_id = page_url.rsplit('.', 1)[1]
+	server_query = '/ajax/film/servers/%s' % page_id
+	server_url = urlparse.urljoin(T_BASE_URL, server_query)
+	result = common.interface.request_via_proxy_as_backup(server_url, httpsskip=use_https_alt)
+	html = '<html><body><div id="servers-container">%s</div></body></html>' % json.loads(result)['html'].replace('\n','').replace('\\','')
+	return html
 		
 def r01(t, e, token_error=False, use_code=True):
 	i = 0

@@ -69,7 +69,7 @@ import ast
 import urllib2,HTMLParser,urlparse
 import time, cookielib
 
-import control
+import control, client
 
 from __builtin__ import eval
 
@@ -358,6 +358,7 @@ def test_crypto_aes_cbc():
 if import_get('Cryptodome.Cipher.AES', 'MODE_CTR', None) is not None:
 	# PyCrypto, implemented in C (no Python implementation). Tested and found
 	# working with pycrypto-2.3.
+	#log(type='INFO',method='yield_aes_ctr',err="Using 'Cryptodome.Cipher.AES' > 'MODE_CTR'")
 	def yield_aes_ctr(data_iter, key, iv='\0' * 16, bufsize=None):
 		if len(key) != 16:
 			raise ValueError
@@ -376,6 +377,7 @@ if import_get('Cryptodome.Cipher.AES', 'MODE_CTR', None) is not None:
 		for data in data_iter:
 			yield encrypt(data)
 else:
+	#log(type='INFO',method='yield_aes_ctr',err="Not Using 'Cryptodome.Cipher.AES' > 'MODE_CTR'")
 	openssl_prog = True
 	def yield_aes_ctr(data_iter, key, iv='\0' * 16, bufsize=65536):
 		if len(key) != 16:
@@ -903,7 +905,10 @@ def get_mega_dl_link(mega_url):
 def test():
 	fix_ssl()
 	mega = Mega()
-	dl = mega.download_url('https://mega.nz/#!R6xyBBpY!JmZlf7cn7w2scbWaPYESoppAY8UDbrkXKFz0e2FZASs')
+	mega.options = {'use_client_lib':True}
+	mega.setBufferSize(65536*8)
+	#dl = mega.download_url('https://mega.nz/#!R6xyBBpY!JmZlf7cn7w2scbWaPYESoppAY8UDbrkXKFz0e2FZASs')
+	dl = mega.download_url('https://mega.nz/#!O3RSgYpL!EAOxCc-03naV5JsbRvNztHtbrjGKmpNHuceRbV6Wyck')
 	dl_info = dl.next()
 	#print dl_info
 	file_url = "%s/%s" % (dl_info['url'],dl_info['name'])
@@ -924,7 +929,8 @@ def test():
 	
 def test2():
 	fix_ssl()
-	print get_mega_dl_link('https://mega.nz/#!R6xyBBpY!JmZlf7cn7w2scbWaPYESoppAY8UDbrkXKFz0e2FZASs')
+	print get_mega_dl_link('https://mega.nz/#!O3RSgYpL!EAOxCc-03naV5JsbRvNztHtbrjGKmpNHuceRbV6Wyck')
+	#print get_mega_dl_link('https://mega.nz/#!R6xyBBpY!JmZlf7cn7w2scbWaPYESoppAY8UDbrkXKFz0e2FZASs')
 
 def log(type='INFO', method='undefined', err='', logToControl=False, doPrint=True):
 	try:
@@ -935,5 +941,3 @@ def log(type='INFO', method='undefined', err='', logToControl=False, doPrint=Tru
 			print msg
 	except Exception as e:
 		control.log('Error in Logging: %s >>> %s' % (msg, e))
-	
-#test()

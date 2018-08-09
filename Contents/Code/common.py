@@ -1,6 +1,6 @@
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.72' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.73' # Release notation (x.y - where x is major and y is minor)
 TAG = ''
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
@@ -100,7 +100,7 @@ OPTIONS_PROVIDERS = []
 #INTERNAL_SOURCES_FILETYPE = [{'label':'Movie/Show','enabled': 'True'},{'label':'Trailer','enabled': 'True'},{'label':'Interviews','enabled': 'False'},{'label':'Behind the scenes','enabled': 'False'},{'label':'Music Video','enabled': 'False'},{'label':'Deleted Scenes','enabled': 'False'},{'label':'Misc.','enabled': 'False'}]
 #INTERNAL_SOURCES_SIZES = [{'label':'> 2GB','enabled': 'True','LL':2*TO_GB,'UL':100*TO_GB},{'label':'1GB - 2GB','enabled': 'True','LL':1*TO_GB,'UL':2*TO_GB},{'label':'0.5GB - 1GB','enabled': 'True','LL':0.5*TO_GB,'UL':1*TO_GB},{'label':'0GB - 0.5GB','enabled': 'True','LL':1,'UL':0.5*TO_GB},{'label':'0GB','enabled': 'False','LL':0,'UL':0}]
 
-INTERNAL_SOURCES_SIZES_CONST = [{'label':'> 2GB','enabled': 'True','LL':2*TO_GB,'UL':100*TO_GB},{'label':'1GB >= 2GB','enabled': 'True','LL':1*TO_GB,'UL':2*TO_GB},{'label':'0.5GB >= 1GB','enabled': 'True','LL':0.5*TO_GB,'UL':1*TO_GB},{'label':'0GB >= 0.5GB','enabled': 'True','LL':999999,'UL':0.5*TO_GB},{'label':'0GB','enabled': 'False','LL':0,'UL':999999}]
+INTERNAL_SOURCES_SIZES_CONST = [{'label':'> 2GB','enabled': 'True','LL':2*TO_GB,'UL':1024*TO_GB},{'label':'1GB >= 2GB','enabled': 'True','LL':1*TO_GB,'UL':2*TO_GB},{'label':'0.5GB >= 1GB','enabled': 'True','LL':0.5*TO_GB,'UL':1*TO_GB},{'label':'0GB >= 0.5GB','enabled': 'True','LL':999999,'UL':0.5*TO_GB},{'label':'0GB','enabled': 'False','LL':0,'UL':999999}]
 INTERNAL_SOURCES_QUALS_CONST = [{'label':'4K','enabled': 'True'},{'label':'1080p','enabled': 'True'},{'label':'720p','enabled': 'True'},{'label':'480p','enabled': 'True'},{'label':'360p','enabled': 'True'}]
 INTERNAL_SOURCES_RIPTYPE_CONST = [{'label':'BRRIP','enabled': 'True'},{'label':'3D-BRRIP','enabled': 'True'},{'label':'PREDVD','enabled': 'True'},{'label':'CAM','enabled': 'True'},{'label':'TS','enabled': 'True'},{'label':'SCR','enabled': 'True'},{'label':'UNKNOWN','enabled': 'True'}]
 INTERNAL_SOURCES_FILETYPE_CONST = [{'label':'Movie/Show','enabled':'True'},{'label':'Trailer','enabled':'True'},{'label':'Featurette','enabled':'False'},{'label':'Interviews','enabled':'False'},{'label':'Behind the scenes','enabled':'False'},{'label':'Music Video','enabled':'False'},{'label':'Deleted Scenes','enabled':'False'},{'label':'Misc.','enabled':'False'}]
@@ -109,7 +109,7 @@ INTERNAL_SOURCES_QUALS = list(INTERNAL_SOURCES_QUALS_CONST)
 INTERNAL_SOURCES_RIPTYPE = list(INTERNAL_SOURCES_RIPTYPE_CONST)
 INTERNAL_SOURCES_FILETYPE = list(INTERNAL_SOURCES_FILETYPE_CONST)
 
-DEVICE_OPTIONS = ['Dumb-Keyboard','List-View','Redirector','Simple-Emoji','Vibrant-Emoji','Multi-Link-View','Full-poster display','Use-PhantomJS','No-Extra-Page-Info','Use-FileSize-Sorting','Force-Transcoding','No-Extra-Page-Info (Anime)']
+DEVICE_OPTIONS = ['Dumb-Keyboard','List-View','Redirector','Simple-Emoji','Vibrant-Emoji','Multi-Link-View','Full-poster display','Use-PhantomJS','No-Extra-Page-Info','Use-FileSize-Sorting','Force-Transcoding','No-Extra-Page-Info (Anime)','Downloads-Listing','Retry-Failed-Downloads']
 DEVICE_OPTION = {DEVICE_OPTIONS[0]:'The awesome Keyboard for Search impaired devices',
 				DEVICE_OPTIONS[1]:'Force List-View of Playback page listing sources',
 				DEVICE_OPTIONS[2]:'Required in certain cases - *Experimental (refer forum)',
@@ -121,7 +121,9 @@ DEVICE_OPTION = {DEVICE_OPTIONS[0]:'The awesome Keyboard for Search impaired dev
 				DEVICE_OPTIONS[8]:'No-Extra-Page-Info - Speeds up navigation by not downloading detailed item info',
 				DEVICE_OPTIONS[9]:'Use-FileSize-Sorting - Uses FileSize instead of Resolution info provided by site which can be inaccurate',
 				DEVICE_OPTIONS[10]:'Force-Transcoding - Sets the item\'s container property to null in order to force transcoding by PMS',
-				DEVICE_OPTIONS[11]:'No-Extra-Page-Info (Anime) - Speeds up navigation by not downloading detailed item info'}
+				DEVICE_OPTIONS[11]:'No-Extra-Page-Info (Anime) - Speeds up navigation by not downloading detailed item info',
+				DEVICE_OPTIONS[12]:'Downloads-Listing - Reverse the order of Downloads i.e. oldest entry on top',
+				DEVICE_OPTIONS[13]:'Retry-Failed-Downloads - On Plugin Initialization Retry Failed Downloads (Global Option)'}
 DEVICE_OPTION_CONSTRAINTS = {DEVICE_OPTIONS[2]:[{'Pref':'use_https_alt','Desc':'Use Alternate SSL/TLS','ReqValue':'disabled'}]}
 DEVICE_OPTION_CONSTRAINTS2 = {DEVICE_OPTIONS[5]:[{'Option':6,'ReqValue':False}], DEVICE_OPTIONS[6]:[{'Option':5,'ReqValue':False}]}
 DEVICE_OPTION_PROPOGATE_TO_CONTROL = {DEVICE_OPTIONS[7]:True}
@@ -131,13 +133,16 @@ DOWNLOAD_OPTIONS = {'movie':[], 'show':[]}
 DOWNLOAD_OPTIONS_SECTION_TEMP = {}
 DOWNLOAD_MODE = ['Add','Request']
 Dict['DOWNLOAD_OPTIONS_SECTION_TEMP'] = {}
-DOWNLOAD_STATUS = ['Queued','Downloading','Completed','Failed','Requested','All']
+DOWNLOAD_STATUS = ['Queued','Downloading','Completed','Failed','Requested','All','AutoPilot Queue']
 DOWNLOAD_ACTIONS = ['Cancel Download','Pause Download','Resume Download','Postpone Download','Start Download']
 DOWNLOAD_ACTIONS_K = {'Cancel Download':'Cancelled','Pause Download':'Paused','Resume Download':'Resumed','Postpone Download':'Postponed','Start Download':'Started','Done':'Done','Limbo':'Limbo','Live':'Live','Throttling':'Throttling','Waiting':'Waiting'}
 DOWNLOAD_ACTIONS_INFO = ['Cancels the Download and removes its entry and temporary file from disk.','Pauses the current Download and let it be Resumed.','Resume the currently Paused Download.','Postpones the current Download for 2 hours by adding it to Queue List','Starts the Postponed Download.']
 DOWNLOAD_PROPS = ['Done','Limbo','Throttling','Waiting']
 DOWNLOAD_STATS = {}
 DOWNLOAD_TEMP = {}
+DOWNLOAD_AUTOPILOT_CONST = {'movie':[], 'show':[], 'extras':[]}
+DOWNLOAD_AUTOPILOT = {'movie':[], 'show':[], 'extras':[]}
+DOWNLOAD_AUTOPILOT_STATUS = ['Processing','UnAvailable','In Download Queue','Waiting']
 DOWNLOAD_FMP_EXT = '.FMPTemp'
 
 ANIME_SEARCH = []
@@ -177,6 +182,7 @@ ICON_DK_DISABLE = "icon-dumbKeyboardD.png"
 ICON_GL_ENABLE = "icon-gl-enable.png"
 ICON_GL_DISABLE = "icon-gl-disable.png"
 ICON_INFO = "icon-info.png"
+ICON_INFO_ALERT = "icon-info-alert.png"
 ICON_STAR = "icon-star.png"
 ICON_PEOPLE = "icon-people.png"
 ICON_TAG = "icon-tag.png"
@@ -184,6 +190,7 @@ ICON_OTHERPROVIDERS = "icon-otherproviders.png"
 ICON_OTHERHOSTS = "icon-otherhosts.png"
 ICON_OTHERSOURCES = "icon-othersources.png"
 ICON_OTHERSOURCESDOWNLOAD = "icon-othersourcesdownload.png"
+ICON_OTHERSOURCESDOWNLOAD_AUTO = "icon-othersourcesdownload-auto.png"
 ICON_SAVE = "icon-save.png"
 ICON_QUALITIES = "icon-qualities.png"
 ICON_FILESIZES = "icon-filesizes.png"
@@ -203,6 +210,9 @@ ICON_DOWNLOADS = "icon-downloads.png"
 ICON_REQUESTS = "icon-requests.png"
 ICON_TOOLS = "icon-tools.png"
 ICON_WARNING = "icon-warning.png"
+
+MSG0 = "Please wait.."
+MSG1 = "Please give some time for the Interface to Load & Initialize plugins"
 
 # Golbal Overrides - to disable
 SHOW_EXT_SRC_WHILE_LOADING = True
@@ -671,6 +681,7 @@ def isItemVidAvailable(isTargetPlay, data, params=None, host=None, **kwargs):
 	vidurl = None
 	httpsskip = Prefs["use_https_alt"]
 	use_web_proxy = Prefs["use_web_proxy"]
+	isTargetPlay = True if str(isTargetPlay).lower() == 'true' else False
 	
 	if isTargetPlay:
 		vidurl = data
@@ -742,7 +753,7 @@ def isItemVidAvailable(isTargetPlay, data, params=None, host=None, **kwargs):
 
 	if Prefs["use_debug"]:
 		Log("--- LinkChecker ---")
-		Log("Video Url: %s : Online: %s" % (vidurl, isVideoOnline))
+		Log("Video Url: %s Host:%s : Online: %s" % (vidurl, host, isVideoOnline))
 			
 	return isVideoOnline
 	
@@ -886,9 +897,9 @@ def GetPageAsString(url, headers=None, timeout=15, referer=None):
 			if use_debug:
 				Log("Using SSL Alternate Option")
 				Log("Url: " + url)
-			page_data_string = interface.request(url = url, headers=headers, timeout=str(timeout), httpsskip=True)
+			page_data_string = interface.request(url=url, headers=headers, timeout=str(timeout), httpsskip=True)
 			if page_data_string == None:
-				error, page_data_string = interface.request(url = url, headers=headers, timeout=str(timeout), error=True, httpsskip=True)
+				error, page_data_string = interface.request(url=url, headers=headers, timeout=str(timeout), error=True, httpsskip=True)
 		elif Prefs["use_web_proxy"]:
 			page_data_string = None
 			if use_debug:
@@ -909,7 +920,7 @@ def GetPageAsString(url, headers=None, timeout=15, referer=None):
 			except:
 				pass
 			if page_data_string == None:
-				error, page_data_string = interface.request(url = url, headers=headers, timeout=str(timeout), error=True)
+				error, page_data_string = interface.request(url=url, headers=headers, timeout=str(timeout), error=True)
 				
 		if url not in CACHE_META.keys() and page_data_string != None and error == '':
 			CACHE_META[url] = {}
@@ -966,6 +977,10 @@ def OpenLoadUnpair(**kwargs):
 			Log('OpenLoad UnPair: %s' % m)
 
 ######################################################################################
+
+def makeUID(title, year='None', quality='None', source='None', url='None', season='None', episode='None'):
+	return E(title+str(year)+str(quality)+str(source)+str(url)+str(season)+str(episode))
+	
 
 def id_generator(size=9, chars=string.ascii_uppercase + string.digits):
 	return ''.join(random.choice(chars) for _ in range(size))

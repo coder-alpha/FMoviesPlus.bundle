@@ -51,7 +51,7 @@ IP_OVERIDE = True
 RE_SUB1 = Regex(r'(?m)(^[^\#])')
 RE_SOURCES = Regex(r'(?m)(^.+?\d+/(\d+).+$)')
 
-supported_hosts = ['mycloud.to','mcloud.to','rapidvideo.com','streamango.com']
+supported_hosts = ['mycloud.to','mcloud.to','rapidvideo.com','streamango.com','rapidvideo','streamango']
 
 def resolve(url, https_skip=True, test=False, strip_url=True):
 	video_urlf = None
@@ -91,6 +91,8 @@ def resolve(url, https_skip=True, test=False, strip_url=True):
 						video_url = None
 					try:
 						res = page_data_elems.xpath(".//div[@id='home_video']//source/@data-res")[0]
+						if res == '999':
+							res = qs.replace('p','')
 					except:
 						res = qs.replace('p','')
 						
@@ -100,7 +102,10 @@ def resolve(url, https_skip=True, test=False, strip_url=True):
 				except:
 					pass
 			
-			video_urlf = video_url_a
+			if len(video_url_a) > 0:
+				video_urlf = video_url_a
+			else:
+				raise Exception('No Data found in page')
 			
 		elif 'streamango.' in ourl:
 			myheaders = {}
@@ -249,6 +254,8 @@ def error(url, https_skip):
 				error = 'Video removed by streamango.'
 			elif ('streamango.' in ourl or 'fruitstreams.' in ourl or 'streamcherry.' in ourl) and ('The file you are looking is currently converting' in page_data_string):
 				error = 'Video is processing, try again later.'
+			elif ('rapidvideo.' in ourl) and "<script>top.location.href = '';</script>" in page_data_string:
+				error = 'No data found in page'
 		else:
 			error = 'Page returned None'
 	except:

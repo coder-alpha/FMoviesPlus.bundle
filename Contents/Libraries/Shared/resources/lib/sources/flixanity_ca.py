@@ -44,7 +44,7 @@ class source:
 	def __init__(self):
 		del loggertxt[:]
 		self.ver = '0.0.2'
-		self.update_date = 'Fab. 07, 2019'
+		self.update_date = 'Feb. 07, 2019'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
 		self.priority = 1

@@ -1,5 +1,5 @@
-// Usage: phantomjs fmovies.js <video_url>
-// if that doesn't work try: phantomjs --ssl-protocol=any fmovies.js <video_page_url>
+// Usage: phantomjs genericPage.js <video_url>
+// if that doesn't work try: phantomjs --ssl-protocol=any genericPage.js <video_page_url>
 // Author: Coder Alpha
 //
 
@@ -41,7 +41,7 @@ page.open(page_url, function(status) {
 		var info = page.evaluate(function() {
 			function GetIframeLink() {
 				try {
-					var elms = document.getElementById("servers-container").getElementsByTagName("div");
+					var elms = document.getElementsByTagName("body");
 					var txt = "";
 					for (var j = 0; j < elms.length; j++) {
 						var srctxt = elms[j].innerHTML;
@@ -72,7 +72,7 @@ page.open(page_url, function(status) {
 
 		var myInfo = info.decoded_id;
 		if (myInfo == null || myInfo.length == 0 || myInfo.indexOf('Exception') > -1) {
-			console.log('ERROR: Video not found. ' + myInfo);
+			console.log('ERROR: Not found. ' + myInfo);
 		} else {
 			var url = info.decoded_id;
 			console.log(url);

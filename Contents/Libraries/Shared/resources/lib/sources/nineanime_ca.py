@@ -37,15 +37,15 @@ loggertxt = []
 class source:
 	def __init__(self):
 		del loggertxt[:]
-		self.ver = '0.1.2'
-		self.update_date = 'Aug. 09, 2018'
+		self.ver = '0.1.1'
+		self.update_date = 'June 26, 2018'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
 		self.serverts = None
 		self.disabled = False
 		self.TOKEN_KEY = []
 		self.FLAGS = {}
-		self.base_link_alts = ['https://www6.9anime.is','https://9anime.is','https://9anime.to']
+		self.base_link_alts = ['https://9anime.to','https://www1.9anime.to','https://9anime.is']
 		self.base_link = self.base_link_alts[0]
 		self.grabber_api = "grabber-api/"
 		self.search_link = '/sitemap'

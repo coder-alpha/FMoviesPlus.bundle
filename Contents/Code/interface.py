@@ -29,11 +29,12 @@ def init():
 	
 	init = sources()
 	initA.append(init)
+	initA[0].doInit()
 	
 	return "Interface Framework Initialized"
 	
 def isInitialized():
-	if len(initA) > 0:
+	if len(initA) > 0 and initA[0].isInitialized == True:
 		return True
 	else:
 		return False
@@ -170,16 +171,16 @@ def searchOMDB(title, year=None, doSearch=False, ver=None):
 		Log("interface.py>searchOMDB() >> : >>> %s" % (e))
 		return None
 		
-def requestOMDB(t, y, Season, i, ver=None):
+def requestOMDB(title, year=None, season=None, imdb=None, ver=None):
 	try:
 		if Prefs["use_debug"]:
-			Log("OMDB Request: Title:%s Year:%s Season:%s imdb:%s" % (t,y,Season,i))
+			Log("OMDB Request: Title:%s Year:%s Season:%s imdb:%s" % (title,year,season,imdb))
 		
 		c = 0
 		res = None
 		while res == None and c < 3:
 			try:
-				res = omdb.request(t=t, y=int(y), Season=str(Season), i=i, c=Prefs['ca_api_key'], ver=ver, r='json', timeout=10)
+				res = omdb.request(t=title, y=year, Season=season, i=imdb, c=Prefs['ca_api_key'], ver=ver, r='json', timeout=10)
 			except Exception as e:
 				c += 1
 				time.sleep(1.0)
@@ -189,7 +190,7 @@ def requestOMDB(t, y, Season, i, ver=None):
 		Log("interface.py>requestOMDB() >> : >>> %s" % (e))
 		return None
 		
-def getOMDB(title, year, season, episode, imdbid, ver=None):
+def getOMDB(title, year=None, season=None, episode=None, imdbid=None, ver=None):
 	try:
 		if Prefs["use_debug"]:
 			Log("OMDB Request: Title:%s Year:%s Season:%s Episode:%s imdb:%s" % (title, year, season, episode, imdbid))
@@ -198,7 +199,7 @@ def getOMDB(title, year, season, episode, imdbid, ver=None):
 		res = None
 		while res == None and c < 3:
 			try:
-				res = omdb.get(title=title, year=int(year), season=str(season), episode=str(episode), imdbid=imdbid, c=Prefs['ca_api_key'], ver=ver, timeout=10)
+				res = omdb.get(title=title, year=year, season=season, episode=episode, imdbid=imdbid, c=Prefs['ca_api_key'], ver=ver, timeout=10)
 			except Exception as e:
 				c += 1
 				time.sleep(1.0)
@@ -318,6 +319,16 @@ def getProviders(encode=True):
 		return initA[0].getProviders()
 		
 	return E(JSON.StringFromObject(initA[0].getProviders()))
+	
+def getProvidersInitStatus():
+	if wait_for_init() == False:
+		return 0
+	return initA[0].getProvidersInitStatus()
+	
+def getCurrentProviderInProcess():
+	if wait_for_init() == False:
+		return 0
+	return initA[0].getCurrentProviderInProcess()
 	
 def getProvidersLoggerTxts(choice=None, dumpToLog=True):
 	if wait_for_init() == False:

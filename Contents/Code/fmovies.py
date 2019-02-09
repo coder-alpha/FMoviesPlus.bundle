@@ -317,8 +317,12 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 		except:
 			pass
 		
-		page_data_elems = HTML.ElementFromString(result)
-		ALL_JS =  page_data_elems.xpath(".//script[@src[contains(.,'all.js')]]//@src")[0]
+		ALL_JS = None
+		try:
+			page_data_elems = HTML.ElementFromString(result)
+			ALL_JS =  page_data_elems.xpath(".//script[@src[contains(.,'all.js')]]//@src")[0]
+		except Exception as e:
+			Log.Error(e)
 		
 		headersS['Cookie'] = cookie1
 		time.sleep(0.1)
@@ -395,7 +399,7 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 			except Exception as e:
 				Log('ERROR fmovies.py>Token-fetch-3.b: %s' % e)
 				
-			if len(TOKEN_KEY) == 0:
+			if len(TOKEN_KEY) == 0 and ALL_JS != None:
 				try:
 					if 'http' in ALL_JS:
 						all_js_url = ALL_JS
@@ -404,11 +408,11 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 						
 					try:
 						vid_token_key = all_js_url.split('?')[1]
-			
-						if len(PAIRS) > 0 and vid_token_key in PAIRS[0].keys():
-							TOKEN_KEY.append(PAIRS[0][vid_token_key])
-						elif len(PAIRS) > 0:
-							TOKEN_KEY.append(PAIRS[0]["None"])
+						if len(PAIRS) > 0 and PAIRS[0] != None:
+							if len(PAIRS) > 0 and vid_token_key in PAIRS[0].keys():
+								TOKEN_KEY.append(PAIRS[0][vid_token_key])
+							elif len(PAIRS) > 0:
+								TOKEN_KEY.append(PAIRS[0]["None"])
 					except:
 						pass
 						
@@ -534,7 +538,11 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 		common.CACHE['cookie']['UA'] = UA
 		common.CACHE['cookie']['reqkey'] = reqkey_cookie
 		
-		cookie = cookie1 + '; ' + cookie2 + '; user-info=null; ' + newmarketgidstorage
+		try:
+			cookie = cookie1 + '; ' + cookie2 + '; user-info=null; ' + newmarketgidstorage
+		except Exception as e:
+			Log.Error(e)
+			cookie = 'NotFound; %s; %s; user-info=null; %s' % (cookie1,cookie2,newmarketgidstorage)
 		
 		cookie_dict.update({'ts':time.time(), 'cookie': cookie, 'UA': UA, 'reqkey':reqkey_cookie})
 		
@@ -959,14 +967,17 @@ def get_sources2(url, key, prev_error=None, use_debug=True, session=None, **kwar
 	
 def get_servers(serverts, page_url, is9Anime=False, use_https_alt=False):
 	
-	T_BASE_URL = BASE_URL
-	T_BASE_URL = 'https://%s' % common.client.geturlhost(page_url)
-	page_id = page_url.rsplit('.', 1)[1]
-	server_query = '/ajax/film/servers/%s' % page_id
-	server_url = urlparse.urljoin(T_BASE_URL, server_query)
-	result = common.interface.request_via_proxy_as_backup(server_url, httpsskip=use_https_alt)
-	html = '<html><body><div id="servers-container">%s</div></body></html>' % json.loads(result)['html'].replace('\n','').replace('\\','')
-	return html
+	try:
+		T_BASE_URL = BASE_URL
+		T_BASE_URL = 'https://%s' % common.client.geturlhost(page_url)
+		page_id = page_url.rsplit('.', 1)[1]
+		server_query = '/ajax/film/servers/%s' % page_id
+		server_url = urlparse.urljoin(T_BASE_URL, server_query)
+		result = common.interface.request_via_proxy_as_backup(server_url, httpsskip=use_https_alt)
+		html = '<html><body><div id="servers-container">%s</div></body></html>' % json.loads(result)['html'].replace('\n','').replace('\\','')
+		return html
+	except:
+		return None
 		
 def r01(t, e, token_error=False, use_code=True):
 	i = 0

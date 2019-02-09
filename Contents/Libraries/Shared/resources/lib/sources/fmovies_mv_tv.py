@@ -45,8 +45,8 @@ USE_PHANTOMJS = True
 class source:
 	def __init__(self):
 		del loggertxt[:]
-		self.ver = '0.1.2'
-		self.update_date = 'Aug. 09, 2018'
+		self.ver = '0.1.1'
+		self.update_date = 'June 17, 2018'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
 		self.disabled = False
@@ -403,6 +403,15 @@ class source:
 			except:
 				log('INFO','get_sources-3', 'could not parse ts ! will use generated one : %s' % myts, dolog=False)
 				
+			poster = None
+			
+			try:
+				poster1 = client.parseDOM(result, 'div', attrs = {'class':'thumb col-md-5 hidden-sm hidden-x'})
+				poster = client.parseDOM(poster1, 'img', ret='src')[0]
+				if 'http' not in poster:
+					poster = 'http:' + poster
+			except: pass
+			
 			trailers = []
 			links_m = []
 			
@@ -420,7 +429,7 @@ class source:
 					pass
 					
 				for trailer in trailers:
-					links_m = resolvers.createMeta(trailer, self.name, self.logo, '720p', links_m, key, vidtype='Trailer', testing=testing)
+					links_m = resolvers.createMeta(trailer, self.name, self.logo, '720p', links_m, key, poster=poster, vidtype='Trailer', testing=testing)
 			
 			riptype = None
 			try: quality = client.parseDOM(result, 'span', attrs = {'class': 'quality'})[0].lower()
@@ -560,7 +569,7 @@ class source:
 							
 							for i in result:
 								video_url = i
-								links_m = resolvers.createMeta(i, self.name, self.logo, quality, links_m, key, riptype, vidtype=vidtype, sub_url=sub_url, testing=testing)
+								links_m = resolvers.createMeta(i, self.name, self.logo, quality, links_m, key, poster=poster, riptype=riptype, vidtype=vidtype, sub_url=sub_url, testing=testing)
 						else:
 							target = result['target']
 							b, resp = self.decode_t(target, -18)
@@ -575,7 +584,7 @@ class source:
 								target = 'http:' + target
 								
 							video_url = target
-							links_m = resolvers.createMeta(target, self.name, self.logo, quality, links_m, key, riptype, vidtype=vidtype, sub_url=sub_url, testing=testing)
+							links_m = resolvers.createMeta(target, self.name, self.logo, quality, links_m, key, poster=poster, riptype=riptype, vidtype=vidtype, sub_url=sub_url, testing=testing)
 
 				except Exception as e:
 					log('FAIL', 'get_sources-7','%s' % e, dolog=False)
@@ -593,7 +602,7 @@ class source:
 								video_url = v_url
 								ret_error = ''
 								log(type='SUCCESS',method='get_sources-4.a.2', err=u'*PhantomJS* method is working: %s' % vx_url)
-								links_m = resolvers.createMeta(video_url, self.name, self.logo, quality, links_m, key, riptype, vidtype=vidtype, sub_url=sub_url, testing=testing)
+								links_m = resolvers.createMeta(video_url, self.name, self.logo, quality, links_m, key, poster=poster, riptype=riptype, vidtype=vidtype, sub_url=sub_url, testing=testing)
 						except:
 							raise Exception('phantomjs not working')
 					else:

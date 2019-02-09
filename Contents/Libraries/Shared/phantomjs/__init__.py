@@ -97,12 +97,9 @@ def decode(url, python_dir=None, debug=False, ssl=True, js='openload.js'):
 		
 		PROCESSES[url_encode].update({'Completed':True})
 
-		if js=='openload.js' and 'http' in output:
+		if 'http' in output:
 			return output, True
-		elif js=='openload.js':
-			return output, False
-
-		return output, True
+		return output, False
 	except Exception as err:
 		log(type='ERROR', err= "%s > %s > %s" % (str(err), str(output), str(file_cmd)))
 		return str(err), False
@@ -174,7 +171,7 @@ def test3():
 
 def test4():
 	print "PhantomJS binary file presence: %s | MD5 Checksum: %s" % checkBinaryPresence()
-	resp = decode("https://fmovies.taxi/film/avengers-infinity-war.z12k2/66nk3z", debug=False, js='fmoviesPage.js')
+	resp = decode("https://fmovies.taxi/film/incredibles-2.5kj1m/njpppj", debug=False, js='fmoviesPage.js')
 	print resp[0]
 	log(PROCESSES)
 	

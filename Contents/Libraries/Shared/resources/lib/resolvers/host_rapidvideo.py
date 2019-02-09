@@ -43,12 +43,14 @@ hdr = {
 
 name = 'rapidvideo'
 loggertxt = []
+RV_COOKIES = ['__cfduid=dda567790eb0b331fd9a8191dec20619e1534810793; PHPSESSID=5v3cqu54ml4rtsdfaejo533o17']
+USE_RESTRICT_RAPIDVIDEO = False
 	
 class host:
 	def __init__(self):
 		del loggertxt[:]
-		self.ver = '0.0.2'
-		self.update_date = 'Dec. 28, 2017'
+		self.ver = '0.0.4'
+		self.update_date = 'Feb. 05, 2019'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
 		self.logo = 'https://i.imgur.com/AG9ooWt.png'
@@ -139,7 +141,7 @@ class host:
 		return bool
 		
 	def testUrl(self):
-		return ['https://www.rapidvideo.com/v/FML5SEW27U']
+		return ['https://www.rapidvideo.com/v/FWT9F84DB4']
 		
 	def createMeta(self, url, provider, logo, quality, links, key, riptype, vidtype='Movie', lang='en', sub_url=None, txt='', file_ext = '.mp4', testing=False, poster=None, headers=None):
 	
@@ -171,7 +173,7 @@ class host:
 		for vv in vidurls:
 			durl = vv['page']
 			vidurl, r1, r2 = resolve(durl, online)
-			if vidurl != None:
+			if vidurl != None and '.mp4' in vidurl:
 				quality = vv['label']
 				try:
 					fs = client.getFileSize(vidurl)
@@ -201,7 +203,7 @@ class host:
 	def testLink(self, url):
 		return check(url)
 	
-def resolve(url, online=None):
+def resolve(url, online=None, USE_POST=False):
 
 	try:
 		if online == None:
@@ -210,14 +212,43 @@ def resolve(url, online=None):
 
 		video_url = None
 		err = ''
+		data = {'confirm.x':44, 'confirm.y':55, 'block':1}
+		edata = client.encodePostData(data)
+		headers = {u'Referer': url, u'User-Agent': client.USER_AGENT}
+		if len(RV_COOKIES) > 0:
+			headers['Cookie'] = RV_COOKIES[0]
+				
 		try:
+			cookies = None
 			page_link = url
-			page_data_string = client.request(page_link, httpsskip=True)
+			page_data_string, r2, r3, cookies = client.request(page_link, post=edata, headers=headers, httpsskip=True, output='extended')
+			
+			if USE_POST == True:
+				page_data_string, r2, r3, cookies = client.request(page_link, post=edata, headers=headers, httpsskip=True, output='extended')
+			else:
+				page_data_string, r2, r3, cookies = client.request(page_link, headers=headers, httpsskip=True, output='extended')
+				
+			if 'pad.php' in page_data_string:
+				USE_POST = not USE_POST
+				
+				if USE_POST == True:
+					page_data_string, r2, r3, cookies = client.request(page_link, post=edata, headers=headers, httpsskip=True, output='extended')
+				else:
+					page_data_string, r2, r3, cookies = client.request(page_link, headers=headers, httpsskip=True, output='extended')
+			
+			if 'captcha.php' in page_data_string:
+				raise Exception('RapidVideo %s requires captcha verification' % url)
+				
+			if cookies != None and len(cookies) > 0:
+				del RV_COOKIES[:]
+				RV_COOKIES.append(cookies)
+				
 			video_url = client.parseDOM(page_data_string, 'div', attrs = {'id': 'home_video'})[0]
 			video_url = client.parseDOM(video_url, 'source', ret='src')[0]
+			
 		except Exception as e:
-			err = r
-			log('ERROR', 'resolve', 'link > %s : %s' % (url, e), dolog=self.init)
+			err = e
+			log('ERROR', 'resolve', 'link > %s : %s' % (url, e), dolog=True)
 
 		return (video_url, err, None)
 		
@@ -242,6 +273,8 @@ def getAllQuals(url, online=None):
 				page_link = (url + '&q=%s') % qs
 				f_i = {'label':qs, 'page':page_link}
 				video_url_a.append(f_i)
+				if USE_RESTRICT_RAPIDVIDEO == True:
+					break
 			except:
 				pass
 		

@@ -55,10 +55,10 @@ class source:
 	def __init__(self):
 		del loggertxt[:]
 		self.ver = '0.1.2'
-		self.update_date = 'Aug. 09, 2018'
+		self.update_date = 'Feb. 05, 2019'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
-		self.base_link_alts = ['https://yesmovie.io']
+		self.base_link_alts = ['https://yesmovies.gg']
 		self.base_link = self.base_link_alts[0]
 		self.MainPageValidatingContent = 'Yesmovies - Watch FREE Movies Online'
 		self.ssl = False
@@ -70,14 +70,14 @@ class source:
 		self.loggertxt = []
 		self.logo = 'https://i.imgur.com/jjJJgd6.png'
 		self.info_link = '/ajax/movie_info/%s.html'
-		self.info_link2 = 'https://api.yesmovie.io/ajax/movie_load_info/%s/'
+		self.info_link2 = 'https://api.yesmovies.gg/ajax/movie_load_info/%s/'
 		self.episode_link = '/ajax/v4_movie_episodes/%s'
 		self.playlist_link = '/ajax/v2_get_sources/%s.html?hash=%s'
 		self.server_link = '/ajax/v4_movie_episodes/%s'
 		self.embed_link = '/ajax/movie_embed/%s'
 		self.token_link = '/ajax/movie_token?eid=%s&mid=%s'
 		self.sourcelink = '/ajax/movie_sources/%s?x=%s&y=%s'
-		self.api_search = 'https://api.yesmovie.io/movie/search/%s?link_web=%s'
+		self.api_search = 'https://api.ocloud.stream/movie/search/%s?link_web=%s' #'https://api.yesmovies.gg/movie/search/%s?link_web=%s'
 		self.speedtest = 0
 		if len(proxies.sourceProxies)==0:
 			proxies.init()
@@ -218,20 +218,30 @@ class source:
 
 					q = self.api_search % (urllib.quote_plus(cleantitle.query(title).replace(' ','-')), self.base_link)
 					#q = urlparse.urljoin(self.base_link, q)
+					#print q
 					
 					#r = client.request(q, headers=self.headers, IPv4=True)
 					r = proxies.request(q, headers=self.headers, IPv4=True, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
 					#if not r == None: break
 
 					r = client.parseDOM(r, 'div', attrs = {'class': 'ml-item'})
+					#print r
+					
 					r = [(client.parseDOM(i, 'a', ret='href'), client.parseDOM(i, 'a', ret='title'), client.parseDOM(i, 'a', ret='data-url')) for i in r]
+					#print r
+					
 					r = [(i[0][0], i[1][0], i[2][0]) for i in r if i[0] and i[1] and i[2]]
+					#print r
+
 					r = [(i[0],i[2]) for i in r if t == cleantitle.get(i[1])][:2]
+					#print r
 					#r = [(i, re.findall('(\d+)', i)[-1]) for i in r]
 
 					for i in r:
 						try:
 							u = i[1]
+							url = i[0]
+							#print u
 							if 'http' not in u:
 								u = urlparse.urljoin(self.base_link, u)
 							y, q, h = self.ymovies_info(u)
@@ -244,7 +254,7 @@ class source:
 							url = h
 							return [url, None]
 						except:
-							pass
+							return [url, None]
 				except:
 					pass
 		except Exception as e: 
@@ -433,6 +443,7 @@ class source:
 			u = url[0]
 			ep = url[1]
 			#r = client.request(u, headers=headers IPv4=True)
+			
 			r = proxies.request(u, headers=self.headers, IPv4=True, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
 			
 			if testing == False:
@@ -453,12 +464,17 @@ class source:
 					
 				for trailer in trailers:
 					links_m = resolvers.createMeta(trailer, self.name, self.logo, '720p', links_m, key, vidtype='Trailer', testing=testing)
+					
+			u = '%s/watching.html?ep=0' % u
+			r = proxies.request(u, headers=self.headers, IPv4=True, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+			print u
 			
 			try:
 				vidtype='Movie'
 
 				if ep == None:
-					srcs = client.parseDOM(r, 'a', ret='player-data')
+					r1 = client.parseDOM(r, 'div', attrs = {'class': 'pa-main anime_muti_link'})[0]
+					srcs = client.parseDOM(r1, 'li', ret='data-video')
 				else:
 					srcs = client.parseDOM(r, 'a', ret='player-data', attrs = {'episode-data': str(ep)})
 					vidtype='Show'
@@ -477,7 +493,7 @@ class source:
 				except:
 					poster = None
 					
-				
+				#print srcs
 					
 				for s in srcs:
 					try:

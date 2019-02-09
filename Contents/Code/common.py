@@ -1,17 +1,17 @@
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.73' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.74' # Release notation (x.y - where x is major and y is minor)
 TAG = ''
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
 ################################################################################
 
-import time, base64, unicodedata, re, random, string
+import time, base64, unicodedata, re, random, string, hashlib, io
 from resources.lib.libraries import control, client, cleantitle, jsfdecoder, jsunpack
 from resources.lib.resolvers import host_openload, host_gvideo, host_mega, host_rapidvideo, host_streamango, host_direct
 import phantomjs
 import interface
-from __builtin__ import ord, format, eval
+from __builtin__ import ord, format, eval, iter
 
 host_misc_resolvers = SharedCodeService.misc
 
@@ -147,9 +147,11 @@ DOWNLOAD_FMP_EXT = '.FMPTemp'
 
 ANIME_SEARCH = []
 ANIME_KEY = '9anime'
-ANIME_URL = 'https://%s.is' % ANIME_KEY
+ANIME_DOM = 'to'
+ANIME_URL = 'https://%s.%s' % (ANIME_KEY, ANIME_DOM)
 ANIME_SEARCH_URL = ANIME_URL + '/search?keyword=%s'
 ES_API_URL = 'http://movies-v2.api-fetch.website'
+ES_API_KEY = 'api-fetch'
 
 EXT_SITE_URLS = [ANIME_URL, ES_API_URL]
 
@@ -238,6 +240,7 @@ SERVER_PLACEHOLDER = 'FMOVIES'
 ENCRYPTED_URLS = False
 DEV_DEBUG = False
 REFACTOR_WIP = True
+DOWNLOAD_ALL_SEASONS = True
 WBH = 'aHR0cHM6Ly9ob29rLmlvL2NvZGVyLWFscGhhL3Rlc3Q='
 
 ####################################################################################################
@@ -476,7 +479,7 @@ def isForceNoCache(**kwargs):
 def FixUrlInconsistencies(url):
 	
 	try:
-		if ES_API_URL in url:
+		if ES_API_KEY in url:
 			return url
 		m = re.findall(r'\:.*?(\w.*?.*?.)(fmovie|bmovie)', url)
 		if len(m) > 0:
@@ -593,8 +596,8 @@ def FilterBasedOn(srcs, use_quality=True, use_riptype=True, use_vidtype=True, us
 		
 ####################################################################################################
 @route(PREFIX + "/GetThumb")	
-def GetThumb(thumb, session=None, **kwargs):
-	if UsingOption(key=DEVICE_OPTIONS[1], session=session):
+def GetThumb(thumb, session=None, force_list_view_off=False, **kwargs):
+	if force_list_view_off == False and UsingOption(key=DEVICE_OPTIONS[1], session=session):
 		return None
 	
 	if thumb != None and thumb == 'N/A':
@@ -778,7 +781,9 @@ def GetPageElements(url, headers=None, referer=None, timeout=15):
 			page_data_string, error = GetPageAsString(url=url, headers=headers, referer=referer, timeout=timeout)
 			
 		if page_data_string == None:
-			raise PageError('Request returned None.')
+			raise Exception('Request returned No Data !')
+		elif "type\": \"ErrorException" in page_data_string:
+			raise Exception('Website is currently down !')
 
 		try:
 			page_data_elems = HTML.ElementFromString(page_data_string)
@@ -788,7 +793,9 @@ def GetPageElements(url, headers=None, referer=None, timeout=15):
 			raise Exception(e)
 		
 	except Exception as e:
-		Log('ERROR common.py>GetPageElements: %s URL: %s DATA: %s' % (error,url,page_data_string))
+		if error == '':
+			error = e
+		Log('ERROR common.py>GetPageElements: Error: %s URL: %s DATA: %s' % (error,url,page_data_string))
 
 	return page_data_elems, error
 
@@ -1164,6 +1171,15 @@ def ArrayItemsInString(arr, mystr):
 			return True
 			
 	return False
+	
+####################################################################################################
+# CRC checksum
+def md5(fname):
+	hash_md5 = hashlib.md5()
+	with io.open(fname, "rb") as f:
+		for chunk in iter(lambda: f.read(4096), b""):
+			hash_md5.update(chunk)
+	return hash_md5.hexdigest()
 	
 ####################################################################################################
 class PageError(Exception):

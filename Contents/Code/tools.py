@@ -554,7 +554,7 @@ def SetBaseUrl(url):
 ####################################################################################################
 @route(PREFIX+'/SetAnimeBaseUrl')
 def SetAnimeBaseUrl():
-	common.ANIME_URL = 'https://%s.is' % common.ANIME_KEY
+	common.ANIME_URL = 'https://%s.%s' % (common.ANIME_KEY, common.ANIME_DOM)
 	ANIME_URL_T = common.client.getRedirectingUrl(common.ANIME_URL).strip("/")
 	if ANIME_URL_T != None and 'http' in ANIME_URL_T and common.ANIME_URL != ANIME_URL_T:
 		Log("***Base ANIME_URL has been overridden and set based on redirection: %s ***" % ANIME_URL_T)

@@ -51,7 +51,7 @@ class source:
 	def __init__(self):
 		del loggertxt[:]
 		self.ver = '0.1.2'
-		self.update_date = 'Aug. 09, 2018'
+		self.update_date = 'Feb. 07, 2019'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
 		self.base_link = 'https://yesmovies.to'

@@ -23,6 +23,7 @@ import re,urllib,urlparse,base64,time
 
 from resources.lib.libraries import client, cleantitle, source_utils, testparams, control, jsunpack
 from resources.lib import resolvers, proxies
+import js2py
 
 name = 'Primewire'
 loggertxt = []
@@ -35,7 +36,7 @@ class source:
 		self.update_date = 'Aug. 09, 2018'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
-		self.base_link_alts = ['http://www.primewire.gr']
+		self.base_link_alts = ['https://letmewatchthis.cx']
 		self.base_link = self.base_link_alts[0]
 		self.MainPageValidatingContent = ['PrimeWire | LetMeWatchThis | 1Channel']
 		self.type_filter = ['movie', 'show', 'anime']
@@ -424,6 +425,7 @@ class source:
 
 			log('INFO', 'get_sources-1',url, dolog=False)
 			#result = proxies.request(url, 'choose_tabs', proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+			
 			result = proxies.request(url, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
 			
 			links_m = []
@@ -445,6 +447,11 @@ class source:
 				for trailer in trailers:
 					links_m = resolvers.createMeta(trailer, self.name, self.logo, '720p', links_m, key, vidtype='Trailer', testing=testing)
 
+			loc = url.replace(self.base_link+'/','')
+			url = testjs(result, self.base_link, loc)
+			
+			result = proxies.request(url, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+			
 			links = client.parseDOM(result, 'tbody')
 			
 			try:
@@ -457,40 +464,54 @@ class source:
 				try:
 					url = client.parseDOM(i, 'a', ret='href')[0]
 					url = urlparse.urljoin(self.base_link, url)
+					#print url
 					r = client.request(url)
 					links = client.parseDOM(r, 'script')
 					p = False
+					urls_p = []
 					for l in links:
 						if 'eval' in l:
 							unpacked_code = jsunpack.unpack(l)
-							url = re.findall(r"'(http.*)'",unpacked_code)[0]
-							p = True
-							break
+							unpacked_code = jsunpack.unpack(unpacked_code)
+							#print unpacked_code
+							host = re.findall(r"var host=\\'(.*?)\\'",unpacked_code)
+							hosted = re.findall(r"var hosted=\\'(.*?)\\'",unpacked_code)[0]
+							loc = re.findall(r"var loc=\\'(.*?)\\'",unpacked_code)[0]
+							if loc != None and len(loc) > 4:
+								for h in host:
+									if hosted in h:
+										url = h + loc
+										#print url
+										urls_p.append(url)
+										#url = re.findall(r"'(http.*)'",unpacked_code)[0]
+										p = True
+										break
 					if p == False:
 						raise
 					c=c+1
-							
-					log('INFO', 'get_sources-2A-%s' % c, url, dolog=False)
 					
-					if 'http' not in url:
-						raise Exception()
-					for u in AVOID_DOMAINS:
-						if u in url:
-							raise Exception()
-					
-					quality = client.parseDOM(i, 'span', ret='class')[0]
-					
-					if quality == 'quality_cam' or quality == 'quality_ts': # quality_ts
-						quality = '480p'
-						riptype = 'CAM'
-					elif quality == 'quality_dvd': 
-						quality = '720p'
-						riptype = 'BRRIP'
-					else:
-						riptype = riptypex
-						quality = '480p'
+					for url in urls_p:
+						log('INFO', 'get_sources-2A-%s' % c, url, dolog=False)
 						
-					links_m = resolvers.createMeta(url, self.name, self.logo, quality, links_m, key, riptype=riptype, testing=testing)
+						if 'http' not in url:
+							raise Exception()
+						for u in AVOID_DOMAINS:
+							if u in url:
+								raise Exception()
+						
+						quality = client.parseDOM(i, 'span', ret='class')[0]
+						
+						if quality == 'quality_cam' or quality == 'quality_ts': # quality_ts
+							quality = '480p'
+							riptype = 'CAM'
+						elif quality == 'quality_dvd': 
+							quality = '720p'
+							riptype = 'BRRIP'
+						else:
+							riptype = riptypex
+							quality = '480p'
+							
+						links_m = resolvers.createMeta(url, self.name, self.logo, quality, links_m, key, riptype=riptype, testing=testing)
 				except:
 					pass
 					
@@ -506,6 +527,19 @@ class source:
 		except Exception as e:
 			log('ERROR', 'get_sources', '%s' % e, dolog=not testing)
 			return sources
+			
+def testjs(html, url, loc):
+	jss = re.findall(r'eval\(.+\)', html)
+	js = None
+	for j in jss:
+		if 'goml' in j:
+			js = j
+			break
+	html_with_unpacked_js = jsunpack.unpack(js)
+	ret = js2py.eval_js(html_with_unpacked_js + '; page+"PLACE_HOLDER"+code')
+	ret = ret.replace('PLACE_HOLDER',loc)
+	ret = '%s/%s' % (url, ret)
+	return ret
 
 def log(type='INFO', method='undefined', err='', dolog=True, logToControl=False, doPrint=True):
 	try:

@@ -90,16 +90,6 @@ try:
 except:
 	crypto_msg = 'Cryptodome library not found.'
 	#print crypto_msg
-	
-try:
-	if crypto_msg == None:
-		from resources.lib.libraries import mega
-		mega.fix_ssl()
-		from Cryptodome.Cipher.AES import MODE_CBC
-		#print 'Cryptodome library loaded'
-except:
-	crypto_msg = 'MODE_CBC in Cryptodome library not found.'
-	#print crypto_msg
 
 http_hdrs = {
 	'User-Agent': client.USER_AGENT,

@@ -48,18 +48,24 @@ from resources.lib import proxies
 
 class sources:
 	def __init__(self):
+		self.isInitialized = False
 		log(type='INFO', method='init', err=' -- Initializing Start --', name='sources')
-		resolvers.init()
-		proxies.init()
-		self.sources = []
-		self.sourcesDictionary()
 		self.threads = {}
 		self.threadSlots = {}
 		self.providers = []
+		self.providerInProcess = []
+		self.providersInit1 = []
+		self.providersInit2 = []
 		self.providersCaller = []
 		self.providersTimer = {}
 		self.getSourcesAlive = False
 		self.isProvThreadRunning = True
+		self.sources = []
+
+	def doInit(self):
+		resolvers.init()
+		proxies.init()
+		self.sourcesDictionary()
 		workers.Thread(self.initProviders())
 		
 	def getHosts(self):
@@ -84,20 +90,35 @@ class sources:
 		while self.isProvThreadRunning == True:
 			time.sleep(1)
 		return self.providers
+
+	def getProvidersInitStatus(self):
+		del self.providersInit2[:]
+		for package, name, is_pkg in pkgutil.walk_packages(__path__):
+			self.providersInit2.append(name)
+		return round((float(len(self.providersInit1))/float(len(self.providersInit2)))*100)
+		
+	def getCurrentProviderInProcess(self):
+		if len(self.providerInProcess) > 0:
+			return self.providerInProcess[0]
+		else:
+			return 'None'
 		
 	def initProviders(self):
 		try:
 			del self.providers[:]
 			del self.providersCaller[:]
+			del self.providerInProcess[:]
 			
 			for package, name, is_pkg in pkgutil.walk_packages(__path__):
 				try:
+					self.providerInProcess.append('%s.py' % name)
 					c = __import__(name, globals(), locals(), [], -1).source()
 					log("Adding Provider %s : %s to Interface" % (c.info()['name'], c.info()['url']),name='providers')
 					self.providersCaller.append({'name':c.info()['name'], 'url':c.info()['url'], 'call':c})
 					self.providers.append(c.info())
 					self.providersTimer[c.info()['name']] = {}
 					control.control_json[c.info()['name']] = {}
+					self.providersInit1.append(c.info()['name'])
 				except Exception as e:
 					log(type='CRITICAL', err='Could not import %s > %s (Retrying)' % (name,e))
 					try:
@@ -124,10 +145,13 @@ class sources:
 						self.providers.append(error_info)
 						self.providersTimer[name] = {}
 						control.control_json[name] = {}
+						self.providersInit1.append(name)
+				del self.providerInProcess[:]
 		except:
 			pass
 		self.isProvThreadRunning = False
 		ret = control.loadPermStore()
+		del self.providerInProcess[:]
 		
 		if ret != None:
 			for k in ret.keys():
@@ -135,6 +159,7 @@ class sources:
 				self.providersTimer[k] = ret[k]
 
 		log(type='INFO', method='init', err=' -- Initializing End --', name='sources')
+		self.isInitialized = True
 
 	def getSources(self, name, title, year, imdb, tmdb, tvdb, tvrage, season, episode, tvshowtitle, alter, date, proxy_options, provider_options, key, session):
 		#try:

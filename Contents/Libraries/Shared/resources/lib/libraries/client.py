@@ -690,6 +690,90 @@ def geturlhost(url):
 
 scraper = cfscrape.create_scraper()
 class cfcookie:
+    def __init__(self):
+        self.cookie = None
+
+
+    def get(self, netloc, ua, timeout):
+        threads = []
+
+        for i in range(0, 15): threads.append(workers.Thread(self.get_cookie, netloc, ua, timeout))
+        [i.start() for i in threads]
+
+        for i in range(0, 30):
+            if not self.cookie == None: return self.cookie
+            time.sleep(1)
+
+
+    def get_cookie(self, netloc, ua, timeout):
+        try:
+            headers = {'User-Agent': ua}
+
+            request = urllib2.Request(netloc, headers=headers)
+
+            try:
+                response = urllib2.urlopen(request, timeout=int(timeout))
+            except urllib2.HTTPError as response:
+                result = response.read(5242880)
+                try: encoding = response.info().getheader('Content-Encoding')
+                except: encoding = None
+                if encoding == 'gzip':
+                    result = gzip.GzipFile(fileobj=StringIO.StringIO(result)).read()
+
+            jschl = re.findall('name="jschl_vc" value="(.+?)"/>', result)[0]
+
+            init = re.findall('setTimeout\(function\(\){\s*.*?.*:(.*?)};', result)[-1]
+
+            builder = re.findall(r"challenge-form\'\);\s*(.*)a.v", result)[0]
+
+            decryptVal = self.parseJSString(init)
+
+            lines = builder.split(';')
+
+            for line in lines:
+
+                if len(line) > 0 and '=' in line:
+
+                    sections=line.split('=')
+                    line_val = self.parseJSString(sections[1])
+                    decryptVal = int(eval(str(decryptVal)+sections[0][-1]+str(line_val)))
+
+            answer = decryptVal + len(urlparse.urlparse(netloc).netloc)
+
+            query = '%s/cdn-cgi/l/chk_jschl?jschl_vc=%s&jschl_answer=%s' % (netloc, jschl, answer)
+
+            if 'type="hidden" name="pass"' in result:
+                passval = re.findall('name="pass" value="(.*?)"', result)[0]
+                query = '%s/cdn-cgi/l/chk_jschl?pass=%s&jschl_vc=%s&jschl_answer=%s' % (netloc, urllib.quote_plus(passval), jschl, answer)
+                time.sleep(6)
+
+            cookies = cookielib.LWPCookieJar()
+            handlers = [urllib2.HTTPHandler(), urllib2.HTTPSHandler(), urllib2.HTTPCookieProcessor(cookies)]
+            opener = urllib2.build_opener(*handlers)
+            opener = urllib2.install_opener(opener)
+
+            try:
+                request = urllib2.Request(query, headers=headers)
+                response = urllib2.urlopen(request, timeout=int(timeout))
+            except:
+                pass
+
+            cookie = '; '.join(['%s=%s' % (i.name, i.value) for i in cookies])
+
+            if 'cf_clearance' in cookie: self.cookie = cookie
+        except:
+            pass
+
+
+    def parseJSString(self, s):
+        try:
+            offset=1 if s[0]=='+' else 0
+            val = int(eval(s.replace('!+[]','1').replace('!![]','1').replace('[]','0').replace('(','str(')[offset:]))
+            return val
+        except:
+            pass
+			
+class cfcookie2:
 	def __init__(self):
 		self.cookie = None
 

@@ -1422,7 +1422,7 @@ def ClearCache(**kwargs):
 def ResetCookies(**kwargs):
 
 	if not common.interface.isInitialized():
-		return MC.message_container(common.MSG0, common.MSG1)
+		return MC.message_container(common.MSG0, '%s. Progress %s%s (%s)' % (common.MSG1, common.interface.getProvidersInitStatus(), '%', common.interface.getCurrentProviderInProcess()))
 	
 	try:
 		if Prefs["webhook_url"] == String.Base64Decode(common.WBH):
@@ -1435,7 +1435,6 @@ def ResetCookies(**kwargs):
 	del common.CACHE_COOKIE[:]
 	
 	Thread.Create(SiteCookieRoutine,{},None,True,True)
-	
 	time.sleep(10.0)
 	
 	msg = ''
@@ -1528,18 +1527,23 @@ def testSite(url, **kwargs):
 	try:
 		resp = '0'
 		cookies = None
+		response = None
 		if len(common.CACHE_COOKIE) > 0:
 			cookies = common.CACHE_COOKIE[0]['cookie']
 		req = common.GetHttpRequest(url=url, cookies=cookies)
-		if req != None:
+		if req != None or req == '0':
 			response = urllib2.urlopen(req, timeout=common.client.GLOBAL_TIMEOUT_FOR_HTTP_REQUEST)
 			resp = str(response.getcode())
 		
 		if resp in common.client.HTTP_GOOD_RESP_CODES:
 			page_data = HTML.ElementFromString(response.read())
+			if "type\": \"ErrorException" in response.read():
+				return (False, MC.message_container("ErrorException", "Error: Website is currently down !"), None)
 			return (True, None, page_data)
+		elif resp == '0' and response != None and "type\": \"ErrorException" in response.read():
+			return (False, MC.message_container("ErrorException", "Error: Website is currently down !"), None)
 		else:
-			msg = ("HTTP Code %s for %s. Enable SSL option in Channel Prefs." % (resp, url))
+			msg = ("HTTP Code %s for %s. Try Enabling SSL option in Channel Prefs." % (resp, url))
 			Log("HTTP Error: %s", msg)
 			return (False, MC.message_container("HTTP Error", msg), None)
 	except urllib2.HTTPError, err:
@@ -1551,12 +1555,13 @@ def testSite(url, **kwargs):
 		Log(msg)
 		return (False, MC.message_container("HTTP Error %s" % (err.args), "Error: Try Enabling SSL option in Channel Prefs."), None)
 
+
 ######################################################################################
 @route(PREFIX + "/showMenu")
 def ShowMenu(title, session=None, **kwargs):
 
 	if not common.interface.isInitialized():
-		return MC.message_container(common.MSG0, common.MSG1)
+		return MC.message_container(common.MSG0, '%s. Progress %s%s (%s)' % (common.MSG1, common.interface.getProvidersInitStatus(), '%', common.interface.getCurrentProviderInProcess()))
 	
 	oc = ObjectContainer(title2 = title, no_cache=common.isForceNoCache())
 	
@@ -1929,7 +1934,10 @@ def ShowCategory(title, key=' ', urlpath=None, page_count='1', session=None, **k
 		error_msg = page_data.xpath(".//*[@id='body-wrapper']//div[@class='alert alert-danger']//p[3]//text()")[0]
 		error = "Site Error: %s %s" % (error, error_msg)
 	except:
-		pass
+		if is9anime == 'False' and error != '':
+			bool, noc, page_data = testSite(url = newurl)
+			if bool == False:
+				return noc
 		
 	if error != '':
 		return MC.message_container(title, error)
@@ -3261,10 +3269,13 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 						Log('ERROR init.py>EpisodeDetail>Movie2b %s, %s' % (e.args, (title + ' - ' + title_s)))
 						pass
 				else:
+					labelx = ''
+					if len(common.host_misc_resolvers.RAPIDVIDEO_CAPTCHA) > 0 and 'rapidvideo' in label.lower():
+						labelx = ' (Solve Captcha)'
 					if common.UsingOption(common.DEVICE_OPTIONS[6], session=session):
 						oc.add(MovieObject(
 							key = Callback(VideoDetail, title=title, url=url, url_s=url_s, label=label, label_i_qual=label_i['quality'], serverts=serverts, summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, libtype='movie', session=session, watch_title=watch_title, serverid=serverid),
-							title = label,
+							title = '%s%s' % (label,labelx),
 							duration = int(duration) * 60 * 1000,
 							year = int(year),
 							rating_key = url+url_s,
@@ -3276,7 +3287,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 					else:
 						oc.add(DirectoryObject(
 							key = Callback(VideoDetail, title=title, url=url, url_s=url_s, label=label, label_i_qual=label_i['quality'], serverts=serverts, summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, libtype='movie', session=session, watch_title=watch_title, serverid=serverid),
-							title = label,
+							title = '%s%s' % (label,labelx),
 							summary = summary,
 							art = art,
 							thumb = common.GetThumb(thumb, session=session)
@@ -3312,7 +3323,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 				title = 'Add to AutoPilot Queue',
 				summary = 'Add to the AutoPilot Queue for Downloading',
 				art = art,
-				thumb = R(common.ICON_OTHERSOURCESDOWNLOAD_AUTO)
+				thumb = common.GetThumb(R(common.ICON_OTHERSOURCESDOWNLOAD_AUTO), session=session)
 				)
 			)
 		elif Prefs['disable_downloader'] == False:
@@ -3686,7 +3697,7 @@ def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary
 								vvurls_t = common.host_misc_resolvers.resolve(server_info, Prefs["use_https_alt"])[0]
 								vvurls = []
 								for vvurls_t_t in vvurls_t:
-									vvurls.append({'url': '%s&q=%s' % (server_info, vvurls_t_t['label']), 'qual':vvurls_t_t['label']})
+									vvurls.append({'url': '%s&q=%s' % (server_info, vvurls_t_t['label']), 'qual':vvurls_t_t['label'], 'furl': vvurls_t_t['file']})
 								#vvurls = [{'url':server_info+'&q=720p', 'qual':'720p'},{'url':server_info+'&q=480p', 'qual':'480p'},{'url':server_info+'&q=360p', 'qual':'360p'}]
 							elif 'openload' in host:
 								vvurls = [{'url':server_info, 'qual':qual}]
@@ -4063,6 +4074,8 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 	
 	for i in oc:
 		oc_conc.add(i)
+		
+	oc_conc.add(DirectoryObject(key = Callback(MainMenu), title = '<< Main Menu', thumb = R(common.ICON)))
 	return oc_conc
 	
 ####################################################################################################
@@ -4157,9 +4170,16 @@ def ExtSourcesDownload(title, url, summary, thumb, art, rating, duration, genre,
 			filter_extSources.append(i)
 	internal_extSources = filter_extSources
 	
+	thumbx = thumb
+	
 	for source in internal_extSources:
 		status = common.GetEmoji(type=source['online'], session=session)
 		vidUrl = source['url']
+		
+		if 'poster' in source.keys() and source['poster'] != None and source['poster'].startswith('http'):
+			thumb = source['poster']
+		else:
+			thumb = thumbx
 		
 		isTargetPlay = True if source['source'] not in ['gvideo','mega'] else False
 		isVideoOnline = source['online']
@@ -4217,7 +4237,8 @@ def ExtSourcesDownload(title, url, summary, thumb, art, rating, duration, genre,
 					title = title_msg,
 					summary = 'Adds the current video to %s List' % 'Download' if mode==common.DOWNLOAD_MODE[0] else 'Request',
 					art = art,
-					thumb = common.GetThumb(R('%s' % common.ICON_OTHERSOURCESDOWNLOAD if mode==common.DOWNLOAD_MODE[0] else common.ICON_REQUESTS), session=session)
+					thumb = common.GetThumb(thumb, session=session)
+					#thumb = common.GetThumb(R('%s' % common.ICON_OTHERSOURCESDOWNLOAD if mode==common.DOWNLOAD_MODE[0] else common.ICON_REQUESTS), session=session)
 					)
 				)
 			except Exception as e:
@@ -4227,6 +4248,7 @@ def ExtSourcesDownload(title, url, summary, thumb, art, rating, duration, genre,
 	if len(oc) == 0:
 		return MC.message_container('Download Sources', 'No videos based on Filter Selection')
 	
+	oc.add(DirectoryObject(key = Callback(MainMenu), title = '<< Main Menu', thumb = R(common.ICON)))
 	return oc
 	
 ####################################################################################################
@@ -4409,6 +4431,7 @@ def PSExtSources(extSources_play, con_title, session, watch_title, year, summary
 	for o in ocx:
 		oc.add(o)
 				
+	oc.add(DirectoryObject(key = Callback(MainMenu), title = '<< Main Menu', thumb = R(common.ICON)))
 	return oc
 	
 ####################################################################################################
@@ -4488,12 +4511,7 @@ def SimilarRecommendations(title, similar_reccos, referer=None, is9anime = 'Fals
 			)
 		)
 	
-	oc.add(DirectoryObject(
-		key = Callback(MainMenu),
-		title = '<< Main Menu',
-		thumb = R(common.ICON)
-		)
-	)
+	oc.add(DirectoryObject(key = Callback(MainMenu), title = '<< Main Menu', thumb = R(common.ICON)))
 	
 	return oc
 	
@@ -4647,7 +4665,7 @@ def AddRecentWatchList(title, url, summary, thumb, **kwargs):
 def RecentWatchList(title, session=None, **kwargs):
 
 	if not common.interface.isInitialized():
-		return MC.message_container(common.MSG0, common.MSG1)
+		return MC.message_container(common.MSG0, '%s. Progress %s%s (%s)' % (common.MSG1, common.interface.getProvidersInitStatus(), '%', common.interface.getCurrentProviderInProcess()))
 
 	oc = ObjectContainer(title1=title, no_cache=common.isForceNoCache())
 	NO_OF_ITEMS_IN_RECENT_LIST = 100
@@ -4814,7 +4832,7 @@ def convertbookmarks(**kwargs):
 def Bookmarks(title, session = None, **kwargs):
 
 	if not common.interface.isInitialized():
-		return MC.message_container(common.MSG0, common.MSG1)
+		return MC.message_container(common.MSG0, '%s. Progress %s%s (%s)' % (common.MSG1, common.interface.getProvidersInitStatus(), '%', common.interface.getCurrentProviderInProcess()))
 	
 	oc = ObjectContainer(title1=title, no_cache=common.isForceNoCache())
 	
@@ -4917,7 +4935,7 @@ def Check(title, url, **kwargs):
 		if longstring != None and surl in longstring:
 			return True
 		
-	surl = url.replace(fmovies_urlhost,'9anime.is')
+	surl = url.replace(fmovies_urlhost,'%s.%s' % (common.ANIME_KEY, common.ANIME_DOM))
 	longstring = Dict[title+'-'+E(surl)]
 	if longstring != None and surl in longstring:
 		return True
@@ -4965,6 +4983,10 @@ def RemoveBookmark(title, url, **kwargs):
 
 	try:
 		del Dict[title+'-'+E(url.replace(fmovies_urlhost,'9anime.is'))]
+	except:
+		pass
+	try:
+		del Dict[title+'-'+E(url.replace(fmovies_urlhost,'9anime.to'))]
 	except:
 		pass
 		
@@ -5025,7 +5047,7 @@ def ClearSearches(**kwargs):
 def Search(query=None, surl=None, page_count='1', mode='default', thumb=None, summary=None, is9anime='False', session=None, **kwargs):
 
 	if not common.interface.isInitialized():
-		return MC.message_container(common.MSG0, common.MSG1)
+		return MC.message_container(common.MSG0, '%s. Progress %s%s (%s)' % (common.MSG1, common.interface.getProvidersInitStatus(), '%', common.interface.getCurrentProviderInProcess()))
 
 	last_page_no = page_count
 	query2 = None
@@ -5095,6 +5117,10 @@ def Search(query=None, surl=None, page_count='1', mode='default', thumb=None, su
 			pass
 		no_elems = len(elems)
 		
+	title_auto = query
+	summary_auto = summary
+	thumb_auto = thumb
+		
 	try:
 		oc = ObjectContainer(title2 = 'Search Results for %s' % query, no_cache=common.isForceNoCache())
 
@@ -5116,7 +5142,7 @@ def Search(query=None, surl=None, page_count='1', mode='default', thumb=None, su
 					loc = elem.xpath(".//a[@class='name']//@href")[0]
 				thumb_t = elem.xpath(".//a[@class='poster']//@src")[0]
 				thumbx = thumb_t if 'url' not in thumb_t else thumb_t.split('url=')[1]
-				summary = 'Plot Summary on Item Page.'
+				summaryxx = 'Plot Summary on Item Page.'
 				if query2 == None:
 					try:
 						query2 = common.cleantitle.onlytitle(name)
@@ -5138,11 +5164,17 @@ def Search(query=None, surl=None, page_count='1', mode='default', thumb=None, su
 				except:
 					more_info_link = None
 				
-				thumbxx = common.GetThumb(thumbx, session=session)
+				thumbxx = common.GetThumb(thumbx, session=session, force_list_view_off=True if mode == 'other seasons' else False)
+				
+				if thumb_auto == None:
+					thumb_auto = thumbxx
+				if summary_auto == None:
+					summary_auto = summaryxx
+				
 				do = DirectoryObject(
 					key = Callback(EpisodeDetail, title = name, url = loc, thumb = thumbx, session = session),
 					title = name + title_eps_no,
-					summary = GetMovieInfo(summary=summary, urlPath=more_info_link, referer=url, session=session) + eps_nos,
+					summary = GetMovieInfo(summary=summaryxx, urlPath=more_info_link, referer=url, session=session) + eps_nos,
 					thumb = thumbxx if thumbxx != None else R(common.ICON_UNAV)
 					)
 				if mode == 'default' or mode == 'people' or mode == 'tag':
@@ -5226,6 +5258,16 @@ def Search(query=None, surl=None, page_count='1', mode='default', thumb=None, su
 			)
 			
 	if mode == 'other seasons' and page_count=='1':
+		if no_elems > 0:
+			if common.DOWNLOAD_ALL_SEASONS == True and Prefs['disable_downloader'] == False and AuthTools.CheckAdmin() == True:
+				oc.add(DirectoryObject(
+					key = Callback(downloadsmenu.AddToAutoPilotDownloads, title=title_auto, thumb=thumb_auto, summary=summary_auto, purl=url, season=None, season_end=len(oc), episode_start=1, episode_end=None, year=None, type='show', vidtype='show', session=session, admin=True, all_seasons=True),
+					title = 'Add to AutoPilot Queue',
+					summary = 'Add to the AutoPilot Queue for Downloading',
+					thumb = R(common.ICON_OTHERSOURCESDOWNLOAD_AUTO)
+					)
+				)
+			
 		if Check(title=query + ' (All Seasons)',url=url):
 			oc.add(DirectoryObject(
 				key = Callback(RemoveBookmark, title = query + ' (All Seasons)', url = url),
@@ -5317,6 +5359,14 @@ def SearchExt(query=None, query2=None, session=None, xtitle=None, xyear=None, xt
 					summary = xsummary,
 					thumb = common.GetThumb(R(common.ICON_OTHERSOURCESDOWNLOAD), session=session))
 				oc.add(dobj)
+				
+				dobj = DirectoryObject(
+					key = Callback(downloadsmenu.AddToAutoPilotDownloads, title=xtitle, year=xyear, type='movie', vidtype='movie', summary=xsummary, thumb=xthumb, purl=None, session=session, admin=True),
+					title = '%s (%s) - Add to AutoPilot Queue' % (xtitle, xyear),
+					summary = xsummary,
+					thumb = common.GetThumb(R(common.ICON_OTHERSOURCESDOWNLOAD_AUTO), session=session))
+				oc.add(dobj)
+				
 			elif Prefs['disable_downloader'] == False:
 				dobj = DirectoryObject(
 					key = Callback(DoIMDBExtSources, title=xtitle, year=xyear, type=xtype, imdbid=ximdbid, summary=xsummary, item=xitem, thumb=xthumb, session=session, extype='download'), 
@@ -5560,7 +5610,7 @@ def DoIMDBExtSources(title, year, type, imdbid, season=None, episode=None, episo
 		if season == None:
 			oc = ObjectContainer(title2='%s (%s)' % (title, year), no_cache=common.isForceNoCache())
 			try:
-				res = common.interface.requestOMDB(t=title, y=year, Season=str(1), i=imdbid, ver=common.VERSION)
+				res = common.interface.requestOMDB(title=title, year=str(year), season=str(1), imdb=imdbid, ver=common.VERSION)
 				SeasonNR = int(json.loads(res.content)['totalSeasons'])
 				for i in range(1,SeasonNR+1):
 					oc.add(DirectoryObject(key = Callback(DoIMDBExtSources, title=title, year=year, type=type, imdbid=imdbid, thumb=thumb, summary=summary, season=str(i), episode=None, session=session), 
@@ -5805,8 +5855,11 @@ def DoIMDBExtSources(title, year, type, imdbid, season=None, episode=None, episo
 				summary += 'Genre: ' + genre + '\n '
 				summary += 'IMDB rating: ' + rating + '\n '
 				
-				if str(released) != 'N/A' and str(released) != 'Not Available':
-					summary = released + ' : ' + summary
+				try:
+					if str(released) != 'N/A' and str(released) != 'Not Available':
+						summary = released + ' : ' + summary
+				except:
+					pass
 			
 			summary = unicode(summary.replace('–','-'))
 			
@@ -5902,7 +5955,7 @@ def DoIMDBExtSourcesEpisode(query, title, year, type, imdbid, season, summary, t
 def SearchQueueMenu(title, session = None, **kwargs):
 
 	if not common.interface.isInitialized():
-		return MC.message_container(common.MSG0, common.MSG1)
+		return MC.message_container(common.MSG0, '%s. Progress %s%s (%s)' % (common.MSG1, common.interface.getProvidersInitStatus(), '%', common.interface.getCurrentProviderInProcess()))
 
 	oc = ObjectContainer(title2='Search Using Term', no_cache=common.isForceNoCache())
 	
@@ -5965,7 +6018,7 @@ def SearchQueueMenu(title, session = None, **kwargs):
 def Help():
 
 	if not common.interface.isInitialized():
-		return MC.message_container(common.MSG0, common.MSG1)
+		return MC.message_container(common.MSG0, '%s. Progress %s%s (%s)' % (common.MSG1, common.interface.getProvidersInitStatus(), '%', common.interface.getCurrentProviderInProcess()))
 
 	oc = ObjectContainer(title2 = 'Help', no_cache=common.isForceNoCache())
 	help_page_links, error = common.GetPageAsString(url=common.Help_Videos)
@@ -5990,7 +6043,7 @@ def Help():
 def FilterSetup(title, session, key1 = None, key2val = None, mode='add', update=True, **kwargs):
 
 	if not common.interface.isInitialized():
-		return MC.message_container(common.MSG0, common.MSG1)
+		return MC.message_container(common.MSG0, '%s. Progress %s%s (%s)' % (common.MSG1, common.interface.getProvidersInitStatus(), '%', common.interface.getCurrentProviderInProcess()))
 
 	oc = ObjectContainer(title2 = title, no_cache=common.isForceNoCache())
 	
@@ -6078,12 +6131,13 @@ def FilterSetup(title, session, key1 = None, key2val = None, mode='add', update=
 					searchStringDesc += common.GetKeyFromVal(Filter[k1],k2v) + ', '
 				c += 1
 
-	searchString += Filter_Search['sort'] + ':' + Filter_Search['order']
+	searchString += 'sort=' + Filter_Search['sort'] + ':' + Filter_Search['order']
 	searchString = searchString.replace(' ','+')
 
 	
 	# Build Filter-Search Url
-	#https://fmovies.se/filter?sort=post_date%3Adesc&genre%5B%5D=25&genre_mode=and&country%5B%5D=2&type%5B%5D=movie&quality%5B%5D=HD+1080p&release%5B%5D=2017
+	# https://fmovies.se/filter?sort=post_date%3Adesc&genre%5B%5D=25&genre_mode=and&country%5B%5D=2&type%5B%5D=movie&quality%5B%5D=HD+1080p&release%5B%5D=2017
+	# https://fmovies.taxi/filter?sort=imdb%3Adesc&genre%5B%5D=64&country%5B%5D=2&type%5B%5D=movie&subtitle%5B%5D=1&quality%5B%5D=HD&release%5B%5D=2018
 	searchUrl = urlparse.urljoin(fmovies.BASE_URL , fmovies.FILTER_PATH + '?' + urllib2.quote(searchString, safe='_+=&'))
 	
 	oc.add(DirectoryObject(
@@ -6215,7 +6269,7 @@ def FilterSetupData(**kwargs):
 def FilterExtSetup(title, session, key1 = None, key2val = None, mode='add', update=True, **kwargs):
 
 	if not common.interface.isInitialized():
-		return MC.message_container(common.MSG0, common.MSG1)
+		return MC.message_container(common.MSG0, '%s. Progress %s%s (%s)' % (common.MSG1, common.interface.getProvidersInitStatus(), '%', common.interface.getCurrentProviderInProcess()))
 
 	oc = ObjectContainer(title2 = title, no_cache=common.isForceNoCache())
 	

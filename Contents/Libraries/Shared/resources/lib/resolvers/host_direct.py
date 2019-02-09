@@ -39,18 +39,18 @@ hdr = {
 
 name = 'direct'
 loggertxt = []
-	
+
 class host:
 	def __init__(self):
 		del loggertxt[:]
-		self.ver = '0.0.1'
-		self.update_date = 'Dec. 16, 2017'
+		self.ver = '0.0.4'
+		self.update_date = 'Jan. 11, 2019'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
 		self.logo = 'https://i.imgur.com/nbtnvDr.png'
 		self.name = name
-		self.host = ['imdb.com','media-imdb.com','einthusan.tv','vimeocdn.com','apple.com','akamaized.net','micetop.us','vidcdn.pro','fbcdn.net','cmovieshd.com', 'vcstream.to', 'documentarymania.com','3donlinefilms.com']
-		self.netloc = ['imdb.com','media-imdb.com','einthusan.tv','vimeocdn.com','apple.com','akamaized.net','micetop.us','vidcdn.pro','fbcdn.net','cmovieshd.com', 'vcstream.to', 'documentarymania.com','3donlinefilms.com']
+		self.host = ['imdb.com','media-imdb.com','einthusan.tv','vimeocdn.com','apple.com','akamaized.net','micetop.us','vidcdn.pro','fbcdn.net','cmovieshd.com', 'vcstream.to', 'documentarymania.com','3donlinefilms.com','3dmoviesfullhd.com','totaleclips.com','freedocufilms.com']
+		self.netloc = ['imdb.com','media-imdb.com','einthusan.tv','vimeocdn.com','apple.com','akamaized.net','micetop.us','vidcdn.pro','fbcdn.net','cmovieshd.com', 'vcstream.to', 'documentarymania.com','3donlinefilms.com','3dmoviesfullhd.com','totaleclips.com','freedocufilms.com']
 		self.quality = '1080p'
 		self.loggertxt = []
 		self.captcha = False
@@ -173,36 +173,51 @@ class host:
 					
 					items.append({'quality':q, 'riptype':r, 'src':u, 'fs':fs, 'online':online, 'params':params, 'urldata':urldata})
 					
-			elif '3donlinefilms.com' in url:
+			elif '3donlinefilms.com' in url or '3dmoviesfullhd.com' in url or 'freedocufilms.com' in url:
 				data = urlparse.parse_qs(url)
 				headers = {}
-				headers['Referer'] = 'http://3donlinefilms.com'
-				b = data['page'][0]
-				cook = client.request(b, output='cookie')
 				
-				l0 = 'http://3donlinefilms.com/update.php'
+				if '3donlinefilms.com' in url:
+					headers['Referer'] = 'http://3donlinefilms.com'
+					l0 = 'https://3donlinefilms.com/update.php'
+				elif 'freedocufilms.com' in url:
+					headers['Referer'] = 'http://freedocufilms.com'
+					l0 = 'https://freedocufilms.com/update.php'
+				else:
+					headers['Referer'] = 'http://3dmoviesfullhd.com'
+					l0 = 'https://3dmoviesfullhd.com/update.php'
+					
+				page = data['page'][0]
+				cook = client.request(page, output='cookie')
 				post_data = {'file':data['src_file'][0]}
 				
 				cookie = '%s; zeroday=; visit=yes; jwplayer.qualityLabel=HD' % cook
-				headers['Referer'] = data['page'][0]
+				headers['Referer'] = page
 				headers['User-Agent'] = client.agent()
 				headers['Cookie'] = cookie
 				
-				try:
-					ret = client.request(l0, post=client.encodePostData(post_data), output='extended', XHR=True, cookie=cookie)
-				except:
-					pass
+				u = data['file'][0]
+				u = u.replace('//freedocufilms','//www.freedocufilms')
+	
+				#print headers
+				#u = '%s?file=%s' % (data['file'][0], data['src_file'][0].replace(' ',''))
+				#print u
 				
-				u = '%s?file=%s' % (data['file'][0], data['src_file'][0].replace(' ',''))
-				ret = client.request(u, headers=headers, output='headers')
+				try:
+					ret = client.request(l0, post=client.encodePostData(post_data),headers=headers, output='extended', XHR=True, cookie=cookie)
+				except Exception as e:
+					log(type='FAIL', method='process', err='%s' % e, dolog=False, logToControl=False, doPrint=True)
+				
+				ret = client.request(u, output='headers', headers=headers, XHR=True)
+				
 				try:
 					fs = int(re.findall(r'Content-Length:(.*)', str(ret), re.MULTILINE)[0].strip())
 				except:
 					fs = 0
 
 				q = qual_based_on_fs(q,fs)
-
 				online = False
+				
 				if int(fs) > 0:
 					online = True
 					
@@ -246,11 +261,23 @@ def T3DonlineFilms(url):
 	try:
 		data = urlparse.parse_qs(url)
 		headers = {}
-		headers['Referer'] = 'http://3donlinefilms.com'
-		b = data['page'][0]
-		cook = client.request(b, output='cookie')
 		
-		l0 = 'http://3donlinefilms.com/update.php'
+		if '3donlinefilms.com' in url:
+			headers['Referer'] = 'https://3donlinefilms.com'
+			l0 = 'https://3donlinefilms.com/update.php'
+		elif 'freedocufilms.com' in url:
+			headers['Referer'] = 'https://freedocufilms.com'
+			l0 = 'https://freedocufilms.com/update.php'
+		else:
+			headers['Referer'] = 'https://3dmoviesfullhd.com'
+			l0 = 'https://3dmoviesfullhd.com/update.php'
+		
+		u = data['file'][0]
+		u = u.replace('//freedocufilms','//www.freedocufilms')
+				
+		page = data['page'][0]
+		cook = client.request(page, output='cookie')
+		
 		post_data = {'file':data['src_file'][0]}
 		
 		cookie = '%s; zeroday=; visit=yes; jwplayer.qualityLabel=HD' % cook
@@ -263,10 +290,11 @@ def T3DonlineFilms(url):
 		except:
 			pass
 		
-		u = '%s?file=%s' % (data['file'][0], data['src_file'][0].replace(' ',''))
+		# u = '%s?file=%s' % (data['file'][0], data['src_file'][0].replace(' ',''))
 		
 		paramsx = {'headers':headers}
 		params = client.b64encode(json.dumps(paramsx, encoding='utf-8'))
+		
 	except Exception as e:
 		error = '%s' % e
 	return u, params, error
@@ -276,7 +304,7 @@ def resolve(url):
 	params = client.b64encode(json.dumps('', encoding='utf-8'))
 	error = ''
 	u = url
-	if '3donlinefilms.com' in url:
+	if '3donlinefilms.com' in url or '3dmoviesfullhd.com' in url or 'freedocufilms.com' in url:
 		u, params, error = T3DonlineFilms(url)
 		return u, params, error
 	else:
@@ -285,7 +313,6 @@ def resolve(url):
 	
 	return u, params, error
 
-	
 def check(url, headers=None, cookie=None):
 	try:
 		http_res, red_url = client.request(url=url, output='responsecodeext', followredirect=True, headers=headers, cookie=cookie)

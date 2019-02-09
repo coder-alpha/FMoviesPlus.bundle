@@ -23,10 +23,6 @@ page.onInitialized = function() {
 	window.outerHeight = 1200;
 	window.outerWidth = 1600;
   });
-  var MAXIMUM_EXECUTION_TIME = 2 * 60 * 1000; // 1 min. thanks @Zablon :)
-  setTimeout(function() {
-	phantom.exit();
-  }, MAXIMUM_EXECUTION_TIME);
 };
 page.settings.userAgent = "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.87 Safari/537.36";
 
@@ -41,16 +37,25 @@ page.open(page_url, function(status) {
 		var info = page.evaluate(function() {
 			function GetIframeLink() {
 				try {
-					var elms = document.getElementById("servers-container").getElementsByTagName("div");
-					var txt = "";
-					for (var j = 0; j < elms.length; j++) {
-						var srctxt = elms[j].innerHTML;
-						if (srctxt != null && srctxt.length > 0) {
-							txt = txt + srctxt;
+					var elms = document.getElementById("player").getElementsByTagName("iframe");
+					if (elms.length > 0) {
+						for (var j = 0; j < elms.length; j++) {
+							var srctxt = elms[j].src;
+							if (srctxt != null && srctxt.length > 0) {
+								var txt = srctxt;
+								return txt;
+							}
 						}
 					}
-					if (txt != null && txt.length > 0) {
-						return txt;
+					var elms = document.getElementById("player").getElementsByClassName("error");
+					if (elms.length > 0) {
+						for (var j = 0; j < elms.length; j++) {
+							var srctxt = elms[j].innerHTML;
+							if (srctxt != null && srctxt.length > 0) {
+								var txt = 'ERROR: ' + srctxt;
+								return txt;
+							}
+						}
 					}
 					return null;
 				} catch(err) {
@@ -60,7 +65,7 @@ page.open(page_url, function(status) {
 			
 			var spanID = GetIframeLink();
 			
-			if (spanID == null || spanID.length == 0 || spanID.indexOf('Exception') > -1) {
+			if (spanID == null || spanID.length == 0 || spanID.indexOf('Exception') > -1 || spanID.indexOf('ERROR') > -1) {
 				return {
 					decoded_id: spanID
 				};
@@ -71,7 +76,7 @@ page.open(page_url, function(status) {
 		  });
 
 		var myInfo = info.decoded_id;
-		if (myInfo == null || myInfo.length == 0 || myInfo.indexOf('Exception') > -1) {
+		if (myInfo == null || myInfo.length == 0 || myInfo.indexOf('Exception') > -1 || spanID.indexOf('ERROR') > -1) {
 			console.log('ERROR: Video not found. ' + myInfo);
 		} else {
 			var url = info.decoded_id;

@@ -13,396 +13,496 @@ REMOVE_ENTRY_WHEN_ALL_EPS_IN_DOWNLOADS = False
 
 #######################################################################################################
 @route(PREFIX + '/AddToAutoPilotDownloads')
-def AddToAutoPilotDownloads(title, year, type, purl=None, thumb=None, summary=None, quality=None, file_size=None, riptype='BRRIP', season=None, episode_start=None, episode_end=None, vidtype=None, section_path=None, section_title=None, section_key=None, session=None, admin=False, **kwargs):
+def AddToAutoPilotDownloads(title, year, type, purl=None, thumb=None, summary=None, quality=None, file_size=None, riptype='BRRIP', season=None, season_end=None, episode_start=None, episode_end=None, vidtype=None, section_path=None, section_title=None, section_key=None, session=None, admin=False, all_seasons=False, **kwargs):
 
-	admin = True if str(admin) == 'True' else False
-	ret = False
-	
-	title = common.cleantitle.windows_filename(title)
+	try:
+		admin = True if str(admin) == 'True' else False
+		all_seasons = True if str(all_seasons) == 'True' else False
+		
+		ret = False
+		
+		title = common.cleantitle.windows_filename(title)
+		
+		if (type == 'show' and season == None) or (all_seasons == True):
+			season = '1'
+			episode_start = '1'
+			episode_end = '1'
+			all_seasons = True
 			
-	for i in common.DOWNLOAD_AUTOPILOT[type]:
-		if type == 'movie':
-			if i['title'] == title and i['year'] == year:
-				ret = True
-				break
-		elif type == 'show':
-			if i['short_title'] == title and i['season'] == str(season):
-				ret = True
-				break
+		try:
+			if season_end == None:
+				season_end = '1'
+			season_end = int(season_end)
+		except:
+			season_end = 1
+			
+		if year == None:
+			try:
+				res = common.interface.requestOMDB(title=title, ver=common.VERSION)
+				Log(res.content)
+				res_item = json.loads(json.dumps(res.content))
+				res_item = json.loads(res_item)
+				year = res_item['Year'][:4]
+			except:
+				pass
+			try:
+				seasonNR = int(res_item['totalSeasons'])
+			except:
+				seasonNR = None
+			if seasonNR != None and seasonNR > season_end:
+				season_end = seasonNR
+			else:
+				season_end = season_end
+
+		if year == None:
+			return main.MyMessage(title='Error', msg='OMDB is not reachable at the mmoment. Please try again after some time.')
+		
+		for i in common.DOWNLOAD_AUTOPILOT[type]:
+			if type == 'movie':
+				if i['title'] == title and i['year'] == year:
+					ret = True
+					break
+			elif type == 'show':
+				if i['short_title'] == title and (int(i['season']) == int(season)) or (season_end != None and int(i['season']) <= int(season_end)):
+					ret = True
+					break
+					
+		if ret == False:
+			for uid in Dict:
+				if 'Down5Split' in uid:
+					EncTxt = None
+					try:
+						EncTxt = Dict[uid]
+						EncTxt = JSON.ObjectFromString(D(EncTxt))
+					except:
+						pass
+					try:
+						if EncTxt != None:
+							if type == 'movie':
+								if EncTxt['title'] == title and EncTxt['year'] == year:
+									ret = True
+									break
+							elif type == 'show':
+								if EncTxt['title'] == title and EncTxt['year'] == year and EncTxt['season'] == season:
+									ret = True
+									break
+					except:
+						pass
+
+		if ret == True:
+			return main.MyMessage(title='Return', msg='Item exists. Use back to Return to previous screen')
+		
+		if quality == None and file_size == None:
+			oc = ObjectContainer(title1='Select Quality or FileSize', no_cache=common.isForceNoCache())
+			oc.add(DirectoryObject(
+				key = Callback(AddToAutoPilotDownloads, title=title, year=year, type=type, purl=purl, thumb=thumb, summary=summary, quality=quality, file_size='%s:%s'%(0,100*common.TO_GB), riptype=riptype, season=season, season_end=season_end, episode_start=episode_start, episode_end=episode_end, vidtype=vidtype, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, all_seasons=all_seasons),
+				title = "Enabled: %s | File-Size: %s" % (common.GetEmoji(type=True if file_size=='%s:%s'%(0,100*common.TO_GB) else False, mode='simple', session=session), 'Largest Available File')
+				)
+			)
+			for item in common.INTERNAL_SOURCES_SIZES:
+				if item['enabled']:
+					oc.add(DirectoryObject(
+						key = Callback(AddToAutoPilotDownloads, title=title, year=year, type=type, purl=purl, thumb=thumb, summary=summary, quality=quality, file_size='%s:%s'%(item['LL'],item['UL']), riptype=riptype, season=season, season_end=season_end, episode_start=episode_start, episode_end=episode_end, vidtype=vidtype, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, all_seasons=all_seasons),
+						title = "Enabled: %s | File-Size: %s" % (common.GetEmoji(type=True if file_size=='%s:%s'%(item['LL'],item['UL']) else False, mode='simple', session=session), item['label'])
+						)
+					)
+			for item in common.INTERNAL_SOURCES_QUALS:
+				if item['enabled']:
+					oc.add(DirectoryObject(
+						key = Callback(AddToAutoPilotDownloads, title=title, year=year, type=type, purl=purl, thumb=thumb, summary=summary, quality=item['label'], file_size=file_size, riptype=riptype, season=season, season_end=season_end, episode_start=episode_start, episode_end=episode_end, vidtype=vidtype, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, all_seasons=all_seasons),
+						title = "Enabled: %s | Quality: %s" % (common.GetEmoji(type=True if quality==item['label'] else False, mode='simple', session=session), item['label'])
+						)
+					)
+			for item in common.INTERNAL_SOURCES_RIPTYPE:
+				if item['enabled'] and 'BRRIP' in item['label']:
+					oc.add(DirectoryObject(
+						key = Callback(AddToAutoPilotDownloads, title=title, year=year, type=type, purl=purl, thumb=thumb, summary=summary, quality=quality, file_size=file_size, riptype=item['label'], season=season, season_end=season_end, episode_start=episode_start, episode_end=episode_end, vidtype=vidtype, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, all_seasons=all_seasons),
+						title = "Enabled: %s | Rip-Type: %s" % (common.GetEmoji(type=True if riptype==item['label'] else False, mode='simple', session=session), item['label'])
+						)
+					)
+			if len(oc) == 0:
+				return MC.message_container('Quality or FileSize', 'A Quality or FileSize selection needs to be enabled under Interface Options')
+			else:
+				return oc
 				
-	if ret == False:
-		for uid in Dict:
-			if 'Down5Split' in uid:
-				EncTxt = None
-				try:
-					EncTxt = Dict[uid]
-					EncTxt = JSON.ObjectFromString(D(EncTxt))
-				except:
-					pass
-				try:
-					if EncTxt != None:
-						if type == 'movie':
-							if EncTxt['title'] == title and EncTxt['year'] == year:
-								ret = True
-								break
-						elif type == 'show':
-							if EncTxt['title'] == title and EncTxt['year'] == year and EncTxt['season'] == season:
-								ret = True
-								break
-				except:
-					pass
+		if section_path == None or section_title == None:
+			oc = ObjectContainer(title1='Select Location', no_cache=common.isForceNoCache())
+			for item in common.DOWNLOAD_OPTIONS[type]:
+				if item['enabled']:
+					oc.add(DirectoryObject(
+						key = Callback(AddToAutoPilotDownloads, title=title, year=year, type=type, purl=purl, thumb=thumb, summary=summary, quality=quality, file_size=file_size, riptype=riptype, season=season, season_end=season_end, episode_start=episode_start, episode_end=episode_end, vidtype=vidtype, section_path=item['path'], section_title=item['title'], section_key=item['key'], session=session, admin=admin, all_seasons=all_seasons),
+						title = '%s | %s' % (item['title'], item['path'])
+						)
+					)
+			if len(oc) == 0:
+				return MC.message_container('Download Sources', 'No Download Location set under Download Options')
+			else:
+				return oc
 
-	if ret == True:
-		return main.MyMessage(title='Return', msg='Item exists. Use back to Return to previous screen')
-	
-	if quality == None and file_size == None:
-		oc = ObjectContainer(title1='Select Quality or FileSize', no_cache=common.isForceNoCache())
-		for item in common.INTERNAL_SOURCES_SIZES:
-			if item['enabled']:
-				oc.add(DirectoryObject(
-					key = Callback(AddToAutoPilotDownloads, title=title, year=year, type=type, purl=purl, thumb=thumb, summary=summary, quality=quality, file_size='%s:%s'%(item['LL'],item['UL']), riptype=riptype, season=season, episode_start=episode_start, episode_end=episode_end, vidtype=vidtype, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin),
-					title = '%s' % (item['label'])
-					)
-				)
-		for item in common.INTERNAL_SOURCES_QUALS:
-			if item['enabled']:
-				oc.add(DirectoryObject(
-					key = Callback(AddToAutoPilotDownloads, title=title, year=year, type=type, purl=purl, thumb=thumb, summary=summary, quality=item['label'], file_size=file_size, riptype=riptype, season=season, episode_start=episode_start, episode_end=episode_end, vidtype=vidtype, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin),
-					title = '%s' % (item['label'])
-					)
-				)
-		if len(oc) == 0:
-			return MC.message_container('Quality or FileSize', 'A Quality or FileSize selection needs to be enabled under Interface Options')
+		uid = common.makeUID(title, year, quality, file_size, purl, season, episode_start)
+		
+		if season_end == None:
+			season_end = season
+		
+		if type == 'show':
+			item = {'title':title, 'year':year, 'season':season, 'season_end':season_end, 'episode':episode_start, 'thumb':thumb, 'summary':summary, 'episode_start':int(episode_start), 'episode_end':int(episode_end), 'quality':quality, 'file_size':file_size, 'riptype':riptype, 'vidtype':vidtype, 'section_path':section_path, 'section_title':section_title, 'section_key':section_key, 'admin':admin, 'timeAdded':time.time(), 'type':type, 'session':session, 'purl':purl, 'status':common.DOWNLOAD_AUTOPILOT_STATUS[3], 'fsBytes':0, 'uid':uid, 'all_seasons':all_seasons}
 		else:
-			return oc
-			
-	if section_path == None or section_title == None:
-		oc = ObjectContainer(title1='Select Location', no_cache=common.isForceNoCache())
-		for item in common.DOWNLOAD_OPTIONS[type]:
-			if item['enabled']:
-				oc.add(DirectoryObject(
-					key = Callback(AddToAutoPilotDownloads, title=title, year=year, type=type, purl=purl, thumb=thumb, summary=summary, quality=quality, file_size=file_size, riptype=riptype, season=season, episode_start=episode_start, episode_end=episode_end, vidtype=vidtype, section_path=item['path'], section_title=item['title'], section_key=item['key'], session=session, admin=admin),
-					title = '%s | %s' % (item['title'], item['path'])
-					)
-				)
-		if len(oc) == 0:
-			return MC.message_container('Download Sources', 'No Download Location set under Download Options')
-		else:
-			return oc
-
-	uid = common.makeUID(title, year, quality, file_size, purl, season, episode_start)
-	
-	if type == 'show':
-		item = {'title':title, 'year':year, 'season':season, 'episode':episode_start, 'thumb':thumb, 'summary':summary, 'episode_start':int(episode_start), 'episode_end':int(episode_end), 'quality':quality, 'file_size':file_size, 'riptype':riptype, 'vidtype':vidtype, 'section_path':section_path, 'section_title':section_title, 'section_key':section_key, 'admin':admin, 'timeAdded':time.time(), 'type':type, 'session':session, 'purl':purl, 'status':common.DOWNLOAD_AUTOPILOT_STATUS[3], 'fsBytes':0, 'uid':uid}
-	else:
-		item = {'title':title, 'year':year, 'season':season, 'episode':episode_start, 'thumb':thumb, 'summary':summary, 'quality':quality, 'file_size':file_size, 'riptype':riptype, 'vidtype':vidtype, 'section_path':section_path, 'section_title':section_title, 'section_key':section_key, 'admin':admin, 'timeAdded':time.time(), 'type':type, 'session':session, 'purl':purl, 'status':common.DOWNLOAD_AUTOPILOT_STATUS[3], 'fsBytes':0, 'uid':uid}
-	
-	Thread.Create(AutoPilotDownloadThread, {}, item)
-	
-	return MC.message_container('Added to AutoPilot Download Queue', 'The item has been added to AutoPilot Download Queue')
+			item = {'title':title, 'year':year, 'season':season, 'season_end':season_end, 'episode':episode_start, 'thumb':thumb, 'summary':summary, 'quality':quality, 'file_size':file_size, 'riptype':riptype, 'vidtype':vidtype, 'section_path':section_path, 'section_title':section_title, 'section_key':section_key, 'admin':admin, 'timeAdded':time.time(), 'type':type, 'session':session, 'purl':purl, 'status':common.DOWNLOAD_AUTOPILOT_STATUS[3], 'fsBytes':0, 'uid':uid, 'all_seasons':all_seasons}
+		
+		Thread.Create(AutoPilotDownloadThread, {}, item)
+		
+		return MC.message_container('Added to AutoPilot Download Queue', 'The item has been added to AutoPilot Download Queue')
+	except Exception as e:
+		err = '{}'.format(e)
+		Log.Error('downloadsmenu.py > AddToAutoPilotDownloads: %s' % err)
+		return MC.message_container('Error', 'Error in AutoPilot Download Queue')
 
 #######################################################################################################
 def AutoPilotDownloadThread(item):
 	
-	type = item['type']
-	if type == 'show':
-		SHOW_QUEUE = []
-		orig_title = item['title']
-		for ix in range(item['episode_start'], item['episode_end']+1):
+	try:
+		type = item['type']
+		if type == 'show':
+			SHOW_QUEUE = []
+			orig_title = item['title']
+			year = item['year']
+			season_start = item['season']
+			season_end = max(season_start,item['season_end'])
+			episode_start = item['episode_start']
+			episode_end = item['episode_end']
+			all_seasons = item['all_seasons']
+			
+			for sx in range(int(season_start), int(season_end)+1):
+				if all_seasons == True:
+					try:
+						time.sleep(1000)
+						res = common.interface.requestOMDB(title=orig_title, year=str(int(year)+sx-1), season=str(sx), ver=common.VERSION)
+						res_item = json.loads(json.dumps(res.content))
+						res_item = json.loads(res_item)
+						episode_end_t = len(res_item['Episodes'])
+						if episode_end_t > episode_end:
+							episode_end = episode_end_t
+					except Exception as e:
+						Log(e)
+					
+				for ix in range(int(episode_start), int(episode_end)+1):
+					item_x = item.copy()
+					item_x['season'] = str(sx)
+					item_x['episode'] = str(ix)
+					new_title = '%s S%sE%s' % (orig_title, item_x['season'], item_x['episode'])
+					item_x['short_title'] = orig_title
+					item_x['title'] = new_title
+					
+					if int(episode_end) < 100:
+						watch_title = '%s S%sE%02d' % (orig_title,int(item_x['season']),int(item_x['episode']))
+					else:
+						watch_title = '%s S%sE%03d' % (orig_title,int(item_x['season']),int(item_x['episode']))
+					
+					item_x['watch_title'] = watch_title
+					
+					uid = common.makeUID(orig_title, int(year)+sx-1, item_x['quality'], item_x['file_size'], item_x['purl'], item_x['season'], item_x['episode'])
+					item_x['uid'] = uid
+					
+					common.DOWNLOAD_AUTOPILOT[type].append(item_x)
+					SHOW_QUEUE.append(item_x)
+				
+			c=0
+			for i in SHOW_QUEUE:
+				common.DOWNLOAD_AUTOPILOT[type][c]['status'] = common.DOWNLOAD_AUTOPILOT_STATUS[0]
+				AutoPilotDownloadThread1(i)
+		else:
 			item_x = item.copy()
-			item_x['episode'] = str(ix)
-			new_title = '%s S%sE%s' % (orig_title, item_x['season'], item_x['episode'])
+			orig_title = item['title']
 			item_x['short_title'] = orig_title
-			item_x['title'] = new_title
-			
-			if int(item_x['episode']) < 100:
-				watch_title = '%s S%sE%02d' % (orig_title,int(item_x['season']),int(item_x['episode']))
-			else:
-				watch_title = '%s S%sE%03d' % (orig_title,int(item_x['season']),int(item_x['episode']))
-			
-			item_x['watch_title'] = watch_title
-			
-			uid = common.makeUID(orig_title, item_x['year'], item_x['quality'], item_x['file_size'], item_x['purl'], item_x['season'], ix)
-			item_x['uid'] = uid
+			item_x['watch_title'] = orig_title
 			
 			common.DOWNLOAD_AUTOPILOT[type].append(item_x)
-			SHOW_QUEUE.append(item_x)
+			AutoPilotDownloadThread1(item_x)
 			
-		for i in SHOW_QUEUE:
-			AutoPilotDownloadThread1(i)
-	else:
-		item_x = item.copy()
-		orig_title = item['title']
-		item_x['short_title'] = orig_title
-		item_x['watch_title'] = orig_title
-		
-		common.DOWNLOAD_AUTOPILOT[type].append(item_x)
-		AutoPilotDownloadThread1(item_x)
-		
-	Dict['DOWNLOAD_AUTOPILOT'] = E(JSON.StringFromObject(common.DOWNLOAD_AUTOPILOT))
-	Dict.Save()
+		Dict['DOWNLOAD_AUTOPILOT'] = E(JSON.StringFromObject(common.DOWNLOAD_AUTOPILOT))
+		Dict.Save()
+	except Exception as e:
+		err = '{}'.format(e)
+		Log.Error('downloadsmenu.py > AutoPilotDownloadThread: %s' % err)
 	
 #######################################################################################################
 def AutoPilotDownloadThread1(item=None, runForWaiting=False):
 	
-	removeEntry = False
-	removeEntry_item = None
-	
-	if item == None: # runs via Scheduler
-		for type in common.DOWNLOAD_AUTOPILOT.keys():
-			for item in common.DOWNLOAD_AUTOPILOT[type]:
-				if (item['status'] != common.DOWNLOAD_AUTOPILOT_STATUS[2] and runForWaiting == False) or (runForWaiting == True and item['status'] == common.DOWNLOAD_AUTOPILOT_STATUS[3]):
-					sources = None
-					if item['type'] == 'show':
-						key = main.generatemoviekey(movtitle=None, year=item['year'], tvshowtitle=item['short_title'], season=item['season'], episode=str(item['episode']))
-						prog = common.interface.checkProgress(key)
-						while prog > 0 and prog < 100:
-							time.sleep(5)
+	try:
+		removeEntry = False
+		removeEntry_item = None
+		
+		if item == None: # runs via Scheduler and after Initialization (plugin restart)
+			for type in common.DOWNLOAD_AUTOPILOT.keys():
+				for item in common.DOWNLOAD_AUTOPILOT[type]:
+					if (item['status'] != common.DOWNLOAD_AUTOPILOT_STATUS[2] and runForWaiting == False) or (runForWaiting == True and (item['status'] == common.DOWNLOAD_AUTOPILOT_STATUS[0] or item['status'] == common.DOWNLOAD_AUTOPILOT_STATUS[3])):
+						sources = None
+						if item['type'] == 'show':
+							key = main.generatemoviekey(movtitle=None, year=item['year'], tvshowtitle=item['short_title'], season=item['season'], episode=str(item['episode']))
 							prog = common.interface.checkProgress(key)
-						sources = common.interface.getExtSources(movtitle=None, year=item['year'], tvshowtitle=item['short_title'], season=item['season'], episode=str(item['episode']), proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=common.CACHE_EXPIRY_TIME, ver=common.VERSION, imdb_id=None, session=item['session'])
-					else:
-						key = main.generatemoviekey(movtitle=item['title'], year=item['year'], tvshowtitle=None, season=None, episode=None)
-						prog = common.interface.checkProgress(key)
-						while prog > 0 and prog < 100:
-							time.sleep(5)
-							prog = common.interface.checkProgress(key)
-						sources = common.interface.getExtSources(movtitle=item['title'], year=item['year'], tvshowtitle=None, season=None, episode=None, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=common.CACHE_EXPIRY_TIME, ver=common.VERSION, imdb_id=None, session=item['session'])
-						
-					if sources != None:
-						bool, fsBytes, removeEntry = AutoPilotDownloadThread2(item, sources)
-						item['fsBytes'] = fsBytes
-						item['timeAdded'] = time.time()
-						if bool == True:
-							item['status'] = common.DOWNLOAD_AUTOPILOT_STATUS[2]
-							if removeEntry == True:
-								removeEntry_item = item
-								if item['type'] != 'show' or REMOVE_ENTRY_WHEN_ALL_EPS_IN_DOWNLOADS == False:
-									try:
-										common.DOWNLOAD_AUTOPILOT[item['type']].remove(item)
-									except:
-										pass
+							while prog > 0 and prog < 100:
+								time.sleep(5)
+								prog = common.interface.checkProgress(key)
+							sources = common.interface.getExtSources(movtitle=None, year=item['year'], tvshowtitle=item['short_title'], season=item['season'], episode=str(item['episode']), proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=common.CACHE_EXPIRY_TIME, ver=common.VERSION, imdb_id=None, session=item['session'])
 						else:
-							item['status'] = common.DOWNLOAD_AUTOPILOT_STATUS[1]
+							key = main.generatemoviekey(movtitle=item['title'], year=item['year'], tvshowtitle=None, season=None, episode=None)
+							prog = common.interface.checkProgress(key)
+							while prog > 0 and prog < 100:
+								time.sleep(5)
+								prog = common.interface.checkProgress(key)
+							sources = common.interface.getExtSources(movtitle=item['title'], year=item['year'], tvshowtitle=None, season=None, episode=None, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=common.CACHE_EXPIRY_TIME, ver=common.VERSION, imdb_id=None, session=item['session'])
 							
-				if REMOVE_ENTRY_WHEN_ALL_EPS_IN_DOWNLOADS == True and removeEntry_item != None and removeEntry_item['type'] == 'show':
-					for i in common.DOWNLOAD_AUTOPILOT['show']:
-						if i['status'] == common.DOWNLOAD_AUTOPILOT_STATUS[2] and i['short_title'] == removeEntry_item['short_title'] and i['season'] == removeEntry_item['season']:
+						if sources != None:
+							bool, fsBytes, removeEntry = AutoPilotDownloadThread2(item, sources)
+							item['fsBytes'] = fsBytes
+							item['timeAdded'] = time.time()
+							if bool == True:
+								item['status'] = common.DOWNLOAD_AUTOPILOT_STATUS[2]
+								if removeEntry == True:
+									removeEntry_item = item
+									if item['type'] != 'show' or REMOVE_ENTRY_WHEN_ALL_EPS_IN_DOWNLOADS == False:
+										try:
+											common.DOWNLOAD_AUTOPILOT[item['type']].remove(item)
+										except:
+											pass
+							else:
+								item['status'] = common.DOWNLOAD_AUTOPILOT_STATUS[1]
+								
+					if REMOVE_ENTRY_WHEN_ALL_EPS_IN_DOWNLOADS == True and removeEntry_item != None and removeEntry_item['type'] == 'show':
+						for i in common.DOWNLOAD_AUTOPILOT['show']:
+							if i['status'] == common.DOWNLOAD_AUTOPILOT_STATUS[2] and i['short_title'] == removeEntry_item['short_title'] and i['season'] == removeEntry_item['season']:
+								try:
+									common.DOWNLOAD_AUTOPILOT[type].remove(i)
+								except:
+									pass
+		else: # runs when added
+			sources = None
+			type = item['type']
+			if type == 'show':
+				key = main.generatemoviekey(movtitle=None, year=item['year'], tvshowtitle=item['short_title'], season=item['season'], episode=str(item['episode']))
+				sources = common.interface.getExtSources(movtitle=None, year=item['year'], tvshowtitle=item['short_title'], season=item['season'], episode=str(item['episode']), proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=common.CACHE_EXPIRY_TIME, ver=common.VERSION, imdb_id=None, session=item['session'])
+			else:
+				key = main.generatemoviekey(movtitle=item['title'], year=item['year'], tvshowtitle=None, season=None, episode=None)
+				sources = common.interface.getExtSources(movtitle=item['title'], year=item['year'], tvshowtitle=None, season=None, episode=None, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=common.CACHE_EXPIRY_TIME, ver=common.VERSION, imdb_id=None, session=item['session'])
+
+			if sources != None:
+				bool, fsBytes, removeEntry = AutoPilotDownloadThread2(item, sources)
+				item['fsBytes'] = fsBytes
+				item['timeAdded'] = time.time()
+				if bool == True:
+					item['status'] = common.DOWNLOAD_AUTOPILOT_STATUS[2]
+					if removeEntry == True:
+						removeEntry_item = item
+						if type != 'show' or REMOVE_ENTRY_WHEN_ALL_EPS_IN_DOWNLOADS == False:
 							try:
-								common.DOWNLOAD_AUTOPILOT[type].remove(i)
+								common.DOWNLOAD_AUTOPILOT[type].remove(item)
 							except:
 								pass
-	else: # runs when added
-		sources = None
-		type = item['type']
-		if type == 'show':
-			key = main.generatemoviekey(movtitle=None, year=item['year'], tvshowtitle=item['short_title'], season=item['season'], episode=str(item['episode']))
-			sources = common.interface.getExtSources(movtitle=None, year=item['year'], tvshowtitle=item['short_title'], season=item['season'], episode=str(item['episode']), proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=common.CACHE_EXPIRY_TIME, ver=common.VERSION, imdb_id=None, session=item['session'])
-		else:
-			key = main.generatemoviekey(movtitle=item['title'], year=item['year'], tvshowtitle=None, season=None, episode=None)
-			sources = common.interface.getExtSources(movtitle=item['title'], year=item['year'], tvshowtitle=None, season=None, episode=None, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=common.CACHE_EXPIRY_TIME, ver=common.VERSION, imdb_id=None, session=item['session'])
-
-		if sources != None:
-			bool, fsBytes, removeEntry = AutoPilotDownloadThread2(item, sources)
-			item['fsBytes'] = fsBytes
-			item['timeAdded'] = time.time()
-			if bool == True:
-				item['status'] = common.DOWNLOAD_AUTOPILOT_STATUS[2]
-				if removeEntry == True:
-					removeEntry_item = item
-					if type != 'show' or REMOVE_ENTRY_WHEN_ALL_EPS_IN_DOWNLOADS == False:
+				else:
+					item['status'] = common.DOWNLOAD_AUTOPILOT_STATUS[1]
+					
+			if REMOVE_ENTRY_WHEN_ALL_EPS_IN_DOWNLOADS == True and removeEntry_item != None and removeEntry_item['type'] == 'show':
+				for i in common.DOWNLOAD_AUTOPILOT['show']:
+					if i['status'] == common.DOWNLOAD_AUTOPILOT_STATUS[2] and i['short_title'] == removeEntry_item['short_title'] and i['season'] == removeEntry_item['season']:
 						try:
-							common.DOWNLOAD_AUTOPILOT[type].remove(item)
+							common.DOWNLOAD_AUTOPILOT[type].remove(i)
 						except:
 							pass
-			else:
-				item['status'] = common.DOWNLOAD_AUTOPILOT_STATUS[1]
-				
-		if REMOVE_ENTRY_WHEN_ALL_EPS_IN_DOWNLOADS == True and removeEntry_item != None and removeEntry_item['type'] == 'show':
-			for i in common.DOWNLOAD_AUTOPILOT['show']:
-				if i['status'] == common.DOWNLOAD_AUTOPILOT_STATUS[2] and i['short_title'] == removeEntry_item['short_title'] and i['season'] == removeEntry_item['season']:
-					try:
-						common.DOWNLOAD_AUTOPILOT[type].remove(i)
-					except:
-						pass
-				
-	Dict['DOWNLOAD_AUTOPILOT'] = E(JSON.StringFromObject(common.DOWNLOAD_AUTOPILOT))
-	Dict.Save()
+					
+		Dict['DOWNLOAD_AUTOPILOT'] = E(JSON.StringFromObject(common.DOWNLOAD_AUTOPILOT))
+		Dict.Save()
+	except Exception as e:
+		err = '{}'.format(e)
+		Log.Error('downloadsmenu.py > AutoPilotDownloadThread1: %s' % err)
 
 #######################################################################################################
 def AutoPilotDownloadThread2(item, sources):
 
-	sources = JSON.ObjectFromString(D(sources))
-	sources = common.FilterBasedOn(sources)
-	sources = common.OrderBasedOn(sources, use_filesize=True)
-	
-	for s in sources:
-		Log(s)
-		try:
-			fsBytes = int(s['fs'])
-			fs = '%s GB' % str(round(float(s['fs'])/common.TO_GB, 3))
-		except:
-			fsBytes = 0
-			fs = None
+	try:
+		sources = JSON.ObjectFromString(D(sources))
+		sources = common.FilterBasedOn(sources)
+		sources = common.OrderBasedOn(sources, use_filesize=True)
 		
-		doSkip = False
-		removeEntry = True
-		eps = 0
-		eps_done = 0
-		
-		if item['riptype'] not in s['rip']:
-			doSkip = True
+		for s in sources:
+			try:
+				fsBytes = int(s['fs'])
+				fs = '%s GB' % str(round(float(s['fs'])/common.TO_GB, 3))
+			except:
+				fsBytes = 0
+				fs = None
 			
-		if doSkip == False:
-			if item['type'] != s['vidtype'].lower():
+			doSkip = False
+			removeEntry = True
+			eps = 0
+			eps_done = 0
+			
+			if item['riptype'] != s['rip']:
 				doSkip = True
-		
-		if doSkip == False:
-			if item['type'] == 'show':
-				for i in common.DOWNLOAD_AUTOPILOT['show']:
-					if item['short_title'] == i['short_title'] and item['season'] == i['season']:
-						eps += 1
-					if item['short_title'] == i['short_title'] and item['season'] == i['season'] and item['status'] == common.DOWNLOAD_AUTOPILOT_STATUS[2]:
-						eps_done += 1
-					if item['short_title'] == i['short_title'] and item['season'] == i['season'] and fsBytes == i['fsBytes']:
-						doSkip = True
-		
-			if eps - eps_done > 1 and REMOVE_ENTRY_WHEN_ALL_EPS_IN_DOWNLOADS == True:
-				removeEntry = False
+				
+			if doSkip == False:
+				if item['type'] != s['vidtype'].lower():
+					doSkip = True
+			
+			if doSkip == False:
+				if item['type'] == 'show':
+					for i in common.DOWNLOAD_AUTOPILOT['show']:
+						if item['short_title'] == i['short_title'] and item['season'] == i['season']:
+							eps += 1
+						if item['short_title'] == i['short_title'] and item['season'] == i['season'] and item['status'] == common.DOWNLOAD_AUTOPILOT_STATUS[2]:
+							eps_done += 1
+						if item['short_title'] == i['short_title'] and item['season'] == i['season'] and fsBytes == i['fsBytes']:
+							doSkip = True
+			
+				if eps - eps_done > 1 and REMOVE_ENTRY_WHEN_ALL_EPS_IN_DOWNLOADS == True:
+					removeEntry = False
 
-		if doSkip == False:
-			if item['quality'] == s['quality']:
-				AutoPilotDownloadThread3(item, s, fsBytes, fs)
-				return True, fsBytes, removeEntry
-			elif item['file_size'] != None and fs != None:
-				i_fs = item['file_size'].split(':')
-				if fsBytes >= int(float(str(i_fs[0]))):
+			if doSkip == False:
+				if item['quality'] == s['quality']:
 					AutoPilotDownloadThread3(item, s, fsBytes, fs)
 					return True, fsBytes, removeEntry
-			
-	return False, 0, False
+				elif item['file_size'] != None and fs != None:
+					i_fs = item['file_size'].split(':')
+					if fsBytes >= int(float(str(i_fs[0]))):
+						AutoPilotDownloadThread3(item, s, fsBytes, fs)
+						return True, fsBytes, removeEntry
+				
+		return False, 0, False
+	except Exception as e:
+		err = '{}'.format(e)
+		Log.Error('downloadsmenu.py > AutoPilotDownloadThread2: %s' % err)
+		return False, 0, False 
 		
 #######################################################################################################
 def AutoPilotDownloadThread3(item, s, fsBytes, fs):
 
-	AddToDownloadsList(title=item['short_title'] if item['type']=='show' else item['title'], purl=item['purl'], url=s['url'], durl=s['durl'], summary=item['summary'], thumb=item['thumb'], year=item['year'], quality=s['quality'], source=s['source'], source_meta={}, file_meta={}, type=item['type'], vidtype=item['vidtype'], resumable=s['resumeDownload'], sub_url=s['sub_url'], fsBytes=fsBytes, fs=fs, file_ext=s['file_ext'], mode=common.DOWNLOAD_MODE[0], section_path=item['section_path'], section_title=item['section_title'], section_key=item['section_key'], session=item['session'], admin=item['admin'], params=s['params'], riptype=s['rip'], season=item['season'], episode=item['episode'], provider=s['provider'])
+	try:
+		AddToDownloadsList(title=item['short_title'] if item['type']=='show' else item['title'], purl=item['purl'], url=s['url'], durl=s['durl'], summary=item['summary'], thumb=item['thumb'], year=item['year'], quality=s['quality'], source=s['source'], source_meta={}, file_meta={}, type=item['type'], vidtype=item['vidtype'], resumable=s['resumeDownload'], sub_url=s['sub_url'], fsBytes=fsBytes, fs=fs, file_ext=s['file_ext'], mode=common.DOWNLOAD_MODE[0], section_path=item['section_path'], section_title=item['section_title'], section_key=item['section_key'], session=item['session'], admin=item['admin'], params=s['params'], riptype=s['rip'], season=item['season'], episode=item['episode'], provider=s['provider'])
+	except Exception as e:
+		err = '{}'.format(e)
+		Log.Error('downloadsmenu.py > AutoPilotDownloadThread3: %s' % err)
 
 #######################################################################################################
 @route(PREFIX + '/AddToDownloadsListPre')
 def AddToDownloadsListPre(title, year, url, durl, purl, summary, thumb, quality, source, type, resumable, source_meta, file_meta, mode, sub_url=None, fsBytes=None, fs=None, file_ext=None, vidtype=None, section_path=None, section_title=None, section_key=None, session=None, admin=False, update=False, params=None, riptype=None, season=None, episode=None, provider=None, **kwargs):
-	
-	admin = True if str(admin) == 'True' else False
-	update = True if str(update) == 'True' else False
-	resumable = True if str(resumable) == 'True' else False
-	user = common.control.setting('%s-%s' % (session,'user'))
-		
-	bool = False
-	for i_source in common.interface.getHosts(encode=False):
-		if i_source['name'].lower() in source.lower() and i_source['downloading']:
-			bool = True
-			break
 
-	if bool == False:
-		return MC.message_container('Download Sources', 'No compatible Download service found for this URL !')
-		
-	title = common.cleantitle.windows_filename(title)
-	tuec = E(title+year+quality+source+url+str(season)+str(episode))
-		
-	#if mode == common.DOWNLOAD_MODE[1]:
-	if fs == None or fsBytes == None or int(fsBytes) == 0:
-		err = ''
-		try:
-			if 'openload' in source:
-				isPairDone = common.host_openload.isPairingDone()
-				openload_vars =  common.host_openload.check(url, usePairing=False, embedpage=True)
-				online, r1, err, fs_i, furl2, sub_url_t = openload_vars
-				if sub_url == None:
-					sub_url = sub_url_t
-			elif 'rapidvideo' in source:
-				vurl, r1, sub_url_t = common.host_rapidvideo.resolve(url, True)
-				if sub_url == None:
-					sub_url = sub_url_t
-				fs_i, err = common.client.getFileSize(vurl, retError=True, retry429=True, cl=2)
-			elif 'streamango' in source:
-				vurl, r1, sub_url_t = common.host_streamango.resolve(url, True)
-				if sub_url == None:
-					sub_url = sub_url_t
-				fs_i, err = common.client.getFileSize(vurl, retError=True, retry429=True, cl=2)
-			else:
-				fs_i, err = common.client.getFileSize(url, retError=True, retry429=True, cl=2)
+	try:
+		admin = True if str(admin) == 'True' else False
+		update = True if str(update) == 'True' else False
+		resumable = True if str(resumable) == 'True' else False
+		user = common.control.setting('%s-%s' % (session,'user'))
+			
+		bool = False
+		for i_source in common.interface.getHosts(encode=False):
+			if i_source['name'].lower() in source.lower() and i_source['downloading']:
+				bool = True
+				break
 
-			if err != '':
-				return MC.message_container('Error', 'Error: %s. Please try again later when it becomes available.' % err)
-				
+		if bool == False:
+			return MC.message_container('Download Sources', 'No compatible Download service found for this URL !')
+			
+		title = common.cleantitle.windows_filename(title)
+		tuec = E(title+year+quality+source+url+str(season)+str(episode))
+			
+		#if mode == common.DOWNLOAD_MODE[1]:
+		if fs == None or fsBytes == None or int(fsBytes) == 0:
+			err = ''
 			try:
-				fsBytes = int(fs_i)
-				fs = '%s GB' % str(round(float(fs_i)/common.TO_GB, 3))
-			except:
-				fsBytes = 0
-				fs = '? GB'
+				if 'openload' in source:
+					isPairDone = common.host_openload.isPairingDone()
+					openload_vars =  common.host_openload.check(url, usePairing=False, embedpage=True)
+					online, r1, err, fs_i, furl2, sub_url_t = openload_vars
+					if sub_url == None:
+						sub_url = sub_url_t
+				elif 'rapidvideo' in source:
+					vurl, r1, sub_url_t = common.host_rapidvideo.resolve(url, True)
+					if sub_url == None:
+						sub_url = sub_url_t
+					fs_i, err = common.client.getFileSize(vurl, retError=True, retry429=True, cl=2)
+				elif 'streamango' in source:
+					vurl, r1, sub_url_t = common.host_streamango.resolve(url, True)
+					if sub_url == None:
+						sub_url = sub_url_t
+					fs_i, err = common.client.getFileSize(vurl, retError=True, retry429=True, cl=2)
+				else:
+					fs_i, err = common.client.getFileSize(url, retError=True, retry429=True, cl=2)
+
+				if err != '':
+					return MC.message_container('Error', 'Error: %s. Please try again later when it becomes available.' % err)
+					
+				try:
+					fsBytes = int(fs_i)
+					fs = '%s GB' % str(round(float(fs_i)/common.TO_GB, 3))
+				except:
+					fsBytes = 0
+					fs = '? GB'
+					
+				if int(fsBytes) < 100 * 1024:
+					return MC.message_container('FileSize Error', 'File reporting %s bytes cannot be downloaded. Please try again later when it becomes available.' % fsBytes)
+
+			except Exception as e:
+				Log.Error('downloadsmenu.py > AddToDownloadsListPre : %s - %s' % (e,err))
+				return MC.message_container('Error', '%s. Sorry but file could not be added.' % e)
+
+		uid = 'Down5Split'+E(title+year+fs+quality+source+str(season)+str(episode))
+		if Dict[uid] != None:
+			EncTxt = Dict[uid]
+			EncTxt = JSON.ObjectFromString(D(EncTxt))
+			if admin == False and update == False:
+				return MC.message_container('Download Sources', 'Item exists in Downloads List')
+			elif admin == True and update == True and EncTxt['url'] != url:
+				if uid in common.DOWNLOAD_STATS:
+					return MC.message_container('Item Update', 'Cannot update a Downloading item.')
 				
-			if int(fsBytes) < 100 * 1024:
-				return MC.message_container('FileSize Error', 'File reporting %s bytes cannot be downloaded. Please try again later when it becomes available.' % fsBytes)
+				EncTxt['url'] = url
+				Dict[uid] = E(JSON.StringFromObject(EncTxt))
+				Dict.Save()
+				return MC.message_container('Item Update', 'Item has been updated with new download url')
+			elif admin == True and update == False and EncTxt['url'] != url:
+				oc = ObjectContainer(title1='Item exists in Downloads List', no_cache=common.isForceNoCache())
+				oc.add(DirectoryObject(key = Callback(AddToDownloadsListPre, title=title, purl=purl, url=url, durl=durl, summary=summary, thumb=thumb, year=year, quality=quality, source=source, source_meta=source_meta, file_meta=file_meta, type=type, resumable=resumable, sub_url=sub_url, fsBytes=fsBytes, fs=fs, file_ext=file_ext, mode=mode, vidtype=vidtype, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, update=True, params=params, riptype=riptype, season=season, episode=episode, provider=provider), title = 'Update this item'))
+				oc.add(DirectoryObject(key = Callback(main.MyMessage, title='Return', msg='Use back to Return to previous screen'), title = 'Return'))
+				return oc
+			elif admin == True and update == True and EncTxt['url'] == url:
+				return MC.message_container('Item Updated', 'Item url updated.')
+			elif admin == True and update == False and EncTxt['url'] == url:
+				#return MC.message_container('Item Updated', 'Item url is up to date.')
+				pass
+			elif EncTxt['url'] != url:
+				pass
+			else:
+				return MC.message_container('Item Updated', 'Please return to previous screen.')
 
-		except Exception as e:
-			Log.Error('init.py > AddToDownloadsListPre : %s - %s' % (e,err))
-			return MC.message_container('Error', '%s. Sorry but file could not be added.' % e)
+			#uid = 'Request5Split'+E(title+year+fs+quality+source+'%s' % season + '%s' % episode)
+			#if Dict[uid] != None:
+			#	return MC.message_container('Requested Sources', 'Item already in Requested List')
+				
+		if mode == common.DOWNLOAD_MODE[1]:
+			if file_ext == None:
+				file_ext = '.mp4'
 
-	uid = 'Down5Split'+E(title+year+fs+quality+source+str(season)+str(episode))
-	if Dict[uid] != None:
-		EncTxt = Dict[uid]
-		EncTxt = JSON.ObjectFromString(D(EncTxt))
-		if admin == False and update == False:
-			return MC.message_container('Download Sources', 'Item exists in Downloads List')
-		elif admin == True and update == True and EncTxt['url'] != url:
-			if uid in common.DOWNLOAD_STATS:
-				return MC.message_container('Item Update', 'Cannot update a Downloading item.')
+			chunk_size = int(1024.0 * 1024.0 * float(common.DOWNLOAD_CHUNK_SIZE)) # in bytes
+			fid = '.'+common.id_generator()
 			
-			EncTxt['url'] = url
-			Dict[uid] = E(JSON.StringFromObject(EncTxt))
+			EncTxt = E(JSON.StringFromObject({'title':title, 'year':year, 'url':url, 'durl':durl, 'purl':purl, 'sub_url':sub_url, 'summary':summary, 'thumb':thumb, 'fsBytes':int(fsBytes), 'fs':fs, 'chunk_size':chunk_size, 'file_ext':file_ext, 'quality':quality, 'source':source, 'source_meta':source_meta, 'file_meta':file_meta, 'uid':uid, 'fid':fid, 'type':type, 'vidtype':vidtype, 'resumable':resumable, 'status':common.DOWNLOAD_STATUS[4], 'startPos':0, 'timeAdded':time.time(), 'first_time':time.time(), 'progress':0, 'chunk_speed':0,'avg_speed':0,'avg_speed_curr':0, 'eta':0, 'error':'', 'last_error':'Unknown Error', 'action':common.DOWNLOAD_PROPS[3],'section_path':section_path, 'section_title':section_title, 'section_key':section_key, 'user':user, 'provider':provider})) 
+			Dict[uid] = EncTxt
 			Dict.Save()
-			return MC.message_container('Item Update', 'Item has been updated with new download url')
-		elif admin == True and update == False and EncTxt['url'] != url:
-			oc = ObjectContainer(title1='Item exists in Downloads List', no_cache=common.isForceNoCache())
-			oc.add(DirectoryObject(key = Callback(AddToDownloadsListPre, title=title, purl=purl, url=url, durl=durl, summary=summary, thumb=thumb, year=year, quality=quality, source=source, source_meta=source_meta, file_meta=file_meta, type=type, resumable=resumable, sub_url=sub_url, fsBytes=fsBytes, fs=fs, file_ext=file_ext, mode=mode, vidtype=vidtype, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, update=True, params=params, riptype=riptype, season=season, episode=episode, provider=provider), title = 'Update this item'))
-			oc.add(DirectoryObject(key = Callback(main.MyMessage, title='Return', msg='Use back to Return to previous screen'), title = 'Return'))
-			return oc
-		elif admin == True and update == True and EncTxt['url'] == url:
-			return MC.message_container('Item Updated', 'Item url updated.')
-		elif admin == True and update == False and EncTxt['url'] == url:
-			#return MC.message_container('Item Updated', 'Item url is up to date.')
-			pass
-		elif EncTxt['url'] != url:
-			pass
-		else:
-			return MC.message_container('Item Updated', 'Please return to previous screen.')
-
-		#uid = 'Request5Split'+E(title+year+fs+quality+source+'%s' % season + '%s' % episode)
-		#if Dict[uid] != None:
-		#	return MC.message_container('Requested Sources', 'Item already in Requested List')
+			return MC.message_container('Requested Sources', 'Successfully added to Requested List')
 			
-	if mode == common.DOWNLOAD_MODE[1]:
-		if file_ext == None:
-			file_ext = '.mp4'
+		if 'openload' in source.lower() and Prefs['use_openload_pairing'] == False:
+			return MC.message_container('Download Sources', 'Use OpenLoad needs to be enabled under Channel Setting/Prefs.')
 
-		chunk_size = int(1024.0 * 1024.0 * float(common.DOWNLOAD_CHUNK_SIZE)) # in bytes
-		fid = '.'+common.id_generator()
-		
-		EncTxt = E(JSON.StringFromObject({'title':title, 'year':year, 'url':url, 'durl':durl, 'purl':purl, 'sub_url':sub_url, 'summary':summary, 'thumb':thumb, 'fsBytes':int(fsBytes), 'fs':fs, 'chunk_size':chunk_size, 'file_ext':file_ext, 'quality':quality, 'source':source, 'source_meta':source_meta, 'file_meta':file_meta, 'uid':uid, 'fid':fid, 'type':type, 'vidtype':vidtype, 'resumable':resumable, 'status':common.DOWNLOAD_STATUS[4], 'startPos':0, 'timeAdded':time.time(), 'first_time':time.time(), 'progress':0, 'chunk_speed':0,'avg_speed':0,'avg_speed_curr':0, 'eta':0, 'error':'', 'last_error':'Unknown Error', 'action':common.DOWNLOAD_PROPS[3],'section_path':section_path, 'section_title':section_title, 'section_key':section_key, 'user':user, 'provider':provider})) 
-		Dict[uid] = EncTxt
-		Dict.Save()
-		return MC.message_container('Requested Sources', 'Successfully added to Requested List')
-		
-	if 'openload' in source.lower() and Prefs['use_openload_pairing'] == False:
-		return MC.message_container('Download Sources', 'Use OpenLoad needs to be enabled under Channel Setting/Prefs.')
-
-		
-	if tuec not in Dict['DOWNLOAD_OPTIONS_SECTION_TEMP']:
-		Dict['DOWNLOAD_OPTIONS_SECTION_TEMP'][tuec] = {}
-		for x in common.DOWNLOAD_OPTIONS.keys():
-			Dict['DOWNLOAD_OPTIONS_SECTION_TEMP'][tuec][x] = common.DOWNLOAD_OPTIONS[x]
-		Dict.Save()
-		
-	return AddToDownloadsList(title=title, purl=purl, url=url, durl=durl, summary=summary, thumb=thumb, year=year, quality=quality, source=source, source_meta=source_meta, file_meta=file_meta, type=type, vidtype=vidtype, resumable=resumable, sub_url=sub_url, fsBytes=fsBytes, fs=fs, file_ext=file_ext, mode=mode, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, update=update, user=user,params=params, riptype=riptype, season=season, episode=episode, provider=provider)
+			
+		if tuec not in Dict['DOWNLOAD_OPTIONS_SECTION_TEMP']:
+			Dict['DOWNLOAD_OPTIONS_SECTION_TEMP'][tuec] = {}
+			for x in common.DOWNLOAD_OPTIONS.keys():
+				Dict['DOWNLOAD_OPTIONS_SECTION_TEMP'][tuec][x] = common.DOWNLOAD_OPTIONS[x]
+			Dict.Save()
+			
+		return AddToDownloadsList(title=title, purl=purl, url=url, durl=durl, summary=summary, thumb=thumb, year=year, quality=quality, source=source, source_meta=source_meta, file_meta=file_meta, type=type, vidtype=vidtype, resumable=resumable, sub_url=sub_url, fsBytes=fsBytes, fs=fs, file_ext=file_ext, mode=mode, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, update=update, user=user,params=params, riptype=riptype, season=season, episode=episode, provider=provider)
+	except Exception as e:
+		err = '{}'.format(e)
+		Log('Error AddToDownloadsListPre: %s' % err)
+		return MC.message_container('Error', '%s. Sorry but file could not be added.' % err)
 	
 ######################################################################################
 # Adds a movie to the DownloadsList list using the (title + 'Down5Split') as a key for the url
@@ -547,7 +647,7 @@ def AddToDownloadsList(title, year, url, durl, purl, summary, thumb, quality, so
 def Downloads(title, session = None, status = None, refresh = 0, **kwargs):
 
 	if not common.interface.isInitialized():
-		return MC.message_container("Please wait..", "Please wait a few seconds for the Interface to Load & Initialize plugins")
+		return MC.message_container(common.MSG0, '%s. Progress %s%s (%s)' % (common.MSG1, common.interface.getProvidersInitStatus(), '%', common.interface.getCurrentProviderInProcess()))
 	
 	oc = ObjectContainer(title1=title, no_cache=common.isForceNoCache())
 	
@@ -587,6 +687,7 @@ def Downloads(title, session = None, status = None, refresh = 0, **kwargs):
 			for i in common.DOWNLOAD_AUTOPILOT[k]:
 				try:
 					q_fs = i['quality'] if i['quality'] != None else i['file_size']
+					rip = i['riptype']
 					try:
 						q_fs1 = q_fs.split(':')
 						q_fs_t = '%s GB - %s GB' % (str(round(float(q_fs1[0])/common.TO_GB, 3)), str(round(float(q_fs1[1])/common.TO_GB, 3)))
@@ -596,11 +697,11 @@ def Downloads(title, session = None, status = None, refresh = 0, **kwargs):
 
 					timestr = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(i['timeAdded'])))
 					if k == 'show':
-						wtitle = '%s | %s | %s | %s | %s' % (i['watch_title'], k.title(), q_fs, i['status'], timestr)
+						wtitle = '%s | %s | %s | %s | %s | %s' % (i['watch_title'], k.title(), rip, q_fs, i['status'], timestr)
 					elif k == 'extras':
-						wtitle = '%s (%s) | %s - %s | %s | %s | %s' % (i['title'], i['year'], k.title(), i['vidtype'], q_fs, i['status'], timestr)
+						wtitle = '%s (%s) | %s - %s | %s | %s | %s | %s' % (i['title'], i['year'], k.title(), i['vidtype'], rip, q_fs, i['status'], timestr)
 					else:
-						wtitle = '%s (%s) | %s | %s | %s | %s' % (i['title'], i['year'], k.title(), q_fs, i['status'], timestr)
+						wtitle = '%s (%s) | %s | %s | %s | %s | %s' % (i['title'], i['year'], k.title(), rip, q_fs, i['status'], timestr)
 					
 					#key = Callback(main.MyMessage, title='Info', msg=wtitle)
 					key = Callback(DownloadingFilesMenu, title=i['watch_title'], uid=i['uid'], session=session, status=status, autopilot=True, type=k)
@@ -828,6 +929,7 @@ def Downloads(title, session = None, status = None, refresh = 0, **kwargs):
 		)
 		
 	#oc.objects.sort(key=lambda obj: obj.title, reverse=False)
+	oc.add(DirectoryObject(key = Callback(main.MainMenu), title = '<< Main Menu', thumb = R(common.ICON)))
 		
 	return oc
 	
@@ -994,6 +1096,7 @@ def DownloadingFilesMenu(title, uid, choice=None, session=None, status=None, con
 				Log(e)
 				return MC.message_container('Unavailable', 'Item removed or no longer available')
 
+			oc.add(DirectoryObject(key = Callback(main.MainMenu), title = '<< Main Menu', thumb = R(common.ICON)))
 			return oc
 			
 		else:

@@ -162,71 +162,72 @@ class sources:
 		self.isInitialized = True
 
 	def getSources(self, name, title, year, imdb, tmdb, tvdb, tvrage, season, episode, tvshowtitle, alter, date, proxy_options, provider_options, key, session):
-		#try:
-		sourceDict = []
-		self.getSourcesAlive = True
-		
-		if provider_options !=None:
-			myProviders = []
-			for prov in provider_options: myProviders += [i for i in self.providersCaller if i['url'].lower() == prov['url'].lower() and str(prov['enabled'])=='True']
-		else:
-			myProviders = self.providersCaller
-		
-		content = 'movie' if tvshowtitle == None else 'show'
-		
-		self.threads[key] = []
-		self.threadSlots[key] = []
-		pos = 0
-		if content == 'movie':
-			log(err='Initializzing Search for Movie: %s' % title)
-			title = cleantitle.normalize(title)
-			for source in myProviders:
+		try:
+			sourceDict = []
+			self.getSourcesAlive = True
+			
+			if provider_options !=None:
+				myProviders = []
+				for prov in provider_options: myProviders += [i for i in self.providersCaller if i['url'].lower() == prov['url'].lower() and str(prov['enabled'])=='True']
+			else:
+				myProviders = self.providersCaller
+			
+			content = 'movie' if tvshowtitle == None else 'show'
+			
+			self.threads[key] = []
+			self.threadSlots[key] = []
+			pos = 0
+			if content == 'movie':
+				log(err='Initializzing Search for Movie: %s' % title)
+				title = cleantitle.normalize(title)
+				for source in myProviders:
+					try:
+						source_name = 'Unknow source (import error)'
+						source_name = source['name']
+						log(err='Queing Search for Movie: %s (%s) in Provider %s' % (title,year,source_name))
+						thread_i = workers.Thread(self.getMovieSource, title, year, imdb, proxy_options, key, re.sub('_mv_tv$|_mv$|_tv$', '', source['name']), source['call'])
+						self.threads[key].append(thread_i)
+						self.threadSlots[key].append({'thread':thread_i, 'status':'idle', 'pos':pos, 'source':source_name})
+						pos += 1
+						#thread_i.start()
+					except Exception as e:
+						log(type='ERROR', err='getSources %s - %s' % (source_name,e))
+			else:
+				log(err='Initializzing Search for Show: %s' % tvshowtitle)
 				try:
-					source_name = 'Unknow source (import error)'
-					source_name = source['name']
-					log(err='Queing Search for Movie: %s (%s) in Provider %s' % (title,year,source_name))
-					thread_i = workers.Thread(self.getMovieSource, title, year, imdb, proxy_options, key, re.sub('_mv_tv$|_mv$|_tv$', '', source['name']), source['call'])
-					self.threads[key].append(thread_i)
-					self.threadSlots[key].append({'thread':thread_i, 'status':'idle', 'pos':pos, 'source':source_name})
-					pos += 1
-					#thread_i.start()
-				except Exception as e:
-					log(type='ERROR', err='getSources %s - %s' % (source_name,e))
-		else:
-			log(err='Initializzing Search for Show: %s' % tvshowtitle)
-			try:
-				tvshowtitle = cleantitle.normalize(tvshowtitle)
-			except:
-				pass
-			try:
-				season, episode = alterepisode.alterepisode().get(imdb, tmdb, tvdb, tvrage, season, episode, alter, title, date)
-			except:
-				pass
-			for source in myProviders:
+					tvshowtitle = cleantitle.normalize(tvshowtitle)
+				except:
+					pass
 				try:
-					source_name = 'Unknow source (import error)'
-					source_name = source['name']
-					log(err='Queing Search for Show: %s S%sE%s in Provider %s' % (tvshowtitle,season,episode,source_name))
-					thread_i = workers.Thread(self.getEpisodeSource, title, year, imdb, tvdb, season, episode, tvshowtitle, date, proxy_options, key, re.sub('_mv_tv$|_mv$|_tv$', '', source_name), source['call'])
-					self.threads[key].append(thread_i)
-					self.threadSlots[key].append({'thread':thread_i, 'status':'idle', 'pos':pos, 'source':source_name})
-					pos += 1
-					#thread_i.start()
-				except Exception as e:
-					log(type='ERROR', err='getSources %s - %s' % (source_name,e))
+					season, episode = alterepisode.alterepisode().get(imdb, tmdb, tvdb, tvrage, season, episode, alter, title, date)
+				except:
+					pass
+				for source in myProviders:
+					try:
+						source_name = 'Unknow source (import error)'
+						source_name = source['name']
+						log(err='Queing Search for Show: %s S%sE%s in Provider %s' % (tvshowtitle,season,episode,source_name))
+						thread_i = workers.Thread(self.getEpisodeSource, title, year, imdb, tvdb, season, episode, tvshowtitle, date, proxy_options, key, re.sub('_mv_tv$|_mv$|_tv$', '', source_name), source['call'])
+						self.threads[key].append(thread_i)
+						self.threadSlots[key].append({'thread':thread_i, 'status':'idle', 'pos':pos, 'source':source_name})
+						pos += 1
+						#thread_i.start()
+					except Exception as e:
+						log(type='ERROR', err='getSources %s - %s' % (source_name,e))
 
-		thread_ex = workers.Thread(self.executeThreads, key)
-		thread_ex.start()
-					
-		#sourceLabel = [re.sub('_mv_tv$|_mv$|_tv$', '', i) for i in sourceDict]
-		#sourceLabel = [re.sub('v\d+$', '', i).upper() for i in sourceLabel]
+			thread_ex = workers.Thread(self.executeThreads, key)
+			thread_ex.start()
+						
+			#sourceLabel = [re.sub('_mv_tv$|_mv$|_tv$', '', i) for i in sourceDict]
+			#sourceLabel = [re.sub('v\d+$', '', i).upper() for i in sourceLabel]
 
-		#time.sleep(0.5)
-		self.getSourcesAlive = False
-		return self.sources
-		#except Exception as e:
+			#time.sleep(0.5)
+			self.getSourcesAlive = False
+			return self.sources
+		except Exception as e:
+			log(type='ERROR-CRITICAL', err='getSources - %s' % e)
 		#	self.purgeSourcesKey(key=key)
-		#	return self.sources
+			return self.sources
 		
 	def executeThreads(self, key):
 		
@@ -425,13 +426,13 @@ class sources:
 			
 	def purgeSourcesKey(self, key=None, maxcachetimeallowed=0):
 		try:
+			bool = False
 			filtered = []
 			curr_time = time.time()
 			if key == None:
-				return False
+				return bool
 			else:
 				# if cache time < 2min; then get the sources from last 2min. otherwise it will always return 0 sources
-				bool = False
 				if maxcachetimeallowed < 2*60:
 					maxcachetimeallowed = 2*60
 				for i in self.sources:

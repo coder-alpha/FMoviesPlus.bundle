@@ -133,10 +133,12 @@ def requestdirect(url, close=True, redirect=True, followredirect=False, error=Fa
 		except:
 			pass
 		
+		log('INFO', 'requestdirect', 'Completed')
 		return client.getResponseDataBasedOnOutput(page_data_string, res, output)
 		
 	except Exception as e:
 		log('ERROR','requestdirect', '%s' % e)
+		log('INFO', 'requestdirect', 'Completed')
 		return None
 
 def log(type='INFO', method='undefined', err='', dolog=True, logToControl=False, doPrint=True):

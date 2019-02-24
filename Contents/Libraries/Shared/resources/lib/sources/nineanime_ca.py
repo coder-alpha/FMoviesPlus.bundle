@@ -38,7 +38,7 @@ class source:
 	def __init__(self):
 		del loggertxt[:]
 		self.ver = '0.1.1'
-		self.update_date = 'June 26, 2018'
+		self.update_date = 'Feb. 22, 2019'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
 		self.serverts = None
@@ -157,25 +157,33 @@ class source:
 				token_url = urlparse.urljoin(t_base_link, self.token_link)
 				r1 = proxies.request(token_url, headers=self.headers, httpsskip=True)
 				reqkey = self.decodeJSFCookie(r1)
-			except:
+			except Exception as e:
 				reqkey = ''
+				log('FAIL','initAndSleep', 'Not using reqkey: %s' % e)
 			
 			# get session cookie
-			self.serverts = self.getSetServerTs()
-			serverts = str(((int(time.time())/3600)*3600))
-			if self.serverts == None:
-				self.serverts = serverts
-			else:
-				serverts = self.serverts
-			control.set_setting(name+'serverts', serverts)
-
-			query = {'ts': serverts}
+			query = {'ts': str(((int(time.time())/3600)*3600))}
 			try:
-				tk = self.__get_token(query)
-			except:
-				tk = self.__get_token(query, True)
+				self.serverts = self.getSetServerTs()
+				serverts = str(((int(time.time())/3600)*3600))
+				query = {'ts': serverts}
+				
+				if self.serverts == None:
+					self.serverts = serverts
+				else:
+					serverts = self.serverts
+				control.set_setting(name+'serverts', serverts)
 
-			query.update(tk)
+				query = {'ts': serverts}
+				try:
+					tk = self.__get_token(query)
+				except:
+					tk = self.__get_token(query, True)
+
+				query.update(tk)
+			except Exception as e:
+				log('FAIL','initAndSleep', 'Not using token: %s' % e)
+			
 			hash_url = urlparse.urljoin(t_base_link, self.hash_menu_link)
 			hash_url = hash_url + '?' + urllib.urlencode(query)
 			
@@ -190,7 +198,7 @@ class source:
 			log('ERROR','initAndSleep', '%s' % e)
 			
 	def getSetServerTs(self):
-		geturl = proxies.request('https://bmovies.is/home', output='geturl')
+		geturl = proxies.request('https://fmovies.taxi/home', output='geturl')
 		res = proxies.request(geturl)
 		try:
 			myts1 = re.findall(r'data-ts="(.*?)"', res)[0]
@@ -275,9 +283,11 @@ class source:
 			sources = []
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_sources','Provider Disabled by User')
+				log('INFO', 'get_sources', 'Completed')
 				return sources
 			if url == None: 
 				log('FAIL','get_sources','url == None. Could not find a matching title: %s' % cleantitle.title_from_key(key), dolog=not testing)
+				log('INFO', 'get_sources', 'Completed')
 				return sources
 			
 			myts = str(((int(time.time())/3600)*3600))
@@ -353,6 +363,7 @@ class source:
 					
 					if len(url) == 0:
 						log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key))
+						log('INFO', 'get_sources', 'Completed')
 						return sources
 					
 					for urli in url:
@@ -395,6 +406,7 @@ class source:
 					
 			if result == None:
 				log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key))
+				log('INFO', 'get_sources', 'Completed')
 				return sources
 
 			try:
@@ -596,12 +608,15 @@ class source:
 			
 			if len(sources) == 0:
 				log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key))
-				return sources
+			else:
+				log('SUCCESS', 'get_sources','%s sources : %s' % (cleantitle.title_from_key(key), len(sources)))
+				
+			log('INFO', 'get_sources', 'Completed')
 			
-			log('SUCCESS', 'get_sources','%s sources : %s' % (cleantitle.title_from_key(key), len(sources)), dolog=not testing)
 			return sources
 		except Exception as e:
-			log('ERROR', 'get_sources', '%s' % e, dolog=not testing)
+			log('ERROR', 'get_sources', '%s' % e)
+			log('INFO', 'get_sources', 'Completed')
 			return sources
 
 	def resolve(self, url):

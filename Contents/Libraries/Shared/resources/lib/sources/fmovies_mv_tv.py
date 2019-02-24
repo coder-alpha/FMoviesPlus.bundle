@@ -45,8 +45,8 @@ USE_PHANTOMJS = True
 class source:
 	def __init__(self):
 		del loggertxt[:]
-		self.ver = '0.1.1'
-		self.update_date = 'June 17, 2018'
+		self.ver = '0.1.2'
+		self.update_date = 'Feb 10, 2019'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
 		self.disabled = False
@@ -272,9 +272,11 @@ class source:
 			sources = []
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_sources','Provider Disabled by User')
+				log('INFO', 'get_sources', 'Completed')
 				return sources
 			if url == None: 
 				log('FAIL','get_sources','url == None. Could not find a matching title: %s' % cleantitle.title_from_key(key), dolog=not testing)
+				log('INFO', 'get_sources', 'Completed')
 				return sources
 			
 			myts = str(((int(time.time())/3600)*3600))
@@ -343,6 +345,7 @@ class source:
 					
 					if len(url) == 0:
 						log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key))
+						log('INFO', 'get_sources', 'Completed')
 						return sources
 					
 					for urli in url:
@@ -396,6 +399,7 @@ class source:
 					
 			if result == None:
 				log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key))
+				log('INFO', 'get_sources', 'Completed')
 				return sources
 
 			try:
@@ -406,7 +410,7 @@ class source:
 			poster = None
 			
 			try:
-				poster1 = client.parseDOM(result, 'div', attrs = {'class':'thumb col-md-5 hidden-sm hidden-x'})
+				poster1 = client.parseDOM(result, 'div', attrs = {'class':'mt'})
 				poster = client.parseDOM(poster1, 'img', ret='src')[0]
 				if 'http' not in poster:
 					poster = 'http:' + poster
@@ -614,12 +618,15 @@ class source:
 			
 			if len(sources) == 0:
 				log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key))
-				return sources
+			else:
+				log('SUCCESS', 'get_sources','%s sources : %s' % (cleantitle.title_from_key(key), len(sources)))
+				
+			log('INFO', 'get_sources', 'Completed')
 			
-			log('SUCCESS', 'get_sources','%s sources : %s' % (cleantitle.title_from_key(key), len(sources)), dolog=not testing)
 			return sources
 		except Exception as e:
 			log('ERROR', 'get_sources', '%s' % e, dolog=not testing)
+			log('INFO', 'get_sources', 'Completed')
 			return sources
 
 	def resolve(self, url):

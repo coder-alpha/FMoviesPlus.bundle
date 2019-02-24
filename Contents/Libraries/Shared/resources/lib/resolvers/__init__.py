@@ -160,11 +160,11 @@ def createMeta(url, provider, logo, quality, links, key, riptype=None, vidtype='
 				log("Searching %s in %s" % (urlhost, host['host']), logToControl=False)
 
 				if urlhost in host['host']:
-					log("Found %s in %s" % (urlhost, host['host']))
+					log("Found %s in %s (%s)" % (urlhost, host['host'], host['name']))
 					return host['call'].createMeta(url, provider, logo, quality, links, key, riptype_def, vidtype=vidtype, lang=lang, sub_url=sub_url, txt=txt, file_ext=file_ext, testing=testing, poster=poster, headers=headers)
 				
 		log("urlhost '%s' not found in host/resolver plugins - creating generic meta for external services" % urlhost)
-				
+		
 		quality = file_quality(url, quality)
 		
 		if riptype == None:
@@ -187,7 +187,9 @@ def fixquality(quality):
 	elif quality == 'SD' or '480' in quality:
 		quality = '480p'
 	elif quality == 'CAM' or quality == 'SCR':
-		quality = quality
+		quality = '480p'
+	elif quality == None:
+		quality = '480p'
 	else:
 		quality = '360p'
 
@@ -205,6 +207,8 @@ def file_quality(url, quality):
 		elif '360' in url:
 			return '360p'
 		else:
+			if quality == None:
+				return '480p'
 			return unicode(quality)
 	except:
 		return unicode(quality)

@@ -123,8 +123,8 @@ class source:
 	def testSite(self):
 		for site in self.base_link_alts:
 			try:
-				self.setNewCookies(site)
 				sitex = client.getRedirectingUrl(site, headers=self.headers).strip("/")
+				self.setNewCookies(sitex)
 				if 'http' not in sitex:
 					raise Exception('Error in geturl')
 				else:
@@ -143,6 +143,7 @@ class source:
 		try:
 			x1 = time.time()
 			http_res, content = proxies.request(url=self.base_link, headers=self.headers, output='response', use_web_proxy=False)
+			print content
 			self.speedtest = time.time() - x1
 			if content != None and content.find(self.MainPageValidatingContent) >-1:
 				log('SUCCESS', 'testSite', 'HTTP Resp : %s for %s' % (http_res,self.base_link))
@@ -429,9 +430,11 @@ class source:
 			sources = []
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_sources','Provider Disabled by User')
+				log('INFO', 'get_sources', 'Completed')
 				return sources
 			if url == None: 
 				log('FAIL','get_sources','url == None. Could not find a matching title: %s' % cleantitle.title_from_key(key), dolog=not testing)
+				log('INFO', 'get_sources', 'Completed')
 				return sources
 			
 			links_m = []
@@ -511,12 +514,15 @@ class source:
 			
 			if len(sources) == 0:
 				log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key))
-				return sources
+			else:
+				log('SUCCESS', 'get_sources','%s sources : %s' % (cleantitle.title_from_key(key), len(sources)))
+				
+			log('INFO', 'get_sources', 'Completed')
 			
-			log('SUCCESS', 'get_sources','%s sources : %s' % (cleantitle.title_from_key(key), len(sources)), dolog=not testing)
 			return sources
 		except Exception as e:
-			log('ERROR', 'get_sources', '%s' % e, dolog=not testing)
+			log('ERROR', 'get_sources', '%s' % e)
+			log('INFO', 'get_sources', 'Completed')
 			return sources
 
 	def resolve(self, url):

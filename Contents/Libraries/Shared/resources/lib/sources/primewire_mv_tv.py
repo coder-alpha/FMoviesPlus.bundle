@@ -32,8 +32,8 @@ AVOID_DOMAINS = ['9c40a04e9732e6a6.com','egresspath.com']
 class source:
 	def __init__(self):
 		del loggertxt[:]
-		self.ver = '0.1.3'
-		self.update_date = 'Aug. 09, 2018'
+		self.ver = '0.1.4'
+		self.update_date = 'Feb. 10, 2019'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
 		self.base_link_alts = ['https://letmewatchthis.cx']
@@ -212,7 +212,6 @@ class source:
 				except: pass
 				r += [(u, i[1])]
 
-			print r
 			match = [i[0] for i in r if title == cleantitle.get(i[1]) and self.lose_match_year(year, i[1])]
 			
 			log('INFO','get_movie-4', match, dolog=False)
@@ -363,7 +362,16 @@ class source:
 			if url == None: return
 
 			xurl = urlparse.urljoin(self.base_link, url)
+			log('INFO', 'get_episode-1A',xurl, dolog=False)
+			
 			result = proxies.request(xurl, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+			
+			loc = url.replace(self.base_link+'/','')
+			url = testjs(result, self.base_link, loc)
+			log('INFO', 'get_episode-1B',url, dolog=False)
+			
+			result = proxies.request(url, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+			#print result
 			
 			if len(result) == 0:
 				for site in self.base_link_alts:
@@ -378,6 +386,7 @@ class source:
 				raise Exception('Empty page received: %s' % urlparse.urljoin(self.base_link, url))
 			
 			result = client.parseDOM(result, 'div', attrs = {'class': 'tv_episode_item'})
+			#print result
 
 			title = cleantitle.get(title)
 
@@ -418,13 +427,32 @@ class source:
 			sources = []
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_sources','Provider Disabled by User')
+				log('INFO', 'get_sources', 'Completed')
 				return sources
 			if url == None: 
 				log('FAIL','get_sources','url == None. Could not find a matching title: %s' % cleantitle.title_from_key(key), dolog=not testing)
+				log('INFO', 'get_sources', 'Completed')
 				return sources
 
-			log('INFO', 'get_sources-1',url, dolog=False)
+			log('INFO', 'get_sources-1A',url, dolog=False)
 			#result = proxies.request(url, 'choose_tabs', proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+			
+			result = proxies.request(url, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+			
+			try:
+				poster1 = client.parseDOM(result, 'div', attrs = {'class': 'movie_thumb'})[0]
+				poster = client.parseDOM(poster1, 'img', ret='src')[0]
+				if 'www' not in poster:
+					poster = 'http:%s' % poster
+			except:
+				poster = None
+			
+			loc = url.replace(self.base_link+'/','')
+			url = testjs(result, self.base_link, loc)
+			if 'season' in url:
+				url = url.replace('=tv-','=watch-').replace('/season','&season')
+				url = url.replace('season-','season=').replace('-episode-','&episode=')
+			log('INFO', 'get_sources-1B',url, dolog=False)
 			
 			result = proxies.request(url, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
 			
@@ -432,12 +460,14 @@ class source:
 			trailers = []
 			if testing == False:
 				try:
-					matches = re.findall(r'\"(http[s]?://www.youtube.*?)\"',result)
+					matches = re.findall(r'\"(//www.youtube.*?)\"',result)
 					for match in matches:
 						try:
 							#print match
 							if 'youtube.com' in match and '"' not in match:
 								match = match.replace('embed/','watch?v=')
+								if 'http' not in match:
+									match = 'http:%s' % match
 								trailers.append(match)
 						except:
 							pass
@@ -446,11 +476,6 @@ class source:
 					
 				for trailer in trailers:
 					links_m = resolvers.createMeta(trailer, self.name, self.logo, '720p', links_m, key, vidtype='Trailer', testing=testing)
-
-			loc = url.replace(self.base_link+'/','')
-			url = testjs(result, self.base_link, loc)
-			
-			result = proxies.request(url, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
 			
 			links = client.parseDOM(result, 'tbody')
 			
@@ -458,7 +483,7 @@ class source:
 				riptypex = client.parseDOM(result, 'div', attrs = {'class': 'warning_message'})[0]
 			except:
 				riptypex = 'BRRIP'
-			
+				
 			c=0
 			for i in links:
 				try:
@@ -511,7 +536,7 @@ class source:
 							riptype = riptypex
 							quality = '480p'
 							
-						links_m = resolvers.createMeta(url, self.name, self.logo, quality, links_m, key, riptype=riptype, testing=testing)
+						links_m = resolvers.createMeta(url, self.name, self.logo, quality, links_m, key, poster=poster, riptype=riptype, testing=testing)
 				except:
 					pass
 					
@@ -520,12 +545,15 @@ class source:
 
 			if len(sources) == 0:
 				log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key))
-				return sources
+			else:
+				log('SUCCESS', 'get_sources','%s sources : %s' % (cleantitle.title_from_key(key), len(sources)))
+				
+			log('INFO', 'get_sources', 'Completed')
 			
-			log('SUCCESS', 'get_sources','%s sources : %s' % (cleantitle.title_from_key(key), len(sources)), dolog=not testing)
 			return sources
 		except Exception as e:
-			log('ERROR', 'get_sources', '%s' % e, dolog=not testing)
+			log('ERROR', 'get_sources', '%s' % e)
+			log('INFO', 'get_sources', 'Completed')
 			return sources
 			
 def testjs(html, url, loc):
@@ -539,6 +567,7 @@ def testjs(html, url, loc):
 	ret = js2py.eval_js(html_with_unpacked_js + '; page+"PLACE_HOLDER"+code')
 	ret = ret.replace('PLACE_HOLDER',loc)
 	ret = '%s/%s' % (url, ret)
+	ret = ret.replace('slug=/watch','slug=watch')
 	return ret
 
 def log(type='INFO', method='undefined', err='', dolog=True, logToControl=False, doPrint=True):

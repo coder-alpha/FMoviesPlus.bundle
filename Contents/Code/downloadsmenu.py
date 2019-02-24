@@ -63,7 +63,7 @@ def AddToAutoPilotDownloads(title, year, type, purl=None, thumb=None, summary=No
 					ret = True
 					break
 			elif type == 'show':
-				if i['short_title'] == title and (int(i['season']) == int(season)) or (season_end != None and int(i['season']) <= int(season_end)):
+				if i['short_title'] == title and int(i['season']) == int(season):
 					ret = True
 					break
 					
@@ -90,7 +90,10 @@ def AddToAutoPilotDownloads(title, year, type, purl=None, thumb=None, summary=No
 						pass
 
 		if ret == True:
-			return main.MyMessage(title='Return', msg='Item exists. Use back to Return to previous screen')
+			oc = ObjectContainer(title1='Item exists', no_cache=common.isForceNoCache())
+			oc.add(DirectoryObject(key = Callback(main.MainMenu), title = '<< Main Menu'))
+			return oc
+			#return main.MyMessage(title='Return', msg='Item exists. Use back to Return to previous screen')
 		
 		if quality == None and file_size == None:
 			oc = ObjectContainer(title1='Select Quality or FileSize', no_cache=common.isForceNoCache())
@@ -137,6 +140,10 @@ def AddToAutoPilotDownloads(title, year, type, purl=None, thumb=None, summary=No
 			if len(oc) == 0:
 				return MC.message_container('Download Sources', 'No Download Location set under Download Options')
 			else:
+				if type == 'show':
+					DumbKeyboard(PREFIX, oc, AddToAutoPilotDownloadsInputEp, dktitle = 'Ep. Start Index:%s' % episode_start, dkthumb=R(common.ICON_DK_ENABLE), dkNumOnly=True, dkHistory=False, title=title, year=year, type=type, purl=purl, thumb=thumb, summary=summary, quality=quality, file_size=file_size, riptype=riptype, season=season, season_end=season_end, episode_start=episode_start, episode_end=episode_end, vidtype=vidtype, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, all_seasons=all_seasons, ep_id='start')
+					DumbKeyboard(PREFIX, oc, AddToAutoPilotDownloadsInputEp, dktitle = 'Ep. End Index:%s' % episode_end, dkthumb=R(common.ICON_DK_ENABLE), dkNumOnly=True, dkHistory=False, title=title, year=year, type=type, purl=purl, thumb=thumb, summary=summary, quality=quality, file_size=file_size, riptype=riptype, season=season, season_end=season_end, episode_start=episode_start, episode_end=episode_end, vidtype=vidtype, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, all_seasons=all_seasons, ep_id='end')
+				oc.add(DirectoryObject(key = Callback(main.MainMenu), title = '<< Main Menu'))
 				return oc
 
 		uid = common.makeUID(title, year, quality, file_size, purl, season, episode_start)
@@ -156,6 +163,23 @@ def AddToAutoPilotDownloads(title, year, type, purl=None, thumb=None, summary=No
 		err = '{}'.format(e)
 		Log.Error('downloadsmenu.py > AddToAutoPilotDownloads: %s' % err)
 		return MC.message_container('Error', 'Error in AutoPilot Download Queue')
+		
+####################################################################################################
+@route(PREFIX + "/AddToAutoPilotDownloadsInputEp")
+def AddToAutoPilotDownloadsInputEp(query, title, year, type, purl=None, thumb=None, summary=None, quality=None, file_size=None, riptype='BRRIP', season=None, season_end=None, episode_start=None, episode_end=None, vidtype=None, section_path=None, section_title=None, section_key=None, session=None, admin=False, all_seasons=False, ep_id='start', **kwargs):
+
+	if ep_id == 'start':
+		try:
+			episode_start = str(int(query))
+		except:
+			episode_start = '1'
+	else:
+		try:
+			episode_end = str(int(query))
+		except:
+			episode_end = '1'
+
+	return AddToAutoPilotDownloads(title=title, year=year, type=type, purl=purl, thumb=thumb, summary=summary, quality=quality, file_size=file_size, riptype=riptype, season=season, season_end=season_end, episode_start=episode_start, episode_end=episode_end, vidtype=vidtype, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, all_seasons=all_seasons)
 
 #######################################################################################################
 def AutoPilotDownloadThread(item):
@@ -644,7 +668,7 @@ def AddToDownloadsList(title, year, url, durl, purl, summary, thumb, quality, so
 ######################################################################################
 # Loads Downloads from Dict.
 @route(PREFIX + "/downloads")
-def Downloads(title, session = None, status = None, refresh = 0, **kwargs):
+def Downloads(title, session = None, status = None, refresh = 0, isDir='N', **kwargs):
 
 	if not common.interface.isInitialized():
 		return MC.message_container(common.MSG0, '%s. Progress %s%s (%s)' % (common.MSG1, common.interface.getProvidersInitStatus(), '%', common.interface.getCurrentProviderInProcess()))
@@ -655,8 +679,12 @@ def Downloads(title, session = None, status = None, refresh = 0, **kwargs):
 		N_status = {}
 		for dstatus in common.DOWNLOAD_STATUS:
 			c = 0
-			if dstatus == common.DOWNLOAD_STATUS[6]:
+			if dstatus == common.DOWNLOAD_STATUS[6]: # AutoPilot Queue
 				for k in common.DOWNLOAD_AUTOPILOT.keys():
+					#for i in common.DOWNLOAD_AUTOPILOT[k]:
+					#	if i['status']==common.DOWNLOAD_AUTOPILOT_STATUS[0] and (time.time() - float(i['timeAdded']) > float(15*60)):
+					#		i['status'] = common.DOWNLOAD_AUTOPILOT_STATUS[4]
+					
 					c += len(common.DOWNLOAD_AUTOPILOT[k])
 				N_status[dstatus] = c
 			else:
@@ -665,14 +693,14 @@ def Downloads(title, session = None, status = None, refresh = 0, **kwargs):
 					if 'Down5Split' in each:
 						try:
 							longstringObjs = JSON.ObjectFromString(D(Dict[each]))
-							if longstringObjs['status'] == dstatus  or dstatus == common.DOWNLOAD_STATUS[5]:
+							if longstringObjs['status'] == dstatus  or dstatus == common.DOWNLOAD_STATUS[5]: # All
 								c += 1
 						except Exception as e:
 							Log('ERROR: Downloads >> %s' % e)
 				N_status[dstatus] = c
 		for statusx in common.DOWNLOAD_STATUS:
 			oc.add(DirectoryObject(
-				key = Callback(Downloads, title="%s Downloads" % statusx, status = statusx, session = session),
+				key = Callback(Downloads, title="%s Downloads" % statusx, status = statusx, session = session, isDir='N'),
 				title = '%s (%s)' % (statusx, str(N_status[statusx]))
 				)
 			)
@@ -683,6 +711,7 @@ def Downloads(title, session = None, status = None, refresh = 0, **kwargs):
 	
 	if status == common.DOWNLOAD_STATUS[6]: # Auto-Pilot
 		doSave = False
+		shows_array = {}
 		for k in common.DOWNLOAD_AUTOPILOT.keys():
 			for i in common.DOWNLOAD_AUTOPILOT[k]:
 				try:
@@ -696,23 +725,48 @@ def Downloads(title, session = None, status = None, refresh = 0, **kwargs):
 						pass
 
 					timestr = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(i['timeAdded'])))
+					ooc = None
+					addShow = False
 					if k == 'show':
-						wtitle = '%s | %s | %s | %s | %s | %s' % (i['watch_title'], k.title(), rip, q_fs, i['status'], timestr)
+						show_t = '%s:%s'%(i['short_title'],i['season'])
+						if isDir == 'N':
+							if show_t not in shows_array.keys():
+								ooc = DirectoryObject(title=show_t, 
+									thumb = common.GetThumb(i['thumb'], session=session),
+									summary = i['summary'],
+									tagline = timestr,
+									key = Callback(Downloads, title=show_t, session=session, status=status, isDir='Y')
+								)
+								shows_array[show_t] = ooc
+							elif isDir == 'Y':
+								addShow = True
+						if isDir == 'Y' and show_t == title:
+							addShow = True
+							wtitle = '%s | %s | %s | %s | %s | %s' % (i['watch_title'], k.title(), rip, q_fs, i['status'], timestr)
 					elif k == 'extras':
-						wtitle = '%s (%s) | %s - %s | %s | %s | %s | %s' % (i['title'], i['year'], k.title(), i['vidtype'], rip, q_fs, i['status'], timestr)
+						if isDir == 'N':
+							addShow = True
+							wtitle = '%s (%s) | %s - %s | %s | %s | %s | %s' % (i['title'], i['year'], k.title(), i['vidtype'], rip, q_fs, i['status'], timestr)
 					else:
-						wtitle = '%s (%s) | %s | %s | %s | %s | %s' % (i['title'], i['year'], k.title(), rip, q_fs, i['status'], timestr)
+						if isDir == 'N':
+							addShow = True
+							wtitle = '%s (%s) | %s | %s | %s | %s | %s' % (i['title'], i['year'], k.title(), rip, q_fs, i['status'], timestr)
 					
-					#key = Callback(main.MyMessage, title='Info', msg=wtitle)
-					key = Callback(DownloadingFilesMenu, title=i['watch_title'], uid=i['uid'], session=session, status=status, autopilot=True, type=k)
-					oc.add(DirectoryObject(
-						title = wtitle,
-						thumb = common.GetThumb(i['thumb'], session=session),
-						summary = i['summary'],
-						tagline = timestr,
-						key = key
-						)
-					)
+					if ooc != None:
+						oc.add(ooc)
+					else:
+						if addShow == True:
+							#key = Callback(main.MyMessage, title='Info', msg=wtitle)
+							key = Callback(DownloadingFilesMenu, title=i['watch_title'], uid=i['uid'], session=session, status=status, autopilot=True, type=k)
+							
+							do = DirectoryObject(
+								title = wtitle,
+								thumb = common.GetThumb(i['thumb'], session=session),
+								summary = i['summary'],
+								tagline = timestr,
+								key = key
+							)
+							oc.add(do)
 				except Exception as e:
 					Log("==============Downloads==============")
 					#Log(longstringObjs)
@@ -741,7 +795,7 @@ def Downloads(title, session = None, status = None, refresh = 0, **kwargs):
 						else:
 							longstringObjs['watch_title'] = longstringObjs['title']
 						
-					if longstringObjs['status'] == status or status == common.DOWNLOAD_STATUS[5]:
+					if longstringObjs['status'] == status or status == common.DOWNLOAD_STATUS[5]: # All
 						timestr = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(longstringObjs['timeAdded'])))
 						key = None
 						summary = longstringObjs['summary']
@@ -752,8 +806,8 @@ def Downloads(title, session = None, status = None, refresh = 0, **kwargs):
 							key = Callback(DownloadingFilesMenu, title=longstringObjs['watch_title'], uid=longstringObjs['uid'], choice=None, session=session, status=status)
 						elif status == common.DOWNLOAD_STATUS[1]: # Downloading
 							if each not in common.DOWNLOAD_STATS.keys() and len(common.DOWNLOAD_STATS.keys()) < int(Prefs['download_connections']):
-								longstringObjs['status'] = common.DOWNLOAD_STATUS[1]
-								longstringObjs['action'] = common.DOWNLOAD_ACTIONS[4]
+								longstringObjs['status'] = common.DOWNLOAD_STATUS[1] # Downloading
+								longstringObjs['action'] = common.DOWNLOAD_ACTIONS[4] # Start Download
 								Dict[each] = E(JSON.StringFromObject(longstringObjs))
 								
 								#longstringObjs['status'] = common.DOWNLOAD_STATUS[1]
@@ -763,8 +817,8 @@ def Downloads(title, session = None, status = None, refresh = 0, **kwargs):
 								EncTxt = E(JSON.StringFromObject(longstringObjs))
 								Thread.Create(download.do_download, {}, file_meta_enc=EncTxt)
 							elif each not in common.DOWNLOAD_STATS.keys():
-								longstringObjs['status'] = common.DOWNLOAD_STATUS[0]
-								longstringObjs['action'] = common.DOWNLOAD_ACTIONS[4]
+								longstringObjs['status'] = common.DOWNLOAD_STATUS[0] # Queued
+								longstringObjs['action'] = common.DOWNLOAD_ACTIONS[4] # Start Download
 								Dict[each] = E(JSON.StringFromObject(longstringObjs))
 								doTrigger = True
 							else:
@@ -915,12 +969,21 @@ def Downloads(title, session = None, status = None, refresh = 0, **kwargs):
 			)
 		oc.add(DirectoryObject(
 			title = 'Refresh %s Downloads' % status,
-			key = Callback(Downloads,title="%s Downloads" % status, status=status, session=session, refresh=int(refresh)+1),
+			key = Callback(Downloads,title=title, status=status, session=session, refresh=int(refresh)+1, isDir=isDir),
 			summary = 'Refresh %s Download Entries' % status,
 			thumb = common.GetThumb(R(common.ICON_REFRESH), session=session)
 			)
 		)
-		oc.add(DirectoryObject(
+		if isDir == 'Y':
+			oc.add(DirectoryObject(
+				title = 'Clear %s %s Downloads' % (title, status),
+				key = Callback(ClearDownLoadSection, status=status, session=session, dir=title),
+				summary = 'Remove %s %s Download Entries' % (title, status),
+				thumb = common.GetThumb(R(common.ICON_NOTOK), session=session)
+				)
+			)
+		else:
+			oc.add(DirectoryObject(
 			title = 'Clear %s Downloads' % status,
 			key = Callback(ClearDownLoadSection, status=status, session=session),
 			summary = 'Remove %s Download Entries' % status,
@@ -1237,14 +1300,14 @@ def SetReqDownloadLocationSave(uid, section_title, section_key, section_path):
 	
 ######################################################################################
 @route(PREFIX + "/ClearDownLoadSection")
-def ClearDownLoadSection(status, session, confirm=False):
+def ClearDownLoadSection(status, session, dir=None, confirm=False):
 
 	if AuthTools.CheckAdmin() == False:
 		return MC.message_container('Admin Access Only', 'Only the Admin can perform this action !')
 
 	if confirm == False:
 		oc = ObjectContainer(title1=unicode('Confirm ?'), no_cache=common.isForceNoCache())
-		oc.add(DirectoryObject(title = 'YES - Clear %s Entries' % status, key = Callback(ClearDownLoadSection, status=status, session=session, confirm=True),thumb = R(common.ICON_OK)))
+		oc.add(DirectoryObject(title = 'YES - Clear %s Entries' % status, key = Callback(ClearDownLoadSection, status=status, session=session, dir=dir, confirm=True),thumb = R(common.ICON_OK)))
 		oc.add(DirectoryObject(title = 'NO - Dont Clear %s Entries' % status, key = Callback(main.MyMessage, title='No Selected', msg='Return to previous screen'),thumb = R(common.ICON_NOTOK)))
 		return oc
 
@@ -1263,9 +1326,24 @@ def ClearDownLoadSection(status, session, confirm=False):
 				Log(e)
 				
 	if status == common.DOWNLOAD_STATUS[6]: # Auto-Pilot
-		common.DOWNLOAD_AUTOPILOT = common.DOWNLOAD_AUTOPILOT_CONST.copy()
-		Dict['DOWNLOAD_AUTOPILOT'] = E(JSON.StringFromObject(common.DOWNLOAD_AUTOPILOT))
-		Dict.Save()
+		if dir == None:
+			common.DOWNLOAD_AUTOPILOT = common.DOWNLOAD_AUTOPILOT_CONST.copy()
+		else:
+			for i in common.DOWNLOAD_AUTOPILOT['show']:
+				short_title = '%s:%s' % (i['short_title'], i['season'])
+				if short_title == dir:
+					items_to_del.append(i)
+			for ix in items_to_del:
+				for i in common.DOWNLOAD_AUTOPILOT['show']:
+					short_title_ix = '%s:%s' % (ix['short_title'], ix['season'])
+					short_title_i = '%s:%s' % (i['short_title'], i['season'])
+					if short_title_ix == short_title_i:
+						common.DOWNLOAD_AUTOPILOT['show'].remove(i)
+						
+			del items_to_del[:]
+			Dict['DOWNLOAD_AUTOPILOT'] = E(JSON.StringFromObject(common.DOWNLOAD_AUTOPILOT))
+			Dict.Save()
+		
 	elif len(items_to_del) > 0:
 		for each in items_to_del:
 			if status == common.DOWNLOAD_STATUS[1]: # Downloading

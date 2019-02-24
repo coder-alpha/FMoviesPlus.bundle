@@ -2,7 +2,7 @@
 
 #########################################################################################################
 #
-# OpenLoad scrapper
+# OpenLoad scraper
 #
 # Coder Alpha
 # https://github.com/coder-alpha
@@ -205,6 +205,10 @@ class host:
 		
 	def createMeta(self, url, provider, logo, quality, links, key, riptype, vidtype='Movie', lang='en', sub_url=None, txt='', file_ext = '.mp4', testing=False, poster=None, headers=None):
 	
+		files_ret = []
+		url = url.replace('oload.tv','openload.co').replace('/embed/','/f/')
+		orig_url = url
+			
 		if testing == True:
 			links.append(url)
 			return links
@@ -213,85 +217,84 @@ class host:
 			log('INFO','createMeta','Host Disabled by User')
 			return links
 			
-		url = url.replace('oload.tv','openload.co').replace('/embed/','/f/')
-		orig_url = url
-		durl = url
-		
-		if testing == False:
-			log(type='INFO',method='createMeta-0', err=u'creating meta for url: %s' % url)
-		
-		urldata = client.b64encode(json.dumps('', encoding='utf-8'))
-		params = client.b64encode(json.dumps('', encoding='utf-8'))
-		a1 = None
-		
-		if control.setting('use_openload_pairing') == True:
-			isPairRequired, a1 = isPairingRequired(url)
-			if isPairRequired == True:
+		try:
+			durl = url
+			
+			urldata = client.b64encode(json.dumps('', encoding='utf-8'))
+			params = client.b64encode(json.dumps('', encoding='utf-8'))
+			a1 = None
+			
+			if control.setting('use_openload_pairing') == True:
 				isPairRequired, a1 = isPairingRequired(url)
-			#print "isPairRequired %s" % isPairRequired
-		else:
-			isPairRequired = False
+				if isPairRequired == True:
+					isPairRequired, a1 = isPairingRequired(url)
+				#print "isPairRequired %s" % isPairRequired
+			else:
+				isPairRequired = False
+				
+			page_html = client.request(url)
+				
+			if a1 != None:
+				vidurl = a1
+			else:
+				vidurl, err, sub_url_t, r1 = resolve(url, usePairing=False)
+				if sub_url == None:
+					sub_url = sub_url_t
+				
+			if vidurl != None:
+				isPairRequired = False
+
+			pair = ''
+
+			if isPairRequired == True:
+				pair = ' *Pairing required* '
+				if isPairingDone():
+					pair = ' *Paired* '
+					
+			if vidurl == None:
+				vidurl = url
 			
-		page_html = client.request(url)
+			online, r1, r2, fs, r3, sub_url_t = check(vidurl, videoData=page_html, usePairing=False, embedpage=True)
 			
-		if a1 != None:
-			vidurl = a1
-		else:
-			vidurl, err, sub_url_t, r1 = resolve(url, usePairing=False)
+			if online == False:
+				pair = ' *Vid Unavailable* '
+			
+			file_title = ''
+			try:
+				file_title = client.parseDOM(page_html, 'title')[0]
+			except:
+				try:
+					file_title = client.parseDOM(page_html, 'span', attrs = {'class': 'title'})[0]
+				except:
+					try:
+						file_title = client.parseDOM(page_html, 'h3', attrs = {'class': 'other-title-bold'})[0]
+					except:
+						pass
+						
 			if sub_url == None:
 				sub_url = sub_url_t
 			
-		if vidurl != None:
-			isPairRequired = False
-
-		pair = ''
-
-		if isPairRequired == True:
-			pair = ' *Pairing required* '
-			if isPairingDone():
-				pair = ' *Paired* '
-				
-		if vidurl == None:
-			vidurl = url
-		
-		online, r1, r2, fs, r3, sub_url_t = check(vidurl, videoData=page_html, usePairing=False, embedpage=True)
-		
-		if online == False:
-			pair = ' *Vid Unavailable* '
-		
-		file_title = ''
-		try:
-			file_title = client.parseDOM(page_html, 'title')[0]
-		except:
+			titleinfo = txt
+			
 			try:
-				file_title = client.parseDOM(page_html, 'span', attrs = {'class': 'title'})[0]
-			except:
-				try:
-					file_title = client.parseDOM(page_html, 'h3', attrs = {'class': 'other-title-bold'})[0]
-				except:
-					pass
-					
-		log(type='INFO',method='createMeta-1', err=u'File Title: %s' % file_title)
-		
-		if sub_url == None:
-			sub_url = sub_url_t
-		
-		files_ret = []
-		titleinfo = txt
-		
-		if testing == False:
-			log(type='INFO',method='createMeta-2', err=u'pair: %s online: %s resolved url: %s' % (isPairRequired,online,vidurl))
-
-		try:
-			files_ret.append({'source':self.name, 'maininfo':pair, 'titleinfo':titleinfo, 'quality':file_quality(vidurl, quality, file_title), 'vidtype':vidtype, 'rip':rip_type(vidurl, riptype, file_title), 'provider':provider, 'url':vidurl, 'durl':durl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(url), 'misc':{'pair':isPairRequired, 'player':'iplayer', 'gp':False}})
+				log(type='INFO',method='createMeta', err=u'pair:%s; online:%s; durl:%s ; res:%s; fs:%s' % (isPairRequired,online,vidurl,quality,fs))
+				files_ret.append({'source':self.name, 'maininfo':pair, 'titleinfo':titleinfo, 'quality':file_quality(vidurl, quality, file_title), 'vidtype':vidtype, 'rip':rip_type(vidurl, riptype, file_title), 'provider':provider, 'url':vidurl, 'durl':durl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(url), 'misc':{'pair':isPairRequired, 'player':'iplayer', 'gp':False}})
+			except Exception as e:
+				log(type='ERROR',method='createMeta-3', err=u'%s' % e)
+				files_ret.append({'source':urlhost, 'maininfo':pair, 'titleinfo':titleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'url':vidurl, 'durl':durl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(url), 'misc':{'pair':isPairRequired, 'player':'eplayer', 'gp':False}})
 		except Exception as e:
-			log(type='ERROR',method='createMeta-3', err=u'%s' % e)
-			files_ret.append({'source':urlhost, 'maininfo':pair, 'titleinfo':titleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'url':vidurl, 'durl':durl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(url), 'misc':{'pair':isPairRequired, 'player':'eplayer', 'gp':False}})
+			log('ERROR', 'createMeta', '%s' % e)
 			
 		for fr in files_ret:
 			links.append(fr)
 
-		log('INFO', 'createMeta', 'Successfully processed %s link >>> %s' % (provider, orig_url), dolog=self.init)
+		if len(files_ret) > 0:
+			log('SUCCESS', 'createMeta', 'Successfully processed %s link >>> %s' % (provider, orig_url), dolog=self.init)
+		else:
+			log('FAIL', 'createMeta', 'Failed in processing %s link >>> %s' % (provider, orig_url), dolog=self.init)
+			
+		log('INFO', 'createMeta', 'Completed', dolog=self.init)
+		
 		return links
 
 	def resolve(self, url):

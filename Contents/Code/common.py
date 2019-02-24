@@ -1,6 +1,6 @@
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.74' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.75' # Release notation (x.y - where x is major and y is minor)
 TAG = ''
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
@@ -142,7 +142,7 @@ DOWNLOAD_STATS = {}
 DOWNLOAD_TEMP = {}
 DOWNLOAD_AUTOPILOT_CONST = {'movie':[], 'show':[], 'extras':[]}
 DOWNLOAD_AUTOPILOT = {'movie':[], 'show':[], 'extras':[]}
-DOWNLOAD_AUTOPILOT_STATUS = ['Processing','UnAvailable','In Download Queue','Waiting']
+DOWNLOAD_AUTOPILOT_STATUS = ['Processing','UnAvailable','In Download Queue','Waiting','Error']
 DOWNLOAD_FMP_EXT = '.FMPTemp'
 
 ANIME_SEARCH = []
@@ -234,8 +234,8 @@ CHECK_BASE_URL_REDIRECTION = True
 DEV_BM_CONVERSION = False
 NO_MOVIE_INFO = False
 USE_CUSTOM_TIMEOUT = False
-MY_CLOUD_DISABLED = True
-FMOVIES_HOSTS_DISABLED = ['mycloud', 'server fm']
+MY_CLOUD_DISABLED = False
+FMOVIES_HOSTS_DISABLED = ['']
 SERVER_PLACEHOLDER = 'FMOVIES'
 ENCRYPTED_URLS = False
 DEV_DEBUG = False

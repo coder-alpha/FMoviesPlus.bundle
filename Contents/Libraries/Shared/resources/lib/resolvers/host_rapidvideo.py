@@ -2,7 +2,7 @@
 
 #########################################################################################################
 #
-# RapidVideo scrapper
+# RapidVideo scraper
 #
 # Coder Alpha
 # https://github.com/coder-alpha
@@ -145,6 +145,9 @@ class host:
 		
 	def createMeta(self, url, provider, logo, quality, links, key, riptype, vidtype='Movie', lang='en', sub_url=None, txt='', file_ext = '.mp4', testing=False, poster=None, headers=None):
 	
+		files_ret = []
+		orig_url = url
+		
 		if testing == True:
 			links.append(url)
 			return links
@@ -153,45 +156,46 @@ class host:
 			log('INFO','createMeta','Host Disabled by User')
 			return links
 			
-		orig_url = url
+		try:
+			urldata = client.b64encode(json.dumps('', encoding='utf-8'))
+			params = client.b64encode(json.dumps('', encoding='utf-8'))
 			
-		urldata = client.b64encode(json.dumps('', encoding='utf-8'))
-		params = client.b64encode(json.dumps('', encoding='utf-8'))
-		
-		online = check(url)
-		vidurls, err, sub_url_t = getAllQuals(url, online)
-		
-		if vidurls == None:
-			log(type='ERROR',method='createMeta-1', err=u'%s' % err)
-			return links
-			
-		if sub_url_t != None:
-			sub_url = sub_url_t
-			
-		files_ret = []
-		
-		for vv in vidurls:
-			durl = vv['page']
-			vidurl, r1, r2 = resolve(durl, online)
-			if vidurl != None and '.mp4' in vidurl:
-				quality = vv['label']
-				try:
-					fs = client.getFileSize(vidurl)
-					fs = int(fs)
-				except:
-					fs = 0
+			online = check(url)
+			vidurls, err, sub_url_t = getAllQuals(url, online)
+	
+			if sub_url_t != None:
+				sub_url = sub_url_t
+				
+			for vv in vidurls:
+				durl = vv['page']
+				vidurl, r1, r2 = resolve(durl, online)
+				if vidurl != None and '.mp4' in vidurl:
+					quality = vv['label']
+					try:
+						fs = client.getFileSize(vidurl)
+						fs = int(fs)
+					except:
+						fs = 0
 
-				try:
-					log(type='INFO',method='createMeta', err=u'durl:%s ; res:%s; fs:%s' % (vidurl,quality,fs))
-					files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':txt, 'quality':quality, 'vidtype':vidtype, 'rip':riptype, 'provider':provider, 'url':durl, 'durl':durl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':fs, 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'poster':poster, 'sub_url':sub_url, 'subdomain':client.geturlhost(url), 'misc':{'player':'iplayer', 'gp':False}})
-				except Exception as e:
-					log(type='ERROR',method='createMeta', err=u'%s' % e)
-					files_ret.append({'source':urlhost, 'maininfo':'', 'titleinfo':txt, 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'url':durl, 'durl':durl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':fs, 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(url), 'misc':{'player':'iplayer', 'gp':False}})
+					try:
+						log(type='INFO',method='createMeta', err=u'durl:%s ; res:%s; fs:%s' % (vidurl,quality,fs))
+						files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':txt, 'quality':quality, 'vidtype':vidtype, 'rip':riptype, 'provider':provider, 'url':durl, 'durl':durl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':fs, 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'poster':poster, 'sub_url':sub_url, 'subdomain':client.geturlhost(url), 'misc':{'player':'iplayer', 'gp':False}})
+					except Exception as e:
+						log(type='ERROR',method='createMeta', err=u'%s' % e)
+						files_ret.append({'source':urlhost, 'maininfo':'', 'titleinfo':txt, 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'url':durl, 'durl':durl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':fs, 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(url), 'misc':{'player':'iplayer', 'gp':False}})
+		except Exception as e:
+			log('ERROR', 'createMeta', '%s' % e)
 			
 		for fr in files_ret:
 			links.append(fr)
 
-		log('INFO', 'createMeta', 'Successfully processed %s link >>> %s' % (provider, orig_url), dolog=self.init)
+		if len(files_ret) > 0:
+			log('SUCCESS', 'createMeta', 'Successfully processed %s link >>> %s' % (provider, orig_url), dolog=self.init)
+		else:
+			log('FAIL', 'createMeta', 'Failed in processing %s link >>> %s' % (provider, orig_url), dolog=self.init)
+			
+		log('INFO', 'createMeta', 'Completed', dolog=self.init)
+			
 		return links
 		
 	def resolve(self, url):
@@ -209,6 +213,8 @@ def resolve(url, online=None, USE_POST=False):
 		if online == None:
 			if check(url) == False: 
 				raise Exception('Video not available')
+		elif online == False: 
+			raise Exception('Video not available')
 
 		video_url = None
 		err = ''
@@ -288,6 +294,10 @@ def check(url, headers=None, cookie=None):
 	try:
 		http_res, red_url = client.request(url=url, output='responsecodeext', followredirect=True, headers=headers, cookie=cookie)
 		if http_res not in client.HTTP_GOOD_RESP_CODES:
+			return False
+			
+		page = client.request(url=url, followredirect=True, headers=headers, cookie=cookie)
+		if 'Account temporarily suspended' in page:
 			return False
 
 		return True

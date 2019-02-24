@@ -2186,6 +2186,8 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 			
 		if len(servers) == 0:
 			server_page_data = fmovies.get_servers(serverts, url, is9Anime=True if str(is9anime)=='True' else False, use_https_alt=use_https_alt)
+			#if Prefs["use_debug"]:
+			#	Log("server_page_data : %s" % server_page_data)
 			try:
 				server_page_data_elems = HTML.ElementFromString(server_page_data)
 				servers = server_page_data_elems.xpath(".//*[@id='servers']//div[@class='server row']")
@@ -2282,9 +2284,6 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 		except:
 			pass
 			
-		#if Prefs["use_debug"]:
-		#	Log("servers : %s" % servers)
-			
 		for server in servers:
 			label = server.xpath(".//label[@class='name col-md-4 col-sm-5']//text()[2]")[0].strip()
 			try:
@@ -2292,7 +2291,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 			except:
 				serverid = None
 				
-			if label.lower() not in common.FMOVIES_HOSTS_DISABLED or (label.lower() in common.FMOVIES_HOSTS_DISABLED and common.MY_CLOUD_DISABLED == False) or len(servers) == 1:
+			if True:
 				if label in common.host_gvideo.FMOVIES_SERVER_MAP:
 					label = common.host_gvideo.FMOVIES_SERVER_MAP[label]
 				if 'Server F' in label:
@@ -2300,10 +2299,11 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 				if 'Server G' in label:
 					label = label.replace('Server G','Google-G')
 				
-				if label.lower() not in common.FMOVIES_HOSTS_DISABLED or (label.lower() in common.FMOVIES_HOSTS_DISABLED and common.MY_CLOUD_DISABLED == False):
+				if True:
 					server_lab.append(label)
 					
 				items = server.xpath(".//ul//li")
+				
 				if len(items) > 1:
 					isMovieWithMultiPart = True
 					
@@ -2333,12 +2333,15 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 		c=0
 		
 		if len(servers_list) > 0:
-			for no in servers_list[common.SERVER_PLACEHOLDER]:
+			for no in range(max(len(servers_list[common.SERVER_PLACEHOLDER]),len(servers_list['MyCloud']))):
 				servers_list_new.append([])
 				servers_list_new[c] = {}
-				for label in servers_list:
+				for label in servers_list.keys():
 					servers_list_new[c][label] = {}
 					try:
+						if 'MyCloud' in servers_list_new[c].keys() and len(servers_list_new[c]['MyCloud'].keys()) > 0:
+							if servers_list_new[c]['MyCloud']['quality'] != servers_list[label][c]['quality']:
+								raise
 						servers_list_new[c][label] = {'quality':servers_list[label][c]['quality'], 'loc':servers_list[label][c]['loc'], 'serverid':servers_list[label][c]['serverid']}
 					except:
 						if c > 99:
@@ -2346,9 +2349,19 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 						else:
 							servers_list_new[c][label] = {'quality':"%02d" % (c+1), 'loc':'', 'serverid':None}
 				c += 1
-			
-		#Log(servers_list)
-		#Log(servers_list_new)
+				
+		if common.MY_CLOUD_DISABLED == True:
+			for i in servers_list_new:
+				if 'MyCloud' in i.keys():
+					del i['MyCloud']
+			for i in server_lab:
+				if 'MyCloud' == i:
+					server_lab.remove(i)
+		
+		if Prefs["use_debug"]:
+			Log('=================servers_list===============')
+			Log(servers_list)
+			Log(servers_list_new)
 			
 	############################# Data ############################
 	
@@ -2577,7 +2590,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 			else:
 				label = page_data.xpath(".//span[contains(@data-name ,'%s')]//text()" % dataname)[0].strip()
 			
-			if label.lower() not in common.FMOVIES_HOSTS_DISABLED or (label.lower() in common.FMOVIES_HOSTS_DISABLED and common.MY_CLOUD_DISABLED == False) or len(servers) == 1:
+			if True:
 				if label in common.host_gvideo.FMOVIES_SERVER_MAP:
 					label = common.host_gvideo.FMOVIES_SERVER_MAP[label]
 				if 'Server F' in label:
@@ -2585,7 +2598,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 				if 'Server G' in label:
 					label = label.replace('Server G','Google-G')
 				
-				if label.lower() not in common.FMOVIES_HOSTS_DISABLED or (label.lower() in common.FMOVIES_HOSTS_DISABLED and common.MY_CLOUD_DISABLED == False):
+				if True:
 					server_lab.append(label)
 				
 				items = server.xpath(".//ul//li")
@@ -2617,10 +2630,12 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 		servers_list_new = []
 		c=0
 		
-		Log(servers_list)
+		if Prefs["use_debug"]:
+			Log('=================servers_list===============')
+			Log(servers_list)
 		
 		if len(servers_list) > 0:
-			for no in servers_list[common.SERVER_PLACEHOLDER]:
+			for no in range(max(len(servers_list[common.SERVER_PLACEHOLDER]),len(servers_list['MyCloud']))):
 				servers_list_new.append([])
 				servers_list_new[c] = {}
 				for label in servers_list:
@@ -3167,9 +3182,10 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 		
 		watch_title = title
 		
-		if common.SERVER_PLACEHOLDER in server_lab:
-			idx = server_lab.index(common.SERVER_PLACEHOLDER)
-			del server_lab[idx]
+		if len(server_lab) > 0:
+			if common.SERVER_PLACEHOLDER in server_lab:
+				idx = server_lab.index(common.SERVER_PLACEHOLDER)
+				del server_lab[idx]
 	
 		pair_required = False
 		for label in server_lab:
@@ -3404,9 +3420,10 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 	servers_list_new = JSON.ObjectFromString(D(servers_list_new))
 	
 	server_lab = JSON.ObjectFromString(D(server_lab))
-	if common.SERVER_PLACEHOLDER in server_lab:
-		idx = server_lab.index(common.SERVER_PLACEHOLDER)
-		del server_lab[idx]
+	if len(server_lab) > 0:
+		if common.SERVER_PLACEHOLDER in server_lab:
+			idx = server_lab.index(common.SERVER_PLACEHOLDER)
+			del server_lab[idx]
 	
 	client_id = '%s-%s' % (Client.Product, session)
 
@@ -4765,6 +4782,9 @@ def RecentWatchList(title, session=None, **kwargs):
 @route(PREFIX + "/clearRecentWatchList")
 def ClearRecentWatchList(**kwargs):
 
+	if AuthTools.CheckAdmin() == False:
+		return MC.message_container('Admin Access Only', 'Only the Admin can perform this action !')
+		
 	remove_list = []
 	for each in Dict:
 		try:
@@ -4998,6 +5018,9 @@ def RemoveBookmark(title, url, **kwargs):
 @route(PREFIX + "/clearbookmarks")
 def ClearBookmarks(**kwargs):
 
+	if AuthTools.CheckAdmin() == False:
+		return MC.message_container('Admin Access Only', 'Only the Admin can perform this action !')
+		
 	remove_list = []
 	for each in Dict:
 		try:
@@ -5022,6 +5045,9 @@ def ClearBookmarks(**kwargs):
 @route(PREFIX + "/clearsearches")
 def ClearSearches(**kwargs):
 
+	if AuthTools.CheckAdmin() == False:
+		return MC.message_container('Admin Access Only', 'Only the Admin can perform this action !')
+		
 	remove_list = []
 	for each in Dict:
 		try:

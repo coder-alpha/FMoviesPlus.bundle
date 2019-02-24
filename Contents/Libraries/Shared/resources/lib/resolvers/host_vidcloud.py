@@ -2,7 +2,7 @@
 
 #########################################################################################################
 #
-# Youtube scrapper
+# Vidcloud scraper
 #
 # Coder Alpha
 # https://github.com/coder-alpha
@@ -26,13 +26,14 @@
 
 import re,urllib,json,time
 import os, sys, ast
+from __builtin__ import eval
 
 try:
 	from resources.lib.libraries import client
 	from resources.lib.libraries import control
+	from resources.lib import resolvers
 except:
 	pass
-
 
 hdr = {
 	'User-Agent': client.USER_AGENT,
@@ -42,32 +43,36 @@ hdr = {
 	'Accept-Language': 'en-US,en;q=0.8',
 	'Connection': 'keep-alive'}
 
-name = 'youtube'
+name = 'vidcloud'
 loggertxt = []
 	
 class host:
 	def __init__(self):
 		del loggertxt[:]
-		self.ver = '0.0.1'
-		self.update_date = 'Nov. 13, 2017'
+		self.ver = '0.0.2'
+		self.update_date = 'Feb. 12, 2019'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
-		self.logo = 'http://i.imgur.com/qZUP77r.png'
+		self.logo = 'https://i.imgur.com/Phbe6Z3.png'
 		self.name = name
-		self.host = ['youtube.com']
-		self.netloc = ['youtube.com']
+		self.host = ['vidcloud.icu']
+		self.netloc = ['vidcloud.icu']
 		self.quality = '1080p'
 		self.loggertxt = []
 		self.captcha = False
-		self.allowsDownload = False
-		self.resumeDownload = False
+		self.allowsDownload = True
+		self.resumeDownload = True
 		self.allowsStreaming = True
 		self.ac = False
 		self.pluginManagedPlayback = False
 		self.speedtest = 0
-		self.working = self.testWorking()[0]
+		testResults = self.testWorking()
+		self.working = testResults[0]
+		self.msg = testResults[1]
+		if self.working == False:
+			self.captcha = True
+			self.working = True
 		self.resolver = self.testResolver()
-		self.msg = ''
 		self.init = True
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s End --' % (name, self.ver, self.update_date))
 
@@ -100,21 +105,21 @@ class host:
 		try:
 			testUrls = self.testUrl()
 			bool = False
-			msg = []
+			msg = ''
 			for testUrl in testUrls:
 				x1 = time.time()
 				bool = check(testUrl)
 				self.speedtest = time.time() - x1
-				msg.append([bool, testUrl])
+				
 				if bool == True:
 					break
 				
 			log(method='testWorking', err='%s online status: %s' % (self.name, bool))
-			return (bool,msg)
+			return (bool, msg)
 		except Exception as e:
 			log(method='testWorking', err='%s online status: %s' % (self.name, bool))
 			log(type='ERROR', method='testWorking', err=e)
-			return False
+			return False, msg
 			
 	def testResolver(self):
 		try:
@@ -136,10 +141,13 @@ class host:
 		return bool
 		
 	def testUrl(self):
-		return ['https://www.youtube.com/watch?v=HcRvwVwD1Sc']
+		return ['https://vidcloud.icu/streaming.php?id=MjMwOTg2&title=Bumblebee&typesub=SUB&sub=L2J1bWJsZWJlZS9idW1ibGViZWUudnR0&cover=Y292ZXIvYnVtYmxlYmVlLnBuZw==']
 		
 	def createMeta(self, url, provider, logo, quality, links, key, riptype, vidtype='Movie', lang='en', sub_url=None, txt='', file_ext = '.mp4', testing=False, poster=None, headers=None):
 	
+		files_ret = []
+		orig_url = url
+		
 		if testing == True:
 			links.append(url)
 			return links
@@ -148,25 +156,32 @@ class host:
 			log('INFO','createMeta','Host Disabled by User')
 			return links
 			
-		orig_url = url
-		files_ret = []
-		
 		try:
-			
-			urldata = client.b64encode(json.dumps('', encoding='utf-8'))
-			params = client.b64encode(json.dumps('', encoding='utf-8'))
-			
-			online = check(url)
-			fs = 5*1024*1024*1024
-			
-			try:
-				files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':riptype, 'provider':provider, 'url':url, 'durl':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':fs, 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':self.netloc[0], 'misc':{'player':'eplayer', 'gp':False}})
-			except Exception as e:
-				log(type='ERROR',method='createMeta', err=u'%s' % e)
-				files_ret.append({'source':urlhost, 'maininfo':'', 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'url':url, 'durl':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':fs, 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':self.netloc[0], 'misc':{'player':'eplayer', 'gp':False}})
+			if url != None and 'vidcloud.icu/load' not in url:
+				online = True
+				result = client.request(orig_url, httpsskip=True)
+				if 'Sorry, this video reuploading' in result:
+					online = False
+				
+				if online == True:
+					vids = client.parseDOM(result, 'ul', attrs = {'class': 'list-server-items'})[0]
+					vids = client.parseDOM(vids, 'li', attrs = {'class': 'linkserver'}, ret='data-video')
+					
+					for video_url in vids:
+						if 'http' not in video_url:
+							video_url = 'http:' + video_url
+						if video_url != None and 'vidcloud.icu/load' not in video_url:
+							video_url1 = '%s' % client.request(video_url, followredirect=True, httpsskip=True, output='geturl')
+								
+							if video_url1 != None and 'http' in video_url1 and 'vidcloud.icu' not in video_url1:
+								try:
+									files_ret = resolvers.createMeta(video_url1, provider, logo, quality, files_ret, key, poster=poster, riptype=riptype, vidtype=vidtype, sub_url=sub_url, testing=testing)
+								except Exception as e:
+									log(type='ERROR',method='createMeta', err=u'%s' % e)
+					
 		except Exception as e:
 			log('ERROR', 'createMeta', '%s' % e)
-			
+		
 		for fr in files_ret:
 			links.append(fr)
 
@@ -176,6 +191,7 @@ class host:
 			log('FAIL', 'createMeta', 'Failed in processing %s link >>> %s' % (provider, orig_url), dolog=self.init)
 			
 		log('INFO', 'createMeta', 'Completed', dolog=self.init)
+			
 		return links
 		
 	def resolve(self, url):
@@ -187,12 +203,18 @@ class host:
 	def testLink(self, url):
 		return check(url)
 	
-def resolve(url):
+def resolve(url, online=None):
 
-	if check(url) == False: return
-	
-	return url
+	try:
+		if online == None:
+			if check(url) == False: 
+				raise Exception('Video not available')
 
+		return (url, '', None)
+		
+	except Exception as e:
+		e = '{}'.format(e)
+		return (None, e, None)
 	
 def check(url, headers=None, cookie=None):
 	try:

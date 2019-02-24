@@ -2,8 +2,8 @@
 
 #########################################################################################################
 #
-# TrailerAddict (courtesy : Pip Longrun)
-# https://github.com/piplongrun/TrailerAddict.bundle
+# iTunesMoviesTrailers (courtesy : Pip Longrun)
+# https://github.com/piplongrun/iTunes-Movie-Trailers.bundle
 #
 # Coder Alpha
 # https://github.com/coder-alpha
@@ -36,34 +36,33 @@ from resources.lib.libraries import control
 from resources.lib.libraries import unwise2
 from resources.lib import proxies
 
-name = 'TrailerAddict'
+name = 'iTunesMovieTrailers'
 loggertxt = []
 
 class source:
 	def __init__(self):
 		del loggertxt[:]
-		self.ver = '0.1.0'
-		self.update_date = 'Apr. 25, 2018'
+		self.ver = '0.1.1'
+		self.update_date = 'Feb. 13, 2019'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
 		self.priority = 1
 		self.disabled = False
 		self.language = ['en']
 		self.type_filter = ['movie', 'show', 'anime']
-		self.domains = ['traileraddict.com']
-		self.base_link_alts = ['https://www.traileraddict.com']
+		self.domains = ['http://trailers.apple.com']
+		self.base_link_alts = ['http://trailers.apple.com']
 		self.base_link = self.base_link_alts[0]
-		self.page_link = 'https://api.tadata.me/imdb2ta/v2/?imdb_id=%s'
-		self.MainPageValidatingContent = 'Trailer Addict - Movie Trailers'
+		self.page_link = 'https://api.tadata.me/imt/v1/?imdb_id=%s'
+		self.MainPageValidatingContent = 'iTunes Movie Trailers'
 		self.name = name
 		self.loggertxt = []
 		self.ssl = False
-		self.logo = 'https://i.imgur.com/tVEryKQ.png'
+		self.logo = 'https://i.imgur.com/9d23O0P.png'
 		self.headers = {}
 		self.speedtest = 0
 		if len(proxies.sourceProxies)==0:
 			proxies.init()
-		self.force_use_proxyrequired = True
 		self.proxyrequired = False
 		self.msg = ''
 		self.siteonline = self.testSite()
@@ -106,12 +105,11 @@ class source:
 			x1 = time.time()
 			http_res, content = proxies.request(url=site, output='response', use_web_proxy=False)
 			self.speedtest = time.time() - x1
-			if content != None and content.find(self.MainPageValidatingContent) >-1 and self.force_use_proxyrequired == False:
+			if content != None and content.find(self.MainPageValidatingContent) >-1:
 				log('SUCCESS', 'testSite', 'HTTP Resp : %s for %s' % (http_res,site))
 				return True
 			else:
-				if self.force_use_proxyrequired == False:
-					log('FAIL', 'testSite', 'Validation content Not Found. HTTP Resp : %s for %s' % (http_res,site))
+				log('FAIL', 'testSite', 'Validation content Not Found. HTTP Resp : %s for %s' % (http_res,site))
 				x1 = time.time()
 				http_res, content = proxies.request(url=site, output='response', use_web_proxy=True)
 				self.speedtest = time.time() - x1
@@ -171,7 +169,7 @@ class source:
 				return None
 				
 			if imdb == None:
-				raise
+				raise Exception('IMDb ID not available')
 				
 			return self.page_link % imdb
 		except Exception as e: 
@@ -185,7 +183,7 @@ class source:
 				return None
 				
 			if imdb == None:
-				raise
+				raise Exception('IMDb ID not available')
 				
 			return self.page_link % imdb
 		except Exception as e:
@@ -202,7 +200,7 @@ class source:
 				return url
 				
 			if imdb == None:
-				raise
+				raise Exception('IMDb ID not available')
 				
 			return self.page_link % imdb
 			
@@ -216,164 +214,33 @@ class source:
 			sources = []
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_sources','Provider Disabled by User')
+				log('INFO', 'get_sources', 'Completed')
 				return sources
 			if url == None: 
 				log('FAIL','get_sources','url == None. Could not find a matching title: %s' % cleantitle.title_from_key(key), dolog=not testing)
+				log('INFO', 'get_sources', 'Completed')
 				return sources
 
 			UA = client.agent()
 				
 			# get TA JSON data from tadata api
+
 			result = proxies.request(url, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
 			resultx = json.loads(str(result))
-			ta_url = resultx['url']
-			poster = resultx['image'] if 'image' in resultx else None
-			
-			#print ta_url
-			result = proxies.request(ta_url, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
-			
+			extras = resultx['video']
 			# get types of videos available
-			types = {'trailer':'Trailer', 'feature_trailer':'Trailer', 'theatrical_trailer':'Trailer', 'behind_the_scenes':'Behind the scenes', 'deleted_scene':'Deleted Scenes', 'featurette':'Featurette', 'featured_box':'Featurette', 'music_video':'Music Video', 'misc_scene':'Misc.'}
-			quality_maps = {'4k':'4K','2k':'2K','1080p':'1080p', 'HD':'720p', 'M':'480p', 'S':'360p'}
+			types = {'trailer':'Trailer', 'featurette':'Featurette'}
+			quality = '720p'
 			
-			extras = []
-			
-			items = client.parseDOM(result, 'div', attrs = {'id':'featured_c'})[0]
-			m_title = client.parseDOM(items, 'div', attrs = {'class':'movie_info'})
-			#print m_title
-			
-			fail_bool = False
-			for video in m_title:
-				try:
-					time.sleep(0.1)
-					video = video.replace('rttttttttttt','')
-					video = video.replace('rtttttttttt','')
-					video = video.replace('\r','')
-					video = video.replace('\t','')
-					video = video.replace('\n','')
-
-					title = client.parseDOM(video, 'a', attrs = {'class':'m_title'})[0]
-					
-					ta_tage_url = client.parseDOM(video, 'a', ret = 'href')[0]
-					if 'http' not in ta_tage_url:
-						ta_tage_url = urlparse.urljoin(self.base_link, ta_tage_url)
-					
-					try:
-						vid_date = client.parseDOM(video, 'span', attrs = {'class':'m_date'})[0]
-						vid_date = vid_date.replace(',','')
-					except:
-						vid_date = ''
-					
-					# Trailers
-					if title.lower() == 'trailer':
-						extra_type = 'trailer'
-					elif title.lower() == 'feature trailer':
-						extra_type = 'feature_trailer'
-					elif title.lower() == 'theatrical trailer':
-						extra_type = 'theatrical_trailer'
-
-					# Behind the scenes
-					elif 'behind the scenes' in title.lower():
-						extra_type = 'behind_the_scenes'
-
-					# Featurette
-					elif 'featurette' in title.lower():
-						extra_type = 'featurette'
-						
-					# Music Video
-					elif 'music video' in title.lower():
-						extra_type = 'music_video'
-
-					# Interview
-					elif 'interview' in title.lower():
-						extra_type = 'interview'
-
-						if title.lower().startswith('interview') or title.lower().startswith('generic interview'):
-							title = title.split('nterview - ')[-1].split('nterview- ')[-1]
-
-					# Deleted scene
-					elif 'deleted scene' in title.lower():
-						extra_type = 'deleted_scene'
-						
-					# Trailers
-					elif 'trailer' in title.lower():
-						extra_type = 'trailer'
-						
-					else:
-						extra_type = 'misc_scene'
-
-					# process ta_tage_url
-					#print ta_tage_url
-					result = proxies.request(ta_tage_url, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
-					
-					data = None
-					
-					js = re.findall(r'eval\(function\(w,i,s,e\).*;', result)
-					
-					if len(js) > 0:
-						data = js[0]
-					else:
-						try:
-							jsd = re.findall(r'src="/util/client.js?c=(.*?)"><', result)[0].strip()
-						except:
-							try:
-								jsd = re.findall(r'</style>rttr<!-- (.*?) -->rrttrtt<div id=\"embed_box\">', result)[0].strip()
-							except:
-								jsd = re.findall(r'</style>.*<!-- (.*?) -->.*<div id=\"embed_box\">', result, flags=re.DOTALL)[0].strip()
-								
-						jsd_url = tau % (urllib.quote_plus(jsd), client.b64encode(str(int(time.time()))), client.b64encode(ta_tage_url), client.b64encode(UA), control.setting('ver'), client.b64encode(control.setting('ca')))
-						
-						data = proxies.request(jsd_url)
-						if data == None:
-							log('ERROR', 'get_sources-1', '%s' % jsd_url, dolog=True)
-					
-					if data != None:
-						if str(data) == '423':
-							fail_bool = True
-							raise Exception("Helper site is currently unavailable !")
-						try:
-							data = unwise2.unwise_process(data)
-						except:
-							raise Exception("unwise2 could not process data")
-					else:
-						raise Exception("URL Post Data Unavailable")
-						
-					files = re.findall(r'source src="([^"]+)"', data)
-					quals = re.findall(r'res=\"(.*?)\"', data)
-					processed = []
-					
-					for i in range(0, len(files)):
-						v_file = files[i]
-						if quals[i] in quality_maps.keys():
-							quality = quality_maps[quals[i]]
-						else:
-							quality = '720p'
-						#print extra_type
-						if quality not in processed:
-							#print v_file
-							processed.append(quality)
-							extras.append(
-								{'etype': extra_type,
-								'date': vid_date,
-								'type': types[extra_type],
-								'url' : v_file,
-								'quality': quality,
-								'title': title,
-								'thumb': poster}
-							)
-					
-					if testing == True and len(extras) > 0:
-						break
-				except Exception as e:
-					log('ERROR', 'get_sources-2', '%s' % e, dolog=True)
-					if fail_bool == True:
-						raise Exception("%s" % e)
-
 			links = []
-			
-			#print extras
 			for extra in extras:
-				links = resolvers.createMeta(extra['url'], self.name, self.logo, extra['quality'], links, key, vidtype=extra['type'], testing=testing, txt=extra['title'], poster=extra['thumb'])
+				vidtype_e = extra['title']
+				vidtype = 'Misc.'
+				for t in types:
+					if t in vidtype_e.lower():
+						vidtype = types[t]
+						break
+				links = resolvers.createMeta(extra['url'], self.name, self.logo, quality, links, key, vidtype=vidtype, testing=testing, txt=extra['title'], poster=extra['thumb'])
 				if testing == True and len(links) > 0:
 					break
 
@@ -382,12 +249,15 @@ class source:
 				
 			if len(sources) == 0:
 				log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key))
-				return sources
+			else:
+				log('SUCCESS', 'get_sources','%s sources : %s' % (cleantitle.title_from_key(key), len(sources)))
+				
+			log('INFO', 'get_sources', 'Completed')
 			
-			log('SUCCESS', 'get_sources','%s sources : %s' % (cleantitle.title_from_key(key), len(sources)), dolog=not testing)
 			return sources
 		except Exception as e:
-			log('ERROR', 'get_sources', '%s' % e, dolog=not testing)
+			log('ERROR', 'get_sources', '%s' % e)
+			log('INFO', 'get_sources', 'Completed')
 			return sources
 
 	def resolve(self, url):
@@ -404,5 +274,3 @@ def log(type='INFO', method='undefined', err='', dolog=True, logToControl=False,
 			print msg
 	except Exception as e:
 		control.log('Error in Logging: %s >>> %s' % (msg,e))
-
-tau = client.b64ddecode('YUhSMGNITTZMeTlqYjJSbGNtRnNjR2hoTGpBd01IZGxZbWh2YzNSaGNIQXVZMjl0TDNKbGNYVmxjM1J6TDNKbGNUSXVjR2h3UDFGVlJWSlpYMU5VVWtsT1J6RTlKWE1tVVZWRlVsbGZVMVJTU1U1SE1qMGxjeVpSVlVWU1dWOVRWRkpKVGtjelBTVnpKbEZWUlZKWlgxTlVVa2xPUnpROUpYTW1kbVZ5UFNWekptTnZaR1Z5WVd4d2FHRTlKWE09')

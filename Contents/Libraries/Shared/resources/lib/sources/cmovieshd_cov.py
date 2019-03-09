@@ -154,6 +154,9 @@ class source:
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_movie','Provider Disabled by User')
 				return None
+			if self.siteonline == False:
+				log('INFO','get_movie','Provider is Offline')
+				return None
 			
 			del self.aliases[:]
 			self.aliases.append({'country': 'us', 'title': title})
@@ -169,6 +172,9 @@ class source:
 		try:
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_show','Provider Disabled by User')
+				return None
+			if self.siteonline == False:
+				log('INFO','get_show','Provider is Offline')
 				return None
 			
 			del self.aliases[:]

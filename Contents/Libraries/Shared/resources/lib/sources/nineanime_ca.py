@@ -156,6 +156,8 @@ class source:
 			try:
 				token_url = urlparse.urljoin(t_base_link, self.token_link)
 				r1 = proxies.request(token_url, headers=self.headers, httpsskip=True)
+				if r1 == None:
+					raise Exception('%s not reachable !' % token_url)
 				reqkey = self.decodeJSFCookie(r1)
 			except Exception as e:
 				reqkey = ''
@@ -244,6 +246,9 @@ class source:
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_movie','Provider Disabled by User')
 				return None
+			if self.siteonline == False:
+				log('INFO','get_movie','Provider is Offline')
+				return None
 			url = {'imdb': imdb, 'title': title, 'year': year}
 			url = urllib.urlencode(url)
 			#X - Requested - With:"XMLHttpRequest"
@@ -257,6 +262,10 @@ class source:
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_show','Provider Disabled by User')
 				return None
+			if self.siteonline == False:
+				log('INFO','get_show','Provider is Offline')
+				return None
+				
 			url = {'imdb': imdb, 'tvdb': tvdb, 'tvshowtitle': tvshowtitle, 'year': year, 'season': season}
 			url = urllib.urlencode(url)
 			return url

@@ -143,7 +143,7 @@ class host:
 	def testUrl(self):
 		return ['https://vidcloud.icu/streaming.php?id=MjMwOTg2&title=Bumblebee&typesub=SUB&sub=L2J1bWJsZWJlZS9idW1ibGViZWUudnR0&cover=Y292ZXIvYnVtYmxlYmVlLnBuZw==']
 		
-	def createMeta(self, url, provider, logo, quality, links, key, riptype, vidtype='Movie', lang='en', sub_url=None, txt='', file_ext = '.mp4', testing=False, poster=None, headers=None):
+	def createMeta(self, url, provider, logo, quality, links, key, riptype, vidtype='Movie', lang='en', sub_url=None, txt='', file_ext = '.mp4', testing=False, poster=None, headers=None, page_url=None):
 	
 		files_ret = []
 		orig_url = url
@@ -157,7 +157,9 @@ class host:
 			return links
 			
 		try:
-			if url != None and 'vidcloud.icu/load' not in url:
+			if 'vidcloud.icu/load' in url:
+				raise Exception('No mp4 Video\'s found')
+			elif url != None:
 				online = True
 				result = client.request(orig_url, httpsskip=True)
 				if 'Sorry, this video reuploading' in result:
@@ -166,19 +168,30 @@ class host:
 				if online == True:
 					vids = client.parseDOM(result, 'ul', attrs = {'class': 'list-server-items'})[0]
 					vids = client.parseDOM(vids, 'li', attrs = {'class': 'linkserver'}, ret='data-video')
-					
+					vids = list(set(vids))
 					for video_url in vids:
-						if 'http' not in video_url:
-							video_url = 'http:' + video_url
-						if video_url != None and 'vidcloud.icu/load' not in video_url:
-							video_url1 = '%s' % client.request(video_url, followredirect=True, httpsskip=True, output='geturl')
-								
+						video_urlx = video_url
+						if 'http' not in video_urlx:
+							video_urlx = 'http:' + video_urlx
+						if video_urlx != None and 'vidcloud.icu/load' not in video_urlx:
+							video_url1 = '%s' % client.request(video_urlx, followredirect=True, httpsskip=True, output='geturl')
 							if video_url1 != None and 'http' in video_url1 and 'vidcloud.icu' not in video_url1:
 								try:
-									files_ret = resolvers.createMeta(video_url1, provider, logo, quality, files_ret, key, poster=poster, riptype=riptype, vidtype=vidtype, sub_url=sub_url, testing=testing)
+									files_ret = resolvers.createMeta(video_url1, provider, logo, quality, files_ret, key, poster=poster, riptype=riptype, vidtype=vidtype, sub_url=sub_url, testing=testing, headers=headers, page_url=page_url)
 								except Exception as e:
 									log(type='ERROR',method='createMeta', err=u'%s' % e)
-					
+						elif video_urlx != None and 'vidcloud.icu/load' in video_urlx:
+							id = re.findall(r'id=(.*?)&',video_urlx)[0]
+							u = 'https://vidcloud.icu/download?id=%s' % id
+							res = client.request(u)
+							mp4_vids = re.findall(r'http.*?mp4',res)
+							if len(mp4_vids) > 0:
+								try:
+									files_ret = resolvers.createMeta(u, provider, logo, quality, files_ret, key, poster=poster, riptype=riptype, vidtype=vidtype, sub_url=sub_url, testing=testing, headers=headers, page_url=page_url, urlhost='vidcloud.icu/download')
+								except Exception as e:
+									log(type='ERROR',method='createMeta', err=u'%s' % e)
+							elif len(mp4_vids) == 0 and video_url == vids[len(vids)-1] and len(files_ret) == 0:
+								raise Exception('No mp4 Video\'s found')
 		except Exception as e:
 			log('ERROR', 'createMeta', '%s' % e)
 		

@@ -130,6 +130,7 @@ class Downloader(object):
 		self.dlthrottle = d
 	
 	def download(self, file_meta_enc):
+	
 		file_meta = JSON.ObjectFromString(D(file_meta_enc))
 		title = file_meta['title']
 		url = file_meta['url']
@@ -209,6 +210,9 @@ class Downloader(object):
 		if fname == None:
 			raise fname_e
 			
+		tuid = common.id_generator(16)
+		common.control.AddThread('download', 'Download File: %s' % fname, time.time(), '2', False, tuid)
+			
 		abs_path = Core.storage.join_path(path, item_folder_name, fname)
 		directory = Core.storage.join_path(path, item_folder_name)
 		
@@ -225,6 +229,7 @@ class Downloader(object):
 				Log('OpenLoad URL: %s' % furl)
 				Log('OpenLoad Error: %s' % error)
 				download_failed(url, error, progress, startPos, purgeKey)
+				common.control.RemoveThread(tuid)
 				return
 		elif 'rapidvideo' in source.lower():
 			furl, error, sub_url_t = common.host_rapidvideo.resolve(furl)
@@ -234,6 +239,7 @@ class Downloader(object):
 				Log('RapidVideo URL: %s' % furl)
 				Log('RapidVideo Error: %s' % error)
 				download_failed(url, error, progress, startPos, purgeKey)
+				common.control.RemoveThread(tuid)
 				return
 		elif 'streamango' in source.lower():
 			furl, error, sub_url_t = common.host_streamango.resolve(furl)
@@ -243,6 +249,7 @@ class Downloader(object):
 				Log('Streamango URL: %s' % furl)
 				Log('Streamango Error: %s' % error)
 				download_failed(url, error, progress, startPos, purgeKey)
+				common.control.RemoveThread(tuid)
 				return
 		elif 'direct' in source.lower():
 			furl, params_enc, error = common.host_direct.resolve(furl)
@@ -252,6 +259,7 @@ class Downloader(object):
 				Log('3donlinefilms URL: %s' % furl)
 				Log('3donlinefilms Error: %s' % error)
 				download_failed(url, error, progress, startPos, purgeKey)
+				common.control.RemoveThread(tuid)
 				return
 			try:
 				params = json.loads(base64.b64decode(params_enc))
@@ -415,6 +423,7 @@ class Downloader(object):
 								except:
 									pass
 								end_download_by_user(title, url, purgeKey)
+								common.control.RemoveThread(tuid)
 								return
 							elif action == common.DOWNLOAD_ACTIONS[1]: # pause
 								while action == common.DOWNLOAD_ACTIONS[1]:
@@ -450,6 +459,7 @@ class Downloader(object):
 								except:
 									pass
 								postpone_download_by_user(title, url, progress, bytes_read, purgeKey)
+								common.control.RemoveThread(tuid)
 								return
 							else:
 								pass
@@ -570,6 +580,8 @@ class Downloader(object):
 				r.close()
 			except:
 				pass
+				
+		common.control.RemoveThread(tuid)
 		
 ##############################################################################################
 
@@ -621,6 +633,9 @@ def create_fname(file_meta, vidtype, riptype, file_ext, file_ext_temp='', c='0')
 	
 def do_download(file_meta_enc):
 
+	tuid = common.id_generator(16)
+	common.control.AddThread('do_download', 'Initiate Download', time.time(), '2', False, tuid)
+	
 	if len(common.DOWNLOAD_STATS.keys()) >= int(Prefs['download_connections']):
 		#Log(common.DOWNLOAD_STATS)
 		longstringObjs = JSON.ObjectFromString(D(file_meta_enc))
@@ -629,6 +644,7 @@ def do_download(file_meta_enc):
 			del QUEUE_RUN_ITEMS[uid]
 		if Prefs['use_debug']:
 			Log("Downlod connections limit reached (%s of %s). This item will be queued !" % (str(len(common.DOWNLOAD_STATS.keys())), Prefs['download_connections']))
+		common.control.RemoveThread(tuid)
 		return
 
 	downloader = Downloader()
@@ -640,6 +656,8 @@ def do_download(file_meta_enc):
 	#thread_i = workers.Thread(downloader.download(file_meta_enc))
 	#thread_i.start()
 	Thread.Create(downloader.download, {}, file_meta_enc)
+	
+	common.control.RemoveThread(tuid)
 	
 def download_subtitle(url, sub_file_path, params=None):
 	
@@ -794,6 +812,9 @@ def postpone_download_by_user(title, url, progress, startPos, purgeKey):
 	
 def trigger_que_run(skip = []):
 
+	tuid = common.id_generator(16)
+	common.control.AddThread('trigger_que_run', 'Updates Download Items Run/Status', time.time(), '2', False, tuid)
+	
 	time.sleep(3)
 	items_for_que_run = []
 	Dict_Temp = {}
@@ -842,6 +863,8 @@ def trigger_que_run(skip = []):
 					time.sleep(0.2)
 			except Exception as e:
 				Log(e)
+				
+	common.control.RemoveThread(tuid)
 				
 def move_unfinished_to_failed():
 
@@ -946,6 +969,10 @@ def verifyStartPos(startPos, filepath):
 	return startPos
 	
 def DownloadInit():
+
+	tuid = common.id_generator(16)
+	common.control.AddThread('DownloadInit', 'Initialize Downloader', time.time(), '2', False, tuid)
+	
 	move_unfinished_to_failed()
 	time.sleep(1)
 	if common.UsingOption(key=common.DEVICE_OPTIONS[13], session='None') == True:
@@ -955,6 +982,7 @@ def DownloadInit():
 	DLT.append(dlt)
 	DLT[0].start()
 	Thread.Create(trigger_que_run)
-
+	
+	common.control.RemoveThread(tuid)
 	return
 	

@@ -49,8 +49,8 @@ class host:
 		self.init = False
 		self.logo = 'https://i.imgur.com/nbtnvDr.png'
 		self.name = name
-		self.host = ['imdb.com','media-imdb.com','einthusan.tv','vimeocdn.com','apple.com','akamaized.net','micetop.us','vidcdn.pro','fbcdn.net','cmovieshd.com', 'vcstream.to', 'documentarymania.com','3donlinefilms.com','3dmoviesfullhd.com','totaleclips.com','freedocufilms.com']
-		self.netloc = ['imdb.com','media-imdb.com','einthusan.tv','vimeocdn.com','apple.com','akamaized.net','micetop.us','vidcdn.pro','fbcdn.net','cmovieshd.com', 'vcstream.to', 'documentarymania.com','3donlinefilms.com','3dmoviesfullhd.com','totaleclips.com','freedocufilms.com']
+		self.host = ['imdb.com','media-imdb.com','einthusan.tv','vimeocdn.com','apple.com','akamaized.net','micetop.us','vidcdn.pro','fbcdn.net','cmovieshd.com', 'vcstream.to', 'documentarymania.com','3donlinefilms.com','3dmoviesfullhd.com','totaleclips.com','freedocufilms.com','vidcloud.icu/download','xstreamcdn.com']
+		self.netloc = ['imdb.com','media-imdb.com','einthusan.tv','vimeocdn.com','apple.com','akamaized.net','micetop.us','vidcdn.pro','fbcdn.net','cmovieshd.com', 'vcstream.to', 'documentarymania.com','3donlinefilms.com','3dmoviesfullhd.com','totaleclips.com','freedocufilms.com','vidcloud.icu/download','xstreamcdn.com']
 		self.quality = '1080p'
 		self.loggertxt = []
 		self.captcha = False
@@ -91,7 +91,7 @@ class host:
 		self.loggertxt = loggertxt
 		return self.loggertxt
 		
-	def createMeta(self, url, provider, logo, quality, links, key, riptype, vidtype='Movie', lang='en', sub_url=None, txt='', file_ext = '.mp4', testing=False, poster=None, headers=None):
+	def createMeta(self, url, provider, logo, quality, links, key, riptype, vidtype='Movie', lang='en', sub_url=None, txt='', file_ext = '.mp4', testing=False, poster=None, headers=None, page_url=None):
 	
 		files_ret = []
 		orig_url = url
@@ -105,11 +105,17 @@ class host:
 			return links
 			
 		try:
-			items = self.process(url, quality, riptype, headers)
+			items = self.process(url, quality, riptype, headers, page_url)
 			
 			for item in items:
-			
-				url = item['src']
+				if 'vidcloud.icu/download' in url:
+					durl = url
+					url = item['src']
+				else:
+					url = item['src']
+					durl = url
+				
+				allowsStreaming = item['allowsStreaming']
 				quality = item['quality']
 				riptype = item['riptype']
 				fs = item['fs']
@@ -118,11 +124,11 @@ class host:
 				urldata = item['urldata']
 				
 				try:
-					log(type='INFO',method='createMeta', err=u'durl:%s ; res:%s; fs:%s' % (url,quality,fs))
-					files_ret.append({'source':self.name, 'maininfo':txt, 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':riptype, 'provider':provider, 'url':url, 'durl':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(url), 'misc':{'player':'eplayer', 'gp':True}})
+					log(type='INFO',method='createMeta', err=u'durl:%s ; res:%s; fs:%s' % (durl,quality,fs))
+					files_ret.append({'source':self.name, 'maininfo':txt, 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':riptype, 'provider':provider, 'orig_url':orig_url, 'url':url, 'durl':durl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':allowsStreaming, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(url), 'misc':{'player':'eplayer', 'gp':True}})
 				except Exception as e:
 					log(type='ERROR',method='createMeta', err=u'%s' % e)
-					files_ret.append({'source':urlhost, 'maininfo':txt, 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'url':url, 'durl':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(url), 'misc':{'player':'eplayer', 'gp':True}})
+					files_ret.append({'source':urlhost, 'maininfo':txt, 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'orig_url':orig_url, 'url':url, 'durl':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':allowsStreaming, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(url), 'misc':{'player':'eplayer', 'gp':True}})
 				
 		except Exception as e:
 			log(type='ERROR', err="createMeta : %s" % e.args)
@@ -148,7 +154,7 @@ class host:
 	def testLink(self, url):
 		return check(url)
 		
-	def process(self, url, q, r, headers):
+	def process(self, url, q, r, headers, page_url):
 		items = []
 		
 		try:
@@ -181,7 +187,57 @@ class host:
 						paramsx = {'headers':headers}
 						params = client.b64encode(json.dumps(paramsx, encoding='utf-8'))
 					
-					items.append({'quality':q, 'riptype':r, 'src':u, 'fs':fs, 'online':online, 'params':params, 'urldata':urldata})
+					items.append({'quality':q, 'riptype':r, 'src':u, 'fs':fs, 'online':online, 'params':params, 'urldata':urldata, 'allowsStreaming':True})
+					
+			elif 'xstreamcdn.com' in url:
+				id = re.compile('//.+?/(?:embed|v)/([0-9a-zA-Z-_]+)').findall(url)[0]
+				headersx = {'Referer': url, 'User-Agent': client.agent()}
+				post_data = {'r':page_url, 'd':'www.xstreamcdn.com'}
+				api_url = 'https://www.xstreamcdn.com/api/source/%s' % id
+				page_data = client.request(api_url, post=client.encodePostData(post_data), headers=headersx)
+				
+				j_data = json.loads(page_data)
+				success = j_data['success']
+				if success == False:
+					raise Exception('API returned error: %s | Data: %s' % (api_url, post_data))
+				else:
+					srcs = j_data['data']
+					for src in srcs:
+						q = src['label']
+						u = src['file']
+						fs = client.getFileSize(u, retry429=True, headers=headers)
+						online = check(u)
+						u = client.request(u, output='geturl')
+						urldata = client.b64encode(json.dumps('', encoding='utf-8'))
+						params = client.b64encode(json.dumps('', encoding='utf-8'))
+						if headers != None:
+							paramsx = {'headers':headers}
+							params = client.b64encode(json.dumps(paramsx, encoding='utf-8'))
+						
+						items.append({'quality':q, 'riptype':r, 'src':u, 'fs':fs, 'online':online, 'params':params, 'urldata':urldata, 'allowsStreaming':True})
+					
+			elif 'vidcloud.icu/download' in url:
+				headersx = {'Referer': url, 'User-Agent': client.agent()}
+				page_data, head, ret, cookie = client.request(url, output='extended', headers=headersx)
+				try:
+					cookie = re.findall(r'Set-Cookie:(.*)', str(ret), re.MULTILINE)[0].strip()
+				except:
+					pass
+				headersx['Cookie'] = cookie
+				mp4_vids = re.findall(r'\"(http.*?.mp4.*?)\"',page_data)
+				
+				for u in mp4_vids:
+					u = u.strip().replace(' ','%20').replace('&amp;','&')
+					fs = client.getFileSize(u, headers=headersx)
+					q = qual_based_on_fs(q,fs)
+					online = check(u, headers=headersx)
+					urldata = client.b64encode(json.dumps('', encoding='utf-8'))
+					params = client.b64encode(json.dumps('', encoding='utf-8'))
+					if headersx != None:
+						paramsx = {'headers':headers}
+						params = client.b64encode(json.dumps(paramsx, encoding='utf-8'))
+					
+					items.append({'quality':q, 'riptype':r, 'src':u, 'fs':fs, 'online':online, 'params':params, 'urldata':urldata, 'allowsStreaming':False})
 					
 			elif '3donlinefilms.com' in url or '3dmoviesfullhd.com' in url or 'freedocufilms.com' in url:
 				data = urlparse.parse_qs(url)
@@ -235,7 +291,7 @@ class host:
 				paramsx = {'headers':headers}
 				params = client.b64encode(json.dumps(paramsx, encoding='utf-8'))
 				
-				items.append({'quality':q, 'riptype':r, 'src':url, 'fs':fs, 'online':online, 'params':params, 'urldata':urldata})
+				items.append({'quality':q, 'riptype':r, 'src':url, 'fs':fs, 'online':online, 'params':params, 'urldata':urldata, 'allowsStreaming':False})
 					
 		except Exception as e:
 			log(type='ERROR',method='process', err=u'%s' % e)
@@ -251,7 +307,7 @@ class host:
 			if headers != None:
 				paramsx = {'headers':headers}
 				params = client.b64encode(json.dumps(paramsx, encoding='utf-8'))
-			items.append({'quality':q, 'riptype':r, 'src':url, 'fs':fs, 'online':online, 'params':params, 'urldata':urldata})
+			items.append({'quality':q, 'riptype':r, 'src':url, 'fs':fs, 'online':online, 'params':params, 'urldata':urldata, 'allowsStreaming':True})
 			
 		return items
 		

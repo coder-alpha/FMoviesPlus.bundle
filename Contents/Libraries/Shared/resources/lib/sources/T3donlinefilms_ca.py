@@ -31,8 +31,8 @@ loggertxt = []
 class source:
 	def __init__(self):
 		del loggertxt[:]
-		self.ver = '0.0.5'
-		self.update_date = 'Feb. 19, 2019'
+		self.ver = '0.0.6'
+		self.update_date = 'Feb. 28, 2019'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
 		self.base_link_alts = ['https://3donlinefilms.com','https://3dmoviesfullhd.com','https://www.freedocufilms.com']
@@ -154,6 +154,9 @@ class source:
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_movie','Provider Disabled by User')
 				return None
+			if self.siteonline == False:
+				log('INFO','get_movie','Provider is Offline')
+				return None
 			
 			headers = {'Referer': self.base_link, 'User-Agent': self.user_agent}
 			max = None
@@ -161,43 +164,50 @@ class source:
 			title = title.replace('3D','').strip().lower()
 			title = re.sub(r'[0-9]+', '', title)
 			poss_match = []
+			xtitle = title
 			
 			try:
 				for pg in range(100):
 					if len(poss_match) > 0:
 						break
 						
-					query_url = urlparse.urljoin(self.base_link, self.search_link) % (pg, urllib.quote_plus(cleantitle.simpletitle(title)))
+					xtitle = cleantitle.simpletitle(xtitle)
+					query_url = urlparse.urljoin(self.base_link, self.search_link) % (pg, urllib.quote_plus(xtitle))
 					
-					if max != None and int(pg) >= int(max):
-						raise
+					if max != None and int(pg) >= int(max) and " " not in xtitle:
+						raise Exception('No results for: %s' % title)
 						
 					log(type='INFO', method='get_movie-1', err='Searching - %s' % (query_url), dolog=True, logToControl=False, doPrint=True)
 						
 					result = proxies.request(query_url, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, headers=headers, timeout=60)
-					
-					xtitle = cleantitle.simpletitle(title)
 				
 					for x in range(3):
 						if len(poss_match) > 0:
 							break
-						while 'Trick: less characters give more results' in result or (x == 1):
-							xtitle = xtitle.split(" ")[:-1]
-							xtitle = ' '.join(xtitle)
-							query_url = urlparse.urljoin(self.base_link, self.search_link) % (pg, urllib.quote_plus(xtitle))
-							log(type='INFO', method='get_movie-2', err='Searching - %s' % (query_url), dolog=True, logToControl=False, doPrint=True)
-							result = proxies.request(query_url, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, headers=headers, timeout=60)
-							if x > 0:
+						while 'Trick: less characters give more results' in result or " " in xtitle:
+							try:
+								xtitle = xtitle.split(" ")[:-1]
+								xtitle = ' '.join(xtitle)
+								query_url = urlparse.urljoin(self.base_link, self.search_link) % (pg, urllib.quote_plus(xtitle))
+								log(type='INFO', method='get_movie-2', err='Searching - %s' % (query_url), dolog=True, logToControl=False, doPrint=True)
+								result = proxies.request(query_url, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, headers=headers, timeout=60)
+								if 'Trick: less characters give more results' not in result:
+									break
+							except Exception as e:
 								break
 						
 						if max == None:
 							try:
 								max1 = client.parseDOM(result, 'a', attrs = {'class': 'page gradient'})
-								max = int(max1[len(max1)-1])-1
-							except:
+								if len(max1) > 0:
+									max = int(max1[len(max1)-1])-1
+							except Exception as e:
 								pass
 							
-						url_data = client.parseDOM(result, 'div', attrs = {'class': 'ajuste4'})
+						try:
+							url_data = client.parseDOM(result, 'div', attrs = {'class': 'ajuste4'})
+						except Exception as e:
+							break
 						
 						if len(url_data) > 0:
 						
@@ -206,79 +216,94 @@ class source:
 							for data in url_data:
 								if len(poss_match) > 0:
 									break
-								data = client.parseDOM(data, 'div', attrs = {'class': 'view'})[0]
-								url = urlparse.urljoin(self.base_link, client.parseDOM(data, 'a', ret='href')[0])
-								titlex = client.parseDOM(data, 'img', ret='alt')[0]
-								
 								try:
-									poster = urlparse.urljoin(self.base_link_alts[0], client.parseDOM(data, 'img', ret='src')[0])
+									data = client.parseDOM(data, 'div', attrs = {'class': 'view'})[0]
+									url = client.parseDOM(data, 'a', ret='href')[0].strip()
+									titlex = client.parseDOM(data, 'img', ret='alt')[0]
 								except:
-									poster = None
-									
-								if title in titlex.lower() or titlex.lower() in title or lose_match_title(title, titlex.lower()):
-									url = url.replace(' ','%20')
-									url = client.request(url, headers=headers, followredirect=True, output='geturl')
-									url = client.request(url, headers=headers, followredirect=True, output='geturl')
-									result = proxies.request(url, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, headers=headers, timeout=60)
-									url = client.parseDOM(result, 'frame', ret = 'src')[0]
-									
-									if url != 'https://www.freedocufilms.com/player.php?title=':
-										log(type='INFO', method='get_movie-3', err='Verifying - %s' % url, dolog=True, logToControl=False, doPrint=True)
+									break
+								if len(titlex) == 0 and url == 'player.php?title=':
+									log(type='INFO', method='get_movie-3', err='No results for: %s' % xtitle, dolog=True, logToControl=False, doPrint=True)
+								else:
+									url = urlparse.urljoin(self.base_link, url)
+									try:
+										poster = urlparse.urljoin(self.base_link_alts[0], client.parseDOM(data, 'img', ret='src')[0])
+									except:
+										poster = None
+										
+									if title in titlex.lower() or titlex.lower() in title or lose_match_title(title, titlex.lower()):
+										url = url.replace(' ','%20')
+										url = client.request(url, headers=headers, followredirect=True, output='geturl')
+										url = client.request(url, headers=headers, followredirect=True, output='geturl')
 										result = proxies.request(url, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, headers=headers, timeout=60)
+										url = client.parseDOM(result, 'frame', ret = 'src')[0]
 										
-										ex_title = client.parseDOM(result, 'div', attrs = {'class': 'rating'})[0]
-										
-										if year in ex_title:
-											log(type='INFO', method='get_movie-4', err='Match found:%s' % titlex, dolog=True, logToControl=False, doPrint=True)
-
-											all_files_t = re.findall(r'({.*file.*:.*\.mp4.*})', result)
-											all_links_t = re.findall(r'({.*file.*\.php.*:.*})', result)
-
-											all_files = remove_dup(all_files_t)
-											all_links = remove_dup(all_links_t)
+										if url != 'https://www.freedocufilms.com/player.php?title=':
+											log(type='INFO', method='get_movie-3A', err='Verifying - %s' % url, dolog=True, logToControl=False, doPrint=True)
+											result = proxies.request(url, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, headers=headers, timeout=60)
 											
-											try:
-												srt = re.findall(r'\"(.*srt.*)\"', result)[0]
-												srt = urlparse.urljoin(self.base_link,srt)
-											except:
-												srt = None
+											ex_title = client.parseDOM(result, 'div', attrs = {'class': 'rating'})[0]
+											ex_title = client.parseDOM(ex_title, 'span')[0].strip()
+											if year in ex_title:
+												log(type='INFO', method='get_movie-4', err='Match found:%s' % titlex, dolog=True, logToControl=False, doPrint=True)
+
+												all_files_t = re.findall(r'({.*file.*:.*\.mp4.*})', result)
+												all_links_t = re.findall(r'({.*file.*\.php.*:.*})', result)
+
+												all_files = remove_dup(all_files_t)
+												all_links = remove_dup(all_links_t)
 												
-											if len(all_links) > 0:
-												for sn in range(len(all_links)):
-													try:
-														datax = all_links[sn].replace('fileTV','file').replace('fileHD','file').replace('file','\'file\'').replace('\'','"').replace('label','"label"').replace('type','"type"')
-														if len(all_files) > 0:
-															datay = all_files[sn].replace('fileTV','file').replace('fileHD','file').replace('file','\'file\'').replace('\'','"').replace('label','"label"').replace('type','"type"')
-														else:
-															datay = None
-														
-														data_j1 = json.loads(datax)
-														if datay != None:
-															data_j2 = json.loads(datay)
-														
-														file = data_j1['file']
-														label = data_j1['label']
-														if datay != None:
-															src_file = data_j2['file']
-														else:
-															src_file = data_j1['file']
+												try:
+													srt = re.findall(r'\"(.*srt.*)\"', result)[0]
+													srt = urlparse.urljoin(self.base_link,srt)
+												except:
+													srt = None
+													
+												if len(all_links) > 0:
+													for sn in range(len(all_links)):
+														try:
+															datax = all_links[sn].replace('fileTV','file').replace('fileHD','file').replace('file','\'file\'').replace('\'','"').replace('label','"label"').replace('type','"type"')
+															if len(all_files) > 0:
+																datay = all_files[sn].replace('fileTV','file').replace('fileHD','file').replace('file','\'file\'').replace('\'','"').replace('label','"label"').replace('type','"type"')
+															else:
+																datay = None
 															
-														link_data = {'file':file, 'title':titlex, 'label':label, 'page':url, 'srt':srt, 'src_file':src_file, 'poster':poster}
-														links_data.append(link_data)
-													except Exception as e:
-														log(type='FAIL', method='get_movie-5', err='%s' % e, dolog=False, logToControl=False, doPrint=True)
-												return links_data
-												
-										elif len(poss_match) == 0:
-											if len(title.replace(' ','')) >= len(titlex.replace(' ','')):
-												score = score_match_title(titlex,title)
-											else:
-												score = score_match_title(title,titlex)
-											if score > 0.75:
-												log(type='INFO', method='get_movie-6', err='Possible Match (Score:%s) (%s)' % (score, titlex), dolog=True, logToControl=False, doPrint=True)
-												poss_match.append({'data':result, 'ref':url})
-											else:
-												log(type='FAIL', method='get_movie-6', err='Possible Match (Score:%s) (%s)' % (score, titlex), dolog=True, logToControl=False, doPrint=True)
+															data_j1 = json.loads(datax)
+															if datay != None:
+																data_j2 = json.loads(datay)
+															
+															file = data_j1['file']
+															label = data_j1['label']
+															if datay != None:
+																src_file = data_j2['file']
+															else:
+																src_file = data_j1['file']
+																
+															link_data = {'file':file, 'title':titlex, 'label':label, 'page':url, 'srt':srt, 'src_file':src_file, 'poster':poster}
+															links_data.append(link_data)
+														except Exception as e:
+															log(type='FAIL', method='get_movie-5', err='%s' % e, dolog=False, logToControl=False, doPrint=True)
+													return links_data
+													
+											elif len(poss_match) == 0:
+												if len(title.replace(' ','')) >= len(titlex.replace(' ','')):
+													score = score_match_title(titlex,title)
+												else:
+													score = score_match_title(title,titlex)
+												if score > 0.75:
+													log(type='INFO', method='get_movie-3B', err='Verifying - %s' % url, dolog=True, logToControl=False, doPrint=True)
+													result = proxies.request(url, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, headers=headers, timeout=60)
+													ex_title = client.parseDOM(result, 'div', attrs = {'class': 'rating'})[0]
+													ex_title = client.parseDOM(ex_title, 'span')[0].strip()
+													if year in ex_title:
+														log(type='INFO', method='get_movie-6', err='Possible Match (Score:%s) (%s)' % (score, titlex), dolog=True, logToControl=False, doPrint=True)
+														poss_match.append({'data':result, 'ref':url})
+													else:
+														log(type='FAIL', method='get_movie-6', err='Possible Match (Score:%s - Year MisMatch) (%s)' % (score, ex_title), dolog=True, logToControl=False, doPrint=True)
+												else:
+													log(type='FAIL', method='get_movie-6', err='Possible Match (Score:%s) (%s)' % (score, titlex), dolog=True, logToControl=False, doPrint=True)
+					if ' ' not in xtitle:
+						break
 			except Exception as e:
 				log(type='FAIL', method='get_movie-7', err='%s' % e, dolog=False, logToControl=False, doPrint=True)
 					
@@ -336,6 +361,9 @@ class source:
 		try:
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_show','Provider Disabled by User')
+				return None
+			if self.siteonline == False:
+				log('INFO','get_show','Provider is Offline')
 				return None
 
 			return

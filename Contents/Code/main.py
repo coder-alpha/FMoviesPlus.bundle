@@ -154,13 +154,32 @@ def SleepPersistAndUpdateCookie(**kwargs):
 		time.sleep(1)
 
 	SLEEP_TIME = 5 * 60 # 5 min.
+	tuid = common.id_generator(16)
+	common.control.AddThread('SleepPersistAndUpdateCookie', 'Persists & Monitors Plugin Requirements (Every %s mins.)' % round(float(SLEEP_TIME)/float(60), 2), time.time(), '0', True, tuid)
+	
 	while True:
+		vsp = Dict['VSPAPI']
+		if vsp != None:
+			if time.time() - vsp['time'] > (24 * 60 * 60):
+				Dict['VSPAPI']['count'] = 0
+				Dict['VSPAPI']['time'] = time.time()
+				Dict.Save()
+				if Prefs["use_debug"]:
+					Log("VSP Count reset")
+		else:
+			Dict['VSPAPI'] = {'time':time.time(), 'count':0}
+			Dict.Save()
+
 		SiteCookieRoutine(quiet=True)
 		if Prefs["use_debug"]:
 			Log("Thread SleepPersistAndUpdateCookie: Sleeping for %s mins." % int(SLEEP_TIME/60))
 		time.sleep(SLEEP_TIME)
 		Thread.Create(download.trigger_que_run)
 		
+		common.control.RemoveThread(tuid)
+		tuid = common.id_generator(16)
+		common.control.AddThread('SleepPersistAndUpdateCookie', 'Persists & Monitors Plugin Requirements (Every %s mins.)' % round(float(SLEEP_TIME)/float(60), 2), time.time(), '0', True, tuid)
+	
 		now = datetime.datetime.now()
 		if now.hour == int(Prefs['autopilot_schedule']) and Dict['Autopilot_Schedule_Complete'] != True:
 			if Prefs["use_debug"]:
@@ -171,12 +190,17 @@ def SleepPersistAndUpdateCookie(**kwargs):
 		elif (now.hour > int(Prefs['autopilot_schedule']) and int(Prefs['autopilot_schedule']) != 23) or (now.hour == 0 and int(Prefs['autopilot_schedule']) == 23):
 			Dict['Autopilot_Schedule_Complete'] = False
 			Dict.Save()
+			
+	common.control.RemoveThread(tuid)
 	
 ######################################################################################
 @route(PREFIX + "/SleepAndUpdateThread")
 def SleepAndUpdateThread(update=True, startthread=True, session=None, **kwargs):
 
 	doSave = False
+	
+	tuid = common.id_generator(16)
+	common.control.AddThread('SleepAndUpdateThread', 'Initializes Interface & Updates Vals on StartUp', time.time(), '0', False, tuid)
 	
 	try:
 		if common.BOOT_UP_CONTROL_SETTINGS_FROM_PREFS != None:
@@ -238,9 +262,10 @@ def SleepAndUpdateThread(update=True, startthread=True, session=None, **kwargs):
 	
 	try:
 		LOAD_T = Dict['INTERNAL_SOURCES_QUALS']
+		ARRAY_T = None
 		if LOAD_T != None:
 			ARRAY_T = JSON.ObjectFromString(D(LOAD_T))
-		if LOAD_T != None and len(ARRAY_T) > 0:
+		if LOAD_T != None and ARRAY_T != None and len(ARRAY_T) > 0:
 			del common.INTERNAL_SOURCES_QUALS[:]
 			for q in ARRAY_T:
 				common.INTERNAL_SOURCES_QUALS.append(q)
@@ -255,12 +280,16 @@ def SleepAndUpdateThread(update=True, startthread=True, session=None, **kwargs):
 	
 	try:
 		LOAD_T = Dict['INTERNAL_SOURCES_SIZES']
+		ARRAY_T = None
 		if LOAD_T != None:
 			ARRAY_T = JSON.ObjectFromString(D(LOAD_T))
-		if LOAD_T != None and len(ARRAY_T) > 0:
-			del common.INTERNAL_SOURCES_SIZES[:]
-			for q in ARRAY_T:
-				common.INTERNAL_SOURCES_SIZES.append(q)
+		if LOAD_T != None and ARRAY_T != None and len(ARRAY_T) > 0:
+			if len(ARRAY_T) != len(common.INTERNAL_SOURCES_SIZES_CONST):
+				doSave = True
+			else:
+				del common.INTERNAL_SOURCES_SIZES[:]
+				for q in ARRAY_T:
+					common.INTERNAL_SOURCES_SIZES.append(q)
 		else:
 			del common.INTERNAL_SOURCES_SIZES[:]
 			for q in common.INTERNAL_SOURCES_SIZES_CONST:
@@ -272,9 +301,10 @@ def SleepAndUpdateThread(update=True, startthread=True, session=None, **kwargs):
 
 	try:
 		LOAD_T = Dict['INTERNAL_SOURCES_RIPTYPE']
+		ARRAY_T = None
 		if LOAD_T != None:
 			ARRAY_T = JSON.ObjectFromString(D(LOAD_T))
-		if LOAD_T != None and len(ARRAY_T) > 0:
+		if LOAD_T != None and ARRAY_T != None and len(ARRAY_T) > 0:
 			del common.INTERNAL_SOURCES_RIPTYPE[:]
 			for r in ARRAY_T:
 				common.INTERNAL_SOURCES_RIPTYPE.append(r)
@@ -289,9 +319,10 @@ def SleepAndUpdateThread(update=True, startthread=True, session=None, **kwargs):
 	
 	try:
 		LOAD_T = Dict['INTERNAL_SOURCES_FILETYPE']
+		ARRAY_T = None
 		if LOAD_T != None:
 			ARRAY_T = JSON.ObjectFromString(D(LOAD_T))
-		if LOAD_T != None and len(ARRAY_T) > 0:
+		if LOAD_T != None and ARRAY_T != None and len(ARRAY_T) > 0:
 			del common.INTERNAL_SOURCES_FILETYPE[:]
 			for r in ARRAY_T:
 				common.INTERNAL_SOURCES_FILETYPE.append(r)
@@ -362,6 +393,8 @@ def SleepAndUpdateThread(update=True, startthread=True, session=None, **kwargs):
 		
 	Thread.Create(download.DownloadInit)
 	Thread.Create(downloadsmenu.AutoPilotDownloadThread1, {}, None, True)
+	
+	common.control.RemoveThread(tuid)
 		
 	# time.sleep(120)
 	# if startthread == True:
@@ -406,6 +439,8 @@ def Options(session, refresh=0, **kwargs):
 	oc.add(DirectoryObject(key = Callback(tools.DevToolsC, session=session), title = "Tools", summary='Tools - Save/Load Bookmarks', thumb = R(common.ICON_TOOLS)))
 	
 	oc.add(DirectoryObject(key = Callback(DownloadOptions, title="Download Options", session = session), title = "Download Options", thumb = R(common.ICON_DOWNLOADS)))
+	
+	oc.add(DirectoryObject(key = Callback(ThreadsStatus, title="Threads Status"), title = "Threads Status", thumb = R(common.ICON_SYSSTATUS)))
 	
 	if common.interface.isInitialized():
 		oc.add(DirectoryObject(key = Callback(InterfaceOptions, session=session), title = 'Interface Options', thumb = R(common.ICON_PREFS), summary='Interface for Proxies, Hosts, Providers and Playback Quality'))
@@ -468,6 +503,24 @@ def DeviceOptions(session, **kwargs):
 	return oc
 	
 ######################################################################################
+@route(PREFIX + "/ThreadsStatus")
+def ThreadsStatus(refresh=0, **kwargs):
+
+	oc = ObjectContainer(title2='Threads Status', no_cache=common.isForceNoCache())
+	for t in common.control.getThreads():
+		timestrx = t['start_time']
+		timestr = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(timestrx)))
+		title_msg = 'Name:%s | Type:%s | Start Time:%s | Desc.:%s' % (t['name'], t['type'], timestr, t['desc'])
+		oc.add(DirectoryObject(title = title_msg, summary = title_msg, tagline = timestr, key = Callback(MC.message_container, header="Thread %s" % t['name'], message="Does Nothing")))
+		
+	if len(oc) > 0:
+		oc.add(DirectoryObject(title = 'Refresh', key = Callback(ThreadsStatus, refresh=int(refresh)+1)))
+		oc.add(DirectoryObject(key = Callback(MainMenu),title = '<< Main Menu',thumb = R(common.ICON)))
+		return oc
+	else:
+		return MC.message_container('Threads Status', 'No Threads Currently Running !')
+	
+######################################################################################
 @route(PREFIX + "/interfaceoptions")
 def InterfaceOptions(session, refresh=0, **kwargs):
 	
@@ -516,6 +569,7 @@ def InterfaceOptions(session, refresh=0, **kwargs):
 		oc.add(DirectoryObject(key = Callback(ExtHostsFileType, session=session), title = "Video Type Allowed", summary='Enable/Disable External Host Video Type.', thumb = R(common.ICON_VIDTYPE)))
 		oc.add(DirectoryObject(key = Callback(ExtHostsSizes, session=session), title = "Sizes Allowed", summary='Enable/Disable External Host File Sizes.', thumb = R(common.ICON_FILESIZES)))
 		oc.add(DirectoryObject(key = Callback(Summarize, session=session), title = "Summarize Options", summary='Shows a quick glance of all options', thumb = R(common.ICON_SUMMARY)))
+		oc.add(DirectoryObject(key = Callback(ControlLog, session=session), title = "Control Log", summary='Shows the Interface Control Log', thumb = R(common.ICON_LOG)))
 		
 		oc.add(DirectoryObject(key = Callback(ResetExtOptions, session=session, reset='0'), title = "Refresh", summary='Refresh Interface options', thumb = R(common.ICON_REFRESH)))
 	else:
@@ -667,7 +721,6 @@ def Summarize(session=None, **kwargs):
 		website = provider['url']
 		title_msg = "Enabled: %s | Provider: %s | Url: %s | Online: %s | Proxy Req.: %s | Parser: %s | Speed: %s sec." % (common.GetEmoji(type=bool, mode='simple', session=session), label, website, common.GetEmoji(type=str(provider['online']), mode='simple', session=session),common.GetEmoji(type=str(provider['online_via_proxy']), mode='simple', session=session), common.GetEmoji(type=str(provider['parser']), mode='simple', session=session), provider['speed'])
 		oc.add(DirectoryObject(title = title_msg, key = Callback(MC.message_container, header="Summary Screen", message="Does Nothing")))
-		
 	
 	for qual in common.INTERNAL_SOURCES_QUALS:
 		label = qual['label']
@@ -704,6 +757,33 @@ def Summarize(session=None, **kwargs):
 	
 	Log(" === INTERFACE LOGGER txt END === ")
 		
+	return oc
+	
+######################################################################################
+@route(PREFIX + "/ControlLog")
+def ControlLog(session=None, choice=None, **kwargs):
+
+	oc = ObjectContainer(title2='Control Interface Log')
+	choices = ['All','Critical','Error','Fail','Success','Info']
+	if choice == None:
+		for c in choices:
+			oc.add(DirectoryObject(key = Callback(ControlLog, choice=c, session=session), title = c, thumb = R(common.ICON_LIST)))
+		return oc
+	
+	Log(" === CONTROL LOGGER txt START === ")
+
+	loggertxt = common.interface.getControlLoggerTxts()
+	loggertxt = list(reversed(loggertxt))
+
+	for title_msg in loggertxt:
+		if choice == choices[0]:
+			oc.add(DirectoryObject(title = title_msg, key = Callback(MC.message_container, header="Control Interface Log", message="Does Nothing")))
+		else:
+			if choice.upper() in title_msg:
+				oc.add(DirectoryObject(title = title_msg, key = Callback(MC.message_container, header="Control Interface Log", message="Does Nothing")))
+	
+	Log(" === CONTROL LOGGER txt END === ")
+	
 	return oc
 	
 ######################################################################################
@@ -3403,6 +3483,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 		)
 	)
 	
+	oc.add(DirectoryObject(key = Callback(MainMenu),title = '<< Main Menu',thumb = R(common.ICON)))
 	return oc
 	
 	
@@ -5568,7 +5649,7 @@ def SearchExt(query=None, query2=None, session=None, xtitle=None, xyear=None, xt
 	
 ####################################################################################################
 @route(PREFIX + "/DoIMDBExtSources")
-def DoIMDBExtSources(title, year, type, imdbid, season=None, episode=None, episodeNr='1', summary=None, simpleSummary=False, thumb=None, item=None, session=None, final=False, extype='source', doSearch=None, **kwargs):
+def DoIMDBExtSources(title, year, type, imdbid, season=None, episode=None, episodeNr='1', summary=None, simpleSummary=False, thumb=None, item=None, session=None, final=False, extype='source', doSearch=None, episodesTot=None, **kwargs):
 
 	final = True if str(final) == 'True' else False
 	simpleSummary = True if str(simpleSummary) == 'True' else False
@@ -5638,11 +5719,27 @@ def DoIMDBExtSources(title, year, type, imdbid, season=None, episode=None, episo
 			try:
 				res = common.interface.requestOMDB(title=title, year=str(year), season=str(1), imdb=imdbid, ver=common.VERSION)
 				SeasonNR = int(json.loads(res.content)['totalSeasons'])
+				try:
+					episodesTot1 = len(json.loads(res.content)['Episodes'])
+					episodesTot2 = int(json.loads(res.content)['Episodes'][len(json.loads(res.content)['Episodes'])-1]['Episode'])
+					episodesTot = max(episodesTot1,episodesTot2)
+				except:
+					pass
+				
+				DumbKeyboard(PREFIX, oc, DoIMDBExtSourcesSeason, dktitle = 'Input Season No.', dkthumb=R(common.ICON_DK_ENABLE), dkNumOnly=True, dkHistory=False, title=title, year=year, type=type, imdbid=imdbid, thumb=thumb, summary=summary, session=session)
 				for i in range(1,SeasonNR+1):
-					oc.add(DirectoryObject(key = Callback(DoIMDBExtSources, title=title, year=year, type=type, imdbid=imdbid, thumb=thumb, summary=summary, season=str(i), episode=None, session=session), 
+					oc.add(DirectoryObject(key = Callback(DoIMDBExtSources, title=title, year=year, type=type, imdbid=imdbid, thumb=thumb, summary=summary, season=str(i), episode=None, session=session, episodesTot=episodesTot), 
 						title = '*%s (Season %s)' % (title, str(i)),
 						thumb = thumb))
-				DumbKeyboard(PREFIX, oc, DoIMDBExtSourcesSeason, dktitle = 'Input Season No.', dkthumb=R(common.ICON_DK_ENABLE), dkNumOnly=True, dkHistory=False, title=title, year=year, type=type, imdbid=imdbid, thumb=thumb, summary=summary, session=session)
+				
+				if common.DOWNLOAD_ALL_SEASONS == True and Prefs['disable_downloader'] == False and AuthTools.CheckAdmin() == True:
+					oc.add(DirectoryObject(
+						key = Callback(downloadsmenu.AddToAutoPilotDownloads, title=title, thumb=thumb, summary=summary, purl=None, season=None, season_end=SeasonNR+1, episode_start=1, episode_end=None, year=year, type='show', vidtype='show', session=session, admin=True, all_seasons=True),
+						title = 'Add to AutoPilot Queue',
+						summary = 'Adds Season (1 - %s) to the AutoPilot Queue for Downloading' % (SeasonNR),
+						thumb = R(common.ICON_OTHERSOURCESDOWNLOAD_AUTO)
+						)
+					)
 			except:
 				DumbKeyboard(PREFIX, oc, DoIMDBExtSourcesSeason, dktitle = 'Input Season No.', dkthumb=R(common.ICON_DK_ENABLE), dkNumOnly=True, dkHistory=False, title=title, year=year, type=type, imdbid=imdbid, thumb=thumb, summary=summary, session=session)
 	
@@ -5659,6 +5756,7 @@ def DoIMDBExtSources(title, year, type, imdbid, season=None, episode=None, episo
 			x_season=season
 			x_imdbid=imdbid
 			x_thumb=thumb
+			x_summary=summary
 			
 			res = common.interface.getOMDB(title=x_title, year=x_year, season=x_season, episode=str(1), imdbid=x_imdbid, ver=common.VERSION)
 			try:
@@ -5686,6 +5784,8 @@ def DoIMDBExtSources(title, year, type, imdbid, season=None, episode=None, episo
 			
 			DumbKeyboard(PREFIX, oc, DoIMDBExtSourcesEpisode, dktitle = 'Input Episode No.', dkthumb=R(common.ICON_DK_ENABLE), dkNumOnly=True, dkHistory=False, title=title, year=year, type=type, imdbid=imdbid, thumb=thumb, season=season, summary=summary, session=session, genres=genre, rating=rating, runtime=duration)
 			
+			autopilot_option_shown = False
+			
 			for e in range(int(episodeNr),1000):
 				time.sleep(1.0)
 				res = common.interface.getOMDB(title=x_title, year=x_year, season=x_season, episode=str(e), imdbid=x_imdbid, ver=common.VERSION)
@@ -5697,6 +5797,16 @@ def DoIMDBExtSources(title, year, type, imdbid, season=None, episode=None, episo
 					item = None
 				
 				if item==None or len(item) == 0:
+					if episodesTot == None or (episodesTot != None and int(episodesTot) < (e-1)):
+						if Prefs['disable_downloader'] == False and AuthTools.CheckAdmin() == True:
+							autopilot_option_shown = True
+							oc.add(DirectoryObject(
+								key = Callback(downloadsmenu.AddToAutoPilotDownloads, title=x_title, thumb=x_thumb, summary=x_summary, purl=None, season=x_season, episode_start=1, episode_end=e, year=x_year, type='show', vidtype='show', session=session, admin=True),
+								title = 'Add to AutoPilot Queue',
+								summary = 'Adds Episodes (1 - %s) to the AutoPilot Queue for Downloading' % (e-1),
+								thumb = R(common.ICON_OTHERSOURCESDOWNLOAD_AUTO)
+								)
+							)
 					break
 					
 				title = item['title']
@@ -5757,8 +5867,19 @@ def DoIMDBExtSources(title, year, type, imdbid, season=None, episode=None, episo
 				time.sleep(0.1)
 				
 				if int(episodeNr) + 9 == e:
+					if int(episodeNr) == 1 and autopilot_option_shown == False:
+						if episodesTot != None:
+							episodesTot = int(episodesTot)
+							if Prefs['disable_downloader'] == False and AuthTools.CheckAdmin() == True:
+								oc.add(DirectoryObject(
+									key = Callback(downloadsmenu.AddToAutoPilotDownloads, title=x_title, thumb=x_thumb, summary=x_summary, purl=None, season=x_season, episode_start=1, episode_end=episodesTot, year=x_year, type='show', vidtype='show', session=session, admin=True),
+									title = 'Add to AutoPilot Queue',
+									summary = 'Adds Episodes (1 - %s) to the AutoPilot Queue for Downloading' % episodesTot,
+									thumb = R(common.ICON_OTHERSOURCESDOWNLOAD_AUTO)
+									)
+								)
 					oc.add(DirectoryObject(
-					key = Callback(DoIMDBExtSources, title=x_title, year=x_year, type=type, imdbid=x_imdbid, thumb=x_thumb, season=season, episodeNr=str(e+1), session=session), 
+					key = Callback(DoIMDBExtSources, title=x_title, year=x_year, type=type, imdbid=x_imdbid, thumb=x_thumb, season=season, episodeNr=str(e+1), summary=x_summary, session=session, episodesTot=episodesTot), 
 					title = 'Next Page >>',
 					thumb = R(common.ICON_NEXT)))
 					break

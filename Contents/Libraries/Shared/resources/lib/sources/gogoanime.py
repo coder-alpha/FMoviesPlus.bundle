@@ -43,7 +43,7 @@ class source:
 		self.language = ['en']
 		self.type_filter = ['anime']
 		self.domains = ['gogoanimemobile.com', 'gogoanimemobile.net', 'gogoanime.io']
-		self.base_link_alts = ['https://ww3.gogoanime.io','https://gogoanime.io','http://gogoanimemobile.com', 'http://gogoanimemobile.net']
+		self.base_link_alts = ['https://gogoanime.io','https://ww3.gogoanime.io','http://gogoanimemobile.com', 'http://gogoanimemobile.net']
 		self.base_link = self.base_link_alts[0]
 		self.search_link = '/search.html?keyword=%s'
 		self.episode_link = '/%s-episode-%s'
@@ -162,6 +162,9 @@ class source:
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_movie','Provider Disabled by User')
 				return None
+			if self.siteonline == False:
+				log('INFO','get_movie','Provider is Offline')
+				return None
 				
 			return None
 		except Exception as e: 
@@ -172,6 +175,9 @@ class source:
 		try:
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_show','Provider Disabled by User')
+				return None
+			if self.siteonline == False:
+				log('INFO','get_show','Provider is Offline')
 				return None
 				
 			t = cleantitle.get(tvshowtitle)

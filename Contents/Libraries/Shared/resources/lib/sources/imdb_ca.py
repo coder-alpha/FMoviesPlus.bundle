@@ -52,7 +52,7 @@ class source:
 		self.base_link_alts = ['http://www.imdb.com']
 		self.base_link = self.base_link_alts[0]
 		self.page_link = 'http://www.imdb.com/title/%s/videogallery'
-		self.MainPageValidatingContent = 'IMDb - Movies, TV and Celebrities - IMDb'
+		self.MainPageValidatingContent = 'Ratings and Reviews for New Movies and TV Shows - IMDb'
 		self.name = name
 		self.loggertxt = []
 		self.ssl = False
@@ -165,6 +165,9 @@ class source:
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_movie','Provider Disabled by User')
 				return None
+			if self.siteonline == False:
+				log('INFO','get_movie','Provider is Offline')
+				return None
 				
 			if imdb == None:
 				raise Exception('IMDb ID not available')
@@ -178,6 +181,9 @@ class source:
 		try:
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_show','Provider Disabled by User')
+				return None
+			if self.siteonline == False:
+				log('INFO','get_show','Provider is Offline')
 				return None
 				
 			if imdb == None:

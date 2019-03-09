@@ -334,30 +334,37 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 			del TOKEN_KEY[:]
 			del TOKEN_OPER[:]
 			
-			counter = 0
-			while reqkey_cookie == '' and counter < 5:
-				r, r1 = common.interface.request_via_proxy_as_backup(token_url, headers=headersS, httpsskip=use_https_alt, output='response', hideurl=True)
-				time.sleep(0.1)
-				del common.TOKEN_CODE[:]
+			use_token_url = True
+			if len(FLAGS) > 0 and 'use_token_url' in FLAGS[0].keys():
+				use_token_urlx = FLAGS[0]['use_token_url']
+				use_token_url = True if str(use_token_urlx).lower()=='true' else False
 				
-				if r in common.client.HTTP_GOOD_RESP_CODES and '503 Service Unavailable' not in r1 and 'NotFoundHttpException' not in r1:
-					token_enc = common.client.b64encode(r1)
-					common.TOKEN_CODE.append(token_enc)
+			counter = 0
+			
+			if use_token_url == True:
+				while reqkey_cookie == '' and counter < 5:
+					r, r1 = common.interface.request_via_proxy_as_backup(token_url, headers=headersS, httpsskip=use_https_alt, output='response', hideurl=True)
+					time.sleep(0.1)
+					del common.TOKEN_CODE[:]
 					
-					quiet = True
-					if counter == 4:
-						quiet = False
-					
-					try:
-						reqkey_cookie = decodeAndParse(token_enc,use_debug,use_https_alt, quiet=quiet)
-					except:
-						reqkey_cookie = ''
+					if r in common.client.HTTP_GOOD_RESP_CODES and '503 Service Unavailable' not in r1 and 'NotFoundHttpException' not in r1:
+						token_enc = common.client.b64encode(r1)
+						common.TOKEN_CODE.append(token_enc)
 						
-				if '503 Service Unavailable' in r1 and counter > 2:
-					break
+						quiet = True
+						if counter == 4:
+							quiet = False
 						
-				time.sleep(2.0)
-				counter += 1
+						try:
+							reqkey_cookie = decodeAndParse(token_enc,use_debug,use_https_alt, quiet=quiet)
+						except:
+							reqkey_cookie = ''
+							
+					if '503 Service Unavailable' in r1 and counter > 2:
+						break
+							
+					time.sleep(2.0)
+					counter += 1
 			
 			if dump or use_debug:
 				Log("=====================TOKEN START============================")
@@ -955,7 +962,7 @@ def get_sources2(url, key, prev_error=None, use_debug=True, session=None, **kwar
 					Log(u'*PhantomJS* method is working: %s' % vx_url)
 					host_type = common.client.geturlhost(video_url)
 			except:
-				raise Exception('phantomjs not working')
+				raise Exception('phantomjs (fmovies.js) not working')
 		else:
 			raise Exception('phantomjs is disabled')
 	except Exception as e:

@@ -180,6 +180,9 @@ class source:
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_movie','Provider Disabled by User')
 				return None
+			if self.siteonline == False:
+				log('INFO','get_movie','Provider is Offline')
+				return None
 			url = {'imdb': imdb, 'title': title, 'year': year}
 			url = urllib.urlencode(url)
 			return url
@@ -191,6 +194,9 @@ class source:
 		try:
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_show','Provider Disabled by User')
+				return None
+			if self.siteonline == False:
+				log('INFO','get_show','Provider is Offline')
 				return None
 			url = {'imdb': imdb, 'tvdb': tvdb, 'tvshowtitle': tvshowtitle, 'year': year}
 			url = urllib.urlencode(url)
@@ -292,28 +298,33 @@ class source:
 			except: pass
 			
 			links = client.parseDOM(result, 'li', attrs = {'class': 'child_episode'})
+			
 			try:
 				if season == None:
 					rip_qual = client.parseDOM(result, 'div', attrs = {'id': 'info_movies'})[0]
 					rip_qual = client.parseDOM(rip_qual, 'div', attrs = {'class': 'right'})[0]
 					rip_qual = client.parseDOM(rip_qual, 'a')[0].strip()
-					if 'hd' not in rip_qual.lower():
+					rip_qual2 = ep_title = client.parseDOM(links[0], 'a', ret='title')[0]
+
+					if 'HD' not in rip_qual and 'HD' not in rip_qual2:
 						riptype = 'CAM'
-					elif 'cam' in rip_qual.lower():
+					elif 'CAM' in rip_qual or 'CAM' in rip_qual2:
 						riptype = 'CAM'
 					if riptype == 'CAM':
 						quality = '480p'
-					if '720' in quality:
+					if '720p' in rip_qual or '720p' in rip_qual2:
 						quality = '720p'
+					elif '1080p' in rip_qual or '1080p' in rip_qual2:
+						quality = '1080p'
 			except: pass
 			mov_url = None
 			
 			for l in links:
-				mov_url = urlparse.urljoin(self.base_link,client.parseDOM(l, 'a', ret='href')[0])
+				mov_urlx = urlparse.urljoin(self.base_link,client.parseDOM(l, 'a', ret='href')[0])
 				ep_title = client.parseDOM(l, 'a', ret='title')[0]
-				
+
 				if season == None:
-					break
+					mov_url = mov_urlx
 				else:
 					try:
 						ep_nr = re.findall(r'Episode (.*?) ',ep_title)[0]
@@ -327,13 +338,17 @@ class source:
 								ep_nr = re.findall(r'Episode (.*)',ep_title)[0]
 					ep_nr = ep_nr.replace('-','').replace(':','').replace(' ','')
 					if int(episode) == int(ep_nr):
-						break
+						mov_url = mov_urlx
+				
+			if mov_url == None:
+				raise Exception('No match found !')
 				
 			if season == None:
 				log('INFO','get_sources-4', 'movie-page-url: %s' % mov_url, dolog=False)
 			else:
 				log('INFO','get_sources-4', 'show-episode-url: %s' % mov_url, dolog=False)
 				
+			page_url = mov_url
 			result = proxies.request(mov_url, headers=self.headers, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, httpsskip=True)
 			
 			try:
@@ -360,14 +375,14 @@ class source:
 			links = client.parseDOM(result, 'div', attrs = {'class': 'anime_muti_link'})
 			links = client.parseDOM(links, 'li', ret='data-video')
 			video_urls = []
-			
+
 			for l in links:
 				if 'http' not in l:
 					l = 'http:' + l
 				video_urls.append(l)
 				
 			for video_url in video_urls:
-				links_m = resolvers.createMeta(video_url, self.name, self.logo, quality, links_m, key, poster=poster, riptype=riptype, vidtype=vidtype, sub_url=sub_url, testing=testing)
+				links_m = resolvers.createMeta(video_url, self.name, self.logo, quality, links_m, key, poster=poster, riptype=riptype, vidtype=vidtype, sub_url=sub_url, testing=testing, page_url=page_url)
 			
 			sources += [l for l in links_m]
 			

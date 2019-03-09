@@ -235,7 +235,6 @@ def checkProgress(key, useCached=True):
 		# filter_extSources += [i for i in srcs if i['key'] == key]
 		# if len(filter_extSources) > 0:
 			# return 100
-		
 	prog = initA[0].checkProgress(key=key)
 	# if Prefs['use_debug']:
 		# Log("Progress request: %s" % prog)
@@ -420,7 +419,7 @@ def checkKeyInThread(key=None):
 	
 	return initA[0].checkKeyInThread(key=key)
 		
-def getExtSources(movtitle=None, year=None, tvshowtitle=None, season=None, episode=None, proxy_options=None, provider_options=None, key=None, maxcachetime=0, ver=None, imdb_id=None, session=None):
+def getExtSources(movtitle=None, year=None, tvshowtitle=None, season=None, episode=None, proxy_options=None, provider_options=None, key=None, maxcachetime=0, ver=None, imdb_id=None, session=None, timeout=None):
 
 	InterfaceThread[key] = True
 	
@@ -438,6 +437,8 @@ def getExtSources(movtitle=None, year=None, tvshowtitle=None, season=None, episo
 			name = movtitle.strip()
 	elif tvshowtitle !=None:
 		name = tvshowtitle
+		
+	start_time = time.time()
 		
 	runGetSources(
 	name = name,
@@ -459,6 +460,14 @@ def getExtSources(movtitle=None, year=None, tvshowtitle=None, season=None, episo
 	
 	while initA[0].checkProgress(key) != 100:
 		time.sleep(2)
+		
+		try:
+			if timeout != None and int(timeout) > 0:
+				if (time.time() - start_time) > int(timeout):
+					Log.Error('interface.py > getExtSources: Source Searching Timeout Reached !')
+					break
+		except:
+			pass
 		#os.system('cls')
 		#print 'Threads progress: %s' % initA[0].checkProgress()
 		#if Prefs["use_debug"]:

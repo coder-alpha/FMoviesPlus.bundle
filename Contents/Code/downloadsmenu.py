@@ -10,6 +10,7 @@ PREFIX = common.PREFIX
 MC = common.NewMessageContainer(common.PREFIX, common.TITLE)
 
 REMOVE_ENTRY_WHEN_ALL_EPS_IN_DOWNLOADS = False
+SOURCE_SEARCH_TIMEOUT = float(5*60) # 5 min.
 
 #######################################################################################################
 @route(PREFIX + '/AddToAutoPilotDownloads')
@@ -91,7 +92,7 @@ def AddToAutoPilotDownloads(title, year, type, purl=None, thumb=None, summary=No
 
 		if ret == True:
 			oc = ObjectContainer(title1='Item exists', no_cache=common.isForceNoCache())
-			oc.add(DirectoryObject(key = Callback(main.MainMenu), title = '<< Main Menu'))
+			oc.add(DirectoryObject(key = Callback(main.MainMenu), title = '<< Main Menu', thumb = R(common.ICON)))
 			return oc
 			#return main.MyMessage(title='Return', msg='Item exists. Use back to Return to previous screen')
 		
@@ -143,7 +144,7 @@ def AddToAutoPilotDownloads(title, year, type, purl=None, thumb=None, summary=No
 				if type == 'show':
 					DumbKeyboard(PREFIX, oc, AddToAutoPilotDownloadsInputEp, dktitle = 'Ep. Start Index:%s' % episode_start, dkthumb=R(common.ICON_DK_ENABLE), dkNumOnly=True, dkHistory=False, title=title, year=year, type=type, purl=purl, thumb=thumb, summary=summary, quality=quality, file_size=file_size, riptype=riptype, season=season, season_end=season_end, episode_start=episode_start, episode_end=episode_end, vidtype=vidtype, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, all_seasons=all_seasons, ep_id='start')
 					DumbKeyboard(PREFIX, oc, AddToAutoPilotDownloadsInputEp, dktitle = 'Ep. End Index:%s' % episode_end, dkthumb=R(common.ICON_DK_ENABLE), dkNumOnly=True, dkHistory=False, title=title, year=year, type=type, purl=purl, thumb=thumb, summary=summary, quality=quality, file_size=file_size, riptype=riptype, season=season, season_end=season_end, episode_start=episode_start, episode_end=episode_end, vidtype=vidtype, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, all_seasons=all_seasons, ep_id='end')
-				oc.add(DirectoryObject(key = Callback(main.MainMenu), title = '<< Main Menu'))
+				oc.add(DirectoryObject(key = Callback(main.MainMenu), title = '<< Main Menu', thumb = R(common.ICON)))
 				return oc
 
 		uid = common.makeUID(title, year, quality, file_size, purl, season, episode_start)
@@ -161,7 +162,7 @@ def AddToAutoPilotDownloads(title, year, type, purl=None, thumb=None, summary=No
 		return MC.message_container('Added to AutoPilot Download Queue', 'The item has been added to AutoPilot Download Queue')
 	except Exception as e:
 		err = '{}'.format(e)
-		Log.Error('downloadsmenu.py > AddToAutoPilotDownloads: %s' % err)
+		Log('ERROR: downloadsmenu.py > AddToAutoPilotDownloads: %s' % err)
 		return MC.message_container('Error', 'Error in AutoPilot Download Queue')
 		
 ####################################################################################################
@@ -184,6 +185,9 @@ def AddToAutoPilotDownloadsInputEp(query, title, year, type, purl=None, thumb=No
 #######################################################################################################
 def AutoPilotDownloadThread(item):
 	
+	tuid = common.id_generator(16)
+	common.control.AddThread('AutoPilotDownloadThread', 'Auto Pilot Download Thread', time.time(), '3', False, tuid)
+		
 	try:
 		type = item['type']
 		if type == 'show':
@@ -234,6 +238,7 @@ def AutoPilotDownloadThread(item):
 			for i in SHOW_QUEUE:
 				common.DOWNLOAD_AUTOPILOT[type][c]['status'] = common.DOWNLOAD_AUTOPILOT_STATUS[0]
 				AutoPilotDownloadThread1(i)
+				c += 1
 		else:
 			item_x = item.copy()
 			orig_title = item['title']
@@ -247,7 +252,9 @@ def AutoPilotDownloadThread(item):
 		Dict.Save()
 	except Exception as e:
 		err = '{}'.format(e)
-		Log.Error('downloadsmenu.py > AutoPilotDownloadThread: %s' % err)
+		Log('ERROR: downloadsmenu.py > AutoPilotDownloadThread: %s' % err)
+		
+	common.control.RemoveThread(tuid)
 	
 #######################################################################################################
 def AutoPilotDownloadThread1(item=None, runForWaiting=False):
@@ -261,20 +268,27 @@ def AutoPilotDownloadThread1(item=None, runForWaiting=False):
 				for item in common.DOWNLOAD_AUTOPILOT[type]:
 					if (item['status'] != common.DOWNLOAD_AUTOPILOT_STATUS[2] and runForWaiting == False) or (runForWaiting == True and (item['status'] == common.DOWNLOAD_AUTOPILOT_STATUS[0] or item['status'] == common.DOWNLOAD_AUTOPILOT_STATUS[3])):
 						sources = None
+						start_time = time.time()
 						if item['type'] == 'show':
 							key = main.generatemoviekey(movtitle=None, year=item['year'], tvshowtitle=item['short_title'], season=item['season'], episode=str(item['episode']))
 							prog = common.interface.checkProgress(key)
-							while prog > 0 and prog < 100:
+							while (prog > 0 and prog < 100):
 								time.sleep(5)
 								prog = common.interface.checkProgress(key)
-							sources = common.interface.getExtSources(movtitle=None, year=item['year'], tvshowtitle=item['short_title'], season=item['season'], episode=str(item['episode']), proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=common.CACHE_EXPIRY_TIME, ver=common.VERSION, imdb_id=None, session=item['session'])
+								if (time.time() - start_time) > SOURCE_SEARCH_TIMEOUT:
+									Log('ERROR: downloadsmenu.py > AutoPilotDownloadThread1: Source Searching Timeout Reached !')
+									break
+							sources = common.interface.getExtSources(movtitle=None, year=item['year'], tvshowtitle=item['short_title'], season=item['season'], episode=str(item['episode']), proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=common.CACHE_EXPIRY_TIME, ver=common.VERSION, imdb_id=None, session=item['session'], timeout=SOURCE_SEARCH_TIMEOUT)
 						else:
 							key = main.generatemoviekey(movtitle=item['title'], year=item['year'], tvshowtitle=None, season=None, episode=None)
 							prog = common.interface.checkProgress(key)
-							while prog > 0 and prog < 100:
+							while (prog > 0 and prog < 100):
 								time.sleep(5)
 								prog = common.interface.checkProgress(key)
-							sources = common.interface.getExtSources(movtitle=item['title'], year=item['year'], tvshowtitle=None, season=None, episode=None, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=common.CACHE_EXPIRY_TIME, ver=common.VERSION, imdb_id=None, session=item['session'])
+								if (time.time() - start_time) > SOURCE_SEARCH_TIMEOUT:
+									Log('ERROR: downloadsmenu.py > AutoPilotDownloadThread1: Source Searching Timeout Reached !')
+									break
+							sources = common.interface.getExtSources(movtitle=item['title'], year=item['year'], tvshowtitle=None, season=None, episode=None, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=common.CACHE_EXPIRY_TIME, ver=common.VERSION, imdb_id=None, session=item['session'], timeout=SOURCE_SEARCH_TIMEOUT)
 							
 						if sources != None:
 							bool, fsBytes, removeEntry = AutoPilotDownloadThread2(item, sources)
@@ -301,13 +315,28 @@ def AutoPilotDownloadThread1(item=None, runForWaiting=False):
 									pass
 		else: # runs when added
 			sources = None
+			start_time = time.time()
 			type = item['type']
 			if type == 'show':
 				key = main.generatemoviekey(movtitle=None, year=item['year'], tvshowtitle=item['short_title'], season=item['season'], episode=str(item['episode']))
-				sources = common.interface.getExtSources(movtitle=None, year=item['year'], tvshowtitle=item['short_title'], season=item['season'], episode=str(item['episode']), proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=common.CACHE_EXPIRY_TIME, ver=common.VERSION, imdb_id=None, session=item['session'])
+				prog = common.interface.checkProgress(key)
+				while (prog > 0 and prog < 100):
+					time.sleep(5)
+					prog = common.interface.checkProgress(key)
+					if (time.time() - start_time) > SOURCE_SEARCH_TIMEOUT:
+						Log('ERROR: downloadsmenu.py > AutoPilotDownloadThread1: Source Searching Timeout Reached !')
+						break
+				sources = common.interface.getExtSources(movtitle=None, year=item['year'], tvshowtitle=item['short_title'], season=item['season'], episode=str(item['episode']), proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=common.CACHE_EXPIRY_TIME, ver=common.VERSION, imdb_id=None, session=item['session'], timeout=SOURCE_SEARCH_TIMEOUT)
 			else:
 				key = main.generatemoviekey(movtitle=item['title'], year=item['year'], tvshowtitle=None, season=None, episode=None)
-				sources = common.interface.getExtSources(movtitle=item['title'], year=item['year'], tvshowtitle=None, season=None, episode=None, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=common.CACHE_EXPIRY_TIME, ver=common.VERSION, imdb_id=None, session=item['session'])
+				prog = common.interface.checkProgress(key)
+				while (prog > 0 and prog < 100):
+					time.sleep(5)
+					prog = common.interface.checkProgress(key)
+					if (time.time() - start_time) > SOURCE_SEARCH_TIMEOUT:
+						Log('ERROR: downloadsmenu.py > AutoPilotDownloadThread1: Source Searching Timeout Reached !')
+						break
+				sources = common.interface.getExtSources(movtitle=item['title'], year=item['year'], tvshowtitle=None, season=None, episode=None, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=common.CACHE_EXPIRY_TIME, ver=common.VERSION, imdb_id=None, session=item['session'], timeout=SOURCE_SEARCH_TIMEOUT)
 
 			if sources != None:
 				bool, fsBytes, removeEntry = AutoPilotDownloadThread2(item, sources)
@@ -337,7 +366,7 @@ def AutoPilotDownloadThread1(item=None, runForWaiting=False):
 		Dict.Save()
 	except Exception as e:
 		err = '{}'.format(e)
-		Log.Error('downloadsmenu.py > AutoPilotDownloadThread1: %s' % err)
+		Log('ERROR: downloadsmenu.py > AutoPilotDownloadThread1: %s' % err)
 
 #######################################################################################################
 def AutoPilotDownloadThread2(item, sources):
@@ -393,7 +422,7 @@ def AutoPilotDownloadThread2(item, sources):
 		return False, 0, False
 	except Exception as e:
 		err = '{}'.format(e)
-		Log.Error('downloadsmenu.py > AutoPilotDownloadThread2: %s' % err)
+		Log('ERROR: downloadsmenu.py > AutoPilotDownloadThread2: %s' % err)
 		return False, 0, False 
 		
 #######################################################################################################
@@ -403,7 +432,7 @@ def AutoPilotDownloadThread3(item, s, fsBytes, fs):
 		AddToDownloadsList(title=item['short_title'] if item['type']=='show' else item['title'], purl=item['purl'], url=s['url'], durl=s['durl'], summary=item['summary'], thumb=item['thumb'], year=item['year'], quality=s['quality'], source=s['source'], source_meta={}, file_meta={}, type=item['type'], vidtype=item['vidtype'], resumable=s['resumeDownload'], sub_url=s['sub_url'], fsBytes=fsBytes, fs=fs, file_ext=s['file_ext'], mode=common.DOWNLOAD_MODE[0], section_path=item['section_path'], section_title=item['section_title'], section_key=item['section_key'], session=item['session'], admin=item['admin'], params=s['params'], riptype=s['rip'], season=item['season'], episode=item['episode'], provider=s['provider'])
 	except Exception as e:
 		err = '{}'.format(e)
-		Log.Error('downloadsmenu.py > AutoPilotDownloadThread3: %s' % err)
+		Log('ERROR: downloadsmenu.py > AutoPilotDownloadThread3: %s' % err)
 
 #######################################################################################################
 @route(PREFIX + '/AddToDownloadsListPre')
@@ -464,7 +493,7 @@ def AddToDownloadsListPre(title, year, url, durl, purl, summary, thumb, quality,
 					return MC.message_container('FileSize Error', 'File reporting %s bytes cannot be downloaded. Please try again later when it becomes available.' % fsBytes)
 
 			except Exception as e:
-				Log.Error('downloadsmenu.py > AddToDownloadsListPre : %s - %s' % (e,err))
+				Log('ERROR: downloadsmenu.py > AddToDownloadsListPre : %s - %s' % (e,err))
 				return MC.message_container('Error', '%s. Sorry but file could not be added.' % e)
 
 		uid = 'Down5Split'+E(title+year+fs+quality+source+str(season)+str(episode))
@@ -704,6 +733,9 @@ def Downloads(title, session = None, status = None, refresh = 0, isDir='N', **kw
 				title = '%s (%s)' % (statusx, str(N_status[statusx]))
 				)
 			)
+		oc.add(DirectoryObject(key = Callback(Downloads, title="Downloads", session = session, refresh = int(refresh)+1), title = "Refresh"))
+		if int(refresh) > 0:
+			oc.add(DirectoryObject(key = Callback(main.MainMenu), title = '<< Main Menu', thumb = R(common.ICON)))
 		return oc
 	
 	items_to_del = []

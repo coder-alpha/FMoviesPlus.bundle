@@ -1,6 +1,6 @@
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.75' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.76' # Release notation (x.y - where x is major and y is minor)
 TAG = ''
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
@@ -23,7 +23,7 @@ except:
 	pass
 
 BASE_URL = "https://fmovies.taxi"
-BASE_URLS = ["https://bmovies.is","https://bmovies.to","https://bmovies.pro","https://bmovies.online","https://bmovies.club","https://bmovies.ru","https://fmovies.to","https://fmovies.is","https://fmovies.taxi","https://fmovies.se"]
+BASE_URLS = ["https://bmovies.is","https://bmovies.to","https://bmovies.pro","https://bmovies.online","https://bmovies.club","https://bmovies.ru","https://fmovies.to","https://fmovies.is","https://fmovies.taxi","https://fmovies.se","https://ffmovies.ru"]
 	
 JSEngines_ALLowed = ['Node']
 Engine_OK = False
@@ -100,7 +100,7 @@ OPTIONS_PROVIDERS = []
 #INTERNAL_SOURCES_FILETYPE = [{'label':'Movie/Show','enabled': 'True'},{'label':'Trailer','enabled': 'True'},{'label':'Interviews','enabled': 'False'},{'label':'Behind the scenes','enabled': 'False'},{'label':'Music Video','enabled': 'False'},{'label':'Deleted Scenes','enabled': 'False'},{'label':'Misc.','enabled': 'False'}]
 #INTERNAL_SOURCES_SIZES = [{'label':'> 2GB','enabled': 'True','LL':2*TO_GB,'UL':100*TO_GB},{'label':'1GB - 2GB','enabled': 'True','LL':1*TO_GB,'UL':2*TO_GB},{'label':'0.5GB - 1GB','enabled': 'True','LL':0.5*TO_GB,'UL':1*TO_GB},{'label':'0GB - 0.5GB','enabled': 'True','LL':1,'UL':0.5*TO_GB},{'label':'0GB','enabled': 'False','LL':0,'UL':0}]
 
-INTERNAL_SOURCES_SIZES_CONST = [{'label':'> 2GB','enabled': 'True','LL':2*TO_GB,'UL':1024*TO_GB},{'label':'1GB >= 2GB','enabled': 'True','LL':1*TO_GB,'UL':2*TO_GB},{'label':'0.5GB >= 1GB','enabled': 'True','LL':0.5*TO_GB,'UL':1*TO_GB},{'label':'0GB >= 0.5GB','enabled': 'True','LL':999999,'UL':0.5*TO_GB},{'label':'0GB','enabled': 'False','LL':0,'UL':999999}]
+INTERNAL_SOURCES_SIZES_CONST = [{'label':'> 10GB','enabled': 'False','LL':10*TO_GB,'UL':1024*TO_GB},{'label':'5GB >= 10GB','enabled': 'True','LL':5*TO_GB,'UL':10*TO_GB},{'label':'2GB >= 5GB','enabled': 'True','LL':2*TO_GB,'UL':5*TO_GB},{'label':'1GB >= 2GB','enabled': 'True','LL':1*TO_GB,'UL':2*TO_GB},{'label':'0.5GB >= 1GB','enabled': 'True','LL':0.5*TO_GB,'UL':1*TO_GB},{'label':'0GB >= 0.5GB','enabled': 'True','LL':999999,'UL':0.5*TO_GB},{'label':'0GB','enabled': 'False','LL':0,'UL':999999}]
 INTERNAL_SOURCES_QUALS_CONST = [{'label':'4K','enabled': 'True'},{'label':'1080p','enabled': 'True'},{'label':'720p','enabled': 'True'},{'label':'480p','enabled': 'True'},{'label':'360p','enabled': 'True'}]
 INTERNAL_SOURCES_RIPTYPE_CONST = [{'label':'BRRIP','enabled': 'True'},{'label':'3D-BRRIP','enabled': 'True'},{'label':'PREDVD','enabled': 'True'},{'label':'CAM','enabled': 'True'},{'label':'TS','enabled': 'True'},{'label':'SCR','enabled': 'True'},{'label':'UNKNOWN','enabled': 'True'}]
 INTERNAL_SOURCES_FILETYPE_CONST = [{'label':'Movie/Show','enabled':'True'},{'label':'Trailer','enabled':'True'},{'label':'Featurette','enabled':'False'},{'label':'Interviews','enabled':'False'},{'label':'Behind the scenes','enabled':'False'},{'label':'Music Video','enabled':'False'},{'label':'Deleted Scenes','enabled':'False'},{'label':'Misc.','enabled':'False'}]
@@ -184,6 +184,7 @@ ICON_DK_DISABLE = "icon-dumbKeyboardD.png"
 ICON_GL_ENABLE = "icon-gl-enable.png"
 ICON_GL_DISABLE = "icon-gl-disable.png"
 ICON_INFO = "icon-info.png"
+ICON_LOG = "icon-log.png"
 ICON_INFO_ALERT = "icon-info-alert.png"
 ICON_STAR = "icon-star.png"
 ICON_PEOPLE = "icon-people.png"
@@ -196,6 +197,7 @@ ICON_OTHERSOURCESDOWNLOAD_AUTO = "icon-othersourcesdownload-auto.png"
 ICON_SAVE = "icon-save.png"
 ICON_QUALITIES = "icon-qualities.png"
 ICON_FILESIZES = "icon-filesizes.png"
+ICON_SIZES = "icon-sizes.png"
 ICON_RIPTYPE = "icon-riptype.png"
 ICON_QUESTION = "icon-question.png"
 ICON_PROXY = "icon-proxy.png"
@@ -212,6 +214,7 @@ ICON_DOWNLOADS = "icon-downloads.png"
 ICON_REQUESTS = "icon-requests.png"
 ICON_TOOLS = "icon-tools.png"
 ICON_WARNING = "icon-warning.png"
+ICON_SYSSTATUS = "icon-status.png"
 
 MSG0 = "Please wait.."
 MSG1 = "Please give some time for the Interface to Load & Initialize plugins"
@@ -987,13 +990,11 @@ def OpenLoadUnpair(**kwargs):
 
 def makeUID(title, year='None', quality='None', source='None', url='None', season='None', episode='None'):
 	return E(title+str(year)+str(quality)+str(source)+str(url)+str(season)+str(episode))
-	
 
 def id_generator(size=9, chars=string.ascii_uppercase + string.digits):
 	return ''.join(random.choice(chars) for _ in range(size))
 	
 def makeid(N,arr):
-
 	r = ''
 	while r == '':
 		rt = ''.join(random.choice(string.ascii_uppercase) for _ in range(N))

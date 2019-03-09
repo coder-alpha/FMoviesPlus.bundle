@@ -44,7 +44,7 @@ class source:
 	def __init__(self):
 		del loggertxt[:]
 		self.ver = '0.0.2'
-		self.update_date = 'Fab. 07, 2019'
+		self.update_date = 'Feb. 07, 2019'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
 		self.priority = 1
@@ -172,6 +172,10 @@ class source:
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_movie','Provider Disabled by User')
 				return None
+				
+			if self.siteonline == False:
+				log('INFO','get_movie','Provider is Offline')
+				return None
 			
 			res = self.flix.search(video_type='MOVIE', title=title, year=year)
 			if len(res) > 0:
@@ -187,6 +191,10 @@ class source:
 		try:
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_show','Provider Disabled by User')
+				return None
+				
+			if self.siteonline == False:
+				log('INFO','get_show','Provider is Offline')
 				return None
 				
 			res = self.flix.search(video_type='TV SHOW', title=tvshowtitle, year=year, season=season)

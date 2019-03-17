@@ -1,23 +1,24 @@
 # -*- coding: utf-8 -*-
 
+# Coder Alpha
+# https://github.com/coder-alpha
+#
+
 '''
-	Specto Add-on
-	Copyright (C) 2015 lambda
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
 
-	This program is free software: you can redistribute it and/or modify
-	it under the terms of the GNU General Public License as published by
-	the Free Software Foundation, either version 3 of the License, or
-	(at your option) any later version.
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-	This program is distributed in the hope that it will be useful,
-	but WITHOUT ANY WARRANTY; without even the implied warranty of
-	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-	GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
-
+#########################################################################################################
 
 import re,urllib,urlparse,base64,time,json
 
@@ -30,8 +31,8 @@ loggertxt = []
 class source:
 	def __init__(self):
 		del loggertxt[:]
-		self.ver = '0.0.2'
-		self.update_date = 'June 14, 2018'
+		self.ver = '0.0.4'
+		self.update_date = 'Feb. 19, 2019'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
 		self.base_link_alts = ['http://cmovieshd.net']
@@ -153,6 +154,9 @@ class source:
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_movie','Provider Disabled by User')
 				return None
+			if self.siteonline == False:
+				log('INFO','get_movie','Provider is Offline')
+				return None
 			
 			del self.aliases[:]
 			self.aliases.append({'country': 'us', 'title': title})
@@ -168,6 +172,9 @@ class source:
 		try:
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_show','Provider Disabled by User')
+				return None
+			if self.siteonline == False:
+				log('INFO','get_show','Provider is Offline')
 				return None
 			
 			del self.aliases[:]
@@ -201,9 +208,11 @@ class source:
 			sources = []
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_sources','Provider Disabled by User')
+				log('INFO', 'get_sources', 'Completed')
 				return sources
 			if url == None: 
 				log('FAIL','get_sources','url == None. Could not find a matching title: %s' % cleantitle.title_from_key(key), dolog=not testing)
+				log('INFO', 'get_sources', 'Completed')
 				return sources
 			
 			data = urlparse.parse_qs(url)
@@ -257,71 +266,123 @@ class source:
 			  raise Exception('Step 1 Failed: %s > %s' % (url,e))
 
 			url = url if 'http' in url else urlparse.urljoin(self.base_link, url)
+			log(type='INFO', method='get_sources', err='Match found - %s' % url, dolog=False, logToControl=False, doPrint=True)
+			
 			result = client.request(url)
 			try:
 				poster = client.parseDOM(result, 'img', attrs={'itemprop':'image'}, ret='src')[0]
 			except:
 				poster = None
-			src = re.findall('src\s*=\s*"(.*streamdor.co\/video\/\d+)"', result)[0]
-			if src.startswith('//'):
-				src = 'http:'+src
-			episodeId = re.findall('.*streamdor.co/video/(\d+)', src)[0]
-			p = client.request(src, referer=url)
-			
+				
+			Juicy = False
+			ss = []
 			riptype = 'BRRIP'
 			
-			try:
-				p = re.findall(r'JuicyCodes.Run\(([^\)]+)', p, re.IGNORECASE)[0]
-				p = re.sub(r'\"\s*\+\s*\"','', p)
-				p = re.sub(r'[^A-Za-z0-9+\\/=]','', p)
-				p = base64.b64decode(p)
-				p = jsunpack.unpack(p)
-				p = unicode(p, 'utf-8')
-
-				post = client.encodePostData({'id': episodeId})
+			if testing == False:
+				trailer_res = client.parseDOM(result, 'div', attrs={'class':'block-trailer'})[0]
+				trailer_res = client.parseDOM(trailer_res, 'a', ret='href')[0]
+				trailer_res = client.request(trailer_res)
 				
-				p2 = client.request('https://embed.streamdor.co/token.php?v=5', post=post, referer=src, XHR=True, timeout=60)
-				
-				js = json.loads(p2)
-				tok = js['token']
-				quali = 'SD'
+				trailers = []
 				try:
-					quali = re.findall(r'label:"(.*?)"',p)[0]
-				except:
+					matches = re.compile('http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+').findall(trailer_res)
+					for match in matches:
+						try:
+							if 'youtube.com' in match:
+								match = match.replace('embed/','watch?v=')
+								trailers.append(match)
+						except:
+							pass
+				except Exception as e:
 					pass
-				
-				p = re.findall(r'var\s+episode=({[^}]+});',p)[0]
-				js = json.loads(p)
-				ss = []
-				
-				try:
-					rtype = js['eName']
-					if '0p' in rtype.lower() or 'sd' in rtype.lower() or 'hd' in rtype.lower():
-						raise
-					riptype = rtype
-				except:
-					pass
-				
-				#print js
-				
-				#if 'eName' in js and js['eName'] != '':
-				#	quali = source_utils.label_to_quality(js['eName'])
-				if 'fileEmbed' in js and js['fileEmbed'] != '':
-					ss.append([js['fileEmbed'], quali])
-				if 'filePlaylist' in js and js['filePlaylist'] != '':
-					js_data = client.request('https://embed.streamdor.co/play/sources?hash=%s&token=%s'%(js['filePlaylist'],tok), referer=src, XHR=True)
 					
-					js = json.loads(js_data)
-					m_srcs = js['playlist'][0]['sources']
-					if 'error' not in m_srcs:
-						for m_src in m_srcs:
-							ss.append([m_src['file'], m_src['label']])
-				if 'fileHLS' in js and js['fileHLS'] != '':
-					ss.append(['https://hls.streamdor.co/%s%s'%(tok, js['fileHLS']), quali])
-			except Exception as e:
-				raise Exception('Step 2 Failed: %s > %s' % (url,e))
+				for trailer in trailers:
+					links_m = resolvers.createMeta(trailer, self.name, self.logo, '720p', links_m, key, poster=poster, vidtype='Trailer', testing=testing)
+			
+			if 'streamdor' in result and Juicy == True:
+				src = re.findall('src\s*=\s*"(.*streamdor.co\/video\/\d+)"', result)[0]
+				if src.startswith('//'):
+					src = 'http:'+src
+				episodeId = re.findall('.*streamdor.co/video/(\d+)', src)[0]
+				p = client.request(src, referer=url)
+				
+				try:
+					#log(type='INFO', method='get_sources', err='Juicy Code', dolog=False, logToControl=False, doPrint=True)
+					p = re.findall(r'JuicyCodes.Run\(([^\)]+)', p, re.IGNORECASE)[0]
+					p = re.sub(r'\"\s*\+\s*\"','', p)
+					p = re.sub(r'[^A-Za-z0-9+\\/=]','', p)
+					p = base64.b64decode(p)
+					p = jsunpack.unpack(p)
+					p = unicode(p, 'utf-8')
+
+					post = client.encodePostData({'id': episodeId})
+					
+					p2 = client.request('https://embed.streamdor.co/token.php?v=5', post=post, referer=src, XHR=True, timeout=60)
+					
+					js = json.loads(p2)
+					tok = js['token']
+					quali = 'SD'
+					try:
+						quali = re.findall(r'label:"(.*?)"',p)[0]
+					except:
+						pass
+					
+					p = re.findall(r'var\s+episode=({[^}]+});',p)[0]
+					js = json.loads(p)
+					
+					try:
+						rtype = js['eName']
+						if '0p' in rtype.lower() or 'sd' in rtype.lower() or 'hd' in rtype.lower():
+							raise
+						riptype = rtype
+					except:
+						pass
+
+					if 'fileEmbed' in js and js['fileEmbed'] != '':
+						ss.append([js['fileEmbed'], quali, riptype])
+					if 'filePlaylist' in js and js['filePlaylist'] != '':
+						js_data = client.request('https://embed.streamdor.co/play/sources?hash=%s&token=%s'%(js['filePlaylist'],tok), referer=src, XHR=True)
+						
+						js = json.loads(js_data)
+						m_srcs = js['playlist'][0]['sources']
+						if 'error' not in m_srcs:
+							for m_src in m_srcs:
+								ss.append([m_src['file'], m_src['label'], riptype])
+					if 'fileHLS' in js and js['fileHLS'] != '':
+						ss.append(['https://hls.streamdor.co/%s%s'%(tok, js['fileHLS']), quali, riptype])
+						
+				except Exception as e:
+					raise Exception('Step 2 Failed: %s > %s' % (url,e))
+			else:
+				#log(type='INFO', method='get_sources', err='Embed Code', dolog=False, logToControl=False, doPrint=True)
+				div_s = client.parseDOM(result, 'div', attrs={'id': 'list-eps'})[0]
+				pages = client.parseDOM(div_s, 'a', ret='href')
+				#print pages
+				quals = re.findall(r'>(.*?)</a>',div_s)
+				#print quals
+				c=0
+				for p in pages:
+					try:
+						p1 = client.request(p, referer=url)
+						file_id = re.findall(r'load_player\.html\?e=(.*?)\"',p1)[0]
+						file_loc = 'https://api.streamdor.co/episode/embed/%s' % file_id
+						js_data = client.request(file_loc, referer=p)
+						js = json.loads(js_data)
+						m_srcs = js['embed']
+						try:
+							rtype = quals[c]
+							if '0p' in rtype.lower() or 'sd' in rtype.lower() or 'hd' in rtype.lower():
+								raise
+							riptype = 'CAM'
+						except:
+							pass
+						ss.append([m_srcs, file_quality(quals[c]), riptype])
+						c=c+1
+					except:
+						pass
 
 			for link in ss:
+				#print link
 				try:
 					if 'google' in url:
 						xs = client.googletag(url)
@@ -334,7 +395,7 @@ class source:
 								pass
 					else:
 						try:
-							links_m = resolvers.createMeta(link[0], self.name, self.logo, link[1], links_m, key, riptype, poster=poster, testing=testing)
+							links_m = resolvers.createMeta(link[0], self.name, self.logo, link[1], links_m, key, link[2], poster=poster, testing=testing)
 							if testing == True and len(links_m) > 0:
 								break
 						except:
@@ -347,12 +408,15 @@ class source:
 
 			if len(sources) == 0:
 				log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key))
-				return sources
+			else:
+				log('SUCCESS', 'get_sources','%s sources : %s' % (cleantitle.title_from_key(key), len(sources)))
+				
+			log('INFO', 'get_sources', 'Completed')
 			
-			log('SUCCESS', 'get_sources','%s sources : %s' % (cleantitle.title_from_key(key), len(sources)), dolog=not testing)
 			return sources
 		except Exception as e:
-			log('ERROR', 'get_sources', '%s' % e, dolog=not testing)
+			log('ERROR', 'get_sources', '%s' % e)
+			log('INFO', 'get_sources', 'Completed')
 			return sources
 
 	def matchAlias(self, title, aliases):
@@ -362,6 +426,24 @@ class source:
 					return True
 		except:
 			return False
+			
+def file_quality(title):
+	#print "%s - %s" % (self.name, url)
+	try:
+		title = title.lower()
+	
+		if '1080p' in title:
+			return '1080p'
+		elif '720p' in title:
+			return '720p'
+		elif '480p' in title:
+			return '480p'
+		elif '360p' in title:
+			return '360p'
+		else:
+			return '360p'
+	except:
+		return '360p'
 
 def log(type='INFO', method='undefined', err='', dolog=True, logToControl=False, doPrint=True):
 	try:

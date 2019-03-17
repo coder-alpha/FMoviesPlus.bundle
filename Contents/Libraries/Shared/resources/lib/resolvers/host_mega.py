@@ -3,7 +3,7 @@
 
 #########################################################################################################
 #
-# Mega scrapper
+# Mega scraper
 #
 # Coder Alpha
 # https://github.com/coder-alpha
@@ -89,16 +89,6 @@ try:
 	#print 'Cryptodome library loaded'
 except:
 	crypto_msg = 'Cryptodome library not found.'
-	#print crypto_msg
-	
-try:
-	if crypto_msg == None:
-		from resources.lib.libraries import mega
-		mega.fix_ssl()
-		from Cryptodome.Cipher.AES import MODE_CBC
-		#print 'Cryptodome library loaded'
-except:
-	crypto_msg = 'MODE_CBC in Cryptodome library not found.'
 	#print crypto_msg
 
 http_hdrs = {
@@ -211,8 +201,11 @@ class host:
 	def testUrl(self):
 		return ['https://mega.nz/#!R6xyBBpY!JmZlf7cn7w2scbWaPYESoppAY8UDbrkXKFz0e2FZASs']
 		
-	def createMeta(self, url, provider, logo, quality, links, key, riptype, vidtype='Movie', lang='en', sub_url=None, txt='', file_ext = '.mp4', testing=False, poster=None, headers=None):
+	def createMeta(self, url, provider, logo, quality, links, key, riptype, vidtype='Movie', lang='en', sub_url=None, txt='', file_ext = '.mp4', testing=False, poster=None, headers=None, page_url=None):
 	
+		files_ret = []
+		orig_url = url
+		
 		if testing == True:
 			links.append(url)
 			return links
@@ -221,36 +214,44 @@ class host:
 			log('INFO','createMeta','Host Disabled by User')
 			return links
 	
-		urldata = client.b64encode(json.dumps('', encoding='utf-8'))
-		params = client.b64encode(json.dumps('', encoding='utf-8'))
-		orig_url = url
-		online = check(url)
-		files_ret = []
-		titleinfo = txt
-		fs = 0
-
 		try:
-			furl, fs, file_ext = mega.get_mega_dl_link(url)
-			
-			quality = qual_based_on_fs(quality, fs)
-			
-			if int(fs) == 0:
-				fs = client.getFileSize(furl)
-			urldata = createurldata(furl, quality)
-		except Exception as e:
-			online = False
-			log('FAIL', 'createMeta-1', '%s - %s' % (url,e))
+			urldata = client.b64encode(json.dumps('', encoding='utf-8'))
+			params = client.b64encode(json.dumps('', encoding='utf-8'))
+			online = check(url)
+			titleinfo = txt
+			fs = 0
 
-		try:
-			files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':titleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':riptype, 'provider':provider, 'durl':url, 'url':url, 'urldata':urldata, 'params':params, 'logo':logo, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'online':online, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':self.netloc[0], 'misc':{'player':'iplayer', 'gp':False}})
+			try:
+				furl, fs, file_ext = mega.get_mega_dl_link(url)
+				
+				quality = qual_based_on_fs(quality, fs)
+				
+				if int(fs) == 0:
+					fs = client.getFileSize(furl)
+				urldata = createurldata(furl, quality)
+			except Exception as e:
+				online = False
+				log('FAIL', 'createMeta-1', '%s - %s' % (url,e))
+
+			try:
+				log(type='INFO',method='createMeta', err=u'durl:%s ; res:%s; fs:%s' % (url,quality,fs))
+				files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':titleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':riptype, 'provider':provider, 'orig_url':orig_url, 'durl':url, 'url':url, 'urldata':urldata, 'params':params, 'logo':logo, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'online':online, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':self.netloc[0], 'misc':{'player':'iplayer', 'gp':False}})
+			except Exception as e:
+				log('ERROR', 'createMeta-2', '%s - %s' % (url,e))
+				files_ret.append({'source':urlhost, 'maininfo':'', 'titleinfo':titleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'orig_url':orig_url, 'durl':url, 'url':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':self.netloc[0], 'misc':{'player':'iplayer', 'gp':False}})
 		except Exception as e:
-			log('ERROR', 'createMeta-2', '%s - %s' % (url,e))
-			files_ret.append({'source':urlhost, 'maininfo':'', 'titleinfo':titleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'durl':url, 'url':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':self.netloc[0], 'misc':{'player':'iplayer', 'gp':False}})
+			log('ERROR', 'createMeta', '%s' % e)
 			
 		for fr in files_ret:
 			links.append(fr)
 
-		log('INFO', 'createMeta', 'Successfully processed %s link >>> %s' % (provider, orig_url), dolog=self.init)
+		if len(files_ret) > 0:
+			log('SUCCESS', 'createMeta', 'Successfully processed %s link >>> %s' % (provider, orig_url), dolog=self.init)
+		else:
+			log('FAIL', 'createMeta', 'Failed in processing %s link >>> %s' % (provider, orig_url), dolog=self.init)
+			
+		log('INFO', 'createMeta', 'Completed', dolog=self.init)
+		
 		return links
 		
 	def resolve(self, url):

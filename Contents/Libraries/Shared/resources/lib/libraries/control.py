@@ -20,6 +20,7 @@
 
 
 import os, base64, jsunpack, json, io, time
+import random, string
 
 tmdb_key = jsunpack.jsunpack_keys()
 tvdb_key = base64.urlsafe_b64decode('MUQ2MkYyRjkwMDMwQzQ0NA==')
@@ -35,6 +36,9 @@ setting_dict = {}
 control_json = {}
 doPrint = False
 phantomjs_choices = ["No","Yes - Threads Only","Yes - Universally"]
+
+ThreadsType = {'0':'Main', '1':'Interface', '2':'Download', '3':'AutoPilot' ,'4':'Provider', '5':'Host', '6':'Proxy', '5':'Thread'}
+Threads = []
 
 def setting(key):
 	if key in setting_dict.keys():
@@ -55,6 +59,21 @@ def set_setting(key, value):
 	
 	setting_dict[key] = value
 	
+def AddThread(name, desc, start_time, type, persist_bool, uid, thread=None):
+	Threads.append({'name':name, 'desc':desc, 'start_time':start_time, 'type':ThreadsType[type], 'persist':persist_bool, 'uid':uid, 'thread':thread})
+	
+def RemoveThread(uid):
+	for t in Threads:
+		if t['uid'] == uid:
+			Threads.remove(t)
+			break
+	
+def getThreads():
+	return Threads
+	
+def id_generator(size=9, chars=string.ascii_uppercase + string.digits):
+	return ''.join(random.choice(chars) for _ in range(size))
+	
 def savePermStore():
 	try:
 		bkup_file = 'control.json'
@@ -63,7 +82,7 @@ def savePermStore():
 			f.write(unicode(data))
 		return True
 	except Exception as e:
-		#log2('Error reading/saving file control.json ! %s' % e)
+		log2('Error reading/saving file control.json ! %s' % e, type='CRITICAL')
 		pass
 		
 	return False
@@ -81,13 +100,13 @@ def loadPermStore():
 			return ret
 
 	except Exception as e:
-		# if os.path.exists(bkup_file):
-			# log2('Error loading/reading file control.json ! %s' % e)
-		# else:
-			# log2('File not found ! Error loading/reading file control.json ! %s' % e)
+		if os.path.exists(bkup_file):
+			log2('Error loading/reading file control.json ! %s' % e, type='CRITICAL')
+		else:
+			log2('File not found ! Error loading/reading file control.json ! %s' % e, type='CRITICAL')
 		pass
 
-	#log2('Error Loading file control.json !')
+	log2('Error Loading file control.json !', type='CRITICAL')
 	return None
 	
 def log2(err='', type='INFO', logToControl=True, doPrint=True):
@@ -119,5 +138,7 @@ set_setting('is_control_openload_api_key', False)
 set_setting('use_phantomjs', False)
 set_setting('%s-%s' % (None,'Use-PhantomJS'), False)
 set_setting('ca', 'CA2017')
+set_setting('vspapi', 'QTZlTDI5WExMakFFNXdMNA==')
+set_setting('vspapicount', 50)
 set_setting('control_flixanity_user_pass', None)
 set_setting('control_concurrent_src_threads', 4)

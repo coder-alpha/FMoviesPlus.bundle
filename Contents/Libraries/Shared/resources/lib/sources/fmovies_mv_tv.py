@@ -46,12 +46,12 @@ class source:
 	def __init__(self):
 		del loggertxt[:]
 		self.ver = '0.1.2'
-		self.update_date = 'Aug. 09, 2018'
+		self.update_date = 'Feb 10, 2019'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
 		self.disabled = False
 		self.TOKEN_KEY = []
-		self.base_link_alts = ['https://bmovies.pro','https://bmovies.is','https://bmovies.to','https://bmovies.club','https://bmovies.online','https://bmovies.ru','https://fmovies.to','https://fmovies.is','https://fmovies.se','https://fmovies.taxi']
+		self.base_link_alts = ['https://fmovies.taxi','https://bmovies.pro','https://bmovies.is','https://bmovies.to','https://bmovies.club','https://bmovies.online','https://bmovies.ru','https://fmovies.to','https://fmovies.is','https://fmovies.se','https://fmovies.ru']
 		self.base_link = self.base_link_alts[0]
 		self.grabber_api = "grabber-api/"
 		self.search_link = '/sitemap'
@@ -174,9 +174,12 @@ class source:
 			try:
 				token_url = urlparse.urljoin(t_base_link, self.token_link)
 				r1 = proxies.request(token_url, headers=self.headers, httpsskip=True)
+				if r1 == None:
+					raise Exception('%s not reachable !' % token_url)
 				reqkey = self.decodeJSFCookie(r1)
-			except:
+			except Exception as e:
 				reqkey = ''
+				log('FAIL','initAndSleep', 'Not using reqkey: %s' % e)
 			
 			# get session cookie
 			serverts = str(((int(time.time())/3600)*3600))
@@ -233,6 +236,9 @@ class source:
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_movie','Provider Disabled by User')
 				return None
+			if self.siteonline == False:
+				log('INFO','get_movie','Provider is Offline')
+				return None
 			url = {'imdb': imdb, 'title': title, 'year': year}
 			url = urllib.urlencode(url)
 			#X - Requested - With:"XMLHttpRequest"
@@ -245,6 +251,9 @@ class source:
 		try:
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_show','Provider Disabled by User')
+				return None
+			if self.siteonline == False:
+				log('INFO','get_show','Provider is Offline')
 				return None
 			url = {'imdb': imdb, 'tvdb': tvdb, 'tvshowtitle': tvshowtitle, 'year': year}
 			url = urllib.urlencode(url)
@@ -272,13 +281,16 @@ class source:
 			sources = []
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_sources','Provider Disabled by User')
+				log('INFO', 'get_sources', 'Completed')
 				return sources
 			if url == None: 
 				log('FAIL','get_sources','url == None. Could not find a matching title: %s' % cleantitle.title_from_key(key), dolog=not testing)
+				log('INFO', 'get_sources', 'Completed')
 				return sources
 			
 			myts = str(((int(time.time())/3600)*3600))
 			log('INFO','get_sources-1', 'url: %s' % url, dolog=False)
+			
 			token_error = False
 			urls = []
 			sub_url = None
@@ -343,6 +355,7 @@ class source:
 					
 					if len(url) == 0:
 						log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key))
+						log('INFO', 'get_sources', 'Completed')
 						return sources
 					
 					for urli in url:
@@ -366,14 +379,15 @@ class source:
 					
 					result = resultT = proxies.request(url, headers=self.headers, limit='0', proxy_options=proxy_options, use_web_proxy=self.proxyrequired, httpsskip=True)
 					
-					if 'data-type="series"' not in result:
-						raise Exception('Not a TV-Series')
+					if 'season' in data:
+						if 'data-type="series"' not in result:
+							raise Exception('Not a TV-Series')
 					
 					vidtype = 'Show'
 					alina = client.parseDOM(result, 'title')[0]
 
 					atr = [i for i in client.parseDOM(result, 'title') if len(re.findall('(\d{4})', i)) > 0][-1]
-
+					
 					if 'season' in data:
 						try: season = data['season']
 						except: pass
@@ -390,12 +404,14 @@ class source:
 						result = result if year in atr else None
 						
 					if result != None:
+						log('INFO','get_sources-3', 'Match found: %s | %s' % (atr, url))
 						break
 				except Exception as e:
 					log('FAIL','get_sources-3', '%s : %s' % (url,e), dolog=False)
 					
 			if result == None:
 				log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key))
+				log('INFO', 'get_sources', 'Completed')
 				return sources
 
 			try:
@@ -403,6 +419,15 @@ class source:
 			except:
 				log('INFO','get_sources-3', 'could not parse ts ! will use generated one : %s' % myts, dolog=False)
 				
+			poster = None
+			
+			try:
+				poster1 = client.parseDOM(result, 'div', attrs = {'class':'mt'})
+				poster = client.parseDOM(poster1, 'img', ret='src')[0]
+				if 'http' not in poster:
+					poster = 'http:' + poster
+			except: pass
+			
 			trailers = []
 			links_m = []
 			
@@ -420,7 +445,7 @@ class source:
 					pass
 					
 				for trailer in trailers:
-					links_m = resolvers.createMeta(trailer, self.name, self.logo, '720p', links_m, key, vidtype='Trailer', testing=testing)
+					links_m = resolvers.createMeta(trailer, self.name, self.logo, '720p', links_m, key, poster=poster, vidtype='Trailer', testing=testing)
 			
 			riptype = None
 			try: quality = client.parseDOM(result, 'span', attrs = {'class': 'quality'})[0].lower()
@@ -436,6 +461,9 @@ class source:
 				riptype = 'BRRIP'
 
 			result_servers = self.get_servers(url, proxy_options=proxy_options)
+			#print result_servers
+			servers_id = client.parseDOM(result_servers, 'div', attrs = {'class':'server row'}, ret='data-id')
+			#print servers_id
 			result_servers = client.parseDOM(result_servers, 'ul', attrs = {'data-range-id':"0"})
 			#print result_servers
 			#result_servers = []
@@ -444,12 +472,14 @@ class source:
 			#print result_servers
 			
 			result_servers = [(i[0], re.findall('(\d+)', i[1])) for i in result_servers]
+			#print result_servers
 			
 			servers = [(i[0], ''.join(i[1][:1])) for i in result_servers]
 			
 			try: servers = [i for i in servers if '%01d' % int(i[1]) == '%01d' % int(episode)]
 			except: pass
 			
+			s_count = 0
 			for s in servers[:len(servers)]:
 				try:
 					video_url = None
@@ -474,7 +504,7 @@ class source:
 						headers = {'X-Requested-With': 'XMLHttpRequest'}
 						hash_url = urlparse.urljoin(self.base_link, self.hash_link)
 						
-						query = {'ts': myts, 'id': s[0], 'update': '0', 'server':'36'}
+						query = {'ts': myts, 'id': s[0], 'server': servers_id[s_count]}
 						
 						query.update(self.__get_token(query))
 						hash_url = hash_url + '?' + urllib.urlencode(query)
@@ -488,6 +518,7 @@ class source:
 							token_error = True
 							query.update(self.__get_token(query, token_error=token_error))
 							hash_url = hash_url + '?' + urllib.urlencode(query)
+							log('INFO','get_sources-4.c', '%s' % hash_url, dolog=False)
 							result = proxies.request(hash_url, headers=headers, limit='0', proxy_options=proxy_options, use_web_proxy=self.proxyrequired, httpsskip=True)
 							result = json.loads(result)
 							
@@ -560,7 +591,7 @@ class source:
 							
 							for i in result:
 								video_url = i
-								links_m = resolvers.createMeta(i, self.name, self.logo, quality, links_m, key, riptype, vidtype=vidtype, sub_url=sub_url, testing=testing)
+								links_m = resolvers.createMeta(i, self.name, self.logo, quality, links_m, key, poster=poster, riptype=riptype, vidtype=vidtype, sub_url=sub_url, testing=testing)
 						else:
 							target = result['target']
 							b, resp = self.decode_t(target, -18)
@@ -575,42 +606,47 @@ class source:
 								target = 'http:' + target
 								
 							video_url = target
-							links_m = resolvers.createMeta(target, self.name, self.logo, quality, links_m, key, riptype, vidtype=vidtype, sub_url=sub_url, testing=testing)
+							links_m = resolvers.createMeta(target, self.name, self.logo, quality, links_m, key, poster=poster, riptype=riptype, vidtype=vidtype, sub_url=sub_url, testing=testing)
 
 				except Exception as e:
 					log('FAIL', 'get_sources-7','%s' % e, dolog=False)
 					
 				try:
-					if video_url == None and USE_PHANTOMJS == True and control.setting('use_phantomjs') != control.phantomjs_choices[0]:
-						vx_url = '%s/%s' % (page_url,s[0])
-						log(type='INFO',method='get_sources-4.a.1', err=u'trying phantomjs method: %s' % vx_url)
-						try:
-							v_url, bool = phantomjs.decode(vx_url, js='fmovies.js')
-							if bool == False:
-								ret_error = v_url
-								raise Exception(ret_error)
-							else:
-								video_url = v_url
-								ret_error = ''
-								log(type='SUCCESS',method='get_sources-4.a.2', err=u'*PhantomJS* method is working: %s' % vx_url)
-								links_m = resolvers.createMeta(video_url, self.name, self.logo, quality, links_m, key, riptype, vidtype=vidtype, sub_url=sub_url, testing=testing)
-						except:
-							raise Exception('phantomjs not working')
-					else:
-						raise Exception('phantomjs is disabled')
+					if video_url == None:
+						if video_url == None and USE_PHANTOMJS == True and control.setting('use_phantomjs') != control.phantomjs_choices[0]:
+							vx_url = '%s/%s' % (page_url,s[0])
+							log(type='INFO',method='get_sources-4.a.1', err=u'trying phantomjs method: %s' % vx_url)
+							try:
+								v_url, bool = phantomjs.decode(vx_url, js='fmovies.js')
+								if bool == False:
+									ret_error = v_url
+									raise Exception(ret_error)
+								else:
+									video_url = v_url
+									ret_error = ''
+									log(type='SUCCESS',method='get_sources-4.a.2', err=u'*PhantomJS* method is working: %s' % vx_url)
+									links_m = resolvers.createMeta(video_url, self.name, self.logo, quality, links_m, key, poster=poster, riptype=riptype, vidtype=vidtype, sub_url=sub_url, testing=testing)
+							except Exception as e:
+								raise Exception('phantomjs (fmovies.js) not working: %s' % e)
+						else:
+							raise Exception('phantomjs is disabled')
 				except Exception as e:
 					log(type='FAIL',method='get_sources-4.a.3', err=u'%s' % e)
+				s_count += 1
 
 			sources += [l for l in links_m]
 			
 			if len(sources) == 0:
 				log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key))
-				return sources
+			else:
+				log('SUCCESS', 'get_sources','%s sources : %s' % (cleantitle.title_from_key(key), len(sources)))
+				
+			log('INFO', 'get_sources', 'Completed')
 			
-			log('SUCCESS', 'get_sources','%s sources : %s' % (cleantitle.title_from_key(key), len(sources)), dolog=not testing)
 			return sources
 		except Exception as e:
 			log('ERROR', 'get_sources', '%s' % e, dolog=not testing)
+			log('INFO', 'get_sources', 'Completed')
 			return sources
 
 	def resolve(self, url):
@@ -641,7 +677,7 @@ class source:
 				if i < len(t):
 					n += ord(t[i])
 				if i >= len(e):
-					x = int(i)
+					x = int(i) + 1
 					n += x
 		h = format(int(hex(n),16),'x')
 		return h

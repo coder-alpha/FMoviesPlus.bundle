@@ -2,7 +2,8 @@
 
 #########################################################################################################
 #
-# RapidVideo scraper
+# Mp4upload scraper
+#
 #
 # Coder Alpha
 # https://github.com/coder-alpha
@@ -26,12 +27,7 @@
 
 import re,urllib,json,time
 import os, sys, ast
-
-try:
-	from resources.lib.libraries import client
-	from resources.lib.libraries import control
-except:
-	pass
+from resources.lib.libraries import client, control, jsunpack
 
 hdr = {
 	'User-Agent': client.USER_AGENT,
@@ -41,23 +37,21 @@ hdr = {
 	'Accept-Language': 'en-US,en;q=0.8',
 	'Connection': 'keep-alive'}
 
-name = 'rapidvideo'
+name = 'mp4upload'
 loggertxt = []
-RV_COOKIES = ['__cfduid=dda567790eb0b331fd9a8191dec20619e1534810793; PHPSESSID=5v3cqu54ml4rtsdfaejo533o17']
-USE_RESTRICT_RAPIDVIDEO = False
 	
 class host:
 	def __init__(self):
 		del loggertxt[:]
-		self.ver = '0.0.4'
-		self.update_date = 'Feb. 05, 2019'
+		self.ver = '0.0.1'
+		self.update_date = 'Mar. 15, 2019'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
-		self.logo = 'https://i.imgur.com/AG9ooWt.png'
+		self.logo = 'https://i.imgur.com/uqrHeB7.png'
 		self.name = name
-		self.host = ['rapidvideo.com']
-		self.netloc = ['rapidvideo.com']
-		self.quality = '1080p'
+		self.host = ['mp4upload.com']
+		self.netloc = ['mp4upload.com']
+		self.quality = '720p'
 		self.loggertxt = []
 		self.captcha = False
 		self.allowsDownload = True
@@ -141,13 +135,13 @@ class host:
 		return bool
 		
 	def testUrl(self):
-		return ['https://www.rapidvideo.com/v/FML5SEW27U']
+		return ['https://www.mp4upload.com/embed-8x467xhnq2y9.html']
 		
 	def createMeta(self, url, provider, logo, quality, links, key, riptype, vidtype='Movie', lang='en', sub_url=None, txt='', file_ext = '.mp4', testing=False, poster=None, headers=None, page_url=None):
 	
 		files_ret = []
 		orig_url = url
-		
+
 		if testing == True:
 			links.append(url)
 			return links
@@ -162,23 +156,23 @@ class host:
 			
 			online = check(url)
 			vidurls, err, sub_url_t = getAllQuals(url, online)
-	
+			
+			if vidurls == None:
+				log(type='ERROR',method='createMeta-1', err=u'%s' % err)
+				return links
+				
 			if sub_url_t != None:
 				sub_url = sub_url_t
-				
+			
 			for vv in vidurls:
 				durl = vv['page']
-				vidurl, r1, r2 = resolve(durl, online)
-				if vidurl != None and '.mp4' in vidurl:
+				vidurl = vv['file']
+				if vidurl != None:
 					quality = vv['label']
-					try:
-						fs = client.getFileSize(vidurl)
-						fs = int(fs)
-					except:
-						fs = 0
+					fs = vv['fs']
 
 					try:
-						log(type='INFO',method='createMeta', err=u'durl:%s ; res:%s; fs:%s' % (vidurl,quality,fs))
+						log(type='INFO',method='createMeta', err=u'durl:%s ; res:%s; fs:%s' % (durl,quality,fs))
 						files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':txt, 'quality':quality, 'vidtype':vidtype, 'rip':riptype, 'provider':provider, 'orig_url':orig_url, 'url':durl, 'durl':durl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':fs, 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'poster':poster, 'sub_url':sub_url, 'subdomain':client.geturlhost(url), 'misc':{'player':'iplayer', 'gp':False}})
 					except Exception as e:
 						log(type='ERROR',method='createMeta', err=u'%s' % e)
@@ -188,7 +182,7 @@ class host:
 			
 		for fr in files_ret:
 			links.append(fr)
-
+			
 		if len(files_ret) > 0:
 			log('SUCCESS', 'createMeta', 'Successfully processed %s link >>> %s' % (provider, orig_url), dolog=self.init)
 		else:
@@ -207,53 +201,25 @@ class host:
 	def testLink(self, url):
 		return check(url)
 	
-def resolve(url, online=None, USE_POST=False):
+def resolve(url, online=None):
 
 	try:
 		if online == None:
 			if check(url) == False: 
 				raise Exception('Video not available')
-		elif online == False: 
+		elif online == False:
 			raise Exception('Video not available')
 
 		video_url = None
 		err = ''
-		data = {'confirm.x':44, 'confirm.y':55, 'block':1}
-		edata = client.encodePostData(data)
-		headers = {u'Referer': url, u'User-Agent': client.USER_AGENT}
-		if len(RV_COOKIES) > 0:
-			headers['Cookie'] = RV_COOKIES[0]
-				
 		try:
-			cookies = None
 			page_link = url
-			page_data_string, r2, r3, cookies = client.request(page_link, post=edata, headers=headers, httpsskip=True, output='extended')
-			
-			if USE_POST == True:
-				page_data_string, r2, r3, cookies = client.request(page_link, post=edata, headers=headers, httpsskip=True, output='extended')
-			else:
-				page_data_string, r2, r3, cookies = client.request(page_link, headers=headers, httpsskip=True, output='extended')
-				
-			if 'pad.php' in page_data_string:
-				USE_POST = not USE_POST
-				
-				if USE_POST == True:
-					page_data_string, r2, r3, cookies = client.request(page_link, post=edata, headers=headers, httpsskip=True, output='extended')
-				else:
-					page_data_string, r2, r3, cookies = client.request(page_link, headers=headers, httpsskip=True, output='extended')
-			
-			if 'captcha.php' in page_data_string:
-				raise Exception('RapidVideo %s requires captcha verification' % url)
-				
-			if cookies != None and len(cookies) > 0:
-				del RV_COOKIES[:]
-				RV_COOKIES.append(cookies)
-				
-			video_url = client.parseDOM(page_data_string, 'div', attrs = {'id': 'home_video'})[0]
-			try:	
-				video_url = client.parseDOM(video_url, 'source', ret='src')[0]
-			except:
-				raise Exception('No mp4 video found')
+			page_data_string = client.request(page_link, httpsskip=True)
+			video_url, err = decode(page_data_string)
+			if video_url == None:
+				raise Exception(err)
+			if video_url[len(video_url)-1] == '@':
+				video_url = video_url[:-1]
 		except Exception as e:
 			err = e
 			log('ERROR', 'resolve', 'link > %s : %s' % (url, e), dolog=True)
@@ -263,6 +229,37 @@ def resolve(url, online=None, USE_POST=False):
 	except Exception as e:
 		e = '{}'.format(e)
 		return (None, e, None)
+		
+def decode(html):
+	
+	source = None
+	err = ''
+	try:
+		try:
+			str_pattern="(eval\(function\(p,a,c,k,e,(?:r|d).*)"
+			
+			js = re.compile(str_pattern).findall(html)
+			if len(js) == 0:
+				raise Exception('No packer js found.')
+			
+			js = js[0]
+			if 'p,a,c,k,e,' not in js:
+				raise Exception('No packer js found.')
+			
+			html_with_unpacked_js = jsunpack.unpack(js)
+			if html_with_unpacked_js == None:
+				raise Exception('Could not unpack js.')
+				
+			source = re.findall(r':\"(http.*.mp4)\"', html_with_unpacked_js)
+		except Exception as e:
+			log('ERROR', 'decode', '%s' % (e), dolog=True)
+			err = 'Mp4Upload Error: %s' % e
+		if source != None and len(source) == 0:
+			raise Exception('No mp4 Videos found !')
+	except Exception as e:
+		err = 'Mp4Upload Error: %s' % e
+			
+	return source, err
 
 def getAllQuals(url, online=None):
 	try:
@@ -270,19 +267,23 @@ def getAllQuals(url, online=None):
 			if check(url) == False: 
 				raise Exception('Video not available')
 			
+		page_data_string = client.request(url, httpsskip=True)
+		video_urls, err = decode(page_data_string)
+		
+		if video_urls == None:
+			raise Exception(err)
+		
 		video_url_a = []
 		myheaders = {}
-		myheaders['User-Agent'] = 'Mozilla'
+		myheaders['User-Agent'] = client.agent()
 		myheaders['Referer'] = url
 		
-		quals = ['1080p','720p','480p','360p']
-		for qs in quals:
+		for v in video_urls:
 			try:
-				page_link = (url + '&q=%s') % qs
-				f_i = {'label':qs, 'page':page_link}
+				fs = client.getFileSize(v, retry429=True)
+				qs = qual_based_on_fs(fs)
+				f_i = {'label': '%s' % qs, 'file':v, 'fs':fs, 'page':url}
 				video_url_a.append(f_i)
-				if USE_RESTRICT_RAPIDVIDEO == True:
-					break
 			except:
 				pass
 		
@@ -291,6 +292,17 @@ def getAllQuals(url, online=None):
 	except Exception as e:
 		e = '{}'.format(e)
 		return (None, e, None)
+		
+def qual_based_on_fs(fs):
+	q = '480p'
+	try:
+		if int(fs) > 2 * float(1024*1024*1024):
+			q = '1080p'
+		elif int(fs) > 1 * float(1024*1024*1024):
+			q = '720p'
+	except:
+		pass
+	return q
 	
 def check(url, headers=None, cookie=None):
 	try:
@@ -298,10 +310,11 @@ def check(url, headers=None, cookie=None):
 		if http_res not in client.HTTP_GOOD_RESP_CODES:
 			return False
 			
-		page = client.request(url=url, followredirect=True, headers=headers, cookie=cookie)
-		if 'Account temporarily suspended' in page:
+		page_data_string = client.request(url=url, headers=headers, cookie=cookie)
+		
+		if 'File Not Found' in page_data_string or 'File was deleted' in page_data_string:
 			return False
-
+	
 		return True
 	except:
 		return False

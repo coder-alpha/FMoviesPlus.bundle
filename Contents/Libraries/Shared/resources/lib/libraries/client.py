@@ -45,8 +45,11 @@ import socket
 origGetAddrInfo = socket.getaddrinfo
 
 def getAddrInfoWrapper(host, port, family=0, socktype=0, proto=0, flags=0):
-	return origGetAddrInfo(host, port, socket.AF_INET, socktype, proto, flags)
-
+	try:
+		return origGetAddrInfo(host, port, socket.AF_INET, socktype, proto, flags)
+	except Exception as e:
+		log(type='ERROR', method='getAddrInfoWrapper', err='%s' % e, dolog=True, logToControl=True, doPrint=True)
+		return
 # #replace the original socket.getaddrinfo by our version
 # socket.getaddrinfo = getAddrInfoWrapper
 # socket.has_ipv6 = False
@@ -95,6 +98,14 @@ ANDROID_USER_AGENT = 'Mozilla/5.0 (Linux; Android 4.4.2; Nexus 4 Build/KOT49H) A
 
 IP_OVERIDE = True
 
+vsp_url = 'YUhSMGNITTZMeTlqYjJSbGNtRnNjR2hoTGpBd01IZGxZbWh2YzNSaGNIQXVZMjl0TDNKbGNYVmxjM1J6TDNKbGNYWnBaR1Z2TG5Cb2NBPT0='
+vsp_url2 = 'YUhSMGNITTZMeTkyYVdSbGIzTndhV1JsY2k1cGJpOD0='
+vsp_url3 = 'YUhSMGNITTZMeTkyYVdSbGIzTndhV1JsY2k1emRISmxZVzB2'
+
+loggertxt = []
+
+name = 'client'
+
 def request(url, close=True, redirect=True, followredirect=False, error=False, proxy=None, post=None, headers=None, mobile=False, limit=None, referer=None, cookie=None, output='', timeout='30', httpsskip=False, use_web_proxy=False, XHR=False, IPv4=False):
 
 # output extended = 4, response = 2, responsecodeext = 2
@@ -137,8 +148,6 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 		if 'User-Agent' in headers:
 			pass
 		elif not mobile == True:
-			#headers['User-Agent'] = agent()
-			#headers['User-Agent'] = Constants.USER_AGENT
 			headers['User-Agent'] = randomagent()		
 		else:
 			headers['User-Agent'] = 'Apple-iPhone/701.341'
@@ -199,8 +208,7 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 			opener = urllib2.install_opener(opener)
 
 		requestResp = urllib2.Request(url, data=post, headers=headers)
-		#print requestResp
-
+		
 		try:
 			response = urllib2.urlopen(requestResp, timeout=int(timeout))
 			if followredirect:
@@ -220,12 +228,10 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 			except:
 				content = ''
 				
+			log(type='ERROR', method='request', err='URL: %s > HTTPError: %s' % (url,resp_code), dolog=True, logToControl=True, doPrint=True)
 			if response.code == 503:
-				#Log("AAAA- CODE %s|%s " % (url, response.code))
 				if 'cf-browser-verification' in content:
-					
 					netloc = '%s://%s' % (urlparse.urlparse(url).scheme, urlparse.urlparse(url).netloc)
-					#cf = cache.get(cfcookie, 168, netloc, headers['User-Agent'], timeout)
 					cfc = cfcookie()
 					cf = cfc.get(netloc, headers['User-Agent'], timeout)
 					control.log('INFO client.py>request : cf-browser-verification: CF-OK : %s' % cf)
@@ -248,15 +254,12 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 				else:
 					return
 			elif response.code == 307:
-				#Log("AAAA- Response read: %s" % response.read(5242880))
-				#Log("AAAA- Location: %s" % (response.headers['Location'].rstrip()))
 				cookie = ''
 				try: cookie = '; '.join(['%s=%s' % (i.name, i.value) for i in cookies])
 				except: pass
 				headers['Cookie'] = cookie
 				requestResp = urllib2.Request(response.headers['Location'], data=post, headers=headers)
 				response = urllib2.urlopen(requestResp, timeout=int(timeout))
-				#Log("AAAA- BBBBBBB %s" %  response.code)
 			elif resp_code != None:
 				if IPv4 == True:
 					setIP6()
@@ -264,7 +267,6 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 					return (resp_code, None)
 				return resp_code
 			elif error == False:
-				#print ("Response code",response.code, response.msg,url)
 				if IPv4 == True:
 					setIP6()
 				return
@@ -273,8 +275,8 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 					setIP6()
 				return
 		except Exception as e:
-			control.log('ERROR client.py>request : %s' % url)
-			control.log('ERROR client.py>request : %s' % e.args)
+			log(type='ERROR-CRITICAL', method='request', err='Error accessing: %s' % url, dolog=True, logToControl=True, doPrint=True)
+			log(type='ERROR-CRITICAL', method='request', err='%s' % e, dolog=True, logToControl=True, doPrint=True)
 			if IPv4 == True:
 				setIP6()
 			if output == 'response':
@@ -304,7 +306,6 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 		elif output == 'chunk':
 			try: content = int(response.headers['Content-Length'])
 			except: content = (2049 * 1024)
-			#Log('CHUNK %s|%s' % (url,content))
 			if content < (2048 * 1024):
 				if IPv4 == True:
 					setIP6()
@@ -351,18 +352,24 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 		return result
 		
 	except Exception as e:
-		control.log('ERROR client.py>request %s, %s' % (e.args,url))
+		log(type='ERROR-CRITICAL', method='request', err='%s: %s' % (url,e.args), dolog=True, logToControl=True, doPrint=True)
 		traceback.print_exc()
 		if IPv4 == True:
 			setIP6()
 		return
 		
-def simpleCheck(link, headers={}, cookie={}, retError=False, retry429=False, cl=3):
+def simpleCheck(link, headers={}, cookie={}, retError=False, retry429=False, cl=3, timeout=None):
 	try:
 		code = '0'
 		size = '0'
-		red_url = None 
-		r = requests.get(link, headers=headers, cookies=cookie, stream=True, verify=False, allow_redirects=True)
+		red_url = None
+		
+		try:
+			timeout = int(timeout)
+		except:
+			timeout = GLOBAL_TIMEOUT_FOR_HTTP_REQUEST
+		
+		r = requests.get(link, headers=headers, cookies=cookie, stream=True, verify=False, allow_redirects=True, timeout=(timeout, timeout))
 		
 		if retry429 == True:
 			c = 0
@@ -378,10 +385,6 @@ def simpleCheck(link, headers={}, cookie={}, retError=False, retry429=False, cl=
 		code = str(r.status_code)
 		r.close()
 		
-		#site = urllib.urlopen(link)
-		#meta = site.info()
-		#size = meta.getheaders("Content-Length")[0]
-		
 		if retError == True:
 			return code, red_url, size, ''
 		else:
@@ -392,10 +395,17 @@ def simpleCheck(link, headers={}, cookie={}, retError=False, retry429=False, cl=
 		else:
 			return code, red_url, size
 			
-def getRedirectingUrl(url, headers=None):
+
+def getRedirectingUrl(url, headers=None, timeout=None):
 	red = url
+	
 	try:
-		response = requests.get(url)
+		timeout = int(timeout)
+	except:
+		timeout = GLOBAL_TIMEOUT_FOR_HTTP_REQUEST
+	
+	try:
+		response = requests.get(url, timeout=(timeout, timeout))
 		if headers != None:
 			response.headers = headers
 		if response.history:
@@ -404,9 +414,14 @@ def getRedirectingUrl(url, headers=None):
 		pass
 	return red
 		
-def getFileSize(link, headers=None, retError=False, retry429=False, cl=3):
+def getFileSize(link, headers=None, retError=False, retry429=False, cl=3, timeout=None):
 	try:
-		r = requests.get(link, headers=headers, stream=True, verify=False, allow_redirects=True)
+		try:
+			timeout = int(timeout)
+		except:
+			timeout = GLOBAL_TIMEOUT_FOR_HTTP_REQUEST
+			
+		r = requests.get(link, headers=headers, stream=True, verify=False, allow_redirects=True, timeout=(timeout, timeout))
 		
 		if headers != None and 'Content-length' in headers:
 			r.headers = headers
@@ -415,7 +430,7 @@ def getFileSize(link, headers=None, retError=False, retry429=False, cl=3):
 			c = 0
 			while r.status_code == 429 and c < cl:
 				time.sleep(5)
-				r = requests.get(link, headers=headers, stream=True, verify=False, allow_redirects=True)
+				r = requests.get(link, headers=headers, stream=True, verify=False, allow_redirects=True, timeout=(timeout, timeout))
 				if headers != None and 'Content-length' in headers:
 					r.headers = headers
 				c += 1
@@ -424,10 +439,6 @@ def getFileSize(link, headers=None, retError=False, retry429=False, cl=3):
 			raise Exception('HTTP Response: %s' % str(r.status_code))
 		size = r.headers['Content-length']
 		r.close()
-		
-		#site = urllib.urlopen(link)
-		#meta = site.info()
-		#size = meta.getheaders("Content-Length")[0]
 		
 		if retError == True:
 			return size, ''
@@ -441,8 +452,6 @@ def getFileSize(link, headers=None, retError=False, retry429=False, cl=3):
 		
 def send_http_request(url, data=None, timeout=None, fix_ssl=True):
 	"""Return a httplib.HTTPResponse object."""
-	#print url
-	#print data
 	if fix_ssl == True:
 		fix_ssl()
 		pass
@@ -460,9 +469,7 @@ def send_http_request(url, data=None, timeout=None, fix_ssl=True):
 		port = (80, 443)[schema == 'https']
 	path = url[match.end():] or '/'
 
-	#print host
 	ipaddr = socket.gethostbyname(host)	# Force IPv4. Needed by Mega.
-	#print ipaddr
 	hc_cls = (httplib.HTTPConnection, httplib.HTTPSConnection)[schema == 'https']
 	# TODO(pts): Cleanup: Call hc.close() eventually.
 	if sys.version_info < (2, 6):	# Python 2.5 doesn't support timeout.
@@ -501,23 +508,33 @@ def getResponseDataBasedOnOutput(page_data_string, res, output):
 
 def setIP4(setoveride=False):
 
-	if setoveride==False and IP_OVERIDE == True:
-		return
-	#replace the original socket.getaddrinfo by our version
-	socket.getaddrinfo = getAddrInfoWrapper
-	socket.has_ipv6 = False
+	try:
+		if setoveride==False and IP_OVERIDE == True:
+			return
+		#replace the original socket.getaddrinfo by our version
+		socket.getaddrinfo = getAddrInfoWrapper
+		socket.has_ipv6 = False
+	except Exception as e:
+		log(type='ERROR', method='setIP4', err='%s' % e, dolog=True, logToControl=True, doPrint=True)
 	
 def setIP6(setoveride=False):
 
-	if setoveride==False and IP_OVERIDE == True:
-		return
-	#replace the IP4 socket.getaddrinfo by original
-	socket.getaddrinfo = origGetAddrInfo
-	socket.has_ipv6 = True
+	try:
+		if setoveride==False and IP_OVERIDE == True:
+			return
+		#replace the IP4 socket.getaddrinfo by original
+		socket.getaddrinfo = origGetAddrInfo
+		socket.has_ipv6 = True
+	except Exception as e:
+		log(type='ERROR', method='setIP6', err='%s' % e, dolog=True, logToControl=True, doPrint=True)
 	
 def encodePostData(data):
-	data = urllib.urlencode(data)
-	return data
+	try:
+		data = urllib.urlencode(data)
+		return data
+	except Exception as e:
+		log(type='ERROR', method='encodePostData', err='%s' % e, dolog=True, logToControl=True, doPrint=True)
+		return None
 
 def source(url, close=True, error=False, proxy=None, post=None, headers=None, mobile=False, safe=False, referer=None, cookie=None, output='', timeout='30'):
 	return request(url, close, error, proxy, post, headers, mobile, safe, referer, cookie, output, timeout)
@@ -905,3 +922,38 @@ def search_regex(pattern, string, name, default=None, fatal=True, flags=0, group
 			return mobj.group(group)
 	else:
 		return None
+		
+def determineIP():
+	try:
+		r = request('https://v4speed.oloadcdn.net/echoip')
+		control.set_setting('ipaddress', r)
+	except Exception as e:
+		control.set_setting('ipaddress', None)
+		log(type='ERROR-CRITICAL', method='determineIP', err='%s' % e, dolog=True, logToControl=True, doPrint=True)
+		
+def vsp_search(query, ver):
+	try:
+		params = {}
+		params[b64decode('Y29kZXJhbHBoYQ==')] = b64encode(control.setting('ca'))
+		params['ver'] = ver
+		params['video_id'] = query
+		v = '%s?%s' % (b64ddecode(vsp_url), encodePostData(params))
+		r = request(v)
+		return r
+	except Exception as e:
+		log(type='ERROR-CRITICAL', method='vsp_search', err='%s' % e, dolog=True, logToControl=True, doPrint=True)
+	return None
+
+def log(type='INFO', method='undefined', err='', dolog=True, logToControl=False, doPrint=True):
+	try:
+		msg = '%s: %s > %s > %s : %s' % (time.ctime(time.time()), type, name, method, err)
+		if dolog == True:
+			loggertxt.append(msg)
+		if logToControl == True:
+			control.log(msg)
+		if control.doPrint == True and doPrint == True:
+			print msg
+	except Exception as e:
+		control.log('Error in Logging: %s >>> %s' % (msg,e))
+		
+determineIP()

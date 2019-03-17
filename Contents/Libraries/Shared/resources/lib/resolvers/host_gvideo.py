@@ -2,7 +2,7 @@
 
 #########################################################################################################
 #
-# Google scrapper
+# Google scraper
 #
 # Coder Alpha
 # https://github.com/coder-alpha
@@ -168,9 +168,10 @@ class host:
 	def testUrl(self):
 		return ['https://drive.google.com/file/d/0B0JMGMGgxp9WMEdWb1hyQUhlOWs/view','https://drive.google.com/file/d/0B1XiKAQcEMeHc2ZIXzB4RDJ6Z1k/view']
 		
-	def createMeta(self, url, provider, logo, quality, links, key, riptype, showsplit=False, useGetlinkAPI=True, vidtype='Movie', lang='en', sub_url=None, txt='', file_ext = '.mp4', testing=False, poster=None, headers=None):
+	def createMeta(self, url, provider, logo, quality, links, key, riptype, showsplit=False, useGetlinkAPI=True, vidtype='Movie', lang='en', sub_url=None, txt='', file_ext = '.mp4', testing=False, poster=None, headers=None, page_url=None):
 	
 		orig_url = url
+		files_ret = []
 		
 		if testing == True:
 			links.append(url)
@@ -180,143 +181,152 @@ class host:
 			log('INFO','createMeta','Host Disabled by User')
 			return links
 	
-		if 'http' not in url and 'google.com/file' in url:
-			url = 'https://drive.google.com/' + url.split('.com/')[1]
-			
-		httpsskip = False
-		if control.setting('use_https_alt') != None and (control.setting('use_https_alt') == True or control.setting('use_https_alt') == False):
-			httpsskip = control.setting('httpsskip')
+		try:
+			if 'http' not in url and 'google.com/file' in url:
+				url = 'https://drive.google.com/' + url.split('.com/')[1]
 				
-		#print "createMeta1 : %s %s %s %s" % (url, provider, logo, quality)
-		videoData, headers, content, cookie = getVideoMetaData(url, httpsskip)
-		try:
-			cookie += '; %s' % content['Set-Cookie']
-			# cookie_s = cookie.split(';')
-			# cookie_n = []
-			# for cook in cookie_s:
-				# cook = cook.strip()
-				# if '=' in cook and cook not in cookie_n:
-					# cookie_n.append(cook)
-			# cookie = ('; '.join(x for x in sorted(cookie_n)))
-			cookie_value = client.search_regex(r"DRIVE_STREAM=([^;]+);", cookie, 'cookie val',group=1)
-			domain = client.search_regex(r"https?://([^\/]+)", url, 'host val', group=1)
-			cookie = 'DRIVE_STREAM=%s; path=/; domain=.%s;' % (cookie_value, domain)
-		except:
-			pass
-		#print cookie
-		
-		#cookie = urllib.quote_plus(cookie).replace('+','%20').replace('%2F','/')
-		# DRIVE_STREAM%3Dva1wsBbVn3A%3B%20path%3D/%3B%20domain%3D.docs.google.com%3B
-		# DRIVE_STREAM%3DtV76KFL8a6k%3B+path%3D%2F%3B+domain%3D.docs.google.com%3B
-		
-		params = {'headers':headers,'cookie':cookie}
-		params = json.dumps(params, encoding='utf-8')
-		params = client.b64encode(params)
-		
-		if client.geturlhost(url) in self.host[4]:
-			pass # skip for googleapis.com link
-		else:
-			quality = file_quality(url, quality, videoData)[0]
-		isOnline = check(url, videoData, headers=headers, cookie=cookie, httpsskip=httpsskip)[0]
-		type = rip_type(url, riptype)
-		
-		files = []
-		
-		#print "createMeta : %s %s %s %s" % (url, provider, logo, quality)
-		titleinfo = txt
-		if txt != '':
-			titleinfo = txt
-		ntitleinfo = titleinfo
-		
-		files_ret = []
-		
-		enabled = True
-		try:
-			#udata = urldata(url, videoData=videoData, usevideoData=True)			
-			if 'google.com/file' in url:
-				idstr = '%s' % (url.split('/preview')[0].split('/edit')[0].split('/view')[0])
-				idstr = idstr.split('/')
-				id = idstr[len(idstr)-1]
-				try:
-					durl, f_res, fs = getFileLink(id, httpsskip)
-				except:
-					fs = 0
-					durl = None
+			httpsskip = False
+			if control.setting('use_https_alt') != None and (control.setting('use_https_alt') == True or control.setting('use_https_alt') == False):
+				httpsskip = control.setting('httpsskip')
 					
-				if durl != None:
-					files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':ntitleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':type, 'provider':provider, 'url':durl, 'durl':durl, 'urldata':createurldata(durl,quality), 'params':params, 'logo':logo, 'online':isOnline, 'allowsDownload':self.allowsDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':enabled, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(durl), 'misc':{'player':'iplayer', 'gp':False}})
+			#print "createMeta1 : %s %s %s %s" % (url, provider, logo, quality)
+			videoData, headers, content, cookie = getVideoMetaData(url, httpsskip)
+			try:
+				cookie += '; %s' % content['Set-Cookie']
+				# cookie_s = cookie.split(';')
+				# cookie_n = []
+				# for cook in cookie_s:
+					# cook = cook.strip()
+					# if '=' in cook and cook not in cookie_n:
+						# cookie_n.append(cook)
+				# cookie = ('; '.join(x for x in sorted(cookie_n)))
+				cookie_value = client.search_regex(r"DRIVE_STREAM=([^;]+);", cookie, 'cookie val',group=1)
+				domain = client.search_regex(r"https?://([^\/]+)", url, 'host val', group=1)
+				cookie = 'DRIVE_STREAM=%s; path=/; domain=.%s;' % (cookie_value, domain)
+			except:
+				pass
+			#print cookie
+			
+			#cookie = urllib.quote_plus(cookie).replace('+','%20').replace('%2F','/')
+			# DRIVE_STREAM%3Dva1wsBbVn3A%3B%20path%3D/%3B%20domain%3D.docs.google.com%3B
+			# DRIVE_STREAM%3DtV76KFL8a6k%3B+path%3D%2F%3B+domain%3D.docs.google.com%3B
+			
+			params = {'headers':headers,'cookie':cookie}
+			params = json.dumps(params, encoding='utf-8')
+			params = client.b64encode(params)
+			
+			if client.geturlhost(url) in self.host[4]:
+				pass # skip for googleapis.com link
+			else:
+				quality = file_quality(url, quality, videoData)[0]
+			isOnline = check(url, videoData, headers=headers, cookie=cookie, httpsskip=httpsskip)[0]
+			type = rip_type(url, riptype)
+			
+			files = []
+			
+			#print "createMeta : %s %s %s %s" % (url, provider, logo, quality)
+			titleinfo = txt
+			if txt != '':
+				titleinfo = txt
+			ntitleinfo = titleinfo
+			
+			
+			
+			enabled = True
+			try:
+				#udata = urldata(url, videoData=videoData, usevideoData=True)			
+				if 'google.com/file' in url:
+					idstr = '%s' % (url.split('/preview')[0].split('/edit')[0].split('/view')[0])
+					idstr = idstr.split('/')
+					id = idstr[len(idstr)-1]
+					try:
+						durl, f_res, fs = getFileLink(id, httpsskip)
+					except:
+						fs = 0
+						durl = None
+						
+					if durl != None:
+						files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':ntitleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':type, 'provider':provider, 'url':durl, 'durl':durl, 'urldata':createurldata(durl,quality), 'params':params, 'logo':logo, 'online':isOnline, 'allowsDownload':self.allowsDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':enabled, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(durl), 'misc':{'player':'iplayer', 'gp':False}})
+					else:
+						fs = client.getFileSize(url, retry429=True)
+						
+					files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':ntitleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':type, 'provider':provider, 'orig_url':orig_url, 'url':url, 'durl':url, 'urldata':urldata('',''), 'params':params, 'logo':logo, 'online':isOnline, 'allowsDownload':self.allowsDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':enabled, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(url), 'misc':{'player':'eplayer', 'gp':False}})
 				else:
 					fs = client.getFileSize(url, retry429=True)
 					
-				files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':ntitleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':type, 'provider':provider, 'url':url, 'durl':url, 'urldata':urldata('',''), 'params':params, 'logo':logo, 'online':isOnline, 'allowsDownload':self.allowsDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':enabled, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(url), 'misc':{'player':'eplayer', 'gp':False}})
-			else:
-				fs = client.getFileSize(url, retry429=True)
+					files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':ntitleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':type, 'provider':provider, 'orig_url':orig_url, 'url':url, 'durl':url, 'urldata':urldata('',''), 'params':params, 'logo':logo, 'online':isOnline, 'allowsDownload':self.allowsDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':enabled, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(url), 'misc':{'player':'iplayer', 'gp':False}})
+			except Exception as e:
+				log(type='ERROR',method='createMeta-1', err=u'%s' % e)
 				
-				files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':ntitleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':type, 'provider':provider, 'url':url, 'durl':url, 'urldata':urldata('',''), 'params':params, 'logo':logo, 'online':isOnline, 'allowsDownload':self.allowsDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':enabled, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(url), 'misc':{'player':'iplayer', 'gp':False}})
-		except Exception as e:
-			log(type='ERROR',method='createMeta-1', err=u'%s' % e)
-			
-		isGetlinkWork = False
-		try:
-			if useGetlinkAPI==True and isOnline and 'google.com/file' in url and self.useGetLinkAPI:
-				client.setIP4()
-				ntitleinfo = titleinfo + ' | (via GetLink API) '
-				files = urldata(url)
-				files = client.b64decode(files)
-				filesJ = json.loads(files)
-				if len(filesJ) > 0:
-					for mfile in filesJ:
-						mfile = json.loads(mfile)
-						#print "mfile --- : %s" % mfile
-						furl = mfile['src']
-						f2url = client.request(furl, followredirect=True, output='geturl')
-						if 'http' in f2url:
-							furl = f2url
-							#print "furl --- : %s" % furl
-							quality = file_quality(furl, mfile['res'], videoData)[0]
-							isOnlineT = check(furl, videoData, headers=headers, cookie=cookie)[0]
-							type = rip_type(furl, riptype)
-						else:
-							isOnlineT = 'Unknown'
+			isGetlinkWork = False
+			try:
+				if useGetlinkAPI==True and isOnline and 'google.com/file' in url and self.useGetLinkAPI:
+					client.setIP4()
+					ntitleinfo = titleinfo + ' | (via GetLink API) '
+					files = urldata(url)
+					files = client.b64decode(files)
+					filesJ = json.loads(files)
+					if len(filesJ) > 0:
+						for mfile in filesJ:
+							mfile = json.loads(mfile)
+							#print "mfile --- : %s" % mfile
+							furl = mfile['src']
+							f2url = client.request(furl, followredirect=True, output='geturl')
+							if 'http' in f2url:
+								furl = f2url
+								#print "furl --- : %s" % furl
+								quality = file_quality(furl, mfile['res'], videoData)[0]
+								isOnlineT = check(furl, videoData, headers=headers, cookie=cookie)[0]
+								type = rip_type(furl, riptype)
+							else:
+								isOnlineT = 'Unknown'
+							
+							p = {'headers':'','cookie':''}
+							p = json.dumps(p, encoding='utf-8')
+							p = client.b64encode(p)
+							
+							fs = client.getFileSize(furl, retry429=True)
+							
+							files_ret.append({'source': self.name, 'maininfo':'', 'titleinfo':ntitleinfo, 'quality': quality, 'vidtype':vidtype, 'rip':type, 'provider': provider, 'url': furl, 'durl':furl, 'urldata':urldata('',''), 'params':p, 'logo': logo, 'online': isOnlineT, 'allowsDownload':self.allowsDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':enabled, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(furl), 'misc':{'player':'iplayer' , 'gp':False}})
+							isGetlinkWork = True
+					client.setIP6()
+			except Exception as e:
+				log(type='ERROR',method='createMeta-2', err=u'%s' % e)
+				
+			try:
+				if showsplit == True and isOnline and isGetlinkWork == False:
+					# currently suffers from transcoding failure on most clients
+					ntitleinfo = titleinfo + ' | *limited support* '
+					files = get_files(url, videoData)[0]
+					for furl in files:
+						quality = file_quality(furl, quality, videoData)[0]
+						type = rip_type(furl, riptype)
 						
-						p = {'headers':'','cookie':''}
-						p = json.dumps(p, encoding='utf-8')
-						p = client.b64encode(p)
+						furl = urllib.unquote(furl).decode('utf8')
+						furl = furl.decode('unicode_escape')
+						
+						isOnlineT = check(furl, videoData, headers=headers, cookie=cookie)[0]
 						
 						fs = client.getFileSize(furl, retry429=True)
 						
-						files_ret.append({'source': self.name, 'maininfo':'', 'titleinfo':ntitleinfo, 'quality': quality, 'vidtype':vidtype, 'rip':type, 'provider': provider, 'url': furl, 'durl':furl, 'urldata':urldata('',''), 'params':p, 'logo': logo, 'online': isOnlineT, 'allowsDownload':self.allowsDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':enabled, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(furl), 'misc':{'player':'iplayer' , 'gp':False}})
-						isGetlinkWork = True
-				client.setIP6()
+						files_ret.append({'source': self.name, 'maininfo':'', 'titleinfo':ntitleinfo, 'quality': quality, 'vidtype':vidtype, 'rip':type, 'provider': provider, 'url': furl, 'durl':furl, 'urldata':createurldata(furl,quality), 'params':params, 'logo': logo, 'online': isOnlineT, 'allowsDownload':self.allowsDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':enabled, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(furl), 'misc':{'player':'iplayer', 'gp':False}})
+			except Exception as e:
+				log(type='ERROR',method='createMeta-3', err=u'%s' % e)
 		except Exception as e:
-			log(type='ERROR',method='createMeta-2', err=u'%s' % e)
-			
-		try:
-			if showsplit == True and isOnline and isGetlinkWork == False:
-				# currently suffers from transcoding failure on most clients
-				ntitleinfo = titleinfo + ' | *limited support* '
-				files = get_files(url, videoData)[0]
-				for furl in files:
-					quality = file_quality(furl, quality, videoData)[0]
-					type = rip_type(furl, riptype)
-					
-					furl = urllib.unquote(furl).decode('utf8')
-					furl = furl.decode('unicode_escape')
-					
-					isOnlineT = check(furl, videoData, headers=headers, cookie=cookie)[0]
-					
-					fs = client.getFileSize(furl, retry429=True)
-					
-					files_ret.append({'source': self.name, 'maininfo':'', 'titleinfo':ntitleinfo, 'quality': quality, 'vidtype':vidtype, 'rip':type, 'provider': provider, 'url': furl, 'durl':furl, 'urldata':createurldata(furl,quality), 'params':params, 'logo': logo, 'online': isOnlineT, 'allowsDownload':self.allowsDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':enabled, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(furl), 'misc':{'player':'iplayer', 'gp':False}})
-		except Exception as e:
-			log(type='ERROR',method='createMeta-3', err=u'%s' % e)
+			log('ERROR', 'createMeta', '%s' % e)
 
 			
 		for fr in files_ret:
 			fr['resumeDownload'] = self.resumeDownload
 			links.append(fr)
 		
-		log('INFO', 'createMeta', 'Successfully processed %s link >>> %s' % (provider, orig_url), dolog=self.init)
+		if len(files_ret) > 0:
+			log('SUCCESS', 'createMeta', 'Successfully processed %s link >>> %s' % (provider, orig_url), dolog=self.init)
+		else:
+			log('FAIL', 'createMeta', 'Failed in processing %s link >>> %s' % (provider, orig_url), dolog=self.init)
+			
+		log('INFO', 'createMeta', 'Completed', dolog=self.init)
+		
 		return links
 		
 	def resolve(self, url):

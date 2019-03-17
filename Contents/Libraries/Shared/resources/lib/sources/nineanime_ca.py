@@ -38,14 +38,14 @@ class source:
 	def __init__(self):
 		del loggertxt[:]
 		self.ver = '0.1.2'
-		self.update_date = 'Aug. 09, 2018'
+		self.update_date = 'Mar. 15, 2019'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
 		self.serverts = None
 		self.disabled = False
 		self.TOKEN_KEY = []
 		self.FLAGS = {}
-		self.base_link_alts = ['https://www6.9anime.is','https://9anime.is','https://9anime.to']
+		self.base_link_alts = ['https://9anime.ru','https://9anime.to']
 		self.base_link = self.base_link_alts[0]
 		self.grabber_api = "grabber-api/"
 		self.search_link = '/sitemap'
@@ -149,37 +149,47 @@ class source:
 			self.headers['User-Agent'] = ua
 			
 			#get cf cookie
-			cookie1 = proxies.request(url=t_base_link, headers=self.headers, output='cookie', use_web_proxy=self.proxyrequired, httpsskip=True)
+			cookie1 = proxies.request(url=t_base_link, headers=self.headers, output='cookie', use_web_proxy=self.proxyrequired, httpsskip=True, timeout=7)
 			self.headers['Cookie'] = cookie1
 			
 			# get reqkey cookie
 			try:
 				token_url = urlparse.urljoin(t_base_link, self.token_link)
-				r1 = proxies.request(token_url, headers=self.headers, httpsskip=True)
+				r1 = proxies.request(token_url, headers=self.headers, httpsskip=True, timeout=7)
+				if r1 == None:
+					raise Exception('%s not reachable !' % token_url)
 				reqkey = self.decodeJSFCookie(r1)
-			except:
+			except Exception as e:
 				reqkey = ''
+				log('FAIL','initAndSleep', 'Not using reqkey: %s' % e)
 			
 			# get session cookie
-			self.serverts = self.getSetServerTs()
-			serverts = str(((int(time.time())/3600)*3600))
-			if self.serverts == None:
-				self.serverts = serverts
-			else:
-				serverts = self.serverts
-			control.set_setting(name+'serverts', serverts)
-
-			query = {'ts': serverts}
+			query = {'ts': str(((int(time.time())/3600)*3600))}
 			try:
-				tk = self.__get_token(query)
-			except:
-				tk = self.__get_token(query, True)
+				self.serverts = self.getSetServerTs()
+				serverts = str(((int(time.time())/3600)*3600))
+				query = {'ts': serverts}
+				
+				if self.serverts == None:
+					self.serverts = serverts
+				else:
+					serverts = self.serverts
+				control.set_setting(name+'serverts', serverts)
 
-			query.update(tk)
+				query = {'ts': serverts}
+				try:
+					tk = self.__get_token(query)
+				except:
+					tk = self.__get_token(query, True)
+
+				query.update(tk)
+			except Exception as e:
+				log('FAIL','initAndSleep', 'Not using token: %s' % e)
+			
 			hash_url = urlparse.urljoin(t_base_link, self.hash_menu_link)
 			hash_url = hash_url + '?' + urllib.urlencode(query)
 			
-			r1, headers, content, cookie2 = proxies.request(hash_url, headers=self.headers, limit='0', output='extended', httpsskip=True)
+			r1, headers, content, cookie2 = proxies.request(hash_url, headers=self.headers, limit='0', output='extended', httpsskip=True, timeout=7)
 
 			#cookie = cookie1 + '; ' + cookie2 + '; user-info=null; reqkey=' + reqkey
 			cookie = '%s; %s; user-info=null; reqkey=%s' % (cookie1 , cookie2 , reqkey)
@@ -190,9 +200,9 @@ class source:
 			log('ERROR','initAndSleep', '%s' % e)
 			
 	def getSetServerTs(self):
-		geturl = proxies.request('https://bmovies.is/home', output='geturl')
-		res = proxies.request(geturl)
 		try:
+			geturl = proxies.request('https://fmovies.taxi', output='geturl', httpsskip=True, timeout=7)
+			res = proxies.request(geturl, httpsskip=True, timeout=7)
 			myts1 = re.findall(r'data-ts="(.*?)"', res)[0]
 			myts = str(int(myts1))
 			return myts
@@ -236,6 +246,9 @@ class source:
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_movie','Provider Disabled by User')
 				return None
+			if self.siteonline == False:
+				log('INFO','get_movie','Provider is Offline')
+				return None
 			url = {'imdb': imdb, 'title': title, 'year': year}
 			url = urllib.urlencode(url)
 			#X - Requested - With:"XMLHttpRequest"
@@ -249,6 +262,10 @@ class source:
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_show','Provider Disabled by User')
 				return None
+			if self.siteonline == False:
+				log('INFO','get_show','Provider is Offline')
+				return None
+				
 			url = {'imdb': imdb, 'tvdb': tvdb, 'tvshowtitle': tvshowtitle, 'year': year, 'season': season}
 			url = urllib.urlencode(url)
 			return url
@@ -275,9 +292,11 @@ class source:
 			sources = []
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_sources','Provider Disabled by User')
+				log('INFO', 'get_sources', 'Completed')
 				return sources
 			if url == None: 
 				log('FAIL','get_sources','url == None. Could not find a matching title: %s' % cleantitle.title_from_key(key), dolog=not testing)
+				log('INFO', 'get_sources', 'Completed')
 				return sources
 			
 			myts = str(((int(time.time())/3600)*3600))
@@ -353,6 +372,7 @@ class source:
 					
 					if len(url) == 0:
 						log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key))
+						log('INFO', 'get_sources', 'Completed')
 						return sources
 					
 					for urli in url:
@@ -395,6 +415,7 @@ class source:
 					
 			if result == None:
 				log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key))
+				log('INFO', 'get_sources', 'Completed')
 				return sources
 
 			try:
@@ -596,12 +617,15 @@ class source:
 			
 			if len(sources) == 0:
 				log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key))
-				return sources
+			else:
+				log('SUCCESS', 'get_sources','%s sources : %s' % (cleantitle.title_from_key(key), len(sources)))
+				
+			log('INFO', 'get_sources', 'Completed')
 			
-			log('SUCCESS', 'get_sources','%s sources : %s' % (cleantitle.title_from_key(key), len(sources)), dolog=not testing)
 			return sources
 		except Exception as e:
-			log('ERROR', 'get_sources', '%s' % e, dolog=not testing)
+			log('ERROR', 'get_sources', '%s' % e)
+			log('INFO', 'get_sources', 'Completed')
 			return sources
 
 	def resolve(self, url):
@@ -610,7 +634,7 @@ class source:
 		except:
 			return
 	
-	def get_servers(self, page_url, proxy_options=None):	
+	def get_servers(self, page_url, proxy_options=None):
 		T_BASE_URL = self.base_link
 		T_BASE_URL = 'https://%s' % client.geturlhost(page_url)
 		page_id = page_url.rsplit('.', 1)[1]
@@ -621,10 +645,10 @@ class source:
 		html = '<html><body><div id="servers-container">%s</div></body></html>' % json.loads(result)['html'].replace('\n','').replace('\\','')
 		return html
 		
-	def r01(self, t, e, token_error=False, code_use=False):
+	def r01(self, t, e, token_error=False, use_code=False):
 		i = 0
 		n = 0
-		if code_use == True:
+		if use_code == True:
 			for i in range(0, max(len(t), len(e))):
 				if i < len(e):
 					n += ord(e[i])
@@ -743,7 +767,7 @@ class source:
 			unpacked_code = ''
 			cch = ''
 			if len(self.TOKEN_KEY) == 0:
-				all_js_pack_code = proxies.request(all_js_url, use_web_proxy=self.proxyrequired, httpsskip=True)
+				all_js_pack_code = proxies.request(all_js_url, use_web_proxy=self.proxyrequired, httpsskip=True, timeout=7)
 				unpacked_code = jsunpack.unpack(all_js_pack_code)
 				cch = re.findall(r'%s' % client.b64decode('ZnVuY3Rpb25cKFthLXpdLFthLXpdLFthLXpdXCl7XCJ1c2Ugc3RyaWN0XCI7ZnVuY3Rpb24gW2Etel1cKFwpe3JldHVybiAoLio/KX0='), unpacked_code)[0]
 				token_key = re.findall(r'%s=.*?\"(.*?)\"' % cch, unpacked_code)[0]
@@ -757,7 +781,7 @@ class source:
 
 		try:
 			if len(self.TOKEN_KEY) == 0:
-				token_key = proxies.request(self.TOKEN_KEY_PASTEBIN_URL, use_web_proxy=self.proxyrequired, httpsskip=True)
+				token_key = proxies.request(self.TOKEN_KEY_PASTEBIN_URL, use_web_proxy=self.proxyrequired, httpsskip=True, timeout=7)
 				if token_key !=None and token_key != '':
 					#cookie_dict.update({'token_key':token_key})
 					self.TOKEN_KEY.append(token_key)
@@ -766,7 +790,7 @@ class source:
 			log('ERROR', 'getVidToken-2','%s' % e, dolog=False)
 			
 		try:
-			fm_flags = proxies.request(self.FLAGS_PASTEBIN_URL, use_web_proxy=self.proxyrequired, httpsskip=True)
+			fm_flags = proxies.request(self.FLAGS_PASTEBIN_URL, use_web_proxy=self.proxyrequired, httpsskip=True, timeout=7)
 			if fm_flags !=None and fm_flags != '':
 				fm_flags = json.loads(fm_flags)
 				#cookie_dict.update({'token_key':token_key})

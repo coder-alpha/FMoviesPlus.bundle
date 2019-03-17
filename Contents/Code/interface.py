@@ -29,11 +29,12 @@ def init():
 	
 	init = sources()
 	initA.append(init)
+	initA[0].doInit()
 	
 	return "Interface Framework Initialized"
 	
 def isInitialized():
-	if len(initA) > 0:
+	if len(initA) > 0 and initA[0].isInitialized == True:
 		return True
 	else:
 		return False
@@ -170,16 +171,24 @@ def searchOMDB(title, year=None, doSearch=False, ver=None):
 		Log("interface.py>searchOMDB() >> : >>> %s" % (e))
 		return None
 		
-def requestOMDB(t, y, Season, i, ver=None):
+def requestOMDB(title, year=None, season=None, imdb=None, ver=None, timeout=None):
 	try:
 		if Prefs["use_debug"]:
-			Log("OMDB Request: Title:%s Year:%s Season:%s imdb:%s" % (t,y,Season,i))
+			Log("OMDB Request: Title:%s Year:%s Season:%s imdb:%s" % (title,year,season,imdb))
+		
+		if timeout == None:
+			timeout = 10
+		else:
+			try:
+				timeout = int(timeout)
+			except:
+				timeout = 10
 		
 		c = 0
 		res = None
 		while res == None and c < 3:
 			try:
-				res = omdb.request(t=t, y=int(y), Season=str(Season), i=i, c=Prefs['ca_api_key'], ver=ver, r='json', timeout=10)
+				res = omdb.request(t=title, y=year, Season=season, i=imdb, c=Prefs['ca_api_key'], ver=ver, r='json', timeout=timeout)
 			except Exception as e:
 				c += 1
 				time.sleep(1.0)
@@ -189,7 +198,7 @@ def requestOMDB(t, y, Season, i, ver=None):
 		Log("interface.py>requestOMDB() >> : >>> %s" % (e))
 		return None
 		
-def getOMDB(title, year, season, episode, imdbid, ver=None):
+def getOMDB(title, year=None, season=None, episode=None, imdbid=None, ver=None):
 	try:
 		if Prefs["use_debug"]:
 			Log("OMDB Request: Title:%s Year:%s Season:%s Episode:%s imdb:%s" % (title, year, season, episode, imdbid))
@@ -198,14 +207,14 @@ def getOMDB(title, year, season, episode, imdbid, ver=None):
 		res = None
 		while res == None and c < 3:
 			try:
-				res = omdb.get(title=title, year=int(year), season=str(season), episode=str(episode), imdbid=imdbid, c=Prefs['ca_api_key'], ver=ver, timeout=10)
+				res = omdb.get(title=title, year=year, season=season, episode=episode, imdbid=imdbid, c=Prefs['ca_api_key'], ver=ver, timeout=10)
 			except Exception as e:
 				c += 1
 				time.sleep(1.0)
 		
 		return res
 	except Exception as e:
-		Log("interface.py>requestOMDB() >> : >>> %s" % (e))
+		Log("interface.py>getOMDB() >> : >>> %s" % (e))
 		return None
 
 def clearSources():
@@ -234,7 +243,6 @@ def checkProgress(key, useCached=True):
 		# filter_extSources += [i for i in srcs if i['key'] == key]
 		# if len(filter_extSources) > 0:
 			# return 100
-		
 	prog = initA[0].checkProgress(key=key)
 	# if Prefs['use_debug']:
 		# Log("Progress request: %s" % prog)
@@ -319,6 +327,16 @@ def getProviders(encode=True):
 		
 	return E(JSON.StringFromObject(initA[0].getProviders()))
 	
+def getProvidersInitStatus():
+	if wait_for_init() == False:
+		return 0
+	return initA[0].getProvidersInitStatus()
+	
+def getCurrentProviderInProcess():
+	if wait_for_init() == False:
+		return 0
+	return initA[0].getCurrentProviderInProcess()
+	
 def getProvidersLoggerTxts(choice=None, dumpToLog=True):
 	if wait_for_init() == False:
 		return
@@ -386,11 +404,11 @@ def getHostsLoggerTxts(choice=None, dumpToLog=True):
 		#Log(" === LOGGER txt END === ")
 	return list(reversed(loggertxt))
 	
-def getControlLoggerTxts():
+def getControlLoggerTxts(forceDump=False):
 	if wait_for_init() == False:
 		return
 	loggertxt = []
-	if Prefs["use_debug"]:
+	if Prefs["use_debug"] or forceDump == True:
 		Log(" === CONTROL txt Start ===")
 		for txt in control.loggertxt:
 			loggertxt.append(txt)
@@ -409,7 +427,7 @@ def checkKeyInThread(key=None):
 	
 	return initA[0].checkKeyInThread(key=key)
 		
-def getExtSources(movtitle=None, year=None, tvshowtitle=None, season=None, episode=None, proxy_options=None, provider_options=None, key=None, maxcachetime=0, ver=None, imdb_id=None, session=None):
+def getExtSources(movtitle=None, year=None, tvshowtitle=None, season=None, episode=None, proxy_options=None, provider_options=None, key=None, maxcachetime=0, ver=None, imdb_id=None, session=None, timeout=None, forceRet=False):
 
 	InterfaceThread[key] = True
 	
@@ -427,6 +445,8 @@ def getExtSources(movtitle=None, year=None, tvshowtitle=None, season=None, episo
 			name = movtitle.strip()
 	elif tvshowtitle !=None:
 		name = tvshowtitle
+		
+	start_time = time.time()
 		
 	runGetSources(
 	name = name,
@@ -446,8 +466,16 @@ def getExtSources(movtitle=None, year=None, tvshowtitle=None, season=None, episo
 	# if Prefs['use_debug']:
 		# Log("Movie: %s" % movtitle)
 	
-	while initA[0].checkProgress(key) != 100:
+	while initA[0].checkProgress(key) != 100 and forceRet == False:
 		time.sleep(2)
+		
+		try:
+			if timeout != None and int(timeout) > 0:
+				if (time.time() - start_time) > int(timeout):
+					Log.Error('interface.py > getExtSources: Source Searching Timeout Reached !')
+					break
+		except:
+			pass
 		#os.system('cls')
 		#print 'Threads progress: %s' % initA[0].checkProgress()
 		#if Prefs["use_debug"]:

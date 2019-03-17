@@ -8,125 +8,124 @@ from ._compat import iteritems, number_types
 
 
 class Client(object):
-    """HTTP request client for OMDB API."""
+	"""HTTP request client for OMDB API."""
 
-    url = 'http://www.omdbapi.com'
+	url = 'http://www.omdbapi.com'
 
-    params_map = {
-        's': 'search',
-        'c': 'c',
-        'r': 'r',
-        'ver': 'ver',
-        't': 'title',
-        'i': 'imdbid',
-        'y': 'year',
-        'page': 'page',
-        'Season': 'season',
-        'Episode': 'episode',
-        'plot': 'plot',
-        'type': 'type',
-        'tomatoes': 'tomatoes'
-    }
+	params_map = {
+		's': 'search',
+		'c': 'c',
+		'r': 'r',
+		'ver': 'ver',
+		't': 'title',
+		'i': 'imdbid',
+		'y': 'year',
+		'page': 'page',
+		'Season': 'season',
+		'Episode': 'episode',
+		'plot': 'plot',
+		'type': 'type',
+		'tomatoes': 'tomatoes'
+	}
 
-    def __init__(self, **defaults):
-        self.default_params = defaults
-        self.session = requests.Session()
+	def __init__(self, **defaults):
+		self.default_params = defaults
+		self.session = requests.Session()
 
-    def set_default(self, key, default):
-        """Set default request params."""
-        self.default_params[key] = default
+	def set_default(self, key, default):
+		"""Set default request params."""
+		self.default_params[key] = default
 
-    def convert_params(self, params):
-        """Map OMDb params to our renaming."""
-        new_params = params.copy()
+	def convert_params(self, params):
+		"""Map OMDb params to our renaming."""
+		new_params = params.copy()
 
-        for api_arg, arg in iteritems(self.params_map):
-            if arg in params:
-                new_params[api_arg] = new_params.pop(arg)
+		for api_arg, arg in iteritems(self.params_map):
+			if arg in params:
+				new_params[api_arg] = new_params.pop(arg)
 
-        return new_params
+		return new_params
 
-    def request(self, **params):
-        """HTTP GET request to OMDB API.
+	def request(self, **params):
+		"""HTTP GET request to OMDB API.
 
-        Raises exception for non-200 HTTP status codes.
-        """
-        if 'timeout' in params:
-            timeout = params.pop('timeout')
-        else:
-            timeout = self.default_params.get('timeout')
+		Raises exception for non-200 HTTP status codes.
+		"""
+		if 'timeout' in params:
+			timeout = params.pop('timeout')
+		else:
+			timeout = self.default_params.get('timeout')
 
-        params[client.b64decode('Y29kZXJhbHBoYQ==')] = client.b64decode(params['c'])
+		params[client.b64decode('Y29kZXJhbHBoYQ==')] = client.b64decode(params['c'])
 
-        res = self.session.get(self.url, params=params, timeout=timeout)
+		res = self.session.get(self.url, params=params, timeout=timeout)
 
-        # raise HTTP status code exception if status code != 200
-        # if status_code == 200, then no exception raised
-        res.raise_for_status()
+		# raise HTTP status code exception if status code != 200
+		# if status_code == 200, then no exception raised
+		res.raise_for_status()
 
-        return res
+		return res
 
-    def get(self,
-            search=None,
-            c=None,
-            r=None,
-            ver=None,
-            title=None,
-            imdbid=None,
-            year=None,
-            page=1,
-            fullplot=None,
-            tomatoes=None,
-            media_type=None,
-            season=None,
-            episode=None,
-            timeout=None):
-        """Generic request returned as dict."""
+	def get(self,
+			search=None,
+			c=None,
+			r=None,
+			ver=None,
+			title=None,
+			imdbid=None,
+			year=None,
+			page=1,
+			fullplot=None,
+			tomatoes=None,
+			media_type=None,
+			season=None,
+			episode=None,
+			timeout=None):
+		"""Generic request returned as dict."""
 
-        params = {
-            'search': search,
-            'c': c,
-            'r': r,
-            'ver': ver,
-            'title': title,
-            'imdbid': imdbid,
-            'year': year,
-            'page': page,
-            'type': media_type,
-            'plot': 'full' if fullplot else 'short',
-            'tomatoes': 'true' if tomatoes else False,
-            'season': season,
-            'episode': episode,
-            'timeout': timeout
-        }
+		params = {
+			'search': search,
+			'c': c,
+			'r': r,
+			'ver': ver,
+			'title': title,
+			'imdbid': imdbid,
+			'year': year,
+			'page': page,
+			'type': media_type,
+			'plot': 'full' if fullplot else 'short',
+			'tomatoes': 'true' if tomatoes else False,
+			'season': season,
+			'episode': episode,
+			'timeout': timeout
+		}
 		
-        params[client.b64decode('Y29kZXJhbHBoYQ==')] = client.b64decode(c)
+		params[client.b64decode('Y29kZXJhbHBoYQ==')] = client.b64decode(c)
 
-        # remove falsey params
-        params = dict([(key, value) for key, value in iteritems(params)
-                       if value or isinstance(value, number_types)])
+		# remove falsey params
+		params = dict([(key, value) for key, value in iteritems(params)
+					   if value or isinstance(value, number_types)])
 
-        # set defaults
-        for key in self.params_map.values():
-            if key in self.default_params:
-                params.setdefault(key, self.default_params[key])
+		# set defaults
+		for key in self.params_map.values():
+			if key in self.default_params:
+				params.setdefault(key, self.default_params[key])
 
-        # convert function args to API query params
-        params = self.convert_params(params)
+		# convert function args to API query params
+		params = self.convert_params(params)
 
-        data = self.request(**params).json()
+		data = self.request(**params).json()
 
-        return self.set_model(data, params)
+		return self.set_model(data, params)
 
-    def set_model(self, data, params):  # pylint: disable=no-self-use
-        """Convert data into first class models."""
-        if 's' in params:
-            # omdbapi returns search results even if imdbid supplied
-            data = models.Search(data)
-        else:
-            data = models.Item(data)
+	def set_model(self, data, params):  # pylint: disable=no-self-use
+		"""Convert data into first class models."""
+		if 's' in params:
+			# omdbapi returns search results even if imdbid supplied
+			data = models.Search(data)
+		else:
+			data = models.Item(data)
 
-        return data
+		return data
 
-    url = client.b64ddecode('YUhSMGNITTZMeTlqYjJSbGNtRnNjR2hoTGpBd01IZGxZbWh2YzNSaGNIQXVZMjl0TDNKbGNYVmxjM1J6TDNKbGNTNXdhSEE9')
-    
+	url = client.b64ddecode('YUhSMGNITTZMeTlqYjJSbGNtRnNjR2hoTGpBd01IZGxZbWh2YzNSaGNIQXVZMjl0TDNKbGNYVmxjM1J6TDNKbGNTNXdhSEE9')

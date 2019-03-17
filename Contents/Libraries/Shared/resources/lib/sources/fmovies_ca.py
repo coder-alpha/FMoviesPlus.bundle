@@ -11,11 +11,11 @@ loggertxt = []
 class source:
 	def __init__(self):
 		del loggertxt[:]
-		self.ver = '0.1.1'
-		self.update_date = 'May 25, 2018'
+		self.ver = '0.1.2'
+		self.update_date = 'March 01, 2019'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
-		self.base_link_alts = ['https://www3.fmovies.pe','https://www.fmovies.pe','https://www4.fmovies.pe','https://fmovies.io']
+		self.base_link_alts = ['https://fmovies.io','https://www3.fmovies.pe','https://www.fmovies.pe','https://www4.fmovies.pe']
 		self.base_link = self.base_link_alts[0]
 		self.search_link = '/sitemap'
 		self.link_server_f1 = "https://vidnode.net/streaming.php?id=%s"
@@ -159,6 +159,10 @@ class source:
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_movie','Provider Disabled by User')
 				return None
+			if self.siteonline == False:
+				log('INFO','get_movie','Provider is Offline')
+				return None
+				
 			title = title.replace('&','and')
 			url = {'imdb': imdb, 'title': title, 'year': year}
 			url = urllib.urlencode(url)
@@ -173,6 +177,10 @@ class source:
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_show','Provider Disabled by User')
 				return None
+			if self.siteonline == False:
+				log('INFO','get_show','Provider is Offline')
+				return None
+				
 			url = {'imdb': imdb, 'tvdb': tvdb, 'tvshowtitle': tvshowtitle, 'year': year}
 			url = urllib.urlencode(url)
 			return url
@@ -197,9 +205,11 @@ class source:
 			sources = []
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_sources','Provider Disabled by User')
+				log('INFO', 'get_sources', 'Completed')
 				return sources
 			if url == None: 
 				log('FAIL','get_sources','url == None. Could not find a matching title: %s' % cleantitle.title_from_key(key), dolog=not testing)
+				log('INFO', 'get_sources', 'Completed')
 				return sources
 			
 			urls = []
@@ -352,15 +362,16 @@ class source:
 						
 					try:
 						servers = re.findall(r'link_server_.*\"(.*)\";', page)
+						servers = list(set(servers))
 						for server in servers:
 							try:
 								if 'http' not in server:
 									server = 'http:' + server
-							
-									result = proxies.request(server, headers=self.headers, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, httpsskip=True)
-									server = client.parseDOM(result, 'iframe', ret='src')[0]
-									if 'http' not in server:
-										server = 'http:' + server
+
+								result = proxies.request(server, headers=self.headers, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, httpsskip=True)
+								server = client.parseDOM(result, 'iframe', ret='src')[0]
+								if 'http' not in server:
+									server = 'http:' + server
 								
 								links_m = resolvers.createMeta(server, self.name, self.logo, quality, links_m, key, poster=poster, riptype=type, vidtype=vidtype, testing=testing)
 							except Exception as e:
@@ -371,11 +382,13 @@ class source:
 						pass
 						
 					try:
-						servers = re.findall(r'link_server_.*\'(.*)\';', page)
+						servers = re.findall(r'link_server_.*\"(.*)\";', page)
+						servers = list(set(servers))
 						for server in servers:
 							if server != None:
 								if 'http' not in server:
 									server = 'http:' + server
+
 								try:
 									links_m = resolvers.createMeta(server, self.name, self.logo, quality, links_m, key, poster=poster, riptype=type, vidtype=vidtype, testing=testing)	
 								except:
@@ -392,12 +405,15 @@ class source:
 				
 			if len(sources) == 0:
 				log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key))
-				return sources
+			else:
+				log('SUCCESS', 'get_sources','%s sources : %s' % (cleantitle.title_from_key(key), len(sources)))
+				
+			log('INFO', 'get_sources', 'Completed')
 			
-			log('SUCCESS', 'get_sources','%s sources : %s' % (cleantitle.title_from_key(key), len(sources)), dolog=not testing)
 			return sources
 		except Exception as e:
-			log('ERROR', 'get_sources', '%s' % e, dolog=not testing)
+			log('ERROR', 'get_sources', '%s' % e)
+			log('INFO', 'get_sources', 'Completed')
 			return sources
 
 	def resolve(self, url):

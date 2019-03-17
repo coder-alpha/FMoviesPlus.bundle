@@ -11,14 +11,14 @@ MC = common.NewMessageContainer(common.PREFIX, common.TITLE)
 
 ####################################################################################################
 @route(PREFIX+'/videoplayback')
-def CreateVideoObject(url, title, summary, thumb, params, duration, genres, videoUrl, videoRes, watch_title, include_container=False, **kwargs):
+def CreateVideoObject(url, title, summary, thumb, params, duration, genres, videoUrl, videoRes, watch_title, include_container=False, playDirect=False, **kwargs):
 
 	videoUrl = videoUrl.decode('unicode_escape')
 	url = url if url != None else videoUrl
 	
 	if include_container:
 		video = MovieObject(
-			key = Callback(CreateVideoObject, url=url, title=title, summary=summary, thumb=thumb, params=params, duration=duration, genres=genres, videoUrl=videoUrl, videoRes=videoRes, watch_title=watch_title, include_container=True),
+			key = Callback(CreateVideoObject, url=url, title=title, summary=summary, thumb=thumb, params=params, duration=duration, genres=genres, videoUrl=videoUrl, videoRes=videoRes, watch_title=watch_title, include_container=True, playDirect=playDirect),
 			rating_key = url + title,
 			title = title,
 			summary = summary,
@@ -30,14 +30,14 @@ def CreateVideoObject(url, title, summary, thumb, params, duration, genres, vide
 						audio_codec = AudioCodec.AAC,  # ACC, MP3
 						audio_channels = 2,			# 2, 6
 						video_resolution = int(videoRes.replace('p','')),
-						parts = [PartObject(key=Callback(PlayVideo,videoUrl=videoUrl, params=params, retResponse=include_container, url=url, title=title, summary=summary, thumb=thumb, watch_title=watch_title))],
+						parts = [PartObject(key=Callback(PlayVideo,videoUrl=videoUrl, params=params, retResponse=include_container, url=url, title=title, summary=summary, thumb=thumb, watch_title=watch_title, playDirect=playDirect))],
 						optimized_for_streaming = True
 				)
 			]
 		)
 	else:
 		video = VideoClipObject(
-			key = Callback(CreateVideoObject, url=url, title=title, summary=summary, thumb=thumb, params=params, duration=duration, genres=genres, videoUrl=videoUrl, videoRes=videoRes, watch_title=watch_title, include_container=True),
+			key = Callback(CreateVideoObject, url=url, title=title, summary=summary, thumb=thumb, params=params, duration=duration, genres=genres, videoUrl=videoUrl, videoRes=videoRes, watch_title=watch_title, include_container=True, playDirect=playDirect),
 			rating_key = url + title,
 			title = title,
 			summary = summary,
@@ -49,7 +49,7 @@ def CreateVideoObject(url, title, summary, thumb, params, duration, genres, vide
 						audio_codec = AudioCodec.AAC,  # ACC, MP3
 						audio_channels = 2,			# 2, 6
 						video_resolution = int(videoRes.replace('p','')),
-						parts = [PartObject(key=Callback(PlayVideo,videoUrl=videoUrl, params=params, retResponse=include_container, url=url, title=title, summary=summary, thumb=thumb, watch_title=watch_title))],
+						parts = [PartObject(key=Callback(PlayVideo,videoUrl=videoUrl, params=params, retResponse=include_container, url=url, title=title, summary=summary, thumb=thumb, watch_title=watch_title, playDirect=playDirect))],
 						optimized_for_streaming = True
 				)
 			]
@@ -63,9 +63,14 @@ def CreateVideoObject(url, title, summary, thumb, params, duration, genres, vide
 ####################################################################################################
 @route(PREFIX+'/PlayVideo.mp4')
 @indirect
-def PlayVideo(videoUrl, params, retResponse, url, title, summary, thumb, watch_title, **kwargs):
+def PlayVideo(videoUrl, params, retResponse, url, title, summary, thumb, watch_title, playDirect=False, **kwargs):
 
-	if 'googleusercontent.com' in videoUrl:
+	playDirect = True if str(playDirect).lower() == 'true' else False
+	Log('%s : %s : %s' % (url, videoUrl, playDirect))
+	
+	if 'googleusercontent.com' in videoUrl or playDirect == True:
+		if Prefs['use_debug']:
+			Log('PlayVideo > Using Direct Play')
 		pass
 	elif '3donlinefilms.com' in url:
 		videoUrl, params_enc, err = common.host_direct.resolve(url)
@@ -151,10 +156,11 @@ def PlayVideo(videoUrl, params, retResponse, url, title, summary, thumb, watch_t
 					http_cookies = cookie
 					http_headers['Cookie'] = cookie
 
-	#Log.Debug("Playback via Generic for URL: %s" % videoUrl)
-	#Log("http_headers : %s" % http_headers)
-	#Log("http_cookies : %s" % http_cookies)
-	#Log(common.client.request(videoUrl, headers=http_headers, output='chunk')[0:20])
+	if Prefs['use_debug']:
+		Log("Playback via Generic for URL: %s" % videoUrl)
+		#Log("http_headers : %s" % http_headers)
+		#Log("http_cookies : %s" % http_cookies)
+		#Log(common.client.request(videoUrl, headers=http_headers, output='chunk')[0:20])
 	
 	if '.m3u8' in videoUrl:
 		return IndirectResponse(VideoClipObject, key=HTTPLiveStreamURL(url=PlayAndAdd(url=url, title=title, summary=summary, thumb=thumb, videoUrl=videoUrl, watch_title=watch_title)), http_headers=http_headers, post_headers=http_headers, http_cookies=http_cookies)

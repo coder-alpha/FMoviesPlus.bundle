@@ -9,7 +9,8 @@ from resources.lib import resolvers
 # Web Proxy
 name = 'Unblock'
 loggertxt = []
-PROXY_URL = "https://unblockweb.co/browse.php?b=4&u="
+PROXY_URL = "https://unblockweb.co/browse.php?b=28&u="
+# https://unblockweb.co/browse.php?u=https%3A%2F%2Ffmovies.taxi%2Fmovies%3Fpage%3D1&b=28&f=norefer
 
 class proxy:
 	def __init__(self):
@@ -114,6 +115,7 @@ def requestdirect(url, close=True, redirect=True, followredirect=False, error=Fa
 		page_data_string = page_data_string.replace('https://unblock.co/browse.php?', '')
 		page_data_string = page_data_string.replace('/browse.php?u=', '')
 		page_data_string = page_data_string.replace('b=4', '')
+		page_data_string = page_data_string.replace('b=28', '')
 		page_data_string = page_data_string.replace('u=', '')
 		page_data_string = page_data_string.replace('&http', 'http')
 		page_data_string = page_data_string.replace('/http', 'http')
@@ -131,10 +133,12 @@ def requestdirect(url, close=True, redirect=True, followredirect=False, error=Fa
 		except:
 			pass
 		
+		log('INFO', 'requestdirect', 'Completed')
 		return client.getResponseDataBasedOnOutput(page_data_string, res, output)
 		
 	except Exception as e:
 		log('ERROR','requestdirect', '%s' % e)
+		log('INFO', 'requestdirect', 'Completed')
 		return None
 
 def log(type='INFO', method='undefined', err='', dolog=True, logToControl=False, doPrint=True):

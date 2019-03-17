@@ -1,26 +1,30 @@
 # -*- coding: utf-8 -*-
 
+#########################################################################################################
+#
+# Coder Alpha
+# https://github.com/coder-alpha
+#
+
 '''
-	Specto Add-on
-	Copyright (C) 2016 mrknow
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
 
-	This program is free software: you can redistribute it and/or modify
-	it under the terms of the GNU General Public License as published by
-	the Free Software Foundation, either version 3 of the License, or
-	(at your option) any later version.
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-	This program is distributed in the hope that it will be useful,
-	but WITHOUT ANY WARRANTY; without even the implied warranty of
-	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-	GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
+#########################################################################################################
 
 import re,urllib,urlparse,json,hashlib,base64,time
 
-from resources.lib.libraries import client, cleantitle, source_utils, testparams, control, jsunfuck, cache
+from resources.lib.libraries import client, cleantitle, testparams, control, jsunfuck, source_utils
 from resources.lib import resolvers, proxies
 
 CODE = '''def retA():
@@ -44,31 +48,36 @@ CODE = '''def retA():
 	return %s
 param = retA()'''
 
-name = 'YesMovies'
+name = 'YesMovie'
 loggertxt = []
 
 class source:
 	def __init__(self):
 		del loggertxt[:]
 		self.ver = '0.1.2'
-		self.update_date = 'Aug. 09, 2018'
+		self.update_date = 'Feb. 05, 2019'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
-		self.base_link = 'https://yesmovies.to'
-		self.MainPageValidatingContent = 'Yesmovies - Watch FREE Movies Online & TV shows'
+		self.base_link_alts = ['https://yesmovies.gg']
+		self.base_link = self.base_link_alts[0]
+		self.MainPageValidatingContent = 'Yesmovies - Watch FREE Movies Online'
 		self.ssl = False
+		self.headers = {}
+		self.cookie = None
 		self.disabled = False
 		self.name = name
 		self.type_filter = ['movie', 'show', 'anime']
 		self.loggertxt = []
-		self.logo = 'http://i.imgur.com/4g0iJ8Y.png'
+		self.logo = 'https://i.imgur.com/jjJJgd6.png'
 		self.info_link = '/ajax/movie_info/%s.html'
+		self.info_link2 = 'https://api.yesmovies.gg/ajax/movie_load_info/%s/'
 		self.episode_link = '/ajax/v4_movie_episodes/%s'
 		self.playlist_link = '/ajax/v2_get_sources/%s.html?hash=%s'
 		self.server_link = '/ajax/v4_movie_episodes/%s'
 		self.embed_link = '/ajax/movie_embed/%s'
 		self.token_link = '/ajax/movie_token?eid=%s&mid=%s'
 		self.sourcelink = '/ajax/movie_sources/%s?x=%s&y=%s'
+		self.api_search = 'https://api.ocloud.stream/movie/search/%s?link_web=%s' #'https://api.yesmovies.gg/movie/search/%s?link_web=%s'
 		self.speedtest = 0
 		if len(proxies.sourceProxies)==0:
 			proxies.init()
@@ -77,7 +86,7 @@ class source:
 		self.siteonline = self.testSite()
 		self.testparser = 'Unknown'
 		self.testparser = self.testParser()
-		self.firstRunDisabled = False
+		self.firstRunDisabled = True
 		self.init = True
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s End --' % (name, self.ver, self.update_date))
 		
@@ -99,18 +108,53 @@ class source:
 		self.loggertxt = loggertxt
 		return self.loggertxt
 		
+	def setNewCookies(self, site):
+		try:
+			ua = client.randomagent()
+			self.headers['User-Agent'] = ua
+			self.cookie = proxies.request(url=site, headers=self.headers, output='cookie', use_web_proxy=self.proxyrequired)
+			if self.cookie == None:
+				raise Exception('Retrieved cookie None')
+			self.headers['Cookie'] = self.cookie
+			log('SUCCESS', 'setNewCookies', 'CF Cookie : %s for %s' % (self.cookie,site))
+		except Exception as e:
+			log('ERROR','setNewCookies', '%s' % e)
+		
 	def testSite(self):
+		for site in self.base_link_alts:
+			try:
+				sitex = client.getRedirectingUrl(site, headers=self.headers).strip("/")
+				self.setNewCookies(sitex)
+				if 'http' not in sitex:
+					raise Exception('Error in geturl')
+				else:
+					site = sitex
+			except:
+				pass
+			self.base_link = site
+			bool = self.testSiteAlts()
+			if bool == True:
+				return bool
+				
+		self.base_link = self.base_link_alts[0]
+		return False
+		
+	def testSiteAlts(self):
 		try:
 			x1 = time.time()
-			http_res, content = proxies.request(url=self.base_link, output='response', use_web_proxy=False)
+			http_res, content = proxies.request(url=self.base_link, headers=self.headers, output='response', use_web_proxy=False)
+			print content
 			self.speedtest = time.time() - x1
 			if content != None and content.find(self.MainPageValidatingContent) >-1:
 				log('SUCCESS', 'testSite', 'HTTP Resp : %s for %s' % (http_res,self.base_link))
 				return True
 			else:
-				log('FAIL', 'testSite', 'Validation content Not Found. HTTP Resp : %s for %s' % (http_res,self.base_link))
+				if ('%s' % http_res) == '520':
+					log('FAIL', 'testSite', 'Website down ! HTTP Resp : %s for %s' % (http_res,self.base_link))
+				else:
+					log('FAIL', 'testSite', 'Validation content Not Found. HTTP Resp : %s for %s' % (http_res,self.base_link))
 				x1 = time.time()
-				http_res, content = proxies.request(url=self.base_link, output='response', use_web_proxy=True)
+				http_res, content = proxies.request(url=self.base_link, headers=self.headers, output='response', use_web_proxy=True)
 				self.speedtest = time.time() - x1
 				if content != None and content.find(self.MainPageValidatingContent) >-1:
 					self.proxyrequired = True
@@ -119,7 +163,7 @@ class source:
 				else:
 					time.sleep(2.0)
 					x1 = time.time()
-					http_res, content = proxies.request(url=self.base_link, output='response', use_web_proxy=True)
+					http_res, content = proxies.request(url=self.base_link, headers=self.headers, output='response', use_web_proxy=True)
 					self.speedtest = time.time() - x1
 					if content != None and content.find(self.MainPageValidatingContent) >-1:
 						self.proxyrequired = True
@@ -166,33 +210,52 @@ class source:
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_movie','Provider Disabled by User')
 				return None
+				
 			variations = [title, title.replace('&','and')]
 			
 			for title in variations:
 				try:
 					t = cleantitle.get(title)
 
-					q = '/search/%s.html' % (urllib.quote_plus(cleantitle.query(title)))
-					q = urlparse.urljoin(self.base_link, q)
+					q = self.api_search % (urllib.quote_plus(cleantitle.query(title).replace(' ','-')), self.base_link)
+					#q = urlparse.urljoin(self.base_link, q)
+					#print q
 					
-					for i in range(3):
-						#r = client.request(q, IPv4=True)
-						r = proxies.request(q, IPv4=True, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
-						if not r == None: break
+					#r = client.request(q, headers=self.headers, IPv4=True)
+					r = proxies.request(q, headers=self.headers, IPv4=True, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+					#if not r == None: break
 
 					r = client.parseDOM(r, 'div', attrs = {'class': 'ml-item'})
-					r = [(client.parseDOM(i, 'a', ret='href'), client.parseDOM(i, 'a', ret='title')) for i in r]
-					r = [(i[0][0], i[1][0]) for i in r if i[0] and i[1]]
-					r = [i[0] for i in r if t == cleantitle.get(i[1])][:2]
-					r = [(i, re.findall('(\d+)', i)[-1]) for i in r]
+					#print r
+					
+					r = [(client.parseDOM(i, 'a', ret='href'), client.parseDOM(i, 'a', ret='title'), client.parseDOM(i, 'a', ret='data-url')) for i in r]
+					#print r
+					
+					r = [(i[0][0], i[1][0], i[2][0]) for i in r if i[0] and i[1] and i[2]]
+					#print r
+
+					r = [(i[0],i[2]) for i in r if t == cleantitle.get(i[1])][:2]
+					#print r
+					#r = [(i, re.findall('(\d+)', i)[-1]) for i in r]
 
 					for i in r:
 						try:
-							y, q = cache.get(self.ymovies_info, 9000, i[1], proxy_options=proxy_options)
-							if not y == year: raise Exception()
-							return urlparse.urlparse(i[0]).path, ''
+							u = i[1]
+							url = i[0]
+							#print u
+							if 'http' not in u:
+								u = urlparse.urljoin(self.base_link, u)
+							y, q, h = self.ymovies_info(u)
+							if 'http' not in h:
+								h = urlparse.urljoin(self.base_link, h)
+							#print '%s == %s' % (y, year)
+
+							if str(y).strip() != str(year).strip() or h == None:
+								raise Exception()
+							url = h
+							return [url, None]
 						except:
-							pass
+							return [url, None]
 				except:
 					pass
 		except Exception as e: 
@@ -244,73 +307,53 @@ class source:
 				#print title
 				try:
 					season = '%01d' % int(season) ; episode = '%01d' % int(episode)
-					
-					r = cache.get(self.ymovies_info_season, 720, title, season, proxy_options=proxy_options)
+					#year = re.findall('(\d{4})', date)[0]
+					years = [str(year), str(int(year)+1), str(int(year)-1), str(int(year)-int(season)), str(int(year)+int(season))]
+
+					r = self.ymovies_info_season(title, season, proxy_options=proxy_options)
 					if r == None or len(r) == 0: raise Exception()
 					#print r
 					
-					r = [(i[0], re.findall('(.+?)\s+(?:-|)\s+season\s+(\d+)$', i[1].lower())) for i in r]
+					r = [(i[0], re.findall('(.+?)\s+(?:-|)\s+season\s+(\d+)$', i[1].lower()), i[2]) for i in r]
 					#print r
 					
-					r = [(i[0], i[1][0][0], i[1][0][1]) for i in r if i[1]]
+					#r = [(i[0], i[1][0][0], i[1][0][1], i[2]) for i in r if i[1]]
 					#print r
 					
-					r1 = []
-					try:
-						r1 = [i[0] for i in r if title == cleantitle.get(i[1]) and int(season) == int(i[2])][:2]
-					except:
-						pass
-					if len(r1) == 0:
-						r = [i[0] for i in r if int(season) == int(i[2])][:2]
-					else:
-						r = r1
-
-					#print r
-						
-					r = [(i, re.findall('(\d+)', i)[-1]) for i in r]					
-					#print r
-
 					for i in r:
 						try:
-							y, q = cache.get(self.ymovies_info, 9000, i[1], proxy_options=proxy_options)
+							u = i[2]
+							if 'http' not in u:
+								u = urlparse.urljoin(self.base_link, u)
+							y, q, h = self.ymovies_info(u, proxy_options=proxy_options)
+							if 'http' not in h:
+								h = urlparse.urljoin(self.base_link, h)
 							mychk = False
 							years = [str(year),str(int(year) + 1),str(int(year) - 1)]
 							for x in years:
 								if str(y) == x: mychk = True
 							if mychk == False: raise Exception()
-							return urlparse.urlparse(i[0]).path, (episode)
+							return [h + '?=%s' % episode, episode]
 						except:
 							pass
 							
 					# yr variation for shows
 					try:
-						year = int(year) + int(season)
-						for i in r:
-							try:
-								y, q = cache.get(self.ymovies_info, 9000, i[1], proxy_options=proxy_options)
-								mychk = False
-								years = [str(year),str(int(year) + 1),str(int(year) - 1)]
-								for x in years:
-									if str(y) == x: mychk = True
-								if mychk == False: raise Exception()
-								return urlparse.urlparse(i[0]).path, (episode)
-							except:
-								pass
-					except:
-						pass
-						
-					# yr variation for shows
-					try:
 						year = int(year) - int(season)
 						for i in r:
 							try:
-								y, q = cache.get(self.ymovies_info, 9000, i[1], proxy_options=proxy_options)
+								u = i[2]
+								if 'http' not in u:
+									u = urlparse.urljoin(self.base_link, u)
+								y, q, h = self.ymovies_info(u, proxy_options=proxy_options)
+								if 'http' not in h:
+									h = urlparse.urljoin(self.base_link, h)
 								mychk = False
 								years = [str(year),str(int(year) + 1),str(int(year) - 1)]
 								for x in years:
 									if str(y) == x: mychk = True
 								if mychk == False: raise Exception()
-								return urlparse.urlparse(i[0]).path, (episode)
+								return [h + '?=%s' % episode, episode]
 							except:
 								pass
 					except:
@@ -318,7 +361,10 @@ class source:
 						
 					# yr ignore for shows
 					for i in r:
-						return urlparse.urlparse(i[0]).path, (episode)
+						h = i[0]
+						if 'http' not in h:
+							h = urlparse.urljoin(self.base_link, h)
+						return [h + '?=%s' % episode, episode]
 				except:
 					pass		
 			return
@@ -337,17 +383,18 @@ class source:
 			#print qs
 			for qm in qs:
 				try:
-					q = '/search/%s.html' % (urllib.quote_plus(qm))
-					q = urlparse.urljoin(self.base_link, q)
+					#q = '/movie/search/%s' % (urllib.quote_plus(qm))
+					q = self.api_search % (urllib.quote_plus(cleantitle.query(qm).replace(' ','-')), self.base_link)
+					#q = urlparse.urljoin(self.base_link, q)
 					#print q
 					for i in range(3):
-						#r = client.request(q, IPv4=True)
-						r = proxies.request(q, IPv4=True, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+						#r = client.request(q, headers=self.headers, IPv4=True)
+						r = proxies.request(q, headers=self.headers, IPv4=True, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
 						if not r == None: break
 					
 					r = client.parseDOM(r, 'div', attrs = {'class': 'ml-item'})
-					r = [(client.parseDOM(i, 'a', ret='href'), client.parseDOM(i, 'a', ret='title')) for i in r]
-					r = [(i[0][0], i[1][0]) for i in r if i[0] and i[1]]
+					r = [(client.parseDOM(i, 'a', ret='href'), client.parseDOM(i, 'a', ret='title'), client.parseDOM(i, 'a', ret='data-url')) for i in r]
+					r = [(i[0][0], i[1][0], i[2][0]) for i in r if i[0] and i[1] and i[2]]
 					if not r == None and len(r) > 0: break
 				except:
 					pass
@@ -358,19 +405,22 @@ class source:
 
 	def ymovies_info(self, url, proxy_options=None):
 		try:
-			u = urlparse.urljoin(self.base_link, self.info_link)
+			if 'ajax' not in url:
+				#r = client.request(url, headers=self.headers, IPv4=True)
+				r = proxies.request(url, headers=self.headers, IPv4=True, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+				id = re.findall(r'var id = (.*);',r)[0]
+				url = self.info_link2 % id
 
-			for i in range(3):
-				#r = client.request(u % url, IPv4=True)
-				r = proxies.request(u % url, IPv4=True, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
-				if not r == None: break
-
+			#r = client.request('%s?link_web=%s' % (url, self.base_link), headers=self.headers, IPv4=True)
+			r = proxies.request('%s?link_web=%s' % (url, self.base_link), headers=self.headers, IPv4=True, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+			r = r.replace('\\','')
+			#print r
 			q = client.parseDOM(r, 'div', attrs = {'class': 'jtip-quality'})[0]
-
-			y = client.parseDOM(r, 'div', attrs = {'class': 'jt-info'})
-			y = [i.strip() for i in y if i.strip().isdigit() and len(i.strip()) == 4][0]
-
-			return (y, q)
+			q = cleantitle.getQuality(q)
+			y = client.parseDOM(r, 'div', attrs = {'class': 'jt-info'})[0]
+			h = client.parseDOM(r, 'div', attrs = {'class': 'jtip-bottom'})[0]
+			h = client.parseDOM(h, 'a', ret='href')[0].replace(self.base_link,self.base_link+'/')
+			return (y, q, h)
 		except:
 			return
 
@@ -380,58 +430,27 @@ class source:
 			sources = []
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_sources','Provider Disabled by User')
+				log('INFO', 'get_sources', 'Completed')
 				return sources
 			if url == None: 
 				log('FAIL','get_sources','url == None. Could not find a matching title: %s' % cleantitle.title_from_key(key), dolog=not testing)
+				log('INFO', 'get_sources', 'Completed')
 				return sources
 			
-			base_link = self.base_link
-			
-			try:
-				if url[0].startswith('http'):
-					base_link = url[0]
-				mid = re.findall('-(\d+)', url[0])[-1]
-			except:
-				if url.startswith('http'):
-					base_link = url
-				mid = re.findall('-(\d+)', url)[-1]
-
-			try:
-				if len(url[1]) > 0:
-					episode = url[1]
-				else:
-					episode = None
-			except:
-				episode = None
-
-			#print mid
-
 			links_m = []
 			trailers = []
+			headers = self.headers
 			headers = {'Referer': self.base_link}
+			sub_url = None
 			
-			u = urlparse.urljoin(self.base_link, url[0])
-			#print u
-			#r = client.request(u, headers=headers, IPv4=True)
-			r = proxies.request(u, headers=headers, IPv4=True, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+			u = url[0]
+			ep = url[1]
+			#r = client.request(u, headers=headers IPv4=True)
 			
-			try:
-				elem = client.parseDOM(r, 'span', attrs = {'class': 'quality'})[0]
-				qual = source_utils.check_sd_url(elem)
-				riptype = source_utils.check_sd_url_rip(elem)
-			except Exception as e:
-				qual = '480p'
-				riptype = 'BRRIP'
-				
-			try:
-				poster = client.parseDOM(r, 'div', attrs = {'class': 'dm-thumb'})[0]
-				poster = client.parseDOM(poster, 'img', ret='src')[0]
-			except:
-				poster = None
-								
+			r = proxies.request(u, headers=self.headers, IPv4=True, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+			
 			if testing == False:
-				try:		
-					
+				try:				
 					#regex = r"http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+"
 					#matches = re.finditer(regex, r, re.MULTILINE)
 					matches = re.compile('http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+').findall(r)
@@ -448,76 +467,44 @@ class source:
 					
 				for trailer in trailers:
 					links_m = resolvers.createMeta(trailer, self.name, self.logo, '720p', links_m, key, vidtype='Trailer', testing=testing)
+					
+			u = '%s/watching.html?ep=0' % u
+			r = proxies.request(u, headers=self.headers, IPv4=True, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+			print u
 			
 			try:
-				u = urlparse.urljoin(self.base_link, self.server_link % mid)
-				#print u
-				#r = client.request(u, headers=headers, XHR=True, IPv4=True)
-				r = proxies.request(u, headers=headers, XHR=True, IPv4=True, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
-				r = json.loads(r)['html']
-				r = client.parseDOM(r, 'div', attrs = {'class': 'pas-list'})
-				ids = client.parseDOM(r, 'li', ret='data-id')
-				servers = client.parseDOM(r, 'li', ret='data-server')
-				labels = client.parseDOM(r, 'a', ret='title')
-				r = zip(ids, servers, labels)
-				
-				for eid in r:
-					#print r
+				vidtype='Movie'
+
+				if ep == None:
+					r1 = client.parseDOM(r, 'div', attrs = {'class': 'pa-main anime_muti_link'})[0]
+					srcs = client.parseDOM(r1, 'li', ret='data-video')
+				else:
+					srcs = client.parseDOM(r, 'a', ret='player-data', attrs = {'episode-data': str(ep)})
+					vidtype='Show'
+					
+				try:
+					elem = client.parseDOM(r, 'span', attrs = {'class': 'quality'})[0]
+					qual = source_utils.check_sd_url(elem)
+					riptype = source_utils.check_sd_url_rip(elem)
+				except Exception as e:
+					qual = '480p'
+					riptype = 'BRRIP'
+					
+				try:
+					poster = client.parseDOM(r, 'div', attrs = {'class': 'dm-thumb'})[0]
+					poster = client.parseDOM(poster, 'img', ret='src')[0]
+				except:
+					poster = None
+					
+				#print srcs
+					
+				for s in srcs:
 					try:
-						sub_url = None
-						try:
-							ep = re.findall('episode.*?(\d+):.*?',eid[2].lower())[0]
-						except:
-							ep = 0
-						
-						if (episode is None) or (int(ep) == int(episode)):
-							
-							url = urlparse.urljoin(self.base_link, self.token_link % (eid[0], mid))
-							#script = client.request(url, IPv4=True)
-							script = proxies.request(url, IPv4=True, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
-							#print script
-							
-							if '$_$' in script:
-								params = self.uncensored1(script)
-							elif script.startswith('[]') and script.endswith('()'):
-								params = self.uncensored2(script)
-							elif '_x=' in script and '_y=' in script:
-								params = self.uncensored3(script)
-							else:
-								raise Exception()
-								
-							u = urlparse.urljoin(self.base_link, self.sourcelink % (eid[0], params['x'], params['y']))
-							#print u
-							#r = client.request(u, IPv4=True)
-							r = proxies.request(u, IPv4=True, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
-							
-							if r == None or len(r) == 0:
-								u = urlparse.urljoin(self.base_link, self.embed_link % (eid[0]))
-								#print u
-								#r = client.request(u, IPv4=True)
-								r = proxies.request(u, IPv4=True, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
-								
-							try:
-								url = json.loads(r)['playlist'][0]['sources']
-							except:
-								url = [{'file': json.loads(r)['src']}]
-							
-							try:
-								url = [i['file'] for i in url]
-							except:
-								url = [url['file']]
-							
-							try:
-								sub_url = json.loads(r)['playlist'][0]['tracks'][0]['file']
-							except:
-								pass
-								
-							vidtype='Movie'
-							if int(ep) > 0:
-								vidtype='Show'
-							
-							for s in url:
-								links_m = resolvers.createMeta(s, self.name, self.logo, qual, links_m, key, poster=poster, riptype=riptype, vidtype=vidtype, sub_url=sub_url, testing=testing)
+						if s.startswith('//'):
+							s = 'https:%s' % s
+						links_m = resolvers.createMeta(s, self.name, self.logo, qual, links_m, key, poster=poster, riptype=riptype, vidtype=vidtype, sub_url=sub_url, testing=testing)
+						if testing == True and len(links_m) > 0:
+							break
 					except:
 						pass
 			except:
@@ -527,12 +514,15 @@ class source:
 			
 			if len(sources) == 0:
 				log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key))
-				return sources
+			else:
+				log('SUCCESS', 'get_sources','%s sources : %s' % (cleantitle.title_from_key(key), len(sources)))
+				
+			log('INFO', 'get_sources', 'Completed')
 			
-			log('SUCCESS', 'get_sources','%s sources : %s' % (cleantitle.title_from_key(key), len(sources)), dolog=not testing)
 			return sources
 		except Exception as e:
-			log('ERROR', 'get_sources', '%s' % e, dolog=not testing)
+			log('ERROR', 'get_sources', '%s' % e)
+			log('INFO', 'get_sources', 'Completed')
 			return sources
 
 	def resolve(self, url):

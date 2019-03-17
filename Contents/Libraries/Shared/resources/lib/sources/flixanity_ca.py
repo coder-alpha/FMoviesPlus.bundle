@@ -30,8 +30,8 @@ import time, sys, os, json, re, base64,urlparse,urllib,urllib2,string,random,has
 from resources.lib.libraries import cleantitle, dom_parser2, client, testparams, control
 from resources.lib import resolvers, proxies
 
-BASE_URL = 'https://flixanity.io'
-API_BASE_URL = 'https://api.flixanity.io'
+BASE_URL = 'https://flixanity.site'
+API_BASE_URL = 'https://api.flixanity.site'
 SOURCES_URL = '/ajax/gonlflhyad.php'
 EMBED_URL = '/ajax/jne.php'
 SEARCH_URL = '/api/v1/cautare/upd'
@@ -43,18 +43,18 @@ loggertxt = []
 class source:
 	def __init__(self):
 		del loggertxt[:]
-		self.ver = '0.0.1'
-		self.update_date = 'May. 19, 2018'
+		self.ver = '0.0.2'
+		self.update_date = 'Feb. 07, 2019'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
 		self.priority = 1
 		self.disabled = False
 		self.language = ['en']
 		self.type_filter = ['movie', 'show', 'anime']
-		self.domains = ['flixanity.io']
+		self.domains = ['flixanity.site']
 		self.base_link_alts = [BASE_URL]
 		self.base_link = self.base_link_alts[0]
-		self.MainPageValidatingContent = 'FliXanity - Watch TV Shows & Movies Online'
+		self.MainPageValidatingContent = 'FliXanity - Watch Movies & TV Shows Online'
 		self.name = name
 		self.loggertxt = []
 		self.ssl = False
@@ -172,6 +172,10 @@ class source:
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_movie','Provider Disabled by User')
 				return None
+				
+			if self.siteonline == False:
+				log('INFO','get_movie','Provider is Offline')
+				return None
 			
 			res = self.flix.search(video_type='MOVIE', title=title, year=year)
 			if len(res) > 0:
@@ -187,6 +191,10 @@ class source:
 		try:
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_show','Provider Disabled by User')
+				return None
+				
+			if self.siteonline == False:
+				log('INFO','get_show','Provider is Offline')
 				return None
 				
 			res = self.flix.search(video_type='TV SHOW', title=tvshowtitle, year=year, season=season)
@@ -220,9 +228,11 @@ class source:
 			sources = []
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_sources','Provider Disabled by User')
+				log('INFO', 'get_sources', 'Completed')
 				return sources
 			if url == None: 
 				log('FAIL','get_sources','url == None. Could not find a matching title: %s' % cleantitle.title_from_key(key), dolog=not testing)
+				log('INFO', 'get_sources', 'Completed')
 				return sources
 
 			links_m = []
@@ -244,12 +254,15 @@ class source:
 			
 			if len(sources) == 0:
 				log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key))
-				return sources
+			else:
+				log('SUCCESS', 'get_sources','%s sources : %s' % (cleantitle.title_from_key(key), len(sources)))
+				
+			log('INFO', 'get_sources', 'Completed')
 			
-			log('SUCCESS', 'get_sources','%s sources : %s' % (cleantitle.title_from_key(key), len(sources)), dolog=not testing)
 			return sources
 		except Exception as e:
-			log('ERROR', 'get_sources', '%s' % e, dolog=not testing)
+			log('ERROR', 'get_sources', '%s' % e)
+			log('INFO', 'get_sources', 'Completed')
 			return sources
 
 	def resolve(self, url):

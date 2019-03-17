@@ -16,8 +16,14 @@ import sys,urllib2,HTMLParser,urllib,urlparse
 import random, time, cookielib
 import base64
 
+# import Shared Code
+import jsunpack as JSUNPACK
+
 from __builtin__ import eval
 
+USE_RESTRICT_RAPIDVIDEO = True
+RAPIDVIDEO_CAPTCHA = []
+USE_RESTRICT_MP4UPLOAD = True
 
 #-------------------------------------------------------------------------------------------------------------
 # Enforce IPv4 for GetlinkAPI nks Google li
@@ -51,7 +57,10 @@ IP_OVERIDE = True
 RE_SUB1 = Regex(r'(?m)(^[^\#])')
 RE_SOURCES = Regex(r'(?m)(^.+?\d+/(\d+).+$)')
 
-supported_hosts = ['mycloud.to','mcloud.to','rapidvideo.com','streamango.com','rapidvideo','streamango']
+supported_hosts = ['mycloud.to','mcloud.to','rapidvideo.com','streamango.com','rapidvideo','streamango','mp4upload']
+
+USE_POST = []
+RV_COOKIES = ['__cfduid=dda567790eb0b331fd9a8191dec20619e1534810793; PHPSESSID=5v3cqu54ml4rtsdfaejo533o17']
 
 def resolve(url, https_skip=True, test=False, strip_url=True):
 	video_urlf = None
@@ -70,8 +79,12 @@ def resolve(url, https_skip=True, test=False, strip_url=True):
 		
 		if 'rapidvideo.' in ourl:
 			myheaders = {}
-			myheaders['User-Agent'] = 'Mozilla'
+			myheaders['User-Agent'] = agent()
 			myheaders['Referer'] = ourl
+			
+			if len(RV_COOKIES) > 0:
+				myheaders['Cookie'] = RV_COOKIES[0]
+				
 			myParams['headers'] = myheaders
 			
 			if '&q=' in ourl:
@@ -80,10 +93,39 @@ def resolve(url, https_skip=True, test=False, strip_url=True):
 				quals = [ourl_s[1]]
 			else:
 				quals = ['1080p','720p','480p','360p']
+				
+			data = {'confirm.x':44, 'confirm.y':55, 'block':1}
+			edata = urllib.urlencode(data)
+			page_data_string = None
+			
+			use_post = False
+			USE_POST.append(use_post)
 			
 			for qs in quals:
 				try:
-					page_data_string = request((ourl + '&q=%s') % qs, headers=myheaders, httpsskip=True)
+					cookies = None
+					if use_post == True:
+						page_data_string, r2, r3, cookies = request((ourl + '&q=%s') % qs, post=edata, headers=myheaders, httpsskip=True, output='extended')
+					else:
+						page_data_string, r2, r3, cookies = request((ourl + '&q=%s') % qs, headers=myheaders, httpsskip=True, output='extended')
+						
+					if 'pad.php' in page_data_string:
+						use_post = not use_post
+						del USE_POST[:]
+						USE_POST.append(use_post)
+						
+						if use_post == True:
+							page_data_string, r2, r3, cookies = request((ourl + '&q=%s') % qs, post=edata, headers=myheaders, httpsskip=True, output='extended')
+						else:
+							page_data_string, r2, r3, cookies = request((ourl + '&q=%s') % qs, headers=myheaders, httpsskip=True, output='extended')
+						
+					if 'captcha.php' in page_data_string:
+						raise Exception('RapidVideo %s requires captcha verification' % ourl)
+						
+					if cookies != None and len(cookies) > 0:
+						del RV_COOKIES[:]
+						RV_COOKIES.append(cookies)
+						
 					page_data_elems = HTML.ElementFromString(page_data_string)
 					try:
 						video_url = page_data_elems.xpath(".//div[@id='home_video']//source/@src")[0]
@@ -99,6 +141,8 @@ def resolve(url, https_skip=True, test=False, strip_url=True):
 					if video_url != None and res != None:
 						f_i = {'file':video_url, 'label':res}
 						video_url_a.append(f_i)
+						if USE_RESTRICT_RAPIDVIDEO == True:
+							break
 				except:
 					pass
 			
@@ -145,7 +189,35 @@ def resolve(url, https_skip=True, test=False, strip_url=True):
 					except:
 						pass
 				
+			if len(video_url_a) > 0:
 				video_urlf = video_url_a
+			else:
+				raise Exception('No Data found in page')
+				
+		elif 'mp4upload.' in ourl:
+			myheaders = {}
+			myheaders['User-Agent'] = agent()
+			myheaders['Referer'] = ourl
+			myParams['headers'] = myheaders
+			
+			page_data_string = request(ourl, headers=myheaders, httpsskip=True)
+			if 'File Not Found' in page_data_string or 'File was deleted' in page_data_string:
+				raise Exception('File not available')
+			else:
+				video_url, err = decode_mp4upload(page_data_string)
+				if err != '':
+					raise Exception(err)
+
+				for v in video_url:
+					f_i = {'file':v, 'label':'720'}
+					video_url_a.append(f_i)
+					if USE_RESTRICT_MP4UPLOAD == True:
+						break
+					
+			if len(video_url_a) > 0:
+				video_urlf = video_url_a
+			else:
+				raise Exception('No Data found in page')
 			
 		elif 'mycloud.' in ourl or 'mcloud.' in ourl:
 			#Log('============ MyCloud URL ==================')
@@ -240,7 +312,23 @@ def error(url, https_skip):
 			headers['Referer'] = 'http://mycloud.to'
 		
 		#Log('misc>error : %s' % url)
-		page_data_string = str(request(url, headers=headers, httpsskip=True))
+		del RAPIDVIDEO_CAPTCHA[:]
+		if 'rapidvideo.' in ourl and len(USE_POST) > 0 and USE_POST[0] == True:
+			headers = {}
+			headers['User-Agent'] = agent()
+			headers['Referer'] = ourl
+			if len(RV_COOKIES) > 0:
+				headers['Cookie'] = RV_COOKIES[0]
+				
+			data = {'confirm.x':44, 'confirm.y':55, 'block':1}
+			edata = urllib.urlencode(data)
+			page_data_string, h, c, cookies = request(url, post=edata, headers=headers, httpsskip=True, output='extended')
+			if cookies != None:
+				del RV_COOKIES[:]
+				RV_COOKIES.append(cookies)
+		else:
+			page_data_string = str(request(url, headers=headers, httpsskip=True))
+			
 		#Log(page_data_string)
 		
 		if page_data_string != None:
@@ -254,14 +342,57 @@ def error(url, https_skip):
 				error = 'Video removed by streamango.'
 			elif ('streamango.' in ourl or 'fruitstreams.' in ourl or 'streamcherry.' in ourl) and ('The file you are looking is currently converting' in page_data_string):
 				error = 'Video is processing, try again later.'
+			elif ('rapidvideo.' in ourl) and "We are sorry!" in page_data_string:
+				error = 'Video removed or blocked.'
 			elif ('rapidvideo.' in ourl) and "<script>top.location.href = '';</script>" in page_data_string:
 				error = 'No data found in page'
+			elif ('rapidvideo.' in ourl) and 'captcha.php' in page_data_string:
+				error = 'RapidVideo %s requires captcha verification' % url
+				RAPIDVIDEO_CAPTCHA.append('')
+				del RV_COOKIES[:]
+			elif ('mp4upload.' in ourl) and "File Not Found" in page_data_string:
+				error = 'Video Not Found'
+			elif ('mp4upload.' in ourl) and "File was deleted" in page_data_string:
+				error = 'Video removed or blocked.'
 		else:
 			error = 'Page returned None'
 	except:
 		error = 'Page could not be retrieved'
 		
 	return error
+	
+####################################################################################################
+def decode_mp4upload(html):
+	
+	source = None
+	err = ''
+	try:
+		try:
+			str_pattern="(eval\(function\(p,a,c,k,e,(?:r|d).*)"
+			
+			js = re.compile(str_pattern).findall(html)
+			if len(js) == 0:
+				raise Exception('No packer js found.')
+			
+			js = js[0]
+			if 'p,a,c,k,e,' not in js:
+				raise Exception('No packer js found.')
+			
+			html_with_unpacked_js = JSUNPACK.unpack(js)
+			if html_with_unpacked_js == None:
+				raise Exception('Could not unpack js.')
+				
+			source = re.findall(r':\"(http.*.mp4)\"', html_with_unpacked_js)
+		except Exception as e:
+			err = 'Mp4Upload Error: %s' % e
+			Log(err)
+		if source != None and len(source) == 0:
+			raise Exception('No mp4 Videos found !')
+	except Exception as e:
+		err = 'Mp4Upload Error: %s' % e
+		
+			
+	return source, err
 
 ####################################################################################################
 def decode_streamango(html):

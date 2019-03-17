@@ -130,6 +130,7 @@ class Downloader(object):
 		self.dlthrottle = d
 	
 	def download(self, file_meta_enc):
+	
 		file_meta = JSON.ObjectFromString(D(file_meta_enc))
 		title = file_meta['title']
 		url = file_meta['url']
@@ -205,7 +206,12 @@ class Downloader(object):
 		else:
 			item_folder_name = '%s (%s)' % (file_meta['title'], file_meta['year'])
 	
-		fname = create_fname(file_meta, vidtype, riptype, file_ext, file_ext_temp = fid + common.DOWNLOAD_FMP_EXT)
+		fname, fname_e = create_fname(file_meta, vidtype, riptype, file_ext, fid + common.DOWNLOAD_FMP_EXT)
+		if fname == None:
+			raise fname_e
+			
+		tuid = common.id_generator(16)
+		common.control.AddThread('download', 'Download File: %s' % fname, time.time(), '2', False, tuid)
 			
 		abs_path = Core.storage.join_path(path, item_folder_name, fname)
 		directory = Core.storage.join_path(path, item_folder_name)
@@ -223,6 +229,7 @@ class Downloader(object):
 				Log('OpenLoad URL: %s' % furl)
 				Log('OpenLoad Error: %s' % error)
 				download_failed(url, error, progress, startPos, purgeKey)
+				common.control.RemoveThread(tuid)
 				return
 		elif 'rapidvideo' in source.lower():
 			furl, error, sub_url_t = common.host_rapidvideo.resolve(furl)
@@ -232,6 +239,7 @@ class Downloader(object):
 				Log('RapidVideo URL: %s' % furl)
 				Log('RapidVideo Error: %s' % error)
 				download_failed(url, error, progress, startPos, purgeKey)
+				common.control.RemoveThread(tuid)
 				return
 		elif 'streamango' in source.lower():
 			furl, error, sub_url_t = common.host_streamango.resolve(furl)
@@ -241,6 +249,7 @@ class Downloader(object):
 				Log('Streamango URL: %s' % furl)
 				Log('Streamango Error: %s' % error)
 				download_failed(url, error, progress, startPos, purgeKey)
+				common.control.RemoveThread(tuid)
 				return
 		elif 'direct' in source.lower():
 			furl, params_enc, error = common.host_direct.resolve(furl)
@@ -250,6 +259,7 @@ class Downloader(object):
 				Log('3donlinefilms URL: %s' % furl)
 				Log('3donlinefilms Error: %s' % error)
 				download_failed(url, error, progress, startPos, purgeKey)
+				common.control.RemoveThread(tuid)
 				return
 			try:
 				params = json.loads(base64.b64decode(params_enc))
@@ -266,7 +276,9 @@ class Downloader(object):
 		
 		# ToDo
 		# https://support.plex.tv/articles/200220677-local-media-assets-movies/
-		fname = create_fname(file_meta, vidtype, riptype, file_ext)
+		fname, fname_e = create_fname(file_meta, vidtype, riptype, file_ext)
+		if fname == None:
+			raise fname_e
 		
 		final_abs_path = Core.storage.join_path(path, item_folder_name, fname)
 		
@@ -411,6 +423,7 @@ class Downloader(object):
 								except:
 									pass
 								end_download_by_user(title, url, purgeKey)
+								common.control.RemoveThread(tuid)
 								return
 							elif action == common.DOWNLOAD_ACTIONS[1]: # pause
 								while action == common.DOWNLOAD_ACTIONS[1]:
@@ -446,6 +459,7 @@ class Downloader(object):
 								except:
 									pass
 								postpone_download_by_user(title, url, progress, bytes_read, purgeKey)
+								common.control.RemoveThread(tuid)
 								return
 							else:
 								pass
@@ -486,11 +500,20 @@ class Downloader(object):
 						progress = 100
 						file_renamed_inc = True
 						c = 1
+						exact_same_file = False
 						
 						while (file_renamed_inc):
+							CRC_Of_Files = []
 							while Core.storage.file_exists(final_abs_path):
-								
-								fname = create_fname(file_meta, vidtype, riptype, file_ext, c=c)
+								try:
+									crc_file = common.md5(final_abs_path)
+									CRC_Of_Files.append(crc_file)
+								except Exception as error:
+									Log('Error download.py >>> CRC check : %s' % error)	
+									
+								fname, fname_e = create_fname(file_meta, vidtype, riptype, file_ext, c=str(c))
+								if fname == None:
+									raise fname_e
 								
 								# new progressive name
 								final_abs_path = Core.storage.join_path(directory, fname)
@@ -500,12 +523,31 @@ class Downloader(object):
 								sub_file_path = Core.storage.join_path(directory, sub_fname)
 								
 								c += 1
+								
 							try:
-								os.rename(abs_path, final_abs_path)
-								file_renamed_inc = False
-								download_subtitle(file_meta['sub_url'], sub_file_path)
+								crc_new_file = common.md5(abs_path)
+								if crc_new_file in CRC_Of_Files:
+									Log('CRC New File %s:%s' % (crc_new_file, abs_path))
+									Log('CRC Old File : %s' % (CRC_Of_Files))
+									
+									exact_same_file = True
 							except Exception as error:
-								Log('%s : %s' % (error, final_abs_path))
+								Log('Error download.py >>> CRC compare : %s' % error)
+							try:
+								if exact_same_file == True:
+									try:
+										Core.storage.remove_data_item(abs_path)
+										time.sleep(1)
+									except Exception as e:
+										Log('Error download.py >>> CRC based removal : %s' % e)
+								else:
+									os.rename(abs_path, final_abs_path)
+									download_subtitle(file_meta['sub_url'], sub_file_path, params=params)
+									
+								file_renamed_inc = False
+								
+							except Exception as error:
+								Log('Error download.py >>> %s : %s' % (error, final_abs_path))
 								
 							if (c > 5):
 								raise Exception(error)
@@ -515,7 +557,7 @@ class Downloader(object):
 						# Dict[purgeKey] = E(JSON.StringFromObject(file_meta)) 
 						# Dict.Save()
 						
-						download_completed(final_abs_path, file_meta['section_title'], file_meta['section_key'], purgeKey)
+						download_completed(final_abs_path, file_meta['section_title'], file_meta['section_key'], purgeKey, exact_same_file)
 						
 				except Exception as error:
 					st = traceback.format_exc()
@@ -538,51 +580,62 @@ class Downloader(object):
 				r.close()
 			except:
 				pass
+				
+		common.control.RemoveThread(tuid)
 		
 ##############################################################################################
 
-def create_fname(file_meta, vidtype, riptype, file_ext, file_ext_temp='', c=None):
+def create_fname(file_meta, vidtype, riptype, file_ext, file_ext_temp='', c='0'):
 
-	if c == None:
-		if vidtype in 'movie/show':
-			if vidtype == 'show':
-				if '3D-' in riptype:
-					fname = '%s (%s)%s%s%s' % (file_meta['watch_title'],file_meta['year'],FLAG_3D, file_ext, file_ext_temp)
+	try:
+		#Log('creating fname : %s\n%s\n%s\n%s\n%s\n%s' % (file_meta, vidtype, riptype, file_ext, file_ext_temp, c))
+		#Log('%s (%s)' % (file_meta['watch_title'], file_meta['year']))
+
+		if str(c) == '0':
+			if vidtype in 'movie/show':
+				if vidtype == 'show':
+					if '3D-' in riptype:
+						fname = '%s (%s)%s%s%s' % (file_meta['watch_title'], file_meta['year'], FLAG_3D, file_ext, file_ext_temp)
+					else:
+						fname = '%s (%s)%s%s' % (file_meta['watch_title'], file_meta['year'], file_ext, file_ext_temp)
 				else:
-					fname = '%s (%s)%s%s' % (file_meta['watch_title'], file_meta['year'], file_ext, file_ext_temp)
+					if '3D-' in riptype:
+						fname = '%s (%s)%s%s%s' % (file_meta['title'], file_meta['year'], FLAG_3D, file_ext, file_ext_temp)
+					else:
+						fname = '%s (%s)%s%s' % (file_meta['title'], file_meta['year'], file_ext, file_ext_temp)
 			else:
 				if '3D-' in riptype:
-					fname = '%s (%s)%s%s%s' % (file_meta['title'],file_meta['year'],FLAG_3D, file_ext, file_ext_temp)
+					fname = '%s (%s)-%s%s%s%s' % (file_meta['title'], file_meta['year'], REMAP_EXTRAS[vidtype], FLAG_3D, file_ext, file_ext_temp)
 				else:
-					fname = '%s (%s)%s%s' % (file_meta['title'], file_meta['year'], file_ext, file_ext_temp)
+					fname = '%s (%s)-%s%s%s' % (file_meta['title'], file_meta['year'], REMAP_EXTRAS[vidtype], file_ext, file_ext_temp)
 		else:
-			fname = '%s (%s)-%s%s%s' % (file_meta['title'], file_meta['year'], REMAP_EXTRAS[vidtype], file_ext, file_ext_temp)
-			if '3D-' in riptype:
-				fname = '%s (%s)-%s%s%s%s' % (file_meta['title'], file_meta['year'], REMAP_EXTRAS[vidtype], FLAG_3D, file_ext, file_ext_temp)
-			else:
-				fname = '%s (%s)-%s%s%s' % (file_meta['title'], file_meta['year'], REMAP_EXTRAS[vidtype], file_ext, file_ext_temp)
-	else:
-		if vidtype in 'movie/show':
-			if vidtype == 'show':
-				if '3D-' in riptype:
-					fname = '%s (%s)%s%s%s' % (file_meta['watch_title'],file_meta['year'],FLAG_3D, str(c), file_ext, file_ext_temp)
+			if vidtype in 'movie/show':
+				if vidtype == 'show':
+					if '3D-' in riptype:
+						fname = '%s (%s)%s-%s%s%s' % (file_meta['watch_title'], file_meta['year'], FLAG_3D, str(c), file_ext, file_ext_temp)
+					else:
+						fname = '%s (%s)-%s%s%s' % (file_meta['watch_title'], file_meta['year'], str(c), file_ext, file_ext_temp)
 				else:
-					fname = '%s (%s)%s%s' % (file_meta['watch_title'], file_meta['year'], str(c), file_ext, file_ext_temp)
+					if '3D-' in riptype:
+						fname = '%s (%s)%s-%s%s%s' % (file_meta['title'], file_meta['year'], FLAG_3D, str(c), file_ext, file_ext_temp)
+					else:
+						fname = '%s (%s)-%s%s%s' % (file_meta['title'], file_meta['year'], str(c), file_ext, file_ext_temp)
 			else:
 				if '3D-' in riptype:
-					fname = '%s (%s)%s%s%s' % (file_meta['title'],file_meta['year'],FLAG_3D, str(c), file_ext, file_ext_temp)
+					fname = '%s (%s)-%s%s-%s%s%s' % (file_meta['title'], file_meta['year'], REMAP_EXTRAS[vidtype], FLAG_3D, str(c), file_ext, file_ext_temp)
 				else:
-					fname = '%s (%s)%s%s' % (file_meta['title'], file_meta['year'], str(c), file_ext, file_ext_temp)
-		else:
-			if '3D-' in riptype:
-				fname = '%s (%s)-%s%s%s%s%s' % (file_meta['title'], file_meta['year'], REMAP_EXTRAS[vidtype], FLAG_3D, str(c), file_ext, file_ext_temp)
-			else:
-				fname = '%s (%s)-%s-%s%s%s' % (file_meta['title'], file_meta['year'], REMAP_EXTRAS[vidtype], str(c), file_ext, file_ext_temp)
-		
-	return fname
+					fname = '%s (%s)-%s-%s%s%s' % (file_meta['title'], file_meta['year'], REMAP_EXTRAS[vidtype], str(c), file_ext, file_ext_temp)
+			
+		return fname, ''
+	except Exception as e:
+		Log('Error in download.create_fname : %s' % e)
+	return None, e
 	
 def do_download(file_meta_enc):
 
+	tuid = common.id_generator(16)
+	common.control.AddThread('do_download', 'Initiate Download', time.time(), '2', False, tuid)
+	
 	if len(common.DOWNLOAD_STATS.keys()) >= int(Prefs['download_connections']):
 		#Log(common.DOWNLOAD_STATS)
 		longstringObjs = JSON.ObjectFromString(D(file_meta_enc))
@@ -591,6 +644,7 @@ def do_download(file_meta_enc):
 			del QUEUE_RUN_ITEMS[uid]
 		if Prefs['use_debug']:
 			Log("Downlod connections limit reached (%s of %s). This item will be queued !" % (str(len(common.DOWNLOAD_STATS.keys())), Prefs['download_connections']))
+		common.control.RemoveThread(tuid)
 		return
 
 	downloader = Downloader()
@@ -603,13 +657,21 @@ def do_download(file_meta_enc):
 	#thread_i.start()
 	Thread.Create(downloader.download, {}, file_meta_enc)
 	
-def download_subtitle(url, sub_file_path):
+	common.control.RemoveThread(tuid)
+	
+def download_subtitle(url, sub_file_path, params=None):
 	
 	try:
 		if url == None:
 			return
+		if params != None and 'headers' in params.keys():
+			headers = params['headers']
+		else:
+			headers = None
+		if Prefs['use_debug']:
+			Log('Download Subtitle : %s to %s' % (url, sub_file_path))
 		r = None
-		r = request_download(url)
+		r = request_download(url, headers=headers)
 		if r.status_code == 200:
 			FMPdownloaderSub = r.iter_content(1024*64)
 			with io.open(sub_file_path, 'wb') as f:
@@ -633,7 +695,7 @@ def resume_download(url, resume_byte_pos, headers=None):
 			resume_header[h] = headers[h]
 	return requests.get(url, headers=resume_header, stream=True, verify=False, allow_redirects=True, timeout=CONNECTION_TIMEOUT)
 	
-def download_completed(final_abs_path, section_title, section_key, purgeKey):
+def download_completed(final_abs_path, section_title, section_key, purgeKey, fileExists=False):
 
 	file_meta = common.DOWNLOAD_STATS[purgeKey]
 	file_meta['status'] = common.DOWNLOAD_STATUS[2]
@@ -650,9 +712,13 @@ def download_completed(final_abs_path, section_title, section_key, purgeKey):
 		Dict.Save()
 
 	if Prefs['use_debug']:
-		Log('Download Completed - %s' % final_abs_path)
+		if fileExists == True:
+			Log('Download Completed, but file with same name and crc match exists - File discarded')
+		else:	
+			Log('Download Completed - %s' % final_abs_path)
 		
-	Thread.Create(refresh_section, {}, section_title, section_key)
+	if fileExists == False:
+		Thread.Create(refresh_section, {}, section_title, section_key)
 	
 	Thread.Create(trigger_que_run)
 	
@@ -746,6 +812,9 @@ def postpone_download_by_user(title, url, progress, startPos, purgeKey):
 	
 def trigger_que_run(skip = []):
 
+	tuid = common.id_generator(16)
+	common.control.AddThread('trigger_que_run', 'Updates Download Items Run/Status', time.time(), '2', False, tuid)
+	
 	time.sleep(3)
 	items_for_que_run = []
 	Dict_Temp = {}
@@ -794,6 +863,8 @@ def trigger_que_run(skip = []):
 					time.sleep(0.2)
 			except Exception as e:
 				Log(e)
+				
+	common.control.RemoveThread(tuid)
 				
 def move_unfinished_to_failed():
 
@@ -898,6 +969,10 @@ def verifyStartPos(startPos, filepath):
 	return startPos
 	
 def DownloadInit():
+
+	tuid = common.id_generator(16)
+	common.control.AddThread('DownloadInit', 'Initialize Downloader', time.time(), '2', False, tuid)
+	
 	move_unfinished_to_failed()
 	time.sleep(1)
 	if common.UsingOption(key=common.DEVICE_OPTIONS[13], session='None') == True:
@@ -907,6 +982,7 @@ def DownloadInit():
 	DLT.append(dlt)
 	DLT[0].start()
 	Thread.Create(trigger_que_run)
-
+	
+	common.control.RemoveThread(tuid)
 	return
 	

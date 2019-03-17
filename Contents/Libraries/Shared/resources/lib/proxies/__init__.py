@@ -47,9 +47,9 @@ def request(url, proxy_name=None, proxy_url=None, close=True, redirect=True, fol
 	#try:
 
 	ret = None
-	if use_web_proxy == False:
+	if use_web_proxy == False or len(sourceProxiesCaller) == 0:
 		try:
-			ret = client.request(url=url, close=close, redirect=redirect, followredirect=followredirect, error=error, proxy=proxy, post=post, headers=headers, mobile=mobile, limit=limit, referer=referer, cookie=cookie, output=output, timeout=timeout, httpsskip=httpsskip, use_web_proxy=use_web_proxy, XHR=XHR, IPv4=IPv4)
+			ret = client.request(url=url, close=close, redirect=redirect, followredirect=followredirect, error=error, proxy=proxy, post=post, headers=headers, mobile=mobile, limit=limit, referer=referer, cookie=cookie, output=output, timeout=timeout, httpsskip=httpsskip, use_web_proxy=False, XHR=XHR, IPv4=IPv4)
 		except:
 			if output == 'extended':
 				ret = (None, None, None, None)

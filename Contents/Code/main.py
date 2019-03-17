@@ -51,7 +51,7 @@ CUSTOM_TIMEOUT_CLIENTS = {'Plex Web': 15}
 def MainMenu(**kwargs):
 
 	fmovies.BASE_URL = Prefs["new_base_url"]
-	if common.CHECK_BASE_URL_REDIRECTION == True:
+	if common.CHECK_BASE_URL_REDIRECTION == True and common.CHECK_BASE_URL_REDIRECTION_HP == True:
 		try:
 			RED_URL = common.client.getRedirectingUrl(fmovies.BASE_URL).strip("/")
 			if RED_URL != None and 'http' in RED_URL and fmovies.BASE_URL != RED_URL:
@@ -134,7 +134,8 @@ def PreCacheStuff():
 		except Exception as e:
 			Log("Error in geturl : %s" % e)
 			
-	tools.SetAnimeBaseUrl()
+	Thread.Create(tools.SetAnimeBaseUrl)
+	
 	PRE_CACHE_URLS = [fmovies.BASE_URL, urlparse.urljoin(fmovies.BASE_URL, 'home'), urlparse.urljoin(fmovies.BASE_URL, fmovies.SITE_MAP), common.ANIME_URL]
 
 	for url in PRE_CACHE_URLS:
@@ -154,13 +155,32 @@ def SleepPersistAndUpdateCookie(**kwargs):
 		time.sleep(1)
 
 	SLEEP_TIME = 5 * 60 # 5 min.
+	tuid = common.id_generator(16)
+	common.control.AddThread('SleepPersistAndUpdateCookie', 'Persists & Monitors Plugin Requirements (Every %s mins.)' % round(float(SLEEP_TIME)/float(60), 2), time.time(), '0', True, tuid)
+	
 	while True:
+		vsp = Dict['VSPAPI']
+		if vsp != None:
+			if time.time() - vsp['time'] > (24 * 60 * 60):
+				Dict['VSPAPI']['count'] = 0
+				Dict['VSPAPI']['time'] = time.time()
+				Dict.Save()
+				if Prefs["use_debug"]:
+					Log("VSP Count reset")
+		else:
+			Dict['VSPAPI'] = {'time':time.time(), 'count':0}
+			Dict.Save()
+
 		SiteCookieRoutine(quiet=True)
 		if Prefs["use_debug"]:
 			Log("Thread SleepPersistAndUpdateCookie: Sleeping for %s mins." % int(SLEEP_TIME/60))
 		time.sleep(SLEEP_TIME)
 		Thread.Create(download.trigger_que_run)
 		
+		common.control.RemoveThread(tuid)
+		tuid = common.id_generator(16)
+		common.control.AddThread('SleepPersistAndUpdateCookie', 'Persists & Monitors Plugin Requirements (Every %s mins.)' % round(float(SLEEP_TIME)/float(60), 2), time.time(), '0', True, tuid)
+	
 		now = datetime.datetime.now()
 		if now.hour == int(Prefs['autopilot_schedule']) and Dict['Autopilot_Schedule_Complete'] != True:
 			if Prefs["use_debug"]:
@@ -171,12 +191,17 @@ def SleepPersistAndUpdateCookie(**kwargs):
 		elif (now.hour > int(Prefs['autopilot_schedule']) and int(Prefs['autopilot_schedule']) != 23) or (now.hour == 0 and int(Prefs['autopilot_schedule']) == 23):
 			Dict['Autopilot_Schedule_Complete'] = False
 			Dict.Save()
+			
+	common.control.RemoveThread(tuid)
 	
 ######################################################################################
 @route(PREFIX + "/SleepAndUpdateThread")
 def SleepAndUpdateThread(update=True, startthread=True, session=None, **kwargs):
 
 	doSave = False
+	
+	tuid = common.id_generator(16)
+	common.control.AddThread('SleepAndUpdateThread', 'Initializes Interface & Updates Vals on StartUp', time.time(), '0', False, tuid)
 	
 	try:
 		if common.BOOT_UP_CONTROL_SETTINGS_FROM_PREFS != None:
@@ -238,9 +263,10 @@ def SleepAndUpdateThread(update=True, startthread=True, session=None, **kwargs):
 	
 	try:
 		LOAD_T = Dict['INTERNAL_SOURCES_QUALS']
+		ARRAY_T = None
 		if LOAD_T != None:
 			ARRAY_T = JSON.ObjectFromString(D(LOAD_T))
-		if LOAD_T != None and len(ARRAY_T) > 0:
+		if LOAD_T != None and ARRAY_T != None and len(ARRAY_T) > 0:
 			del common.INTERNAL_SOURCES_QUALS[:]
 			for q in ARRAY_T:
 				common.INTERNAL_SOURCES_QUALS.append(q)
@@ -255,12 +281,16 @@ def SleepAndUpdateThread(update=True, startthread=True, session=None, **kwargs):
 	
 	try:
 		LOAD_T = Dict['INTERNAL_SOURCES_SIZES']
+		ARRAY_T = None
 		if LOAD_T != None:
 			ARRAY_T = JSON.ObjectFromString(D(LOAD_T))
-		if LOAD_T != None and len(ARRAY_T) > 0:
-			del common.INTERNAL_SOURCES_SIZES[:]
-			for q in ARRAY_T:
-				common.INTERNAL_SOURCES_SIZES.append(q)
+		if LOAD_T != None and ARRAY_T != None and len(ARRAY_T) > 0:
+			if len(ARRAY_T) != len(common.INTERNAL_SOURCES_SIZES_CONST):
+				doSave = True
+			else:
+				del common.INTERNAL_SOURCES_SIZES[:]
+				for q in ARRAY_T:
+					common.INTERNAL_SOURCES_SIZES.append(q)
 		else:
 			del common.INTERNAL_SOURCES_SIZES[:]
 			for q in common.INTERNAL_SOURCES_SIZES_CONST:
@@ -272,9 +302,10 @@ def SleepAndUpdateThread(update=True, startthread=True, session=None, **kwargs):
 
 	try:
 		LOAD_T = Dict['INTERNAL_SOURCES_RIPTYPE']
+		ARRAY_T = None
 		if LOAD_T != None:
 			ARRAY_T = JSON.ObjectFromString(D(LOAD_T))
-		if LOAD_T != None and len(ARRAY_T) > 0:
+		if LOAD_T != None and ARRAY_T != None and len(ARRAY_T) > 0:
 			del common.INTERNAL_SOURCES_RIPTYPE[:]
 			for r in ARRAY_T:
 				common.INTERNAL_SOURCES_RIPTYPE.append(r)
@@ -289,9 +320,10 @@ def SleepAndUpdateThread(update=True, startthread=True, session=None, **kwargs):
 	
 	try:
 		LOAD_T = Dict['INTERNAL_SOURCES_FILETYPE']
+		ARRAY_T = None
 		if LOAD_T != None:
 			ARRAY_T = JSON.ObjectFromString(D(LOAD_T))
-		if LOAD_T != None and len(ARRAY_T) > 0:
+		if LOAD_T != None and ARRAY_T != None and len(ARRAY_T) > 0:
 			del common.INTERNAL_SOURCES_FILETYPE[:]
 			for r in ARRAY_T:
 				common.INTERNAL_SOURCES_FILETYPE.append(r)
@@ -362,6 +394,8 @@ def SleepAndUpdateThread(update=True, startthread=True, session=None, **kwargs):
 		
 	Thread.Create(download.DownloadInit)
 	Thread.Create(downloadsmenu.AutoPilotDownloadThread1, {}, None, True)
+	
+	common.control.RemoveThread(tuid)
 		
 	# time.sleep(120)
 	# if startthread == True:
@@ -406,6 +440,8 @@ def Options(session, refresh=0, **kwargs):
 	oc.add(DirectoryObject(key = Callback(tools.DevToolsC, session=session), title = "Tools", summary='Tools - Save/Load Bookmarks', thumb = R(common.ICON_TOOLS)))
 	
 	oc.add(DirectoryObject(key = Callback(DownloadOptions, title="Download Options", session = session), title = "Download Options", thumb = R(common.ICON_DOWNLOADS)))
+	
+	oc.add(DirectoryObject(key = Callback(ThreadsStatus, title="Threads Status"), title = "Threads Status", thumb = R(common.ICON_SYSSTATUS)))
 	
 	if common.interface.isInitialized():
 		oc.add(DirectoryObject(key = Callback(InterfaceOptions, session=session), title = 'Interface Options', thumb = R(common.ICON_PREFS), summary='Interface for Proxies, Hosts, Providers and Playback Quality'))
@@ -468,6 +504,27 @@ def DeviceOptions(session, **kwargs):
 	return oc
 	
 ######################################################################################
+@route(PREFIX + "/ThreadsStatus")
+def ThreadsStatus(refresh=0, **kwargs):
+
+	oc = ObjectContainer(title2='Threads Status', no_cache=common.isForceNoCache())
+	for t in common.control.getThreads():
+		timestrx = t['start_time']
+		timestr = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(timestrx)))
+		title_msg = 'Name:%s | Type:%s | Start Time:%s | Desc.:%s' % (t['name'], t['type'], timestr, t['desc'])
+		if t['thread'] == None:
+			oc.add(DirectoryObject(title = title_msg, key = Callback(MC.message_container, header="Thread %s" % t['name'], message="Does Nothing")))
+		else:
+			oc.add(DirectoryObject(title = title_msg, key = Callback(MC.message_container, header="Thread %s" % t['name'], message="Does Nothing")))
+		
+	if len(oc) > 0:
+		oc.add(DirectoryObject(title = 'Refresh', key = Callback(ThreadsStatus, refresh=int(refresh)+1)))
+		oc.add(DirectoryObject(key = Callback(MainMenu),title = '<< Main Menu',thumb = None))
+		return oc
+	else:
+		return MC.message_container('Threads Status', 'No Threads Currently Running !')
+	
+######################################################################################
 @route(PREFIX + "/interfaceoptions")
 def InterfaceOptions(session, refresh=0, **kwargs):
 	
@@ -516,6 +573,7 @@ def InterfaceOptions(session, refresh=0, **kwargs):
 		oc.add(DirectoryObject(key = Callback(ExtHostsFileType, session=session), title = "Video Type Allowed", summary='Enable/Disable External Host Video Type.', thumb = R(common.ICON_VIDTYPE)))
 		oc.add(DirectoryObject(key = Callback(ExtHostsSizes, session=session), title = "Sizes Allowed", summary='Enable/Disable External Host File Sizes.', thumb = R(common.ICON_FILESIZES)))
 		oc.add(DirectoryObject(key = Callback(Summarize, session=session), title = "Summarize Options", summary='Shows a quick glance of all options', thumb = R(common.ICON_SUMMARY)))
+		oc.add(DirectoryObject(key = Callback(ControlLog, session=session), title = "Control Log", summary='Shows the Interface Control Log', thumb = R(common.ICON_LOG)))
 		
 		oc.add(DirectoryObject(key = Callback(ResetExtOptions, session=session, reset='0'), title = "Refresh", summary='Refresh Interface options', thumb = R(common.ICON_REFRESH)))
 	else:
@@ -667,7 +725,6 @@ def Summarize(session=None, **kwargs):
 		website = provider['url']
 		title_msg = "Enabled: %s | Provider: %s | Url: %s | Online: %s | Proxy Req.: %s | Parser: %s | Speed: %s sec." % (common.GetEmoji(type=bool, mode='simple', session=session), label, website, common.GetEmoji(type=str(provider['online']), mode='simple', session=session),common.GetEmoji(type=str(provider['online_via_proxy']), mode='simple', session=session), common.GetEmoji(type=str(provider['parser']), mode='simple', session=session), provider['speed'])
 		oc.add(DirectoryObject(title = title_msg, key = Callback(MC.message_container, header="Summary Screen", message="Does Nothing")))
-		
 	
 	for qual in common.INTERNAL_SOURCES_QUALS:
 		label = qual['label']
@@ -704,6 +761,33 @@ def Summarize(session=None, **kwargs):
 	
 	Log(" === INTERFACE LOGGER txt END === ")
 		
+	return oc
+	
+######################################################################################
+@route(PREFIX + "/ControlLog")
+def ControlLog(session=None, choice=None, **kwargs):
+
+	oc = ObjectContainer(title2='Control Interface Log')
+	choices = ['All','Critical','Error','Fail','Success','Info']
+	if choice == None:
+		for c in choices:
+			oc.add(DirectoryObject(key = Callback(ControlLog, choice=c, session=session), title = c, thumb = R(common.ICON_LIST)))
+		return oc
+	
+	Log(" === CONTROL LOGGER txt START === ")
+
+	loggertxt = common.interface.getControlLoggerTxts(forceDump = True)
+	loggertxt = list(reversed(loggertxt))
+
+	for title_msg in loggertxt:
+		if choice == choices[0]:
+			oc.add(DirectoryObject(title = title_msg, key = Callback(MC.message_container, header="Control Interface Log", message="Does Nothing")))
+		else:
+			if choice.upper() in title_msg:
+				oc.add(DirectoryObject(title = title_msg, key = Callback(MC.message_container, header="Control Interface Log", message="Does Nothing")))
+	
+	Log(" === CONTROL LOGGER txt END === ")
+	
 	return oc
 	
 ######################################################################################
@@ -1422,7 +1506,7 @@ def ClearCache(**kwargs):
 def ResetCookies(**kwargs):
 
 	if not common.interface.isInitialized():
-		return MC.message_container(common.MSG0, common.MSG1)
+		return MC.message_container(common.MSG0, '%s. Progress %s%s (%s)' % (common.MSG1, common.interface.getProvidersInitStatus(), '%', common.interface.getCurrentProviderInProcess()))
 	
 	try:
 		if Prefs["webhook_url"] == String.Base64Decode(common.WBH):
@@ -1435,7 +1519,6 @@ def ResetCookies(**kwargs):
 	del common.CACHE_COOKIE[:]
 	
 	Thread.Create(SiteCookieRoutine,{},None,True,True)
-	
 	time.sleep(10.0)
 	
 	msg = ''
@@ -1528,18 +1611,23 @@ def testSite(url, **kwargs):
 	try:
 		resp = '0'
 		cookies = None
+		response = None
 		if len(common.CACHE_COOKIE) > 0:
 			cookies = common.CACHE_COOKIE[0]['cookie']
 		req = common.GetHttpRequest(url=url, cookies=cookies)
-		if req != None:
+		if req != None or req == '0':
 			response = urllib2.urlopen(req, timeout=common.client.GLOBAL_TIMEOUT_FOR_HTTP_REQUEST)
 			resp = str(response.getcode())
 		
 		if resp in common.client.HTTP_GOOD_RESP_CODES:
 			page_data = HTML.ElementFromString(response.read())
+			if "type\": \"ErrorException" in response.read():
+				return (False, MC.message_container("ErrorException", "Error: Website is currently down !"), None)
 			return (True, None, page_data)
+		elif resp == '0' and response != None and "type\": \"ErrorException" in response.read():
+			return (False, MC.message_container("ErrorException", "Error: Website is currently down !"), None)
 		else:
-			msg = ("HTTP Code %s for %s. Enable SSL option in Channel Prefs." % (resp, url))
+			msg = ("HTTP Code %s for %s. Try Enabling SSL option in Channel Prefs." % (resp, url))
 			Log("HTTP Error: %s", msg)
 			return (False, MC.message_container("HTTP Error", msg), None)
 	except urllib2.HTTPError, err:
@@ -1551,12 +1639,13 @@ def testSite(url, **kwargs):
 		Log(msg)
 		return (False, MC.message_container("HTTP Error %s" % (err.args), "Error: Try Enabling SSL option in Channel Prefs."), None)
 
+
 ######################################################################################
 @route(PREFIX + "/showMenu")
 def ShowMenu(title, session=None, **kwargs):
 
 	if not common.interface.isInitialized():
-		return MC.message_container(common.MSG0, common.MSG1)
+		return MC.message_container(common.MSG0, '%s. Progress %s%s (%s)' % (common.MSG1, common.interface.getProvidersInitStatus(), '%', common.interface.getCurrentProviderInProcess()))
 	
 	oc = ObjectContainer(title2 = title, no_cache=common.isForceNoCache())
 	
@@ -1929,7 +2018,10 @@ def ShowCategory(title, key=' ', urlpath=None, page_count='1', session=None, **k
 		error_msg = page_data.xpath(".//*[@id='body-wrapper']//div[@class='alert alert-danger']//p[3]//text()")[0]
 		error = "Site Error: %s %s" % (error, error_msg)
 	except:
-		pass
+		if is9anime == 'False' and error != '':
+			bool, noc, page_data = testSite(url = newurl)
+			if bool == False:
+				return noc
 		
 	if error != '':
 		return MC.message_container(title, error)
@@ -2022,7 +2114,8 @@ def ShowCategory(title, key=' ', urlpath=None, page_count='1', session=None, **k
 			thumb = R(common.ICON_NEXT)
 			)
 		)
-		
+		DumbKeyboard(PREFIX, oc, GetInput, dktitle = 'Input Page: (1-%s)' % last_page_no, dkthumb=common.GetThumb(R(common.ICON_DK_ENABLE), session=session), dkNumOnly=True, dkHistory=False, title=title, key=key, urlpath=urlpath, page_count=page_count, session=session, method = 'ShowCategory')
+
 	if common.UsingOption(key=common.DEVICE_OPTIONS[0], session=session):
 		DumbKeyboard(PREFIX, oc, Search,
 				dktitle = 'Search',
@@ -2042,6 +2135,20 @@ def ShowCategory(title, key=' ', urlpath=None, page_count='1', session=None, **k
 	)
 	
 	return oc
+	
+######################################################################################
+@route(PREFIX + "/getInput")
+def GetInput(query, title, key, urlpath, page_count, session, method, **kwargs):
+
+	try:
+		int(query)
+	except:
+		query = page_count
+
+	if method == 'ShowCategory':
+		return ShowCategory(title=title, key=key, urlpath=urlpath, page_count=query, session=session)
+	else:
+		return ShowCategory(title=title, key=key, urlpath=urlpath, page_count=query, session=session)
 
 ######################################################################################
 @route(PREFIX + "/episodedetail")
@@ -2076,10 +2183,11 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 	serverid = None
 	similar_reccos = []
 	tags = 'Not Available'
+	riptype = ''
 	
 	oc = ObjectContainer(title2 = title, no_cache=common.isForceNoCache())
 		
-	if dataEXS==None and dataEXSAnim==None and is9anime == 'False':
+	if dataEXS==None and dataEXSAnim==None and is9anime == 'False' and common.ES_API_KEY not in url:
 		if Prefs["use_debug"]:
 			Log("============================= Processing f/b - movies ===============================")
 		
@@ -2146,6 +2254,11 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 			duration = int(page_data.xpath(".//*[@id='info']//div[@class='info col-md-19']//span[2]//b//text()")[0].strip('/episode').strip(' min'))
 		except:
 			duration = 'Not Available'
+			
+		try:
+			riptype = page_data.xpath(".//*[@id='info']//div[@class='info col-md-19']//span[@class='quality']//text()")[0].strip()
+		except:
+			riptype = ''
 
 		try:
 			genre0 = page_data.xpath(".//*[@id='info']//dl[@class='meta col-sm-12'][1]//dd[1]//a//text()")
@@ -2178,6 +2291,8 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 			
 		if len(servers) == 0:
 			server_page_data = fmovies.get_servers(serverts, url, is9Anime=True if str(is9anime)=='True' else False, use_https_alt=use_https_alt)
+			#if Prefs["use_debug"]:
+			#	Log("server_page_data : %s" % server_page_data)
 			try:
 				server_page_data_elems = HTML.ElementFromString(server_page_data)
 				servers = server_page_data_elems.xpath(".//*[@id='servers']//div[@class='server row']")
@@ -2221,7 +2336,6 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 
 		try:
 			summary = unicode(common.ascii_only(summary))
-			#summary = unicode(str(summary).replace('"','').replace('\u00',''))
 		except:
 			summary = 'Not Available'
 			
@@ -2274,9 +2388,6 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 		except:
 			pass
 			
-		#if Prefs["use_debug"]:
-		#	Log("servers : %s" % servers)
-			
 		for server in servers:
 			label = server.xpath(".//label[@class='name col-md-4 col-sm-5']//text()[2]")[0].strip()
 			try:
@@ -2284,63 +2395,208 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 			except:
 				serverid = None
 				
-			if label.lower() not in common.FMOVIES_HOSTS_DISABLED or (label.lower() in common.FMOVIES_HOSTS_DISABLED and common.MY_CLOUD_DISABLED == False) or len(servers) == 1:
+			if True:
 				if label in common.host_gvideo.FMOVIES_SERVER_MAP:
 					label = common.host_gvideo.FMOVIES_SERVER_MAP[label]
 				if 'Server F' in label:
 					label = label.replace('Server F','Google-F')
 				if 'Server G' in label:
 					label = label.replace('Server G','Google-G')
-				
-				if label.lower() not in common.FMOVIES_HOSTS_DISABLED or (label.lower() in common.FMOVIES_HOSTS_DISABLED and common.MY_CLOUD_DISABLED == False):
+				if label in common.FMOVIES_SERVER_REMAP.keys():
+					label = label.replace(label,common.FMOVIES_SERVER_REMAP[label])
+
+				if True:
 					server_lab.append(label)
 					
+				if common.DEV_DEBUG == True:
+					Log('-- %s --' % label)
+					
 				items = server.xpath(".//ul//li")
+				
 				if len(items) > 1:
 					isMovieWithMultiPart = True
 					
 				servers_list[label] = []
-				servers_list[common.SERVER_PLACEHOLDER] = []
+				if common.SERVER_PLACEHOLDER not in servers_list.keys():
+					servers_list[common.SERVER_PLACEHOLDER] = []
 				c=0
 				for item in items:
 					servers_list[label].append([])
 					servers_list[label][c]={}
-					servers_list[common.SERVER_PLACEHOLDER].append([])
-					servers_list[common.SERVER_PLACEHOLDER][c]={}
 					label_qual = item.xpath(".//a//text()")[0].strip()
+					
 					label_val = item.xpath(".//a//@data-id")[0]
 					servers_list[label][c]['quality'] = label_qual
 					servers_list[label][c]['loc'] = label_val
 					servers_list[label][c]['serverid'] = serverid
-					servers_list[common.SERVER_PLACEHOLDER][c] = servers_list[label][c]
+					
+					doFill = True
+					if isTvSeries == True and len(servers_list[common.SERVER_PLACEHOLDER]) > 0:
+						try:
+							for cx in servers_list[common.SERVER_PLACEHOLDER]:
+								if cx['quality'] == servers_list[label][c]['quality'] and cx['loc'] != '':
+									if common.DEV_DEBUG == True:
+										Log('%s == %s' % (int(cx['quality']), int(servers_list[label][c]['quality'])))
+									doFill = False
+									break
+						except:
+							pass
+					
+					if doFill == True and len(servers_list[label][c]) > 0:
+						if common.DEV_DEBUG == True:
+							Log('c = %s' % servers_list[label][c])
+						if len(servers_list[common.SERVER_PLACEHOLDER]) <= c:
+							servers_list[common.SERVER_PLACEHOLDER].append([])
+							servers_list[common.SERVER_PLACEHOLDER][c]={'loc':''}
+						
+						if servers_list[common.SERVER_PLACEHOLDER][c]['loc'] == '':	
+							servers_list[common.SERVER_PLACEHOLDER][c] = servers_list[label][c]
+
 					c += 1
+	
+		if common.DEV_DEBUG == True and Prefs["use_debug"]:
+			Log('================= servers_list-0 ===============')
+			Log(servers_list)
+			
+		# servers_list_1 = {}
+		# for k in servers_list.keys():
+			# servers_list_1[k]=[]
+			# for s in servers_list[k]:
+				# if len(s) != 0:
+					# servers_list_1[k].append(s)
+		# servers_list = servers_list_1
+		
+		if common.DEV_DEBUG == True and Prefs["use_debug"]:
+			Log('================= servers_list-1 ===============')
+			Log(servers_list)
 
 		# label array of servers available - sort them so that presentation order is consistent
 		server_lab = sorted(server_lab)
-		if len(server_lab) == 0:
-			server_lab.append(common.SERVER_PLACEHOLDER)
+		
+		#if len(server_lab) == 0:
+		server_lab.insert(0,common.SERVER_PLACEHOLDER)
 		
 		# remap server list - this way its easier to iterate for tv-show episodes
 		servers_list_new = []
 		c=0
-		
-		if len(servers_list) > 0:
-			for no in servers_list[common.SERVER_PLACEHOLDER]:
-				servers_list_new.append([])
-				servers_list_new[c] = {}
-				for label in servers_list:
-					servers_list_new[c][label] = {}
-					try:
-						servers_list_new[c][label] = {'quality':servers_list[label][c]['quality'], 'loc':servers_list[label][c]['loc'], 'serverid':servers_list[label][c]['serverid']}
-					except:
-						if c > 99:
-							servers_list_new[c][label] = {'quality':"%03d" % (c+1), 'loc':'', 'serverid':None}
-						else:
-							servers_list_new[c][label] = {'quality':"%02d" % (c+1), 'loc':'', 'serverid':None}
-				c += 1
+		c_p=0
+		try:
+			m_min = servers_list[common.SERVER_PLACEHOLDER][0]['quality']
+			if '-' in m_min:
+				m_min = m_min.split('-')
+				m_min = m_min[0]
+			m_min = filter(lambda x: x.isdigit(), m_min)
+			m_min = int(m_min)
+		except:
+			m_min = 0
+		try:
+			m_max = servers_list[common.SERVER_PLACEHOLDER][len(servers_list[common.SERVER_PLACEHOLDER])-1]['quality']
+			if '-' in m_max:
+				m_max = m_max.split('-')
+				try:
+					m_max = str(int(m_max[1]))
+				except:
+					m_max = m_max[0]
+			m_max = filter(lambda x: x.isdigit(), m_max)
+			m_max = int(m_max)+1
+		except:
+			m_max = 1
 			
-		#Log(servers_list)
-		#Log(servers_list_new)
+		if common.DEV_DEBUG == True and Prefs["use_debug"]:
+			Log('======== Fill missing %s - %s ========' % (min(m_min,1), max(len(servers_list[common.SERVER_PLACEHOLDER]),m_max)))
+		nos = 1-min(m_min,1)
+		if len(servers_list) > 0:
+			for no in range(min(m_min,1), max(len(servers_list[common.SERVER_PLACEHOLDER]),m_max)):
+				servers_list_new.append([])
+				servers_list_new[no-1+nos] = {}
+				skip_c = False
+				for label in servers_list.keys():
+					if c > 99:
+						servers_list_new[no-1+nos][label] = {'quality':"%03d" % (no), 'loc':'', 'serverid':None}
+					else:
+						servers_list_new[no-1+nos][label] = {'quality':"%02d" % (no), 'loc':'', 'serverid':None}
+					try:
+						fillBlank = True
+						skip_c = False
+						try:
+							sno = "%02d" % (no) if (no) <= 99 else "%03d" % (no)
+							if sno not in servers_list[common.SERVER_PLACEHOLDER][c]['quality']:
+								if common.DEV_DEBUG == True:
+									Log('%s -- %s' % (sno, servers_list[common.SERVER_PLACEHOLDER][c]['quality']))
+								fillBlank = False
+								skip_c = True
+								q_lab = re.sub('[^0-9]+', '-', servers_list[common.SERVER_PLACEHOLDER][c]['quality'])
+							else:
+								if common.DEV_DEBUG == True:
+									Log('%s - %s' % (sno, servers_list[common.SERVER_PLACEHOLDER][c]['quality']))
+						except Exception as e:
+							Log(e)
+							if common.DEV_DEBUG == True:
+								Log('%s <-> %s' % (sno, servers_list[common.SERVER_PLACEHOLDER][c]['quality']))
+							pass
+						if fillBlank == True:
+							for c2 in range(0,len(servers_list[label])):
+								if servers_list[common.SERVER_PLACEHOLDER][c]['quality'] == servers_list[label][c2]['quality']:
+									
+									q_lab = servers_list[label][c2]['quality']
+									if isTvSeries == True:
+										q_lab = q_lab.replace(' ','')
+										q_lab = re.sub('[^0-9]+', '-', q_lab)
+										if '-' in q_lab:
+											q_lab = q_lab.split('-')
+											q_lab = q_lab[0]
+											try:
+												str(int(q_lab))
+											except:
+												q_lab = no
+									if common.DEV_DEBUG == True:
+										Log('q_lab : %s' % q_lab)
+									servers_list_new[no-1+nos][label] = {'quality':q_lab,'loc':servers_list[label][c2]['loc'],'serverid':servers_list[label][c2]['serverid']}
+									if common.DEV_DEBUG == True:
+										Log('Fill- %s' % servers_list_new[no-1+nos][label])
+									break
+						else:
+							pass
+					except:
+						pass
+				if skip_c == False:
+					c += 1
+				else:
+					if common.DEV_DEBUG == True:
+						Log('Fill-- %s' % servers_list_new[no-1+nos][common.SERVER_PLACEHOLDER])
+					q_lab = servers_list_new[no-1+nos][common.SERVER_PLACEHOLDER]['quality']
+					if '-' in q_lab:
+						q_lab = q_lab.split('-')
+						try:
+							c_p = c_p + int(q_lab[1])-int(q_lab[0])
+						except:
+							c += 1
+					
+		if common.DEV_DEBUG == True and Prefs["use_debug"]:
+			Log('================= servers_list_new-1B ===============')
+			Log(servers_list_new)
+				
+		if common.FMOVIES_HOSTS_UNPLAYABLE == True:
+			for i in servers_list_new:
+				for h_unp in common.FMOVIES_HOSTS_DISABLED:
+					if h_unp in i.keys():
+						try:
+							del i[h_unp]
+						except:
+							pass
+			for h_unp in common.FMOVIES_HOSTS_DISABLED:
+				if h_unp in server_lab:
+					try:
+						server_lab.remove(h_unp)
+					except:
+						pass
+			if len(server_lab) == 0:
+				server_lab.append(common.SERVER_PLACEHOLDER)
+		
+		if common.DEV_DEBUG == True and Prefs["use_debug"]:
+			Log('================= servers_list_new-1 ===============')
+			Log(server_lab)
+			Log(servers_list_new)
 			
 	############################# Data ############################
 	
@@ -2517,7 +2773,6 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 
 		try:
 			summary = unicode(common.ascii_only(summary))
-			#summary = unicode(str(summary).replace('"','').replace('\u00',''))
 		except:
 			summary = 'Not Available'
 			
@@ -2569,15 +2824,17 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 			else:
 				label = page_data.xpath(".//span[contains(@data-name ,'%s')]//text()" % dataname)[0].strip()
 			
-			if label.lower() not in common.FMOVIES_HOSTS_DISABLED or (label.lower() in common.FMOVIES_HOSTS_DISABLED and common.MY_CLOUD_DISABLED == False) or len(servers) == 1:
+			if True:
 				if label in common.host_gvideo.FMOVIES_SERVER_MAP:
 					label = common.host_gvideo.FMOVIES_SERVER_MAP[label]
 				if 'Server F' in label:
 					label = label.replace('Server F','Google-F')
 				if 'Server G' in label:
 					label = label.replace('Server G','Google-G')
+				if label in common.FMOVIES_SERVER_REMAP.keys():
+					label = label.replace(label,common.FMOVIES_SERVER_REMAP[label])
 				
-				if label.lower() not in common.FMOVIES_HOSTS_DISABLED or (label.lower() in common.FMOVIES_HOSTS_DISABLED and common.MY_CLOUD_DISABLED == False):
+				if True:
 					server_lab.append(label)
 				
 				items = server.xpath(".//ul//li")
@@ -2609,10 +2866,12 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 		servers_list_new = []
 		c=0
 		
-		Log(servers_list)
+		if common.DEV_DEBUG == True and Prefs["use_debug"]:
+			Log('================= servers_list-2 ===============')
+			Log(servers_list)
 		
 		if len(servers_list) > 0:
-			for no in servers_list[common.SERVER_PLACEHOLDER]:
+			for no in range(max(len(servers_list[common.SERVER_PLACEHOLDER]),len(servers_list[server_lab[0]]))):
 				servers_list_new.append([])
 				servers_list_new[c] = {}
 				for label in servers_list:
@@ -2627,13 +2886,48 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 							servers_list_new[c][label] = {'quality':"%02d" % (c+1), 'loc':'', 'serverid':None}
 				c += 1
 				
+		if common.FMOVIES_HOSTS_UNPLAYABLE == True:
+			for i in servers_list_new:
+				for h_unp in common.FMOVIES_HOSTS_DISABLED:
+					if h_unp in i.keys():
+						try:
+							del i[h_unp]
+						except:
+							pass
+			for h_unp in common.FMOVIES_HOSTS_DISABLED:
+				if h_unp in server_lab:
+					try:
+						server_lab.remove(h_unp)
+					except:
+						pass
+			if len(server_lab) == 0:
+				server_lab.append(common.SERVER_PLACEHOLDER)
+	
+	if common.DEV_DEBUG == True and Prefs["use_debug"]:
+		Log('=================Fix numbering===============')
+
 	##### Fix numbering #####
-	seq = range(1, len(servers_list_new)+1)
-	#Log(seq)
-	c=1
+	try:
+		m_min = servers_list[common.SERVER_PLACEHOLDER][0]['quality']
+		m_min = filter(lambda x: x.isdigit(), m_min)
+		m_min = int(m_min)
+	except:
+		m_min = 0
+	try:
+		m_max = servers_list[common.SERVER_PLACEHOLDER][len(servers_list[common.SERVER_PLACEHOLDER])-1]['quality']
+		m_max = filter(lambda x: x.isdigit(), m_max)
+		m_max = int(m_max)+1
+	except:
+		m_max = 1
+		
+	seq = range(min(1,m_min), max(len(servers_list_new),m_max))
+
+	c = 1 # min(1,m_min)
 	if len(servers_list_new) > 0:
-		#Log(server_lab)
-		#Log(servers_list_new)
+		if common.DEV_DEBUG == True and Prefs["use_debug"]:
+			Log(seq)
+			Log(server_lab)
+			Log(servers_list_new)
 		
 		new_map = []
 
@@ -2660,8 +2954,8 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 							eps_item[label]['loc'] = None
 						if int(ep_c) > seq[c-1] and label == server_lab[len(server_lab)-1]:
 							seq.remove(seq[c-1])
-						if int(ep_c) in seq and label == server_lab[len(server_lab)-1]:
-							seq.remove(int(ep_c))
+						#if int(ep_c) in seq and label == server_lab[len(server_lab)-1]:
+						#	seq.remove(int(ep_c))
 				except:
 					pass
 				eps_items[label] = eps_item[label]
@@ -2669,9 +2963,14 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 			new_map.append(eps_items)
 
 		servers_list_new = new_map
+		
+		if common.DEV_DEBUG == True and Prefs["use_debug"]:
+			Log('================= servers_list-3 ===============')
+			Log(servers_list_new)
+		
 	############################
 	
-	if dataEXS != None or common.ES_API_URL.lower() in url:
+	if dataEXS != None or common.isArrayValueInString(common.EXT_LIST_URLS, url):
 		if Prefs["use_debug"]:
 			Log("============================= Processsing API-Fetch ===============================")
 	
@@ -2789,7 +3088,6 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 			
 	try:
 		summary = unicode(common.ascii_only(summary))
-		#summary = unicode(str(summary).replace('"','').replace('\u00',''))
 	except:
 		summary = 'Not Available'
 
@@ -2945,19 +3243,31 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 			episodes_list_new.append(item)
 			
 		episodes_list_new = sorted(episodes_list_new, key=lambda k: k['ord_date'], reverse=False)
-		#Log(episodes_list_new)
+		
+		if common.DEV_DEBUG == True and Prefs["use_debug"]:
+			Log('================= episodes_list_new ===============')
+			Log(episodes_list_new)
 		episodes_list = episodes_list_new
 
 		######################################################################################
 		
 		eps_i = 1
+		try:
+			eps_i = servers_list_new[0][common.SERVER_PLACEHOLDER]['quality']
+			if '-' in eps_i:
+				eps_i = eps_i.split('-')
+				eps_i = eps_i[0]
+			eps_i = filter(lambda x: x.isdigit(), eps_i)
+			eps_i = int(eps_i)
+		except:
+			eps_i = 1
 		c_not_missing=-1
 		c=0
 		c2=0
 		
 		for eps in servers_list_new:	
 			if '-' in eps[server_lab[0]]['quality'] and verify2partcond(eps[server_lab[0]]['quality']): # 2 part episode condition
-				qual_i = (int(eps[server_lab[0]]['quality'].split('-')[0])-eps_i)
+				qual_i = max(int(eps[server_lab[0]]['quality'].split('-')[0])-eps_i,0)
 				eps_i += count2partcond(eps[server_lab[0]]['quality'])-1
 				try:
 					if episodes_list[qual_i]['air_date'] == episodes_list[qual_i+1]['air_date']:
@@ -2966,7 +3276,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 					pass
 			else:
 				try:
-					qual_i = (int(eps[server_lab[0]]['quality'])-eps_i) + c2
+					qual_i = max(int(eps[server_lab[0]]['quality'])-eps_i,0) + c2
 				except:
 					qual_i = c_not_missing+1 + c2
 					eps_i = eps_i-1 + c2
@@ -2989,6 +3299,12 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 			desc = common.ascii_only(desc)
 			
 			try:
+				episodex = filter(lambda x: x.isdigit(), episode)
+				episode = episodex
+			except:
+				pass
+			
+			try:
 				oc.add(DirectoryObject(
 					key = Callback(TvShowDetail, tvshow=title, title=title_s, url=url, servers_list_new=E(JSON.StringFromObject(servers_list_new[c])), server_lab=E(JSON.StringFromObject(server_lab)), summary=desc+'\n '+summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, serverts=serverts, session=session, season=SeasonN, episode=int(episode), imdb_id=imdb_id),
 					title = title_s,
@@ -3000,7 +3316,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 				c_not_missing = qual_i
 				c += 1
 			except Exception as e:
-				Log('ERROR init.py>EpisodeDetail>Tv1 %s, %s' % (e.args, title_s))
+				Log('ERROR init.py>EpisodeDetail>Tv1 %s, %s %s' % (e.args, title, c))
 				pass
 			
 		if SeasonN > 0 or True: # enable for all - even if this might be a single season
@@ -3033,10 +3349,16 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 			oc.title2 = title
 			
 		c=0
+		episode = None
 		for eps in servers_list_new:
 			try:
 				episode = eps[server_lab[0]]['quality']
 				title_s = 'Ep:' + episode
+				try:
+					episodex = filter(lambda x: x.isdigit(), episode)
+					episode = episodex
+				except:
+					pass
 				oc.add(DirectoryObject(
 					key = Callback(TvShowDetail, tvshow=title, title=title_s, url=url, servers_list_new=E(JSON.StringFromObject(servers_list_new[c])), server_lab=E(JSON.StringFromObject(server_lab)), summary='Episode Summary Not Available.\n ' + summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, serverts=serverts, session=session, season=SeasonN, episode=int(episode), imdb_id=imdb_id),
 					title = title_s,
@@ -3047,7 +3369,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 				)
 				c += 1
 			except Exception as e:
-				Log('ERROR init.py>EpisodeDetail>Tv2 %s, %s' % (e.args, title_s))
+				Log('ERROR init.py>EpisodeDetail>Tv2 %s, %s %s' % (e.args, title, c))
 				pass
 		if SeasonN > 0 or True: # enable for all - even if this might be a single season
 			oc.add(DirectoryObject(
@@ -3088,10 +3410,11 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 		for eps in servers_list_new:
 			try:
 				episode = eps[server_lab[0]]['quality']
+				labelx = '%s' % (' ('+riptype+')' if riptype != '' else '')
 				title_s = episode
 				oc.add(DirectoryObject(
 					key = Callback(TvShowDetail, tvshow=title, title=title_s, url=url, servers_list_new=E(JSON.StringFromObject(servers_list_new[c])), server_lab=E(JSON.StringFromObject(server_lab)), summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, serverts=serverts, session=session, season=SeasonN, episode=episode, treatasmovie=True, imdb_id=imdb_id),
-					title = title_s,
+					title = '%s%s' % (title_s, labelx),
 					summary = summary,
 					art = art,
 					thumb = Resource.ContentsOfURLWithFallback(url = common.GetThumb(thumb, session=session), fallback = common.GetThumb(common.ICON_UNAV, session=session))
@@ -3099,7 +3422,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 				)
 				c += 1
 			except Exception as e:
-				Log('ERROR init.py>EpisodeDetail>Movie1 %s, %s' % (e.args, title_s))
+				Log('ERROR init.py>EpisodeDetail>Movie1 %s, %s %s' % (e.args, title, c))
 				pass
 				
 		if Prefs['disable_extsources'] == False and common.interface.isInitialized():
@@ -3140,7 +3463,10 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 	else:
 		# case for presenting movies
 		if Prefs["use_debug"]:
-			Log("case for presenting movies")
+			if is9anime == 'True':
+				Log("case for presenting 9Anime movies")
+			else:
+				Log("case for presenting movies")
 		
 		if Prefs['disable_extsources'] == False:
 			#Thread.Create(ExtSources, {}, movtitle=title, year=year, title=title, url=url, summary=summary, thumb=thumb, art=art, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles)
@@ -3159,11 +3485,13 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 		
 		watch_title = title
 		
-		if common.SERVER_PLACEHOLDER in server_lab:
-			idx = server_lab.index(common.SERVER_PLACEHOLDER)
-			del server_lab[idx]
+		if len(server_lab) > 0:
+			if common.SERVER_PLACEHOLDER in server_lab:
+				idx = server_lab.index(common.SERVER_PLACEHOLDER)
+				del server_lab[idx]
 	
 		pair_required = False
+		title_s = None
 		for label in server_lab:
 			for label_i in servers_list[label]:
 				url_s = label_i['loc']
@@ -3178,7 +3506,13 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 						captcha = None
 						dlt = None
 						if server_info != None:
-							qual = common.getHighestQualityLabel(server_info, label_i['quality'])
+							lab_q = label_i['quality']
+							try:
+								if is9anime == 'True' and int(lab_q) < 360:
+									lab_q = '480'
+							except:
+								pass
+							qual = common.getHighestQualityLabel(server_info, lab_q)
 							title_s = label + ' - ' + qual
 						
 							pair_required = False
@@ -3261,10 +3595,13 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 						Log('ERROR init.py>EpisodeDetail>Movie2b %s, %s' % (e.args, (title + ' - ' + title_s)))
 						pass
 				else:
+					labelx = '%s' % (' ('+riptype+')' if riptype != '' else '')
+					if len(common.host_misc_resolvers.RAPIDVIDEO_CAPTCHA) > 0 and 'rapidvideo' in label.lower():
+						labelx = ' (Solve Captcha)'
 					if common.UsingOption(common.DEVICE_OPTIONS[6], session=session):
 						oc.add(MovieObject(
 							key = Callback(VideoDetail, title=title, url=url, url_s=url_s, label=label, label_i_qual=label_i['quality'], serverts=serverts, summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, libtype='movie', session=session, watch_title=watch_title, serverid=serverid),
-							title = label,
+							title = '%s%s' % (label,labelx),
 							duration = int(duration) * 60 * 1000,
 							year = int(year),
 							rating_key = url+url_s,
@@ -3276,7 +3613,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 					else:
 						oc.add(DirectoryObject(
 							key = Callback(VideoDetail, title=title, url=url, url_s=url_s, label=label, label_i_qual=label_i['quality'], serverts=serverts, summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, libtype='movie', session=session, watch_title=watch_title, serverid=serverid),
-							title = label,
+							title = '%s%s' % (label,labelx),
 							summary = summary,
 							art = art,
 							thumb = common.GetThumb(thumb, session=session)
@@ -3312,7 +3649,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 				title = 'Add to AutoPilot Queue',
 				summary = 'Add to the AutoPilot Queue for Downloading',
 				art = art,
-				thumb = R(common.ICON_OTHERSOURCESDOWNLOAD_AUTO)
+				thumb = common.GetThumb(R(common.ICON_OTHERSOURCESDOWNLOAD_AUTO), session=session)
 				)
 			)
 		elif Prefs['disable_downloader'] == False:
@@ -3376,8 +3713,8 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 		)
 	)
 	
+	oc.add(DirectoryObject(key = Callback(MainMenu),title = '<< Main Menu',thumb = common.GetThumb(R(common.ICON), session=session)))
 	return oc
-	
 	
 ####################################################################################################
 @route(PREFIX + "/TvShowDetail")
@@ -3393,9 +3730,10 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 	servers_list_new = JSON.ObjectFromString(D(servers_list_new))
 	
 	server_lab = JSON.ObjectFromString(D(server_lab))
-	if common.SERVER_PLACEHOLDER in server_lab:
-		idx = server_lab.index(common.SERVER_PLACEHOLDER)
-		del server_lab[idx]
+	if len(server_lab) > 0:
+		if common.SERVER_PLACEHOLDER in server_lab:
+			idx = server_lab.index(common.SERVER_PLACEHOLDER)
+			del server_lab[idx]
 	
 	client_id = '%s-%s' % (Client.Product, session)
 
@@ -3426,7 +3764,7 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 	for label in server_lab:
 		url_s = servers_list_new[label]['loc']
 		serverid = servers_list_new[label]['serverid']
-		if url_s != None:
+		if url_s != None and url_s != '':
 			if common.UsingOption(common.DEVICE_OPTIONS[5], session=session):	
 				server_info,isTargetPlay, error, host, sub_url = fmovies.GetApiUrl(url=url, key=url_s, serverts=serverts, serverid=serverid, session=session)
 				server_info_t = server_info
@@ -3573,7 +3911,6 @@ def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary
 	
 	try:
 		summary = unicode(common.ascii_only(summary))
-		#summary = unicode(str(summary).replace('"','').replace('\u00',''))
 	except:
 		summary = 'Not Available'
 		
@@ -3686,7 +4023,7 @@ def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary
 								vvurls_t = common.host_misc_resolvers.resolve(server_info, Prefs["use_https_alt"])[0]
 								vvurls = []
 								for vvurls_t_t in vvurls_t:
-									vvurls.append({'url': '%s&q=%s' % (server_info, vvurls_t_t['label']), 'qual':vvurls_t_t['label']})
+									vvurls.append({'url': '%s&q=%s' % (server_info, vvurls_t_t['label']), 'qual':vvurls_t_t['label'], 'furl': vvurls_t_t['file']})
 								#vvurls = [{'url':server_info+'&q=720p', 'qual':'720p'},{'url':server_info+'&q=480p', 'qual':'480p'},{'url':server_info+'&q=360p', 'qual':'360p'}]
 							elif 'openload' in host:
 								vvurls = [{'url':server_info, 'qual':qual}]
@@ -3779,7 +4116,6 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 
 	try:
 		summary = unicode(common.ascii_only(summary))
-		#summary = unicode(str(summary).replace('"','').replace('\u00',''))
 	except:
 		summary = 'Not Available'
 	
@@ -4063,6 +4399,8 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 	
 	for i in oc:
 		oc_conc.add(i)
+		
+	oc_conc.add(DirectoryObject(key = Callback(MainMenu), title = '<< Main Menu', thumb = R(common.ICON)))
 	return oc_conc
 	
 ####################################################################################################
@@ -4071,7 +4409,6 @@ def ExtSourcesDownload(title, url, summary, thumb, art, rating, duration, genre,
 
 	try:
 		summary = unicode(common.ascii_only(summary))
-		#summary = unicode(str(summary).replace('"','').replace('\u00',''))
 	except:
 		summary = 'Not Available'
 	
@@ -4157,9 +4494,16 @@ def ExtSourcesDownload(title, url, summary, thumb, art, rating, duration, genre,
 			filter_extSources.append(i)
 	internal_extSources = filter_extSources
 	
+	thumbx = thumb
+	
 	for source in internal_extSources:
 		status = common.GetEmoji(type=source['online'], session=session)
 		vidUrl = source['url']
+		
+		if 'poster' in source.keys() and source['poster'] != None and source['poster'].startswith('http'):
+			thumb = source['poster']
+		else:
+			thumb = thumbx
 		
 		isTargetPlay = True if source['source'] not in ['gvideo','mega'] else False
 		isVideoOnline = source['online']
@@ -4217,7 +4561,8 @@ def ExtSourcesDownload(title, url, summary, thumb, art, rating, duration, genre,
 					title = title_msg,
 					summary = 'Adds the current video to %s List' % 'Download' if mode==common.DOWNLOAD_MODE[0] else 'Request',
 					art = art,
-					thumb = common.GetThumb(R('%s' % common.ICON_OTHERSOURCESDOWNLOAD if mode==common.DOWNLOAD_MODE[0] else common.ICON_REQUESTS), session=session)
+					thumb = common.GetThumb(thumb, session=session)
+					#thumb = common.GetThumb(R('%s' % common.ICON_OTHERSOURCESDOWNLOAD if mode==common.DOWNLOAD_MODE[0] else common.ICON_REQUESTS), session=session)
 					)
 				)
 			except Exception as e:
@@ -4227,6 +4572,7 @@ def ExtSourcesDownload(title, url, summary, thumb, art, rating, duration, genre,
 	if len(oc) == 0:
 		return MC.message_container('Download Sources', 'No videos based on Filter Selection')
 	
+	oc.add(DirectoryObject(key = Callback(MainMenu), title = '<< Main Menu', thumb = R(common.ICON)))
 	return oc
 	
 ####################################################################################################
@@ -4238,7 +4584,6 @@ def PSExtSources(extSources_play, con_title, session, watch_title, year, summary
 	
 	try:
 		summary = unicode(common.ascii_only(summary))
-		#summary = unicode(str(summary).replace('"','').replace('\u00',''))
 	except:
 		summary = 'Not Available'
 	
@@ -4409,6 +4754,7 @@ def PSExtSources(extSources_play, con_title, session, watch_title, year, summary
 	for o in ocx:
 		oc.add(o)
 				
+	oc.add(DirectoryObject(key = Callback(MainMenu), title = '<< Main Menu', thumb = R(common.ICON)))
 	return oc
 	
 ####################################################################################################
@@ -4488,12 +4834,7 @@ def SimilarRecommendations(title, similar_reccos, referer=None, is9anime = 'Fals
 			)
 		)
 	
-	oc.add(DirectoryObject(
-		key = Callback(MainMenu),
-		title = '<< Main Menu',
-		thumb = R(common.ICON)
-		)
-	)
+	oc.add(DirectoryObject(key = Callback(MainMenu), title = '<< Main Menu', thumb = R(common.ICON)))
 	
 	return oc
 	
@@ -4647,7 +4988,7 @@ def AddRecentWatchList(title, url, summary, thumb, **kwargs):
 def RecentWatchList(title, session=None, **kwargs):
 
 	if not common.interface.isInitialized():
-		return MC.message_container(common.MSG0, common.MSG1)
+		return MC.message_container(common.MSG0, '%s. Progress %s%s (%s)' % (common.MSG1, common.interface.getProvidersInitStatus(), '%', common.interface.getCurrentProviderInProcess()))
 
 	oc = ObjectContainer(title1=title, no_cache=common.isForceNoCache())
 	NO_OF_ITEMS_IN_RECENT_LIST = 100
@@ -4668,10 +5009,6 @@ def RecentWatchList(title, session=None, **kwargs):
 		
 	newlist = sorted(urls_list, key=lambda k: k['time'], reverse=True)
 
-	# m = re.findall(r'(.*?.)(bmovie|fmovie)', fmovies.BASE_URL)
-	# if len(m) > 0:
-		# fmovies_base = fmovies.BASE_URL.replace(m[0][0], '')
-	# fmovies_base = fmovies.BASE_URL.replace('https://www.','')
 	fmovies_base = fmovies.BASE_URL.replace('https://','')
 	
 	c=0
@@ -4687,36 +5024,44 @@ def RecentWatchList(title, session=None, **kwargs):
 		
 		#Log("%s %s" % (stitle, url))
 		url = common.FixUrlInconsistencies(url)
-		url = url.replace('www.','')
+		url = common.FixUrlInconsistencies2(url)
+		url = common.FixUrlInconsistencies3(url)
 		
 		ES = ''
-		if common.ES_API_URL.lower() in longstring.lower():
+		if common.isArrayValueInString(common.EXT_SITE_URLS, url) == True:
+			try:
+				if common.ES_API_URL not in url:
+					url = url.replace(url.split(common.ES_API_KEY)[0],common.ES_API_URL.split(common.ES_API_KEY)[0])
+			except:
+				pass
 			ES = common.EMOJI_EXT
-		if common.ANIME_URL.lower() in longstring.lower() or '9anime' in longstring.lower():
+
+		if common.ANIME_KEY.lower() in longstring.lower():
 			ES = common.EMOJI_ANIME
+			
+		if common.DEV_DEBUG == True and Prefs["use_debug"] == True:
+			Log("RECENT Title: %s" % stitle)
+			Log("RECENT URL: %s" % url)
 		
 		urlhost = common.client.getUrlHost(url)
 		show = True
 	
-		for u in common.BASE_URLS:
-			if url.replace(common.client.getUrlHost(u),fmovies_base) in items_in_recent or c > NO_OF_ITEMS_IN_RECENT_LIST:
-				items_to_del.append(each['key'])
-				show = False
-				break
+		if common.isArrayValueInString(common.EXT_SITE_URLS, url) == False:
+			for u in common.BASE_URLS:
+				if url.replace(common.client.getUrlHost(u),fmovies_base) in items_in_recent or c > NO_OF_ITEMS_IN_RECENT_LIST:
+					items_to_del.append(each['key'])
+					show = False
+					break
 
-		if show == True:
-			if 'fmovies.' in longstring or 'bmovies.' in longstring:
+		if show == True and url not in items_in_recent:
+			if 'fmovies.' in url or 'bmovies.' in url:
 				url = url.replace(common.client.geturlhost(url),fmovies_base)
-				
-			#url = common.FixUrlInconsistencies(url)
-			
-			#Log("%s %s" % (stitle, url))
 			
 			items_in_recent.append(url)
 				
 			oc.add(DirectoryObject(
 				key=Callback(EpisodeDetail, title=stitle, url=url, thumb=thumb, session = session),
-				title= '%s%s' % (stitle,ES),
+				title= '%s%s' % (ES,stitle),
 				thumb=thumb,
 				tagline = timestr,
 				summary=summary
@@ -4725,6 +5070,7 @@ def RecentWatchList(title, session=None, **kwargs):
 			c += 1
 
 	if c >= NO_OF_ITEMS_IN_RECENT_LIST or len(items_to_del) > 0:
+		Log('%s items to delete' % len(items_to_del))
 		for each in items_to_del:
 			del Dict[each]
 		Dict.Save()
@@ -4747,6 +5093,9 @@ def RecentWatchList(title, session=None, **kwargs):
 @route(PREFIX + "/clearRecentWatchList")
 def ClearRecentWatchList(**kwargs):
 
+	if AuthTools.CheckAdmin() == False:
+		return MC.message_container('Admin Access Only', 'Only the Admin can perform this action !')
+		
 	remove_list = []
 	for each in Dict:
 		try:
@@ -4761,10 +5110,10 @@ def ClearRecentWatchList(**kwargs):
 			del Dict[watchlist]
 		except Exception as e:
 			Log.Error('Error Clearing Recent WatchList: %s' %str(e))
-			continue
+			return MC.message_container("Recent WatchList", 'Error Clearing Recent WatchList: %s' %str(e))
 
 	Dict.Save()
-	return MC.message_container("My Recent WatchList", 'Your Recent WatchList list will be cleared soon.')
+	return MC.message_container("Recent WatchList", 'Your Recent WatchList list will be cleared soon.')
 	
 ######################################################################################
 # Converts old style bookmarks
@@ -4792,7 +5141,8 @@ def convertbookmarks(**kwargs):
 				thumb = longstring.split('Key5Split')[3]
 				
 				Delete_List.append(title+'-'+E(url))
-				url = url.replace('www.','')
+				url = common.FixUrlInconsistencies2(url)
+				
 				Covert_List[title+'-'+E(url)] = (title + 'Key5Split' + url +'Key5Split'+ summary + 'Key5Split' + thumb)
 			
 		if len(Delete_List) > 0:
@@ -4814,7 +5164,7 @@ def convertbookmarks(**kwargs):
 def Bookmarks(title, session = None, **kwargs):
 
 	if not common.interface.isInitialized():
-		return MC.message_container(common.MSG0, common.MSG1)
+		return MC.message_container(common.MSG0, '%s. Progress %s%s (%s)' % (common.MSG1, common.interface.getProvidersInitStatus(), '%', common.interface.getCurrentProviderInProcess()))
 	
 	oc = ObjectContainer(title1=title, no_cache=common.isForceNoCache())
 	
@@ -4822,76 +5172,124 @@ def Bookmarks(title, session = None, **kwargs):
 	
 	items_in_bm = []
 	items_to_del = []
+	items_to_bm = []
 	
 	for each in Dict:
 		longstring = str(Dict[each])
 		
-		if (('fmovies.' in longstring or 'bmovies.' in longstring or '9anime.' in longstring) or common.isArrayValueInString(common.EXT_SITE_URLS, longstring) == True) and 'Key5Split' in longstring:	
-			stitle = unicode(longstring.split('Key5Split')[0])
-			url = longstring.split('Key5Split')[1]
-			summary = unicode(longstring.split('Key5Split')[2])
-			thumb = longstring.split('Key5Split')[3]
+		if 'Key5Split' in longstring:
 			
-			url = common.FixUrlInconsistencies(url)
-			url = url.replace('www.','')
-			
-			for u in common.BASE_URLS:
-				u = common.client.getUrlHost(u)
-				if u in url:
-					url = url.replace(u,fmovies_base)
-					break
+			if ('fmovies.' in longstring or 'bmovies.' in longstring or '9anime.' in longstring) or common.isArrayValueInString(common.EXT_SITE_URLS, longstring) == True:
 				
-			#Log("BM : %s" % stitle)
-			#Log("BM : %s" % url)
+				stitle = unicode(longstring.split('Key5Split')[0])
+				url = longstring.split('Key5Split')[1]
+				summary = unicode(longstring.split('Key5Split')[2])
+				thumb = longstring.split('Key5Split')[3]
 				
-			if url not in items_in_bm:
+				eachUrl = None
+				try:
+					eachUrl = D(each.replace((stitle+'-'),''))
+				except:
+					pass
 				
-				items_in_bm.append(url)
-				is9anime = 'False'
-				ES = ''
-				if common.ES_API_URL.lower() in url.lower():
-					ES = common.EMOJI_EXT
-				if common.ANIME_URL.lower() in url.lower():
-					ES = common.EMOJI_ANIME
-					is9anime = 'True'
+				url0 = url = common.FixUrlInconsistencies(url)
+				url = common.FixUrlInconsistencies2(url)
+				url = common.FixUrlInconsistencies3(url)
 				
-				if fmovies.FILTER_PATH in url or '(All Seasons)' in stitle:
-					oc.add(DirectoryObject(
-						key=Callback(Search, query=stitle.replace(' (All Seasons)',''), session = session, mode='other seasons', thumb=thumb, summary=summary, is9anime=is9anime),
-						title='%s%s' % (stitle,ES),
-						thumb=thumb,
-						summary=summary
-						)
-					)
-				else:
-					oc.add(DirectoryObject(
-						key=Callback(EpisodeDetail, title=stitle, url=url, thumb=thumb, session = session),
-						title='%s%s' % (stitle,ES),
-						thumb=thumb,
-						summary=summary
-						)
-					)
-			else:
-				items_to_del.append(each)
+				# Fix incorrect BM's
+				if eachUrl != None and eachUrl != url0:
+					if common.DEV_DEBUG == True and Prefs["use_debug"] == True:
+						Log('Fixing URL : %s with %s' % (url0, url))
+					items_to_bm.append([stitle, url, summary, thumb])
+					items_to_del.append(each)
+				
+				for u in common.BASE_URLS:
+					u = common.client.getUrlHost(u)
+					if u in url:
+						url = url.replace(u,fmovies_base)
+						break
+						
+				if common.ES_API_KEY in url:
+					try:
+						if common.ES_API_URL not in url:
+							url = url.replace(url.split(common.ES_API_KEY)[0],common.ES_API_URL.split(common.ES_API_KEY)[0])
+					except:
+						pass
 					
+				if common.DEV_DEBUG == True and Prefs["use_debug"] == True:
+					Log("eachUrl : %s" % eachUrl)
+					Log("BM : %s" % stitle)
+					Log("BM : %s" % url)
+					
+				if url not in items_in_bm:
+					items_in_bm.append(url)
+					is9anime = 'False'
+					ES = ''
+					if common.isArrayValueInString(common.EXT_SITE_URLS, longstring) == True:
+						ES = common.EMOJI_EXT
+					if common.ANIME_KEY.lower() in url.lower():
+						ES = common.EMOJI_ANIME
+						is9anime = 'True'
+					
+					if fmovies.FILTER_PATH in url or '(All Seasons)' in stitle:
+						oc.add(DirectoryObject(
+							key=Callback(Search, query=stitle.replace(' (All Seasons)',''), session = session, mode='other seasons', thumb=thumb, summary=summary, is9anime=is9anime),
+							title='%s%s' % (ES,stitle),
+							tagline=stitle,
+							thumb=thumb,
+							summary=summary
+							)
+						)
+					else:
+						oc.add(DirectoryObject(
+							key=Callback(EpisodeDetail, title=stitle, url=url, thumb=thumb, session = session),
+							title='%s%s' % (ES,stitle),
+							tagline=stitle,
+							thumb=thumb,
+							summary=summary
+							)
+						)
+				else:
+					items_to_del.append(each)
+
 	if len(items_to_del) > 0:
 		for each in items_to_del:
 			del Dict[each]
 		Dict.Save()
-				
-	if len(oc) == 0:
-		return MC.message_container(title, 'No Bookmarked Videos Available')
 		
-	oc.objects.sort(key=lambda obj: obj.title, reverse=False)
+	if len(items_to_bm) > 0:
+		for each in items_to_bm:
+			AddBookmark(each[0], each[1], each[2], each[3], True)
+		Dict.Save()
+				
+	#if len(oc) == 0:
+	#	return MC.message_container(title, 'No Bookmarked Videos Available')
+		
+	if len(oc) > 0:
+		oc.objects.sort(key=lambda obj: obj.tagline, reverse=False)
 	
-	#add a way to clear bookmarks list
-	oc.add(DirectoryObject(
-		key = Callback(ClearBookmarks),
-		title = "Clear Bookmarks",
-		thumb = R(common.ICON_QUEUE),
-		summary = "CAUTION! This will clear your entire bookmark list!"
+	if len(oc) > 0:
+		#add a way to clear bookmarks list
+		oc.add(DirectoryObject(
+			key = Callback(ClearBookmarks),
+			title = "Clear Bookmarks",
+			thumb = R(common.ICON_QUEUE),
+			summary = "CAUTION! This will clear your entire bookmark list!"
+			)
 		)
-	)
+	
+	if len(oc) > 0:
+		# save bookmarks
+		oc.add(DirectoryObject(key=Callback(tools.DevToolsC, title='save_bm'),
+			title=u'Save Bookmarks',
+			thumb = R(common.ICON_FL_SAVE),
+			summary=u'Save Bookmarks to the Resource dir. (file: bookmarks.json)'))
+		
+	# load bookmarks
+	oc.add(DirectoryObject(key=Callback(tools.DevToolsC, title='load_bm'),
+		title=u'Load Bookmarks',
+		thumb = R(common.ICON_FL_LOAD),
+		summary=u'Load Bookmarks from the Resource dir. (file: bookmarks.json)'))
 		
 	return oc
 
@@ -4902,22 +5300,38 @@ def Check(title, url, **kwargs):
 	
 	longstring = Dict[title+'-'+E(url)]
 	fmovies_urlhost = common.client.geturlhost(url)
-	#Log("%s --- %s --- %s" % (longstring, url, fmovies_urlhost))
+	fmovies_movie_path = None
+	
+	try:
+		fmovies_movie_path = url.split(fmovies_urlhost)[1]
+	except:
+		pass
+	
+	for ext_url in common.EXT_SITE_URLS:
+		surl = url.replace(url.split(common.ES_API_KEY)[0],ext_url.split(common.ES_API_KEY)[0])
+		longstring = Dict[title+'-'+E(surl)]
+		if longstring != None and common.ES_API_KEY in longstring:
+			return True
 	
 	if longstring != None and common.isArrayValueInString(common.EXT_SITE_URLS, longstring) == True:
 		return True
 	
 	if longstring != None and url in longstring:
 		return True
-		
-		
+
 	for u in common.BASE_URLS:
 		surl = url.replace(fmovies_urlhost, common.client.geturlhost(u))
 		longstring = Dict[title+'-'+E(surl)]
 		if longstring != None and surl in longstring:
 			return True
 		
-	surl = url.replace(fmovies_urlhost,'9anime.is')
+	for d in common.ANIME_DOMS:
+		surl = url.replace(common.client.geturlhost(url),'%s.%s' % (common.ANIME_KEY, d))
+		longstring = Dict[title+'-'+E(surl)]
+		if longstring != None and surl in longstring:
+			return True
+			
+	surl = url.replace(fmovies_urlhost,'%s.%s' % (common.ANIME_KEY, 'is'))
 	longstring = Dict[title+'-'+E(surl)]
 	if longstring != None and surl in longstring:
 		return True
@@ -4932,17 +5346,22 @@ def Check(title, url, **kwargs):
 ######################################################################################
 # Adds a movie to the bookmarks list using the title as a key for the url
 @route(PREFIX + "/addbookmark")
-def AddBookmark(title, url, summary, thumb, **kwargs):
+def AddBookmark(title, url, summary, thumb, silent=False, **kwargs):
 
 	url = common.FixUrlInconsistencies(url)
+	url = common.FixUrlInconsistencies3(url)
 	if Check(title=title, url=url):
 		return MC.message_container(title, 'This item has already been added to your bookmarks.')
 		
 	#Log("Added : %s %s" % (title, url))
 	
 	Dict[title+'-'+E(url)] = (title + 'Key5Split' + url +'Key5Split'+ summary + 'Key5Split' + thumb)
-	Dict.Save()
-	return MC.message_container(title, 'This item has been added to your bookmarks.')
+	
+	silent = True if str(silent).lower() == 'true' else False
+	
+	if silent == False:
+		Dict.Save()
+		return MC.message_container(title, 'This item has been added to your bookmarks.')
 
 ######################################################################################
 # Removes a movie to the bookmarks list using the title as a key for the url
@@ -4950,37 +5369,83 @@ def AddBookmark(title, url, summary, thumb, **kwargs):
 def RemoveBookmark(title, url, **kwargs):
 
 	url = common.FixUrlInconsistencies(url)
+	url = common.FixUrlInconsistencies3(url)
+	success = False
+	
 	try:
 		del Dict[title+'-'+E(url)]
-	except:
-		pass
+		success = True
+	except Exception as e:
+		Log(e)
+
+	if success == False and 'All Seasons' in title:
+		try:
+			if 'type=series' not in url:
+				del Dict[title+'-'+E(url.replace('page=1','type=series&page=1'))]
+				success = True
+			else:
+				del Dict[title+'-'+E(url.replace('type=series&page=1','page=1'))]
+				success = True
+		except Exception as e:
+			Log(e)
 
 	fmovies_urlhost = common.client.geturlhost(url)
 	
-	for u in common.BASE_URLS:
+	if success == False:
+		for u in common.BASE_URLS:
+			try:
+				del Dict[title+'-'+E(url.replace(fmovies_urlhost,common.client.geturlhost(u)))]
+				success = True
+				break
+			except Exception as e:
+				if common.DEV_DEBUG == True and Prefs["use_debug"] == True:
+					Log(e)
+				pass
+
+	if success == False:
+		for d in common.ANIME_DOMS:
+			try:
+				del Dict[title+'-'+E(url.replace(fmovies_urlhost,'%s.%s' % (common.ANIME_KEY, d)))]
+				success = True
+				break
+			except:
+				pass
+
+	if success == False:
 		try:
-			del Dict[title+'-'+E(url.replace(fmovies_urlhost,common.client.geturlhost(u)))]
+			del Dict[title+'-'+E(url.replace(fmovies_urlhost,'9anime.to'))]
+			success = True
 		except:
 			pass
-
-	try:
-		del Dict[title+'-'+E(url.replace(fmovies_urlhost,'9anime.is'))]
-	except:
-		pass
+			
+	if success == False:
+		for ext_url in common.EXT_SITE_URLS:
+			try:
+				surl = url.replace(url.split(common.ES_API_KEY)[0],ext_url.split(common.ES_API_KEY)[0])
+				del Dict[title+'-'+E(surl)]
+				success = True
+			except:
+				pass
 		
-	Dict.Save()
-	return MC.message_container(title, 'This item has been removed from your bookmarks.')
+	if success == True:
+		Dict.Save()
+		return MC.message_container(title, 'This item has been removed from your bookmarks.')
+	else:
+		return MC.message_container(title, 'Error in removing your bookmark.')
 
 ######################################################################################
 # Clears the Dict that stores the bookmarks list
 @route(PREFIX + "/clearbookmarks")
 def ClearBookmarks(**kwargs):
 
+	if AuthTools.CheckAdmin() == False:
+		return MC.message_container('Admin Access Only', 'Only the Admin can perform this action !')
+		
 	remove_list = []
 	for each in Dict:
 		try:
-			url = Dict[each]
-			if ('bmovies.' in url or 'fmovies.' in url or '9anime.' in url) or common.isArrayValueInString(common.EXT_SITE_URLS, url) == True and 'http' in url and 'RR44SS' not in url:
+			longstring = Dict[each]
+			if (('bmovies.' in longstring or 'fmovies.' in longstring or '9anime.' in longstring) or common.isArrayValueInString(common.EXT_SITE_URLS, longstring) == True) and 'http' in longstring and 'Key5Split' in longstring:
 				remove_list.append(each)
 		except:
 			continue
@@ -4990,7 +5455,7 @@ def ClearBookmarks(**kwargs):
 			del Dict[bookmark]
 		except Exception as e:
 			Log.Error('Error Clearing Bookmarks: %s' %str(e))
-			continue
+			return MC.message_container("Bookmarks", 'Error Clearing Bookmarks: %s' %str(e))
 
 	Dict.Save()
 	return MC.message_container("Bookmarks", 'Your bookmark list will be cleared soon.')
@@ -5000,6 +5465,9 @@ def ClearBookmarks(**kwargs):
 @route(PREFIX + "/clearsearches")
 def ClearSearches(**kwargs):
 
+	if AuthTools.CheckAdmin() == False:
+		return MC.message_container('Admin Access Only', 'Only the Admin can perform this action !')
+		
 	remove_list = []
 	for each in Dict:
 		try:
@@ -5015,7 +5483,7 @@ def ClearSearches(**kwargs):
 			del Dict[search_term]
 		except Exception as e:
 			Log.Error('Error Clearing Searches: %s' %str(e))
-			continue
+			return MC.message_container("Search Queue", 'Error Clearing Searches: %s' %str(e))
 
 	Dict.Save()
 	return MC.message_container("Search Queue", "Your Search Queue list will be cleared soon.")
@@ -5025,7 +5493,7 @@ def ClearSearches(**kwargs):
 def Search(query=None, surl=None, page_count='1', mode='default', thumb=None, summary=None, is9anime='False', session=None, **kwargs):
 
 	if not common.interface.isInitialized():
-		return MC.message_container(common.MSG0, common.MSG1)
+		return MC.message_container(common.MSG0, '%s. Progress %s%s (%s)' % (common.MSG1, common.interface.getProvidersInitStatus(), '%', common.interface.getCurrentProviderInProcess()))
 
 	last_page_no = page_count
 	query2 = None
@@ -5095,6 +5563,10 @@ def Search(query=None, surl=None, page_count='1', mode='default', thumb=None, su
 			pass
 		no_elems = len(elems)
 		
+	title_auto = query
+	summary_auto = summary
+	thumb_auto = thumb
+		
 	try:
 		oc = ObjectContainer(title2 = 'Search Results for %s' % query, no_cache=common.isForceNoCache())
 
@@ -5116,7 +5588,7 @@ def Search(query=None, surl=None, page_count='1', mode='default', thumb=None, su
 					loc = elem.xpath(".//a[@class='name']//@href")[0]
 				thumb_t = elem.xpath(".//a[@class='poster']//@src")[0]
 				thumbx = thumb_t if 'url' not in thumb_t else thumb_t.split('url=')[1]
-				summary = 'Plot Summary on Item Page.'
+				summaryxx = 'Plot Summary on Item Page.'
 				if query2 == None:
 					try:
 						query2 = common.cleantitle.onlytitle(name)
@@ -5138,11 +5610,17 @@ def Search(query=None, surl=None, page_count='1', mode='default', thumb=None, su
 				except:
 					more_info_link = None
 				
-				thumbxx = common.GetThumb(thumbx, session=session)
+				thumbxx = common.GetThumb(thumbx, session=session, force_list_view_off=True if mode == 'other seasons' else False)
+				
+				if thumb_auto == None:
+					thumb_auto = thumbxx
+				if summary_auto == None:
+					summary_auto = summaryxx
+				
 				do = DirectoryObject(
 					key = Callback(EpisodeDetail, title = name, url = loc, thumb = thumbx, session = session),
 					title = name + title_eps_no,
-					summary = GetMovieInfo(summary=summary, urlPath=more_info_link, referer=url, session=session) + eps_nos,
+					summary = GetMovieInfo(summary=summaryxx, urlPath=more_info_link, referer=url, session=session) + eps_nos,
 					thumb = thumbxx if thumbxx != None else R(common.ICON_UNAV)
 					)
 				if mode == 'default' or mode == 'people' or mode == 'tag':
@@ -5226,6 +5704,16 @@ def Search(query=None, surl=None, page_count='1', mode='default', thumb=None, su
 			)
 			
 	if mode == 'other seasons' and page_count=='1':
+		if no_elems > 0:
+			if common.DOWNLOAD_ALL_SEASONS == True and Prefs['disable_downloader'] == False and AuthTools.CheckAdmin() == True:
+				oc.add(DirectoryObject(
+					key = Callback(downloadsmenu.AddToAutoPilotDownloads, title=title_auto, thumb=thumb_auto, summary=summary_auto, purl=url, season=None, season_end=len(oc), episode_start=1, episode_end=None, year=None, type='show', vidtype='show', session=session, admin=True, all_seasons=True),
+					title = 'Add to AutoPilot Queue',
+					summary = 'Add to the AutoPilot Queue for Downloading',
+					thumb = R(common.ICON_OTHERSOURCESDOWNLOAD_AUTO)
+					)
+				)
+			
 		if Check(title=query + ' (All Seasons)',url=url):
 			oc.add(DirectoryObject(
 				key = Callback(RemoveBookmark, title = query + ' (All Seasons)', url = url),
@@ -5317,6 +5805,14 @@ def SearchExt(query=None, query2=None, session=None, xtitle=None, xyear=None, xt
 					summary = xsummary,
 					thumb = common.GetThumb(R(common.ICON_OTHERSOURCESDOWNLOAD), session=session))
 				oc.add(dobj)
+				
+				dobj = DirectoryObject(
+					key = Callback(downloadsmenu.AddToAutoPilotDownloads, title=xtitle, year=xyear, type='movie', vidtype='movie', summary=xsummary, thumb=xthumb, purl=None, session=session, admin=True),
+					title = '%s (%s) - Add to AutoPilot Queue' % (xtitle, xyear),
+					summary = xsummary,
+					thumb = common.GetThumb(R(common.ICON_OTHERSOURCESDOWNLOAD_AUTO), session=session))
+				oc.add(dobj)
+				
 			elif Prefs['disable_downloader'] == False:
 				dobj = DirectoryObject(
 					key = Callback(DoIMDBExtSources, title=xtitle, year=xyear, type=xtype, imdbid=ximdbid, summary=xsummary, item=xitem, thumb=xthumb, session=session, extype='download'), 
@@ -5492,7 +5988,7 @@ def SearchExt(query=None, query2=None, session=None, xtitle=None, xyear=None, xt
 	
 ####################################################################################################
 @route(PREFIX + "/DoIMDBExtSources")
-def DoIMDBExtSources(title, year, type, imdbid, season=None, episode=None, episodeNr='1', summary=None, simpleSummary=False, thumb=None, item=None, session=None, final=False, extype='source', doSearch=None, **kwargs):
+def DoIMDBExtSources(title, year, type, imdbid, season=None, episode=None, episodeNr='1', summary=None, simpleSummary=False, thumb=None, item=None, session=None, final=False, extype='source', doSearch=None, episodesTot=None, **kwargs):
 
 	final = True if str(final) == 'True' else False
 	simpleSummary = True if str(simpleSummary) == 'True' else False
@@ -5560,13 +6056,29 @@ def DoIMDBExtSources(title, year, type, imdbid, season=None, episode=None, episo
 		if season == None:
 			oc = ObjectContainer(title2='%s (%s)' % (title, year), no_cache=common.isForceNoCache())
 			try:
-				res = common.interface.requestOMDB(t=title, y=year, Season=str(1), i=imdbid, ver=common.VERSION)
+				res = common.interface.requestOMDB(title=title, year=str(year), season=str(1), imdb=imdbid, ver=common.VERSION)
 				SeasonNR = int(json.loads(res.content)['totalSeasons'])
+				try:
+					episodesTot1 = len(json.loads(res.content)['Episodes'])
+					episodesTot2 = int(json.loads(res.content)['Episodes'][len(json.loads(res.content)['Episodes'])-1]['Episode'])
+					episodesTot = max(episodesTot1,episodesTot2)
+				except:
+					pass
+				
+				DumbKeyboard(PREFIX, oc, DoIMDBExtSourcesSeason, dktitle = 'Input Season No.', dkthumb=R(common.ICON_DK_ENABLE), dkNumOnly=True, dkHistory=False, title=title, year=year, type=type, imdbid=imdbid, thumb=thumb, summary=summary, session=session)
 				for i in range(1,SeasonNR+1):
-					oc.add(DirectoryObject(key = Callback(DoIMDBExtSources, title=title, year=year, type=type, imdbid=imdbid, thumb=thumb, summary=summary, season=str(i), episode=None, session=session), 
+					oc.add(DirectoryObject(key = Callback(DoIMDBExtSources, title=title, year=year, type=type, imdbid=imdbid, thumb=thumb, summary=summary, season=str(i), episode=None, session=session, episodesTot=episodesTot), 
 						title = '*%s (Season %s)' % (title, str(i)),
 						thumb = thumb))
-				DumbKeyboard(PREFIX, oc, DoIMDBExtSourcesSeason, dktitle = 'Input Season No.', dkthumb=R(common.ICON_DK_ENABLE), dkNumOnly=True, dkHistory=False, title=title, year=year, type=type, imdbid=imdbid, thumb=thumb, summary=summary, session=session)
+				
+				if common.DOWNLOAD_ALL_SEASONS == True and Prefs['disable_downloader'] == False and AuthTools.CheckAdmin() == True:
+					oc.add(DirectoryObject(
+						key = Callback(downloadsmenu.AddToAutoPilotDownloads, title=title, thumb=thumb, summary=summary, purl=None, season=None, season_end=SeasonNR+1, episode_start=1, episode_end=None, year=year, type='show', vidtype='show', session=session, admin=True, all_seasons=True),
+						title = 'Add to AutoPilot Queue',
+						summary = 'Adds Season (1 - %s) to the AutoPilot Queue for Downloading' % (SeasonNR),
+						thumb = R(common.ICON_OTHERSOURCESDOWNLOAD_AUTO)
+						)
+					)
 			except:
 				DumbKeyboard(PREFIX, oc, DoIMDBExtSourcesSeason, dktitle = 'Input Season No.', dkthumb=R(common.ICON_DK_ENABLE), dkNumOnly=True, dkHistory=False, title=title, year=year, type=type, imdbid=imdbid, thumb=thumb, summary=summary, session=session)
 	
@@ -5583,6 +6095,7 @@ def DoIMDBExtSources(title, year, type, imdbid, season=None, episode=None, episo
 			x_season=season
 			x_imdbid=imdbid
 			x_thumb=thumb
+			x_summary=summary
 			
 			res = common.interface.getOMDB(title=x_title, year=x_year, season=x_season, episode=str(1), imdbid=x_imdbid, ver=common.VERSION)
 			try:
@@ -5610,6 +6123,8 @@ def DoIMDBExtSources(title, year, type, imdbid, season=None, episode=None, episo
 			
 			DumbKeyboard(PREFIX, oc, DoIMDBExtSourcesEpisode, dktitle = 'Input Episode No.', dkthumb=R(common.ICON_DK_ENABLE), dkNumOnly=True, dkHistory=False, title=title, year=year, type=type, imdbid=imdbid, thumb=thumb, season=season, summary=summary, session=session, genres=genre, rating=rating, runtime=duration)
 			
+			autopilot_option_shown = False
+			
 			for e in range(int(episodeNr),1000):
 				time.sleep(1.0)
 				res = common.interface.getOMDB(title=x_title, year=x_year, season=x_season, episode=str(e), imdbid=x_imdbid, ver=common.VERSION)
@@ -5621,6 +6136,16 @@ def DoIMDBExtSources(title, year, type, imdbid, season=None, episode=None, episo
 					item = None
 				
 				if item==None or len(item) == 0:
+					if episodesTot == None or (episodesTot != None and int(episodesTot) < (e-1)):
+						if Prefs['disable_downloader'] == False and AuthTools.CheckAdmin() == True:
+							autopilot_option_shown = True
+							oc.add(DirectoryObject(
+								key = Callback(downloadsmenu.AddToAutoPilotDownloads, title=x_title, thumb=x_thumb, summary=x_summary, purl=None, season=x_season, episode_start=1, episode_end=e, year=x_year, type='show', vidtype='show', session=session, admin=True),
+								title = 'Add to AutoPilot Queue',
+								summary = 'Adds Episodes (1 - %s) to the AutoPilot Queue for Downloading' % (e-1),
+								thumb = R(common.ICON_OTHERSOURCESDOWNLOAD_AUTO)
+								)
+							)
 					break
 					
 				title = item['title']
@@ -5681,12 +6206,35 @@ def DoIMDBExtSources(title, year, type, imdbid, season=None, episode=None, episo
 				time.sleep(0.1)
 				
 				if int(episodeNr) + 9 == e:
+					if int(episodeNr) == 1 and autopilot_option_shown == False:
+						if episodesTot != None:
+							autopilot_option_shown = True
+							episodesTot = int(episodesTot)
+							if Prefs['disable_downloader'] == False and AuthTools.CheckAdmin() == True:
+								oc.add(DirectoryObject(
+									key = Callback(downloadsmenu.AddToAutoPilotDownloads, title=x_title, thumb=x_thumb, summary=x_summary, purl=None, season=x_season, episode_start=1, episode_end=episodesTot, year=x_year, type='show', vidtype='show', session=session, admin=True),
+									title = 'Add to AutoPilot Queue',
+									summary = 'Adds Episodes (1 - %s) to the AutoPilot Queue for Downloading' % episodesTot,
+									thumb = R(common.ICON_OTHERSOURCESDOWNLOAD_AUTO)
+									)
+								)
 					oc.add(DirectoryObject(
-					key = Callback(DoIMDBExtSources, title=x_title, year=x_year, type=type, imdbid=x_imdbid, thumb=x_thumb, season=season, episodeNr=str(e+1), session=session), 
+					key = Callback(DoIMDBExtSources, title=x_title, year=x_year, type=type, imdbid=x_imdbid, thumb=x_thumb, season=season, episodeNr=str(e+1), summary=x_summary, session=session, episodesTot=episodesTot), 
 					title = 'Next Page >>',
 					thumb = R(common.ICON_NEXT)))
 					break
-					
+			if autopilot_option_shown == False:
+				if episodesTot != None:
+					autopilot_option_shown = True
+					episodesTot = int(episodesTot)
+					if Prefs['disable_downloader'] == False and AuthTools.CheckAdmin() == True:
+						oc.add(DirectoryObject(
+							key = Callback(downloadsmenu.AddToAutoPilotDownloads, title=x_title, thumb=x_thumb, summary=x_summary, purl=None, season=x_season, episode_start=1, episode_end=episodesTot, year=x_year, type='show', vidtype='show', session=session, admin=True),
+							title = 'Add to AutoPilot Queue',
+							summary = 'Adds Episodes (1 - %s) to the AutoPilot Queue for Downloading' % episodesTot,
+							thumb = R(common.ICON_OTHERSOURCESDOWNLOAD_AUTO)
+							)
+						)		
 		elif final == False:
 			try:
 				CACHE_EXPIRY = 60 * int(Prefs["cache_expiry_time"])
@@ -5805,8 +6353,11 @@ def DoIMDBExtSources(title, year, type, imdbid, season=None, episode=None, episo
 				summary += 'Genre: ' + genre + '\n '
 				summary += 'IMDB rating: ' + rating + '\n '
 				
-				if str(released) != 'N/A' and str(released) != 'Not Available':
-					summary = released + ' : ' + summary
+				try:
+					if str(released) != 'N/A' and str(released) != 'Not Available':
+						summary = released + ' : ' + summary
+				except:
+					pass
 			
 			summary = unicode(summary.replace('–','-'))
 			
@@ -5902,7 +6453,7 @@ def DoIMDBExtSourcesEpisode(query, title, year, type, imdbid, season, summary, t
 def SearchQueueMenu(title, session = None, **kwargs):
 
 	if not common.interface.isInitialized():
-		return MC.message_container(common.MSG0, common.MSG1)
+		return MC.message_container(common.MSG0, '%s. Progress %s%s (%s)' % (common.MSG1, common.interface.getProvidersInitStatus(), '%', common.interface.getCurrentProviderInProcess()))
 
 	oc = ObjectContainer(title2='Search Using Term', no_cache=common.isForceNoCache())
 	
@@ -5965,7 +6516,7 @@ def SearchQueueMenu(title, session = None, **kwargs):
 def Help():
 
 	if not common.interface.isInitialized():
-		return MC.message_container(common.MSG0, common.MSG1)
+		return MC.message_container(common.MSG0, '%s. Progress %s%s (%s)' % (common.MSG1, common.interface.getProvidersInitStatus(), '%', common.interface.getCurrentProviderInProcess()))
 
 	oc = ObjectContainer(title2 = 'Help', no_cache=common.isForceNoCache())
 	help_page_links, error = common.GetPageAsString(url=common.Help_Videos)
@@ -5990,7 +6541,7 @@ def Help():
 def FilterSetup(title, session, key1 = None, key2val = None, mode='add', update=True, **kwargs):
 
 	if not common.interface.isInitialized():
-		return MC.message_container(common.MSG0, common.MSG1)
+		return MC.message_container(common.MSG0, '%s. Progress %s%s (%s)' % (common.MSG1, common.interface.getProvidersInitStatus(), '%', common.interface.getCurrentProviderInProcess()))
 
 	oc = ObjectContainer(title2 = title, no_cache=common.isForceNoCache())
 	
@@ -6078,12 +6629,13 @@ def FilterSetup(title, session, key1 = None, key2val = None, mode='add', update=
 					searchStringDesc += common.GetKeyFromVal(Filter[k1],k2v) + ', '
 				c += 1
 
-	searchString += Filter_Search['sort'] + ':' + Filter_Search['order']
+	searchString += 'sort=' + Filter_Search['sort'] + ':' + Filter_Search['order']
 	searchString = searchString.replace(' ','+')
 
 	
 	# Build Filter-Search Url
-	#https://fmovies.se/filter?sort=post_date%3Adesc&genre%5B%5D=25&genre_mode=and&country%5B%5D=2&type%5B%5D=movie&quality%5B%5D=HD+1080p&release%5B%5D=2017
+	# https://fmovies.se/filter?sort=post_date%3Adesc&genre%5B%5D=25&genre_mode=and&country%5B%5D=2&type%5B%5D=movie&quality%5B%5D=HD+1080p&release%5B%5D=2017
+	# https://fmovies.taxi/filter?sort=imdb%3Adesc&genre%5B%5D=64&country%5B%5D=2&type%5B%5D=movie&subtitle%5B%5D=1&quality%5B%5D=HD&release%5B%5D=2018
 	searchUrl = urlparse.urljoin(fmovies.BASE_URL , fmovies.FILTER_PATH + '?' + urllib2.quote(searchString, safe='_+=&'))
 	
 	oc.add(DirectoryObject(
@@ -6215,7 +6767,7 @@ def FilterSetupData(**kwargs):
 def FilterExtSetup(title, session, key1 = None, key2val = None, mode='add', update=True, **kwargs):
 
 	if not common.interface.isInitialized():
-		return MC.message_container(common.MSG0, common.MSG1)
+		return MC.message_container(common.MSG0, '%s. Progress %s%s (%s)' % (common.MSG1, common.interface.getProvidersInitStatus(), '%', common.interface.getCurrentProviderInProcess()))
 
 	oc = ObjectContainer(title2 = title, no_cache=common.isForceNoCache())
 	
@@ -6425,7 +6977,7 @@ def ShowCategoryES(title, filter=None, page_count='1', last_page_no=None, sessio
 		searchString = '%s/%s?sort=%s&order=%s&genre=%s' % (filter['type'], page_count, filter['sort'], filter['order'], genre)
 		
 		# Build Filter-Search Url
-		#http://movies-v2.api-fetch.website/movies/1?sort=trending&limit=50&year=2017&genre=Comedy&order=-1
+		# http://movies-v2.api-fetch.website/movies/1?sort=trending&limit=50&year=2017&genre=Comedy&order=-1
 		apiUrl = common.ES_API_URL + '/%s' % urllib2.quote(searchString, safe='%/_-+=&?')
 		
 		if last_page_no == None:

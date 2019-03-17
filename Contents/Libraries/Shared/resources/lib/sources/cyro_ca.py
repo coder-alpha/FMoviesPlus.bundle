@@ -33,8 +33,8 @@ loggertxt = []
 class source:
 	def __init__(self):
 		del loggertxt[:]
-		self.ver = '0.1.1'
-		self.update_date = 'June 13, 2018'
+		self.ver = '0.1.3'
+		self.update_date = 'Sept. 25, 2018'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
 		self.base_link_alts = ['http://xpau.se','http://xpau.se.prx2.unblocksites.co','http://xpau.se.prx.proxyunblocker.org']
@@ -156,6 +156,10 @@ class source:
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_movie','Provider Disabled by User')
 				return None
+			if self.siteonline == False:
+				log('INFO','get_movie','Provider is Offline')
+				return None
+				
 			url = {'imdb': imdb, 'title': title, 'year': year}
 			url = urllib.urlencode(url)
 			return url
@@ -168,6 +172,10 @@ class source:
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_show','Provider Disabled by User')
 				return None
+			if self.siteonline == False:
+				log('INFO','get_show','Provider is Offline')
+				return None
+				
 			return
 		except Exception as e: 
 			log('ERROR', 'get_show','%s: %s' % (tvshowtitle,e), dolog=self.init)
@@ -189,9 +197,11 @@ class source:
 			sources = []
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_sources','Provider Disabled by User')
+				log('INFO', 'get_sources', 'Completed')
 				return sources
 			if url == None: 
 				log('FAIL','get_sources','url == None. Could not find a matching title: %s' % cleantitle.title_from_key(key), dolog=not testing)
+				log('INFO', 'get_sources', 'Completed')
 				return sources
 			
 			url_arr=[]
@@ -231,7 +241,12 @@ class source:
 				except:
 					pass
 					
-			url_arr = list(set(url_arr))
+			url_arr_t = []
+			for u in url_arr:
+				u = u.replace('--', '-')
+				url_arr_t.append(u)
+				
+			url_arr = list(set(url_arr_t))
 			links = []
 			for url in url_arr:
 				try:
@@ -270,12 +285,12 @@ class source:
 					sub_url = None
 					
 					try:
-						sub_url = urlparse.urljoin(self.base_link, re.findall('\/.*srt', result)[0])
+						sub_url = urlparse.urljoin(self.base_link, re.findall('\"(\/subs.*?.srt)\"', result)[0])
 					except:
 						pass
 						
 					try:
-						poster = sub_url = urlparse.urljoin(self.base_link, client.parseDOM(result, 'img', ret='src', attrs = {'id': 'nameimage'})[0])
+						poster = urlparse.urljoin(self.base_link, client.parseDOM(result, 'img', ret='src', attrs = {'id': 'nameimage'})[0])
 					except:
 						poster = None
 					
@@ -284,14 +299,24 @@ class source:
 					#r = client.parseDOM(r, 'div', attrs = {'id': '5throw'})[0]
 					#r = client.parseDOM(r, 'a', ret='href', attrs = {'rel': 'nofollow'})
 					
+					r_orig = r
+					
 					try:
-						r = client.parseDOM(r, 'div', attrs = {'id': '1strow'})[0]
+						r = client.parseDOM(r_orig, 'div', attrs = {'id': '1strow'})[0]
 						#print r
 						r = client.parseDOM(r, 'a', ret='href', attrs = {'id': 'dm1'})[0]
 						#print r
 						links = resolvers.createMeta(r, self.name, self.logo, quality, links, key, poster=poster, vidtype='Movie', sub_url=sub_url, testing=testing)
 					except Exception as e:
-						log('FAIL', 'get_sources-1', e , dolog=False)	
+						log('FAIL', 'get_sources-1A', e , dolog=False)
+						try:
+							r = client.parseDOM(r_orig, 'div', attrs = {'id': 'n1strow'})[0]
+							#print r
+							r = client.parseDOM(r, 'a', ret='href', attrs = {'id': 'mega'})[0]
+							#print r
+							links = resolvers.createMeta(r, self.name, self.logo, quality, links, key, poster=poster, vidtype='Movie', sub_url=sub_url, testing=testing)
+						except Exception as e:
+							log('FAIL', 'get_sources-1B', e , dolog=False)	
 						
 					try:
 						r = self.returnFinalLink(url)
@@ -358,19 +383,22 @@ class source:
 								
 					except Exception as e:
 						log('FAIL', 'get_sources-3', e , dolog=False)
-				except:
-					pass
+				except Exception as e:
+					log('FAIL', 'get_sources-3.1', e , dolog=False)
 
 			for i in links: sources.append(i)		
 			
 			if len(sources) == 0:
 				log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key))
-				return sources
+			else:
+				log('SUCCESS', 'get_sources','%s sources : %s' % (cleantitle.title_from_key(key), len(sources)))
+				
+			log('INFO', 'get_sources', 'Completed')
 			
-			log('SUCCESS', 'get_sources','%s sources : %s' % (cleantitle.title_from_key(key), len(sources)), dolog=not testing)
 			return sources
 		except Exception as e:
-			log('ERROR', 'get_sources', '%s' % e, dolog=not testing)
+			log('ERROR', 'get_sources', '%s' % e)
+			log('INFO', 'get_sources', 'Completed')
 			return sources
 
 

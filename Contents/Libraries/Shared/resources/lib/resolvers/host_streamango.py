@@ -2,7 +2,7 @@
 
 #########################################################################################################
 #
-# Streamango scrapper
+# Streamango scraper
 #
 # Adapted from tvaddonsco
 # https://github.com/tvaddonsco/script.module.urlresolver/blob/master/lib/urlresolver/plugins/streamango.py
@@ -51,8 +51,8 @@ loggertxt = []
 class host:
 	def __init__(self):
 		del loggertxt[:]
-		self.ver = '0.0.1'
-		self.update_date = 'Apr. 11, 2018'
+		self.ver = '0.0.2'
+		self.update_date = 'Feb. 12, 2019'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
 		self.logo = 'https://i.imgur.com/9Zv3dU8.png'
@@ -145,8 +145,11 @@ class host:
 	def testUrl(self):
 		return ['https://streamango.com/embed/fnnnmermndekbbrf/']
 		
-	def createMeta(self, url, provider, logo, quality, links, key, riptype, vidtype='Movie', lang='en', sub_url=None, txt='', file_ext = '.mp4', testing=False, poster=None, headers=None):
+	def createMeta(self, url, provider, logo, quality, links, key, riptype, vidtype='Movie', lang='en', sub_url=None, txt='', file_ext = '.mp4', testing=False, poster=None, headers=None, page_url=None):
 	
+		files_ret = []
+		orig_url = url
+
 		if testing == True:
 			links.append(url)
 			return links
@@ -155,47 +158,51 @@ class host:
 			log('INFO','createMeta','Host Disabled by User')
 			return links
 			
-		orig_url = url
+		try:
+			urldata = client.b64encode(json.dumps('', encoding='utf-8'))
+			params = client.b64encode(json.dumps('', encoding='utf-8'))
 			
-		urldata = client.b64encode(json.dumps('', encoding='utf-8'))
-		params = client.b64encode(json.dumps('', encoding='utf-8'))
-		
-		online = check(url)
-		vidurls, err, sub_url_t = getAllQuals(url, online)
-		
-		if vidurls == None:
-			log(type='ERROR',method='createMeta-1', err=u'%s' % err)
-			return links
+			online = check(url)
+			vidurls, err, sub_url_t = getAllQuals(url, online)
 			
-		if sub_url_t != None:
-			sub_url = sub_url_t
+			if vidurls == None:
+				log(type='ERROR',method='createMeta-1', err=u'%s' % err)
+				return links
+				
+			if sub_url_t != None:
+				sub_url = sub_url_t
 			
-		files_ret = []
-		
-		for vv in vidurls:
-			durl = vv['page']
-			vidurl, r1, r2 = resolve(durl, online)
-			if vidurl != None:
-				quality = vv['label']
-				try:
-					#vidurl_t = client.request(vidurl, output='geturl')
-					fs = client.getFileSize(vidurl)
-					fs = int(fs)
-				except Exception as e:
-					log(type='ERROR',method='createMeta', err=u'%s' % e)
-					fs = 0
+			for vv in vidurls:
+				durl = vv['page']
+				vidurl, r1, r2 = resolve(durl, online)
+				if vidurl != None:
+					quality = vv['label']
+					try:
+						#vidurl_t = client.request(vidurl, output='geturl')
+						fs = client.getFileSize(vidurl)
+						fs = int(fs)
+					except Exception as e:
+						fs = 0
 
-				try:
-					log(type='INFO',method='createMeta', err=u'durl:%s ; res:%s; fs:%s' % (vidurl,quality,fs))
-					files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':txt, 'quality':quality, 'vidtype':vidtype, 'rip':riptype, 'provider':provider, 'url':durl, 'durl':durl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':fs, 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'poster':poster, 'sub_url':sub_url, 'subdomain':client.geturlhost(url), 'misc':{'player':'iplayer', 'gp':False}})
-				except Exception as e:
-					log(type='ERROR',method='createMeta', err=u'%s' % e)
-					files_ret.append({'source':urlhost, 'maininfo':'', 'titleinfo':txt, 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'url':durl, 'durl':durl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':fs, 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(url), 'misc':{'player':'iplayer', 'gp':False}})
+					try:
+						log(type='INFO',method='createMeta', err=u'durl:%s ; res:%s; fs:%s' % (durl,quality,fs))
+						files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':txt, 'quality':quality, 'vidtype':vidtype, 'rip':riptype, 'provider':provider, 'orig_url':orig_url, 'url':durl, 'durl':durl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':fs, 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'poster':poster, 'sub_url':sub_url, 'subdomain':client.geturlhost(url), 'misc':{'player':'iplayer', 'gp':False}})
+					except Exception as e:
+						log(type='ERROR',method='createMeta', err=u'%s' % e)
+						files_ret.append({'source':urlhost, 'maininfo':'', 'titleinfo':txt, 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'orig_url':orig_url, 'url':durl, 'durl':durl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':fs, 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(url), 'misc':{'player':'iplayer', 'gp':False}})
+		except Exception as e:
+			log('ERROR', 'createMeta', '%s' % e)
 			
 		for fr in files_ret:
 			links.append(fr)
-
-		log('INFO', 'createMeta', 'Successfully processed %s link >>> %s' % (provider, orig_url), dolog=self.init)
+			
+		if len(files_ret) > 0:
+			log('SUCCESS', 'createMeta', 'Successfully processed %s link >>> %s' % (provider, orig_url), dolog=self.init)
+		else:
+			log('FAIL', 'createMeta', 'Failed in processing %s link >>> %s' % (provider, orig_url), dolog=self.init)
+			
+		log('INFO', 'createMeta', 'Completed', dolog=self.init)
+			
 		return links
 		
 	def resolve(self, url):
@@ -213,6 +220,8 @@ def resolve(url, online=None):
 		if online == None:
 			if check(url) == False: 
 				raise Exception('Video not available')
+		elif online == False:
+			raise Exception('Video not available')
 
 		video_url = None
 		err = ''
@@ -225,8 +234,8 @@ def resolve(url, online=None):
 			if video_url[len(video_url)-1] == '@':
 				video_url = video_url[:-1]
 		except Exception as e:
-			err = r
-			log('ERROR', 'resolve', 'link > %s : %s' % (url, e), dolog=self.init)
+			err = '%s' % e
+			log('ERROR', 'resolve', 'link > %s : %s' % (url, e), dolog=True)
 
 		return (video_url, err, None)
 		
@@ -332,6 +341,9 @@ def check(url, headers=None, cookie=None):
 			return False
 			
 		page_data_string = client.request(url=url, headers=headers, cookie=cookie)
+		
+		if 'We are unable to find the video you\'re looking for' in page_data_string or 'Sorry!' in page_data_string or 'The file you are looking is currently converting' in page_data_string:
+			return False
 		if 'We are unable to find the video you\'re looking for' in page_data_string or 'Sorry!' in page_data_string or 'The file you are looking is currently converting' in page_data_string:
 			return False
 

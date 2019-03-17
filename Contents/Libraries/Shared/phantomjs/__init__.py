@@ -90,6 +90,7 @@ def decode(url, python_dir=None, debug=False, ssl=True, js='openload.js'):
 			raise Exception('Empty output received !')
 		if js=='openload.js':
 			#print "1: %s" % output
+			log(output.strip(), doPrint=True)
 			output = re.findall(r'https://openload.co/stream/.*', output)[0]
 		#print "2: %s" % output
 		output = output.strip().replace('\n','').encode('utf8').decode('ascii')
@@ -97,12 +98,9 @@ def decode(url, python_dir=None, debug=False, ssl=True, js='openload.js'):
 		
 		PROCESSES[url_encode].update({'Completed':True})
 
-		if js=='openload.js' and 'http' in output:
+		if 'http' in output:
 			return output, True
-		elif js=='openload.js':
-			return output, False
-
-		return output, True
+		return output, False
 	except Exception as err:
 		log(type='ERROR', err= "%s > %s > %s" % (str(err), str(output), str(file_cmd)))
 		return str(err), False
@@ -155,27 +153,31 @@ def md5(fname):
 	return hash_md5.hexdigest()
 		
 def test():
+	control.doPrint = True
 	print "PhantomJS binary file presence: %s | MD5 Checksum: %s" % checkBinaryPresence()
 	resp = decode("https://openload.co/embed/kUEfGclsU9o", debug=False, js='openload.js')
 	print resp[0]
 	log(PROCESSES)
 	
 def test2():
+	control.doPrint = True
 	print "PhantomJS binary file presence: %s | MD5 Checksum: %s" % checkBinaryPresence()
 	resp = decode("https://fmovies.taxi/film/incredibles-2.5kj1m/njpppj", debug=False, js='fmovies.js')
 	print resp[0]
 	log(PROCESSES)
 	
 def test3():
+	control.doPrint = True
 	print "PhantomJS binary file presence: %s | MD5 Checksum: %s" % checkBinaryPresence()
 	resp = decode("https://www6.9anime.is/watch/ginga-eiyuu-densetsu-die-neue-these-kaikou.0y5r/j1xj1y", debug=False, js='fmovies.js')
 	print resp[0]
 	log(PROCESSES)
 
 def test4():
+	control.doPrint = True
 	print "PhantomJS binary file presence: %s | MD5 Checksum: %s" % checkBinaryPresence()
-	resp = decode("https://fmovies.taxi/film/avengers-infinity-war.z12k2/66nk3z", debug=False, js='fmoviesPage.js')
+	resp = decode("https://fmovies.taxi/film/incredibles-2.5kj1m/njpppj", debug=False, js='fmoviesPage.js')
 	print resp[0]
 	log(PROCESSES)
 	
-#test4()
+#test()

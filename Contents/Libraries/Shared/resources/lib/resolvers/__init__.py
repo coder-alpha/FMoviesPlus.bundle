@@ -126,15 +126,15 @@ def testLink(url):
 	except:
 		return 'Unknown'
 		
-def createMeta(url, provider, logo, quality, links, key, riptype=None, vidtype='Movie', lang='en', sub_url=None, txt='', file_ext='.mp4', testing=False, urlhost=None, poster=None, headers=None):
+def createMeta(url, provider, logo, quality, links, key, riptype=None, vidtype='Movie', lang='en', sub_url=None, txt='', file_ext='.mp4', testing=False, urlhost=None, poster=None, headers=None, page_url=None):
 
-	if url == None or url == '':
+	if url == None or url == '' or url == 'http:' or url == 'https:':
 		return links
 		
 	url = url.strip()
 	
 	for item in links:
-		if url == item['durl']:
+		if url == item['orig_url']:
 			log("%s has already been processed" % url)
 			return links
 	
@@ -157,14 +157,14 @@ def createMeta(url, provider, logo, quality, links, key, riptype=None, vidtype='
 			else:
 				riptype_def = riptype
 			for host in sourceHostsCall:
-				log("Searching %s in %s" % (urlhost, host['host']), logToControl=False)
+				log("Searching %s in host (%s)" % (urlhost, host['name']), logToControl=False)
 
 				if urlhost in host['host']:
-					log("Found %s in %s" % (urlhost, host['host']))
-					return host['call'].createMeta(url, provider, logo, quality, links, key, riptype_def, vidtype=vidtype, lang=lang, sub_url=sub_url, txt=txt, file_ext=file_ext, testing=testing, poster=poster, headers=headers)
+					log("Found %s in host (%s)" % (urlhost, host['name']))
+					return host['call'].createMeta(url, provider, logo, quality, links, key, riptype_def, vidtype=vidtype, lang=lang, sub_url=sub_url, txt=txt, file_ext=file_ext, testing=testing, poster=poster, headers=headers, page_url=page_url)
 				
 		log("urlhost '%s' not found in host/resolver plugins - creating generic meta for external services" % urlhost)
-				
+		
 		quality = file_quality(url, quality)
 		
 		if riptype == None:
@@ -172,7 +172,7 @@ def createMeta(url, provider, logo, quality, links, key, riptype=None, vidtype='
 		else:
 			type = riptype
 		
-		links_m.append({'source':urlhost, 'maininfo':'', 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':type, 'provider':provider, 'url':url, 'durl':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':'Unknown', 'allowsDownload':False, 'resumeDownload':False, 'allowsStreaming':True, 'key':key, 'enabled':True, 'fs':int(0), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':urlhost, 'misc':{'player':'eplayer', 'gp':False}})
+		links_m.append({'source':urlhost, 'maininfo':'', 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':type, 'provider':provider, 'orig_url':url, 'url':url, 'durl':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':'Unknown', 'allowsDownload':False, 'resumeDownload':False, 'allowsStreaming':True, 'key':key, 'enabled':True, 'fs':int(0), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':urlhost, 'misc':{'player':'eplayer', 'gp':False}})
 	except Exception as e:
 		log(type='ERROR', err="createMeta : %s url: %s" % (e.args, url))
 		
@@ -187,14 +187,15 @@ def fixquality(quality):
 	elif quality == 'SD' or '480' in quality:
 		quality = '480p'
 	elif quality == 'CAM' or quality == 'SCR':
-		quality = quality
+		quality = '480p'
+	elif quality == None:
+		quality = '480p'
 	else:
 		quality = '360p'
 
 	return quality
 
 def file_quality(url, quality):
-	#print "%s - %s" % (self.name, url)
 	try:
 		if '1080' in url:
 			return '1080p'
@@ -205,6 +206,8 @@ def file_quality(url, quality):
 		elif '360' in url:
 			return '360p'
 		else:
+			if quality == None:
+				return '480p'
 			return unicode(quality)
 	except:
 		return unicode(quality)

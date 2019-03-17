@@ -56,3 +56,9 @@ Acknowledgements
 - [Twoure](https://github.com/Twoure) for [AuthTools](https://github.com/Twoure/KissNetwork.bundle) and valuable techinical insights and suggestions for JS routines, etc.
 - [mikew](https://github.com/mikew) for SS-Plex the inspiration for the Downloader
 - [Pip Longrun](https://github.com/piplongrun) for TrailerAddict API support & other trailer agents
+- [JamminR](https://github.com/JamminR) & [OldPapa](https://github.com/Oldpapa) for Documentation & Support
+- Parts of the code based/ported from Specto and Exodus (Kodi addons)
+
+Donate & Support
+================
+[![Donate & Support](https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&amp;hosted_button_id=3T3FQDKDZHZ9L)

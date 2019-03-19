@@ -329,6 +329,8 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 
 		elif output == 'geturl':
 			result = response.geturl()
+			if result == None:
+				result = url
 
 		elif output == 'headers':
 			content = response.headers

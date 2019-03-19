@@ -1,7 +1,7 @@
 ################################################################################
 TITLE = "FMoviesPlus"
 VERSION = '0.77' # Release notation (x.y - where x is major and y is minor)
-TAG = 'dev'
+TAG = 'dev 03-18-2019'
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
 ################################################################################
@@ -263,7 +263,7 @@ FMOVIES_SERVER_REMAP = {'Server F':'Google-F', 'Server G':'Google-G', 'F5 Beta':
 FMOVIES_HOSTS_DISABLED = ['MyCloud','PrettyFast']
 FMOVIES_HOSTS_UNPLAYABLE = True
 
-DEV_DEBUG = True if TAG=='dev' else False
+DEV_DEBUG = True if 'dev' in TAG else False
 
 ####################################################################################################
 # Get Key from a Dict using Val

@@ -256,8 +256,8 @@ class Downloader(object):
 			if error != '' or furl == None:
 				furl, params_enc, error = common.host_direct.resolve(durl)
 			if error != '' or furl == None:
-				Log('3donlinefilms URL: %s' % furl)
-				Log('3donlinefilms Error: %s' % error)
+				Log('Direct host URL: %s' % furl)
+				Log('Direct host Error: %s' % error)
 				download_failed(url, error, progress, startPos, purgeKey)
 				common.control.RemoveThread(tuid)
 				return

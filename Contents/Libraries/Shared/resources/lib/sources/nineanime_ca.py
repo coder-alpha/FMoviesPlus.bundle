@@ -300,7 +300,7 @@ class source:
 				return sources
 			
 			myts = str(((int(time.time())/3600)*3600))
-			log('INFO','get_sources-1', 'url: %s' % url, dolog=False)
+			log('INFO','get_sources-1', 'url: %s' % url, dolog=control.debug)
 			token_error = False
 			urls = []
 
@@ -326,7 +326,7 @@ class source:
 					search_url = search_url + '?' + urllib.urlencode(query)
 					result = proxies.request(search_url, headers=self.headers, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, httpsskip=True)
 					
-					log('INFO','get_sources-2', '%s' % search_url, dolog=False)
+					log('INFO','get_sources-2', '%s' % search_url, dolog=control.debug)
 					
 					rs = client.parseDOM(result, 'div', attrs = {'class': '[^"]*film-list[^"]*'})[0]
 					#print rs
@@ -388,7 +388,7 @@ class source:
 					try: url, episode = re.compile('(.+?)\?episode=(\d*)$').findall(url)[0]
 					except: pass
 					
-					log('INFO','get_sources-3', url, dolog=False)
+					log('INFO','get_sources-3', url, dolog=control.debug)
 
 					referer = url
 					result = resultT = proxies.request(url, headers=self.headers, limit='0', proxy_options=proxy_options, use_web_proxy=self.proxyrequired, httpsskip=True)
@@ -411,7 +411,7 @@ class source:
 					if result != None:
 						break
 				except Exception as e:
-					log('FAIL','get_sources-3', '%s : %s' % (url,e), dolog=False)
+					log('FAIL','get_sources-3', '%s : %s' % (url,e), dolog=control.debug)
 					
 			if result == None:
 				log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key))
@@ -428,13 +428,13 @@ class source:
 						raise Exception('Could not decode ts')
 					else:
 						myts = str(int(resp))
-						log('INFO','get_sources-3', 'could not parse ts ! will try and use decoded : %s' % myts, dolog=False)
+						log('INFO','get_sources-3', 'could not parse ts ! will try and use decoded : %s' % myts, dolog=control.debug)
 				except:
 					if self.serverts != None:
 						myts = str(self.serverts)
-						log('INFO','get_sources-3', 'could not parse ts ! will use borrowed one : %s' % myts, dolog=False)
+						log('INFO','get_sources-3', 'could not parse ts ! will use borrowed one : %s' % myts, dolog=control.debug)
 					else:
-						log('INFO','get_sources-3', 'could not parse ts ! will use generated one : %s' % myts, dolog=False)
+						log('INFO','get_sources-3', 'could not parse ts ! will use generated one : %s' % myts, dolog=control.debug)
 
 			trailers = []
 			links_m = []
@@ -499,7 +499,7 @@ class source:
 					headers['Referer'] = urlparse.urljoin(url, s[0])
 					headers['Cookie'] = self.headers['Cookie']
 					
-					log('INFO','get_sources-4', '%s' % hash_url, dolog=False)
+					log('INFO','get_sources-4', '%s' % hash_url, dolog=control.debug)
 					result = proxies.request(hash_url, headers=headers, limit='0', proxy_options=proxy_options, use_web_proxy=self.proxyrequired, httpsskip=True)
 					result = json.loads(result)
 					
@@ -537,7 +537,7 @@ class source:
 						quality = '480p'
 						#riptype = 'CAM'
 						
-					log('INFO','get_sources-5', result, dolog=False)
+					log('INFO','get_sources-5', result, dolog=control.debug)
 					
 					if result['target'] != "-":
 						pass
@@ -584,7 +584,7 @@ class source:
 						if grabber!=None and not grabber.startswith('http'):
 							grabber = 'http:'+grabber
 							
-						log('INFO','get_sources-6', grabber, dolog=False)
+						log('INFO','get_sources-6', grabber, dolog=control.debug)
 
 						result = proxies.request(grabber, headers=headers, referer=url, limit='0', proxy_options=proxy_options, use_web_proxy=self.proxyrequired, httpsskip=True)
 
@@ -611,7 +611,7 @@ class source:
 						links_m = resolvers.createMeta(target, self.name, self.logo, quality, links_m, key, riptype, sub_url=sub_url, testing=testing)
 
 				except Exception as e:
-					log('FAIL', 'get_sources-7','%s' % e, dolog=False)
+					log('FAIL', 'get_sources-7','%s' % e, dolog=control.debug)
 
 			sources += [l for l in links_m]
 			

@@ -204,7 +204,9 @@ class host:
 						u = src['file']
 						fs = client.getFileSize(u, retry429=True, headers=headers)
 						online = check(u)
-						u = client.request(u, output='geturl')
+						u1 = client.request(u, output='geturl')
+						if u1 != None:
+							u = u1
 						urldata = client.b64encode(json.dumps('', encoding='utf-8'))
 						params = client.b64encode(json.dumps('', encoding='utf-8'))
 						if headers != None:

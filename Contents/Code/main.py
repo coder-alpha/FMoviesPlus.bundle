@@ -441,7 +441,7 @@ def Options(session, refresh=0, **kwargs):
 	
 	oc.add(DirectoryObject(key = Callback(DownloadOptions, title="Download Options", session = session), title = "Download Options", thumb = R(common.ICON_DOWNLOADS)))
 	
-	oc.add(DirectoryObject(key = Callback(ThreadsStatus, title="Threads Status"), title = "Threads Status", thumb = R(common.ICON_SYSSTATUS)))
+	oc.add(DirectoryObject(key = Callback(ThreadsStatus, title="Threads Status", session=session), title = "Threads Status", thumb = R(common.ICON_SYSSTATUS)))
 	
 	if common.interface.isInitialized():
 		oc.add(DirectoryObject(key = Callback(InterfaceOptions, session=session), title = 'Interface Options', thumb = R(common.ICON_PREFS), summary='Interface for Proxies, Hosts, Providers and Playback Quality'))
@@ -505,20 +505,21 @@ def DeviceOptions(session, **kwargs):
 	
 ######################################################################################
 @route(PREFIX + "/ThreadsStatus")
-def ThreadsStatus(refresh=0, **kwargs):
+def ThreadsStatus(session, refresh=0, **kwargs):
 
 	oc = ObjectContainer(title2='Threads Status', no_cache=common.isForceNoCache())
 	for t in common.control.getThreads():
 		timestrx = t['start_time']
 		timestr = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(timestrx)))
-		title_msg = 'Name:%s | Type:%s | Start Time:%s | Desc.:%s' % (t['name'], t['type'], timestr, t['desc'])
 		if t['thread'] == None:
+			title_msg = 'Name:%s | Type:%s | Start Time:%s | Desc.:%s' % (t['name'], t['type'], timestr, t['desc'])
 			oc.add(DirectoryObject(title = title_msg, key = Callback(MC.message_container, header="Thread %s" % t['name'], message="Does Nothing")))
 		else:
+			title_msg = 'Name:%s | Type:%s | Start Time:%s | Alive:%s | Desc.:%s' % (t['name'], t['type'], timestr, common.GetEmoji(type=t['thread'].isAlive(), mode='simple', session=session), t['desc'])
 			oc.add(DirectoryObject(title = title_msg, key = Callback(MC.message_container, header="Thread %s" % t['name'], message="Does Nothing")))
 		
 	if len(oc) > 0:
-		oc.add(DirectoryObject(title = 'Refresh', key = Callback(ThreadsStatus, refresh=int(refresh)+1)))
+		oc.add(DirectoryObject(title = 'Refresh', key = Callback(ThreadsStatus, session=session, refresh=int(refresh)+1)))
 		oc.add(DirectoryObject(key = Callback(MainMenu),title = '<< Main Menu',thumb = None))
 		return oc
 	else:
@@ -7280,6 +7281,11 @@ def ValidatePrefs2(changed='True', **kwargs):
 		common.CACHE_EXPIRY = 60 * int(Prefs["cache_expiry_time"])
 	except:
 		common.CACHE_EXPIRY = common.CACHE_EXPIRY_TIME
+		
+	try:
+		common.control.debug = Prefs["use_debug"]
+	except:
+		pass
 	
 	if str(changed) == 'True':
 		DumpPrefs(changed=changed)

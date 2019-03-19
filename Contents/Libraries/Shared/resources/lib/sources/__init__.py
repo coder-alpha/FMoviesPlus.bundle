@@ -167,10 +167,6 @@ class sources:
 
 	def getSources(self, name, title, year, imdb, tmdb, tvdb, tvrage, season, episode, tvshowtitle, alter, date, proxy_options, provider_options, key, session):
 		
-		tuid = control.id_generator(16)
-		t_title = cleantitle.title_from_key(key)
-		control.AddThread('getSources', 'Initializing Search Item in Providers: %s' % t_title, time.time(), '1', False, tuid)
-		
 		try:
 			sourceDict = []
 			self.getSourcesAlive = True
@@ -194,7 +190,8 @@ class sources:
 						source_name = 'Unknow source (import error)'
 						source_name = source['name']
 						log(err='Queuing Search for Movie: %s (%s) in Provider %s' % (title,year,source_name))
-						thread_i = workers.Thread(self.getMovieSource, title, year, imdb, proxy_options, key, re.sub('_mv_tv$|_mv$|_tv$', '', source['name']), source['call'])
+						#thread_i = workers.Thread(self.getMovieSource, title, year, imdb, proxy_options, key, re.sub('_mv_tv$|_mv$|_tv$', '', source_name), source['call'])
+						thread_i = workers.Thread(self.getMovieSource, title, year, imdb, proxy_options, key, source_name, source['call'])
 						self.threads[key].append(thread_i)
 						self.threadSlots[key].append({'thread':thread_i, 'status':'idle', 'pos':pos, 'source':source_name})
 						pos += 1
@@ -216,7 +213,8 @@ class sources:
 						source_name = 'Unknow source (import error)'
 						source_name = source['name']
 						log(err='Queuing Search for Show: %s S%sE%s in Provider %s' % (tvshowtitle,season,episode,source_name))
-						thread_i = workers.Thread(self.getEpisodeSource, title, year, imdb, tvdb, season, episode, tvshowtitle, date, proxy_options, key, re.sub('_mv_tv$|_mv$|_tv$', '', source_name), source['call'])
+						#thread_i = workers.Thread(self.getEpisodeSource, title, year, imdb, tvdb, season, episode, tvshowtitle, date, proxy_options, key, re.sub('_mv_tv$|_mv$|_tv$', '', source_name), source['call'])
+						thread_i = workers.Thread(self.getEpisodeSource, title, year, imdb, tvdb, season, episode, tvshowtitle, date, proxy_options, key, source_name, source['call'])
 						self.threads[key].append(thread_i)
 						self.threadSlots[key].append({'thread':thread_i, 'status':'idle', 'pos':pos, 'source':source_name})
 						pos += 1
@@ -234,13 +232,11 @@ class sources:
 			#time.sleep(0.5)
 			self.getSourcesAlive = False
 
-			control.RemoveThread(tuid)
 			return self.sources
 		except Exception as e:
 			log(type='ERROR-CRITICAL', err='getSources - %s' % e)
 		#	self.purgeSourcesKey(key=key)
-		
-			control.RemoveThread(tuid)
+
 			return self.sources
 			
 	def executeThreadsStatus(self, key, thread):
@@ -302,7 +298,7 @@ class sources:
 			for x in self.threads[key]:
 				if not x.isAlive(): 
 					for s in self.threadSlots[key]:
-						if x == s['thread'] and (s['status'] == 'done' or s['status'] == 'done-marked'):
+						if x == s['thread'] and 'done' in s['status']:
 							c += 1
 			
 			if len(self.threads[key]) == 0:
@@ -375,7 +371,8 @@ class sources:
 			pass
 			
 		try:
-			for s in self.threadSlots[key]:
+			s_in_threadSlots = self.threadSlots[key]
+			for s in s_in_threadSlots:
 				if s['source'] == source:
 					try:
 						s['e_time'] = time.time()
@@ -391,6 +388,7 @@ class sources:
 					break
 		except Exception as e:
 			log(type='ERROR-CRITICAL', err='getMovieSource: %s > %s (%s)' % (e, title, year))
+			
 
 
 	def getEpisodeSource(self, title, year, imdb, tvdb, season, episode, tvshowtitle, date, proxy_options, key, source, call):
@@ -419,7 +417,8 @@ class sources:
 			pass
 			
 		try:
-			for s in self.threadSlots[key]:
+			s_in_threadSlots = self.threadSlots[key]
+			for s in s_in_threadSlots:
 				if s['source'] == source:
 					try:
 						s['e_time'] = time.time()
@@ -443,32 +442,37 @@ class sources:
 			self.threads.clear()
 			self.threadSlots.clear()
 			self.threads = {}
-			self.threadSlots = {}	
+			self.threadSlots = {}
+			log(type='INFO', err='clearSources performed at %s' % time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
 		except Exception as e:
 			log(type='ERROR', err='clearSources : %s' % e)
 			
 	def purgeSources(self, maxcachetimeallowed=0, override=False):
 		try:
 			filtered = []
+			purgedItems = []
 			maxcachetimeallowed = float(maxcachetimeallowed)
 			curr_time = time.time()
 			if override == True:
 				pass
 			else:
-				# if cache time < 2min; then get the sources from last 2min. otherwise it will always return 0 sources
-				if maxcachetimeallowed < 2*60:
-					maxcachetimeallowed = 2*60
+				# if cache time < 5min; then get the sources from last 2min. otherwise it will always return 0 sources
+				if maxcachetimeallowed < 5*60:
+					maxcachetimeallowed = 5*60
 				for i in self.sources:
 					if (i['ts'] + float(maxcachetimeallowed)) >= curr_time:
 						filtered.append(i)
 				for k in self.threads:
 					if self.checkKeyInThread(k) == True and self.checkProgress(k) == 100:
+						purgedItems.append(k)
 						del self.threads[k]
 						del self.threadSlots[k]
 
 			del self.sources[:]
 			for i in filtered:
 				self.sources.append(i)
+			log(type='INFO', err='purgeSources performed at %s' % time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
+			log(type='INFO', err='purgeSources purged items %s' % (', '.join(cleantitle.title_from_key(x) for x in purgedItems)))
 		except Exception as e:
 			log(type='ERROR', err='purgeSources : %s' % e)
 			
@@ -476,6 +480,7 @@ class sources:
 		try:
 			bool = False
 			filtered = []
+			purgedItems = []
 			curr_time = time.time()
 			if key == None:
 				return bool
@@ -491,10 +496,13 @@ class sources:
 						bool = True
 				
 				if self.checkKeyInThread(key) == True and self.checkProgress(key) == 100:
+					purgedItems.append(key)
 					del self.threads[key]
 					del self.threadSlots[key]
 					bool = True
-
+					
+			log(type='INFO', err='purgeSourcesKey performed at %s' % time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
+			log(type='INFO', err='purgeSourcesKey purged items %s' % (', '.join(cleantitle.title_from_key(x) for x in purgedItems)))
 		except Exception as e:
 			log(type='ERROR', err='purgeSourcesKey : %s' % e)
 			bool = False

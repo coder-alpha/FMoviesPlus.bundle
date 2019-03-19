@@ -370,6 +370,7 @@ class sources:
 		except:
 			pass
 			
+		doneMarked = False
 		try:
 			s_in_threadSlots = self.threadSlots[key]
 			for s in s_in_threadSlots:
@@ -385,11 +386,15 @@ class sources:
 					except:
 						pass
 					s['status'] = 'done-marked'
+					doneMarked = True
+					log(type='INFO', err='getMovieSource-done-marked: %s > %s (%s)' % (source, title, year))
 					break
+			if doneMarked == False:
+				log(type='ERROR-CRITICAL', err='getMovieSource: %s' % s_in_threadSlots)
 		except Exception as e:
 			log(type='ERROR-CRITICAL', err='getMovieSource: %s > %s (%s)' % (e, title, year))
 			
-
+		log(type='INFO', err='getMovieSource: Completed %s > %s (%s)' % (source, title, year))
 
 	def getEpisodeSource(self, title, year, imdb, tvdb, season, episode, tvshowtitle, date, proxy_options, key, source, call):
 		
@@ -416,6 +421,7 @@ class sources:
 		except:
 			pass
 			
+		doneMarked = False
 		try:
 			s_in_threadSlots = self.threadSlots[key]
 			for s in s_in_threadSlots:
@@ -431,9 +437,15 @@ class sources:
 					except:
 						pass
 					s['status'] = 'done-marked'
+					doneMarked = True
+					log(type='INFO', err='getEpisodeSource-done-marked: %s > %s (S%sE%s)' % (source, tvshowtitle, season, episode))
 					break
+			if doneMarked == False:
+				log(type='ERROR-CRITICAL', err='getEpisodeSource: %s' % s_in_threadSlots)
 		except Exception as e:
 			log(type='ERROR-CRITICAL', err='getEpisodeSource: %s > %s (S%sE%s)' % (e, tvshowtitle, season, episode))
+			
+		log(type='INFO', err='getEpisodeSource: Completed %s > %s (S%sE%s)' % (source, tvshowtitle, season, episode))
 
 	def clearSources(self, key=None):
 		try:

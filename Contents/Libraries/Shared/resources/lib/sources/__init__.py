@@ -183,7 +183,7 @@ class sources:
 			self.threadSlots[key] = []
 			pos = 0
 			if content == 'movie':
-				log(err='Initializing Search for Movie: %s' % title)
+				log(err='Initializing Search for Movie: %s (%s)' % (title, year))
 				title = cleantitle.normalize(title)
 				for source in myProviders:
 					try:
@@ -277,13 +277,13 @@ class sources:
 						return
 							
 					if s['status'] == 'idle' and active < int(control.setting('control_concurrent_src_threads')):
-						s['thread'].start()
+						log(type='SUCCESS', err='Starting Thread: %s > %s' % (title, s['source']))
 						s['status'] = 'active'
 						s['s_time'] = time.time()
-						log(type='SUCCESS', err='Starting Thread: %s > %s' % (title, s['source']))
 						tuid2 = control.id_generator(16)
 						control.AddThread('executeThreads', 'Provider Search Thread: %s > %s' % (title, s['source']), time.time(), '4', False, tuid2, s['thread'])
 						s['tuid'] = tuid2
+						s['thread'].start()
 					
 					time.sleep(1.0)
 				time.sleep(1.0)
@@ -387,14 +387,14 @@ class sources:
 						pass
 					s['status'] = 'done-marked'
 					doneMarked = True
-					log(type='INFO', err='getMovieSource-done-marked: %s > %s (%s)' % (source, title, year))
-					break
+					log(type='INFO', err='getMovieSource-done-marked: %s > %s (%s)' % (source, title, year), logToControl=control.debug)
+					#break
 			if doneMarked == False:
-				log(type='ERROR-CRITICAL', err='getMovieSource: %s' % s_in_threadSlots)
+				log(type='ERROR-CRITICAL', err='getMovieSource: %s' % s_in_threadSlots, logToControl=control.debug)
 		except Exception as e:
-			log(type='ERROR-CRITICAL', err='getMovieSource: %s > %s (%s)' % (e, title, year))
+			log(type='ERROR-CRITICAL', err='getMovieSource: %s > %s (%s)' % (e, title, year), logToControl=control.debug)
 			
-		log(type='INFO', err='getMovieSource: Completed %s > %s (%s)' % (source, title, year))
+		log(type='INFO', err='getMovieSource: Completed %s > %s (%s)' % (source, title, year), logToControl=control.debug)
 
 	def getEpisodeSource(self, title, year, imdb, tvdb, season, episode, tvshowtitle, date, proxy_options, key, source, call):
 		
@@ -438,14 +438,14 @@ class sources:
 						pass
 					s['status'] = 'done-marked'
 					doneMarked = True
-					log(type='INFO', err='getEpisodeSource-done-marked: %s > %s (S%sE%s)' % (source, tvshowtitle, season, episode))
-					break
+					log(type='INFO', err='getEpisodeSource-done-marked: %s > %s (S%sE%s)' % (source, tvshowtitle, season, episode), logToControl=control.debug)
+					#break
 			if doneMarked == False:
-				log(type='ERROR-CRITICAL', err='getEpisodeSource: %s' % s_in_threadSlots)
+				log(type='ERROR-CRITICAL', err='getEpisodeSource: %s' % s_in_threadSlots, logToControl=control.debug)
 		except Exception as e:
-			log(type='ERROR-CRITICAL', err='getEpisodeSource: %s > %s (S%sE%s)' % (e, tvshowtitle, season, episode))
+			log(type='ERROR-CRITICAL', err='getEpisodeSource: %s > %s (S%sE%s)' % (e, tvshowtitle, season, episode), logToControl=control.debug)
 			
-		log(type='INFO', err='getEpisodeSource: Completed %s > %s (S%sE%s)' % (source, tvshowtitle, season, episode))
+		log(type='INFO', err='getEpisodeSource: Completed %s > %s (S%sE%s)' % (source, tvshowtitle, season, episode), logToControl=control.debug)
 
 	def clearSources(self, key=None):
 		try:
@@ -483,8 +483,10 @@ class sources:
 			del self.sources[:]
 			for i in filtered:
 				self.sources.append(i)
-			log(type='INFO', err='purgeSources performed at %s' % time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
-			log(type='INFO', err='purgeSources purged items %s' % (', '.join(cleantitle.title_from_key(x) for x in purgedItems)))
+				
+			if len(purgedItems) > 0 or len(filtered) > 0 or control.debug == True:
+				log(type='INFO', err='purgeSources performed at %s' % time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
+				log(type='INFO', err='purgeSources purged items %s' % (', '.join(cleantitle.title_from_key(x) for x in purgedItems)))
 		except Exception as e:
 			log(type='ERROR', err='purgeSources : %s' % e)
 			
@@ -513,8 +515,9 @@ class sources:
 					del self.threadSlots[key]
 					bool = True
 					
-			log(type='INFO', err='purgeSourcesKey performed at %s' % time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
-			log(type='INFO', err='purgeSourcesKey purged items %s' % (', '.join(cleantitle.title_from_key(x) for x in purgedItems)))
+			if len(purgedItems) > 0 or len(filtered) > 0 or control.debug == True:
+				log(type='INFO', err='purgeSourcesKey performed at %s' % time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
+				log(type='INFO', err='purgeSourcesKey purged items %s' % (', '.join(cleantitle.title_from_key(x) for x in purgedItems)))
 		except Exception as e:
 			log(type='ERROR', err='purgeSourcesKey : %s' % e)
 			bool = False

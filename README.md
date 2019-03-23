@@ -26,6 +26,7 @@ System Requirements
 		- Android M (Samsung Galaxy S6)
 		- iOS (Apple iPhone6)
 		- Chromecast
+		- Roku
 
 How To Install
 ==============

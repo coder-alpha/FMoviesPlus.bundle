@@ -55,7 +55,7 @@ class host:
 		self.init = False
 		self.logo = 'https://i.imgur.com/Phbe6Z3.png'
 		self.name = name
-		self.host = ['vidcloud.icu','']
+		self.host = ['vidcloud.icu']
 		self.netloc = ['vidcloud.icu']
 		self.quality = '1080p'
 		self.loggertxt = []
@@ -158,7 +158,7 @@ class host:
 			
 		try:
 			if 'vidcloud.icu/load' in url:
-				raise Exception('No mp4 Video\'s found')
+				raise Exception('No mp4 Video found')
 			elif 'vidcloud.icu/download' in url:
 				headersx = {'Referer': url, 'User-Agent': client.agent()}
 				page_data, head, ret, cookie = client.request(url, output='extended', headers=headersx)
@@ -182,10 +182,11 @@ class host:
 					
 					items.append({'quality':q, 'riptype':riptype, 'src':u, 'fs':fs, 'online':online, 'params':params, 'urldata':urldata, 'allowsStreaming':False})
 					
+				seq = 0
 				for item in items:
 					
 					durl = url
-					url = item['src']
+					vidurl = item['src']
 					allowsStreaming = item['allowsStreaming']
 					quality = item['quality']
 					riptype = item['riptype']
@@ -196,10 +197,11 @@ class host:
 					
 					try:
 						log(type='INFO',method='createMeta', err=u'durl:%s ; res:%s; fs:%s' % (durl,quality,fs))
-						files_ret.append({'source':self.name, 'maininfo':txt, 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':riptype, 'provider':provider, 'orig_url':orig_url, 'url':url, 'durl':durl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':allowsStreaming, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(url), 'misc':{'player':'eplayer', 'gp':True}})
+						files_ret.append({'source':self.name, 'maininfo':txt, 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':riptype, 'provider':provider, 'orig_url':orig_url, 'url':vidurl, 'durl':durl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':allowsStreaming, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(url), 'page_url':page_url, 'misc':{'player':'iplayer', 'gp':True}, 'seq':seq})
 					except Exception as e:
 						log(type='ERROR',method='createMeta', err=u'%s' % e)
-						files_ret.append({'source':urlhost, 'maininfo':txt, 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'orig_url':orig_url, 'url':url, 'durl':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':allowsStreaming, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(url), 'misc':{'player':'eplayer', 'gp':True}})
+						files_ret.append({'source':urlhost, 'maininfo':txt, 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'orig_url':orig_url, 'url':vidurl, 'durl':durl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':allowsStreaming, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(url), 'page_url':page_url, 'misc':{'player':'iplayer', 'gp':True}, 'seq':seq})
+					seq += 1
 					
 			elif url != None:
 				online = True
@@ -233,9 +235,9 @@ class host:
 								except Exception as e:
 									log(type='ERROR',method='createMeta', err=u'%s' % e)
 							elif len(mp4_vids) == 0 and video_url == vids[len(vids)-1] and len(files_ret) == 0:
-								raise Exception('No mp4 Video\'s found')
+								raise Exception('No mp4 Video found')
 		except Exception as e:
-			log('ERROR', 'createMeta', '%s' % e)
+			log('FAIL', 'createMeta', '%s' % e)
 		
 		for fr in files_ret:
 			links.append(fr)
@@ -249,8 +251,8 @@ class host:
 			
 		return links
 		
-	def resolve(self, url):
-		return resolve(url)
+	def resolve(self, url, online=None, page_url=None, **kwargs):
+		return resolve(url, online=online, page_url=page_url)
 			
 	def resolveHostname(self, host):
 		return self.name
@@ -258,7 +260,7 @@ class host:
 	def testLink(self, url):
 		return check(url)
 	
-def resolve(url, online=None):
+def resolve(url, online=None, page_url=None, **kwargs):
 
 	try:
 		if online == None:

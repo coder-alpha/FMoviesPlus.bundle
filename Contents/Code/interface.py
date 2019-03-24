@@ -327,6 +327,12 @@ def getProviders(encode=True):
 		
 	return E(JSON.StringFromObject(initA[0].getProviders()))
 	
+def getHostResolverMain():
+	if wait_for_init() == False:
+		return
+	
+	return initA[0].getHostResolverMain()
+	
 def getProvidersInitStatus():
 	if wait_for_init() == False:
 		return 0

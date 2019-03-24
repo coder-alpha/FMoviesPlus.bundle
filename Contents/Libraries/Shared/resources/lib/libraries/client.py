@@ -425,6 +425,24 @@ def getFileSize(link, headers=None, retError=False, retry429=False, cl=3, timeou
 			
 		r = requests.get(link, headers=headers, stream=True, verify=False, allow_redirects=True, timeout=(timeout, timeout))
 		
+		if 'Content-length' not in r.headers:
+			try:
+				# https://stackoverflow.com/questions/52044489/how-to-get-content-length-for-google-drive-download
+				if headers == None:
+					headers = {'Range':'bytes=0-'}
+				else:
+					headers['Range'] = 'bytes=0-'
+				r = requests.get(link,headers=headers,stream=True).headers['Content-Range']
+				#contleng=int(re.split('\W+',r))[-1]
+				size = int(r.partition('/')[-1])
+				#contrange=int(re.split('\W+',r))[-2]
+				if retError == True:
+					return size, ''
+				else:
+					return size
+			except:
+				pass
+		
 		if headers != None and 'Content-length' in headers:
 			r.headers = headers
 		

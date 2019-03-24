@@ -174,11 +174,10 @@ class host:
 			if sub_url_t != None:
 				sub_url = sub_url_t
 			
+			seq = 0
 			for vv in vidurls:
 				durl = vv['page']
 				vidurl, r1, r2 = resolve(durl, online)
-				
-				print vidurl
 				
 				if vidurl == None:
 					log(type='ERROR',method='createMeta', err=u'%s' % r1)
@@ -193,10 +192,11 @@ class host:
 
 					try:
 						log(type='INFO',method='createMeta', err=u'durl:%s ; res:%s; fs:%s' % (vidurl,quality,fs))
-						files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':txt, 'quality':quality, 'vidtype':vidtype, 'rip':riptype, 'provider':provider, 'orig_url':orig_url, 'url':durl, 'durl':durl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':fs, 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'poster':poster, 'sub_url':sub_url, 'subdomain':client.geturlhost(url), 'misc':{'player':'iplayer', 'gp':False}})
+						files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':txt, 'quality':quality, 'vidtype':vidtype, 'rip':riptype, 'provider':provider, 'orig_url':orig_url, 'url':durl, 'durl':durl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':fs, 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'poster':poster, 'sub_url':sub_url, 'subdomain':client.geturlhost(url), 'page_url':page_url, 'misc':{'player':'iplayer', 'gp':False}, 'seq':seq})
 					except Exception as e:
 						log(type='ERROR',method='createMeta', err=u'%s' % e)
-						files_ret.append({'source':urlhost, 'maininfo':'', 'titleinfo':txt, 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'orig_url':orig_url, 'url':durl, 'durl':durl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':fs, 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(url), 'misc':{'player':'iplayer', 'gp':False}})
+						files_ret.append({'source':urlhost, 'maininfo':'', 'titleinfo':txt, 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'orig_url':orig_url, 'url':durl, 'durl':durl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':fs, 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(url), 'page_url':page_url, 'misc':{'player':'iplayer', 'gp':False}, 'seq':seq})
+					seq += 1
 		except Exception as e:
 			log('ERROR', 'createMeta', '%s' % e)
 			
@@ -212,8 +212,8 @@ class host:
 		
 		return links
 		
-	def resolve(self, url):
-		return resolve(url)
+	def resolve(self, url, online=None, page_url=None, **kwargs):
+		return resolve(url, online=online, page_url=page_url)
 			
 	def resolveHostname(self, host):
 		return self.name
@@ -221,7 +221,7 @@ class host:
 	def testLink(self, url):
 		return check(url)
 	
-def resolve(url, online=None):
+def resolve(url, online=None, page_url=None, **kwargs):
 
 	try:
 		if online == None:

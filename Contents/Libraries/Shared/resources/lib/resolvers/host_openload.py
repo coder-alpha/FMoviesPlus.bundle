@@ -279,10 +279,10 @@ class host:
 			
 			try:
 				log(type='INFO',method='createMeta', err=u'pair:%s; online:%s; durl:%s ; res:%s; fs:%s' % (isPairRequired,online,vidurl,quality,fs))
-				files_ret.append({'source':self.name, 'maininfo':pair, 'titleinfo':titleinfo, 'quality':file_quality(vidurl, quality, file_title), 'vidtype':vidtype, 'rip':rip_type(vidurl, riptype, file_title), 'provider':provider, 'orig_url':orig_url, 'url':vidurl, 'durl':durl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(url), 'misc':{'pair':isPairRequired, 'player':'iplayer', 'gp':False}})
+				files_ret.append({'source':self.name, 'maininfo':pair, 'titleinfo':titleinfo, 'quality':file_quality(vidurl, quality, file_title), 'vidtype':vidtype, 'rip':rip_type(vidurl, riptype, file_title), 'provider':provider, 'orig_url':orig_url, 'url':vidurl, 'durl':durl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(url), 'page_url':page_url, 'misc':{'pair':isPairRequired, 'player':'iplayer', 'gp':False}, 'seq':0})
 			except Exception as e:
 				log(type='ERROR',method='createMeta-3', err=u'%s' % e)
-				files_ret.append({'source':urlhost, 'maininfo':pair, 'titleinfo':titleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'orig_url':orig_url, 'url':vidurl, 'durl':durl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(url), 'misc':{'pair':isPairRequired, 'player':'eplayer', 'gp':False}})
+				files_ret.append({'source':urlhost, 'maininfo':pair, 'titleinfo':titleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'orig_url':orig_url, 'url':vidurl, 'durl':durl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(url), 'page_url':page_url, 'misc':{'pair':isPairRequired, 'player':'eplayer', 'gp':False}, 'seq':0})
 		except Exception as e:
 			log('ERROR', 'createMeta', '%s' % e)
 			
@@ -298,8 +298,8 @@ class host:
 		
 		return links
 
-	def resolve(self, url):
-		return resolve(url)
+	def resolve(self, url, embedpage=False, usePairing=True, session=None, page_url=None, **kwargs):
+		return resolve(url, embedpage=embedpage, usePairing=usePairing, session=session, page_url=page_url)
 	
 	def resolveHostname(self, host):
 		return self.name
@@ -319,7 +319,7 @@ def getVideoMetaData(url):
 		print 'ERROR: %s' % e
 		return res
 		
-def resolve(url, embedpage=False, usePairing=True, session=None):
+def resolve(url, embedpage=False, usePairing=True, session=None, page_url=None, **kwargs):
 
 	try:
 		videoData = ''

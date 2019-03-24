@@ -1,7 +1,7 @@
 ################################################################################
 TITLE = "FMoviesPlus"
 VERSION = '0.77' # Release notation (x.y - where x is major and y is minor)
-TAG = 'dev 03-18-2019'
+TAG = 'dev 03-24-2019'
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
 ################################################################################
@@ -113,7 +113,7 @@ INTERNAL_SOURCES_QUALS = list(INTERNAL_SOURCES_QUALS_CONST)
 INTERNAL_SOURCES_RIPTYPE = list(INTERNAL_SOURCES_RIPTYPE_CONST)
 INTERNAL_SOURCES_FILETYPE = list(INTERNAL_SOURCES_FILETYPE_CONST)
 
-DEVICE_OPTIONS = ['Dumb-Keyboard','List-View','Redirector','Simple-Emoji','Vibrant-Emoji','Multi-Link-View','Full-poster display','Use-PhantomJS','No-Extra-Page-Info','Use-FileSize-Sorting','Force-Transcoding','No-Extra-Page-Info (Anime)','Downloads-Listing','Retry-Failed-Downloads']
+DEVICE_OPTIONS = ['Dumb-Keyboard','List-View','Redirector','Simple-Emoji','Vibrant-Emoji','Multi-Link-View','Full-poster display','Use-PhantomJS','No-Extra-Page-Info','Use-FileSize-Sorting','Force-Transcoding','No-Extra-Page-Info (Anime)','Downloads-Listing','Force-Transcoding (IMDb)']
 DEVICE_OPTION = {DEVICE_OPTIONS[0]:'The awesome Keyboard for Search impaired devices',
 				DEVICE_OPTIONS[1]:'Force List-View of Playback page listing sources',
 				DEVICE_OPTIONS[2]:'Required in certain cases - *Experimental (refer forum)',
@@ -124,10 +124,15 @@ DEVICE_OPTION = {DEVICE_OPTIONS[0]:'The awesome Keyboard for Search impaired dev
 				DEVICE_OPTIONS[7]:'Use PhantomJS - For parsing links. Binary download required',
 				DEVICE_OPTIONS[8]:'No-Extra-Page-Info - Speeds up navigation by not downloading detailed item info',
 				DEVICE_OPTIONS[9]:'Use-FileSize-Sorting - Uses FileSize instead of Resolution info provided by site which can be inaccurate',
-				DEVICE_OPTIONS[10]:'Force-Transcoding - Sets the item\'s container property to null in order to force transcoding by PMS',
+				DEVICE_OPTIONS[10]:'Force-Transcoding - Force transcoding by PMS for videos with audio/video issues',
 				DEVICE_OPTIONS[11]:'No-Extra-Page-Info (Anime) - Speeds up navigation by not downloading detailed item info',
 				DEVICE_OPTIONS[12]:'Downloads-Listing - Reverse the order of Downloads i.e. oldest entry on top',
-				DEVICE_OPTIONS[13]:'Retry-Failed-Downloads - On Plugin Initialization Retry Failed Downloads (Global Option)'}
+				DEVICE_OPTIONS[13]:'Force-Transcoding (IMDb) - Force transcoding IMDb videos by PMS'}
+
+GLOBAL_OPTIONS = ['Retry-Failed-Downloads','Dont-Refresh-Library-Downloads']
+GLOBAL_OPTION = {GLOBAL_OPTIONS[0]:'On Plugin Initialization Retry Failed Downloads',
+				GLOBAL_OPTIONS[1]:'Don\'t perform a Library Section Refresh after an Item is Downloaded'}
+
 DEVICE_OPTION_CONSTRAINTS = {DEVICE_OPTIONS[2]:[{'Pref':'use_https_alt','Desc':'Use Alternate SSL/TLS','ReqValue':'disabled'}]}
 DEVICE_OPTION_CONSTRAINTS2 = {DEVICE_OPTIONS[5]:[{'Option':6,'ReqValue':False}], DEVICE_OPTIONS[6]:[{'Option':5,'ReqValue':False}]}
 DEVICE_OPTION_PROPOGATE_TO_CONTROL = {DEVICE_OPTIONS[7]:True}
@@ -146,7 +151,7 @@ DOWNLOAD_STATS = {}
 DOWNLOAD_TEMP = {}
 DOWNLOAD_AUTOPILOT_CONST = {'movie':[], 'show':[], 'extras':[]}
 DOWNLOAD_AUTOPILOT = {'movie':[], 'show':[], 'extras':[]}
-DOWNLOAD_AUTOPILOT_STATUS = ['Processing','UnAvailable','In Download Queue','Waiting','Error']
+DOWNLOAD_AUTOPILOT_STATUS = ['Processing','UnAvailable','In Download Queue','Waiting','Error','Scheduled','Completed Pending Removal']
 DOWNLOAD_FMP_EXT = '.FMPTemp'
 
 ANIME_SEARCH = []
@@ -186,6 +191,7 @@ ICON_UPDATE = "icon-update.png"
 ICON_UPDATE_NEW = "icon-update-new.png"
 ICON_UPDATER = "icon-updater.png"
 ICON_DEVICE_OPTIONS = "icon-device-options.png"
+ICON_GLOBAL_OPTIONS = "icon-global-options.png"
 ICON_OPTIONS = "icon-options.png"
 ICON_CLEAR = "icon-clear.png"
 ICON_DK_ENABLE = "icon-dumbKeyboardE.png"
@@ -619,7 +625,7 @@ def FilterBasedOn(srcs, use_quality=True, use_riptype=True, use_vidtype=True, us
 	#Log(INTERNAL_SOURCES_SIZES)
 	if use_filesize == True:
 		filter_extSources = []
-		for fs in INTERNAL_SOURCES_SIZES: filter_extSources += [i for i in srcs if (i['vidtype'].lower() in 'movie/show' and i['fs'] >= fs['LL'] and i['fs'] < fs['UL'] and str(fs['enabled'])=='True') or (i['vidtype'].lower() not in 'movie/show')]
+		for fs in INTERNAL_SOURCES_SIZES: filter_extSources += [i for i in srcs if (i['vidtype'].lower() in 'movie/show' and float(i['fs']) >= float(fs['LL']) and float(i['fs']) < float(fs['UL']) and str(fs['enabled'])=='True') or (i['vidtype'].lower() not in 'movie/show')]
 		srcs = filter_extSources
 	
 	# filter sources based on enabled rip-type in INTERNAL_SOURCES_RIPTYPE
@@ -838,7 +844,7 @@ def GetPageElements(url, headers=None, referer=None, timeout=15):
 		
 	except Exception as e:
 		if error == '':
-			error = e
+			error = '%s' % e
 		Log('ERROR common.py>GetPageElements: Error: %s URL: %s DATA: %s' % (error,url,page_data_string))
 
 	return page_data_elems, error
@@ -1028,7 +1034,25 @@ def OpenLoadUnpair(**kwargs):
 		for m in msg:
 			Log('OpenLoad UnPair: %s' % m)
 
-######################################################################################
+####################################################################################################
+
+def uidAltExists(uid, boolExt=False):
+
+	items = []
+	if Dict[uid] != None:
+		if boolExt == False:
+			items.append(uid)
+		else:
+			items.append([uid, 0])
+	for i in range(1,10):
+		nuid = uid + '-%s' % i
+		if Dict[nuid] != None:
+			if boolExt == False:
+				items.append(nuid)
+			else:
+				items.append([nuid, i])
+	
+	return items
 
 def makeUID(title, year='None', quality='None', source='None', url='None', season='None', episode='None'):
 	return E(title+str(year)+str(quality)+str(source)+str(url)+str(season)+str(episode))

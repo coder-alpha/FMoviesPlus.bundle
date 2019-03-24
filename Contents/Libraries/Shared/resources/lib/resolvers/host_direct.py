@@ -49,8 +49,8 @@ class host:
 		self.init = False
 		self.logo = 'https://i.imgur.com/nbtnvDr.png'
 		self.name = name
-		self.host = ['imdb.com','media-imdb.com','einthusan.tv','vimeocdn.com','apple.com','akamaized.net','micetop.us','vidcdn.pro','fbcdn.net','cmovieshd.com', 'vcstream.to', 'documentarymania.com','3donlinefilms.com','3dmoviesfullhd.com','totaleclips.com','freedocufilms.com','xstreamcdn.com']
-		self.netloc = ['imdb.com','media-imdb.com','einthusan.tv','vimeocdn.com','apple.com','akamaized.net','micetop.us','vidcdn.pro','fbcdn.net','cmovieshd.com', 'vcstream.to', 'documentarymania.com','3donlinefilms.com','3dmoviesfullhd.com','totaleclips.com','freedocufilms.com','xstreamcdn.com']
+		self.host = ['imdb.com','media-imdb.com','einthusan.tv','vimeocdn.com','apple.com','akamaized.net','micetop.us','vidcdn.pro','fbcdn.net','cmovieshd.com', 'vcstream.to', 'documentarymania.com','3donlinefilms.com','3dmoviesfullhd.com','totaleclips.com','freedocufilms.com']
+		self.netloc = ['imdb.com','media-imdb.com','einthusan.tv','vimeocdn.com','apple.com','akamaized.net','micetop.us','vidcdn.pro','fbcdn.net','cmovieshd.com', 'vcstream.to', 'documentarymania.com','3donlinefilms.com','3dmoviesfullhd.com','totaleclips.com','freedocufilms.com']
 		self.quality = '1080p'
 		self.loggertxt = []
 		self.captcha = False
@@ -106,10 +106,11 @@ class host:
 			
 		try:
 			items = self.process(url, quality, riptype, headers, page_url)
+			seq = 0
 			
 			for item in items:
 				
-				url = item['src']
+				vidurl = item['src']
 				durl = url
 				
 				allowsStreaming = item['allowsStreaming']
@@ -122,10 +123,11 @@ class host:
 				
 				try:
 					log(type='INFO',method='createMeta', err=u'durl:%s ; res:%s; fs:%s' % (durl,quality,fs))
-					files_ret.append({'source':self.name, 'maininfo':txt, 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':riptype, 'provider':provider, 'orig_url':orig_url, 'url':url, 'durl':durl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':allowsStreaming, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(url), 'misc':{'player':'eplayer', 'gp':True}})
+					files_ret.append({'source':self.name, 'maininfo':txt, 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':riptype, 'provider':provider, 'orig_url':orig_url, 'url':vidurl, 'durl':durl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':allowsStreaming, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(url), 'page_url':page_url, 'misc':{'player':'eplayer', 'gp':True}, 'seq':seq})
 				except Exception as e:
 					log(type='ERROR',method='createMeta', err=u'%s' % e)
-					files_ret.append({'source':urlhost, 'maininfo':txt, 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'orig_url':orig_url, 'url':url, 'durl':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':allowsStreaming, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(url), 'misc':{'player':'eplayer', 'gp':True}})
+					files_ret.append({'source':urlhost, 'maininfo':txt, 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'orig_url':orig_url, 'url':vidurl, 'durl':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':allowsStreaming, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(url), 'page_url':page_url, 'misc':{'player':'eplayer', 'gp':True}, 'seq':seq})
+				seq += 1
 				
 		except Exception as e:
 			log(type='ERROR', err="createMeta : %s" % e.args)
@@ -142,8 +144,8 @@ class host:
 		
 		return links
 		
-	def resolve(self, url):
-		return resolve(url)
+	def resolve(self, url, page_url=None, **kwargs):
+		return resolve(url, page_url=page_url)
 			
 	def resolveHostname(self, host):
 		return self.name
@@ -153,7 +155,7 @@ class host:
 		
 	def process(self, url, q, r, headers, page_url):
 		items = []
-		
+
 		try:
 			if 'vcstream.to' in url:
 				id = re.compile('//.+?/(?:embed|f)/([0-9a-zA-Z-_]+)').findall(url)[0]
@@ -186,35 +188,6 @@ class host:
 					
 					items.append({'quality':q, 'riptype':r, 'src':u, 'fs':fs, 'online':online, 'params':params, 'urldata':urldata, 'allowsStreaming':True})
 					
-			elif 'xstreamcdn.com' in url:
-				id = re.compile('//.+?/(?:embed|v)/([0-9a-zA-Z-_]+)').findall(url)[0]
-				headersx = {'Referer': url, 'User-Agent': client.agent()}
-				post_data = {'r':page_url, 'd':'www.xstreamcdn.com'}
-				api_url = 'https://www.xstreamcdn.com/api/source/%s' % id
-				page_data = client.request(api_url, post=client.encodePostData(post_data), headers=headersx)
-				
-				j_data = json.loads(page_data)
-				success = j_data['success']
-				if success == False:
-					raise Exception('API returned error: %s | Data: %s' % (api_url, post_data))
-				else:
-					srcs = j_data['data']
-					for src in srcs:
-						q = src['label']
-						u = src['file']
-						fs = client.getFileSize(u, retry429=True, headers=headers)
-						online = check(u)
-						u1 = client.request(u, output='geturl')
-						if u1 != None:
-							u = u1
-						urldata = client.b64encode(json.dumps('', encoding='utf-8'))
-						params = client.b64encode(json.dumps('', encoding='utf-8'))
-						if headers != None:
-							paramsx = {'headers':headers}
-							params = client.b64encode(json.dumps(paramsx, encoding='utf-8'))
-						
-						items.append({'quality':q, 'riptype':r, 'src':u, 'fs':fs, 'online':online, 'params':params, 'urldata':urldata, 'allowsStreaming':True})
-					
 			elif '3donlinefilms.com' in url or '3dmoviesfullhd.com' in url or 'freedocufilms.com' in url:
 				data = urlparse.parse_qs(url)
 				headers = {}
@@ -241,10 +214,6 @@ class host:
 				u = data['file'][0]
 				u = u.replace('//freedocufilms','//www.freedocufilms')
 	
-				#print headers
-				#u = '%s?file=%s' % (data['file'][0], data['src_file'][0].replace(' ',''))
-				#print u
-				
 				try:
 					ret = client.request(l0, post=client.encodePostData(post_data),headers=headers, output='extended', XHR=True, cookie=cookie)
 				except Exception as e:
@@ -283,7 +252,7 @@ class host:
 			if headers != None:
 				paramsx = {'headers':headers}
 				params = client.b64encode(json.dumps(paramsx, encoding='utf-8'))
-			items.append({'quality':q, 'riptype':r, 'src':url, 'fs':fs, 'online':online, 'params':params, 'urldata':urldata, 'allowsStreaming':True})
+			items.append({'quality':q, 'riptype':r, 'src':url, 'fs':fs, 'online':online, 'params':params, 'urldata':urldata, 'allowsStreaming':True, 'seq':0})
 			
 		return items
 		
@@ -332,28 +301,26 @@ def T3DonlineFilms(url):
 		except:
 			pass
 		
-		# u = '%s?file=%s' % (data['file'][0], data['src_file'][0].replace(' ',''))
-		
 		paramsx = {'headers':headers}
 		params = client.b64encode(json.dumps(paramsx, encoding='utf-8'))
 		
 	except Exception as e:
 		error = '%s' % e
-	return u, params, error
+	return u, error, params
 	
-def resolve(url):
+def resolve(url, page_url=None, **kwargs):
 
 	params = client.b64encode(json.dumps('', encoding='utf-8'))
 	error = ''
 	u = url
 	if '3donlinefilms.com' in url or '3dmoviesfullhd.com' in url or 'freedocufilms.com' in url:
-		u, params, error = T3DonlineFilms(url)
-		return u, params, error
+		u, error, params = T3DonlineFilms(url)
+		return (u, error, params)
 	else:
 		if check(url) == False: 
-			return None, params, 'Error in check !'
+			return (None, 'Error in check !', params)
 	
-	return u, params, error
+	return (u, error, params)
 
 def check(url, headers=None, cookie=None):
 	try:

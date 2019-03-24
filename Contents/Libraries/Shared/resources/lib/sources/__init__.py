@@ -72,6 +72,9 @@ class sources:
 		hosts = resolvers.info()
 		return hosts
 		
+	def getHostResolverMain(self):
+		return resolvers
+		
 	def hostsCaller(self):
 		return resolvers.sourceHostsCall
 		

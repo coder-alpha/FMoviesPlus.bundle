@@ -87,7 +87,6 @@ class host:
 		self.working = self.testWorking()[0]
 		self.resolver = self.testResolver()
 		self.msg = ''
-		#self.checkGetLinkAPI()
 		self.UA = client.USER_AGENT
 		self.init = True
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s End --' % (name, self.ver, self.update_date))
@@ -116,16 +115,7 @@ class host:
 	def getLog(self):
 		self.loggertxt = loggertxt
 		return self.loggertxt
-		
-	def checkGetLinkAPI(self):
-		print "entering checkGetLinkAPI"
-		http_res, content = client.request(url='http://api.getlinkdrive.com', output='response', use_web_proxy=False)
-		print 'http://api.getlinkdrive.com Response: %s' % http_res
-		if http_res in client.HTTP_GOOD_RESP_CODES or http_res in client.GOOGLE_HTTP_GOOD_RESP_CODES_1:
-			self.useGetLinkAPI = True
-		else:
-			self.useGetLinkAPI = False
-		
+	
 	def testWorking(self):
 		try:
 			testUrls = self.testUrl()
@@ -193,23 +183,11 @@ class host:
 			videoData, headers, content, cookie = getVideoMetaData(url, httpsskip)
 			try:
 				cookie += '; %s' % content['Set-Cookie']
-				# cookie_s = cookie.split(';')
-				# cookie_n = []
-				# for cook in cookie_s:
-					# cook = cook.strip()
-					# if '=' in cook and cook not in cookie_n:
-						# cookie_n.append(cook)
-				# cookie = ('; '.join(x for x in sorted(cookie_n)))
 				cookie_value = client.search_regex(r"DRIVE_STREAM=([^;]+);", cookie, 'cookie val',group=1)
 				domain = client.search_regex(r"https?://([^\/]+)", url, 'host val', group=1)
 				cookie = 'DRIVE_STREAM=%s; path=/; domain=.%s;' % (cookie_value, domain)
 			except:
 				pass
-			#print cookie
-			
-			#cookie = urllib.quote_plus(cookie).replace('+','%20').replace('%2F','/')
-			# DRIVE_STREAM%3Dva1wsBbVn3A%3B%20path%3D/%3B%20domain%3D.docs.google.com%3B
-			# DRIVE_STREAM%3DtV76KFL8a6k%3B+path%3D%2F%3B+domain%3D.docs.google.com%3B
 			
 			params = {'headers':headers,'cookie':cookie}
 			params = json.dumps(params, encoding='utf-8')
@@ -230,8 +208,7 @@ class host:
 				titleinfo = txt
 			ntitleinfo = titleinfo
 			
-			
-			
+			seq = 0
 			enabled = True
 			try:
 				#udata = urldata(url, videoData=videoData, usevideoData=True)			
@@ -246,52 +223,22 @@ class host:
 						durl = None
 						
 					if durl != None:
-						files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':ntitleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':type, 'provider':provider, 'url':durl, 'durl':durl, 'urldata':createurldata(durl,quality), 'params':params, 'logo':logo, 'online':isOnline, 'allowsDownload':self.allowsDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':enabled, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(durl), 'misc':{'player':'iplayer', 'gp':False}})
+						files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':ntitleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':type, 'provider':provider, 'url':durl, 'durl':durl, 'urldata':createurldata(durl,quality), 'params':params, 'logo':logo, 'online':isOnline, 'allowsDownload':self.allowsDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':enabled, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(durl), 'page_url':page_url, 'misc':{'player':'iplayer', 'gp':False}, 'seq':seq})
+						seq += 1
 					else:
 						fs = client.getFileSize(url, retry429=True)
 						
-					files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':ntitleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':type, 'provider':provider, 'orig_url':orig_url, 'url':url, 'durl':url, 'urldata':urldata('',''), 'params':params, 'logo':logo, 'online':isOnline, 'allowsDownload':self.allowsDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':enabled, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(url), 'misc':{'player':'eplayer', 'gp':False}})
+					files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':ntitleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':type, 'provider':provider, 'orig_url':orig_url, 'url':url, 'durl':url, 'urldata':urldata('',''), 'params':params, 'logo':logo, 'online':isOnline, 'allowsDownload':False, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':enabled, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(url), 'page_url':page_url, 'misc':{'player':'eplayer', 'gp':False}, 'seq':seq})
+					seq += 1
 				else:
 					fs = client.getFileSize(url, retry429=True)
 					
-					files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':ntitleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':type, 'provider':provider, 'orig_url':orig_url, 'url':url, 'durl':url, 'urldata':urldata('',''), 'params':params, 'logo':logo, 'online':isOnline, 'allowsDownload':self.allowsDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':enabled, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(url), 'misc':{'player':'iplayer', 'gp':False}})
+					files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':ntitleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':type, 'provider':provider, 'orig_url':orig_url, 'url':url, 'durl':url, 'urldata':urldata('',''), 'params':params, 'logo':logo, 'online':isOnline, 'allowsDownload':self.allowsDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':enabled, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(url), 'page_url':page_url, 'misc':{'player':'iplayer', 'gp':False}, 'seq':seq})
+					seq += 1
 			except Exception as e:
 				log(type='ERROR',method='createMeta-1', err=u'%s' % e)
 				
 			isGetlinkWork = False
-			try:
-				if useGetlinkAPI==True and isOnline and 'google.com/file' in url and self.useGetLinkAPI:
-					client.setIP4()
-					ntitleinfo = titleinfo + ' | (via GetLink API) '
-					files = urldata(url)
-					files = client.b64decode(files)
-					filesJ = json.loads(files)
-					if len(filesJ) > 0:
-						for mfile in filesJ:
-							mfile = json.loads(mfile)
-							#print "mfile --- : %s" % mfile
-							furl = mfile['src']
-							f2url = client.request(furl, followredirect=True, output='geturl')
-							if 'http' in f2url:
-								furl = f2url
-								#print "furl --- : %s" % furl
-								quality = file_quality(furl, mfile['res'], videoData)[0]
-								isOnlineT = check(furl, videoData, headers=headers, cookie=cookie)[0]
-								type = rip_type(furl, riptype)
-							else:
-								isOnlineT = 'Unknown'
-							
-							p = {'headers':'','cookie':''}
-							p = json.dumps(p, encoding='utf-8')
-							p = client.b64encode(p)
-							
-							fs = client.getFileSize(furl, retry429=True)
-							
-							files_ret.append({'source': self.name, 'maininfo':'', 'titleinfo':ntitleinfo, 'quality': quality, 'vidtype':vidtype, 'rip':type, 'provider': provider, 'url': furl, 'durl':furl, 'urldata':urldata('',''), 'params':p, 'logo': logo, 'online': isOnlineT, 'allowsDownload':self.allowsDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':enabled, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(furl), 'misc':{'player':'iplayer' , 'gp':False}})
-							isGetlinkWork = True
-					client.setIP6()
-			except Exception as e:
-				log(type='ERROR',method='createMeta-2', err=u'%s' % e)
 				
 			try:
 				if showsplit == True and isOnline and isGetlinkWork == False:
@@ -309,7 +256,8 @@ class host:
 						
 						fs = client.getFileSize(furl, retry429=True)
 						
-						files_ret.append({'source': self.name, 'maininfo':'', 'titleinfo':ntitleinfo, 'quality': quality, 'vidtype':vidtype, 'rip':type, 'provider': provider, 'url': furl, 'durl':furl, 'urldata':createurldata(furl,quality), 'params':params, 'logo': logo, 'online': isOnlineT, 'allowsDownload':self.allowsDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':enabled, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(furl), 'misc':{'player':'iplayer', 'gp':False}})
+						files_ret.append({'source': self.name, 'maininfo':'', 'titleinfo':ntitleinfo, 'quality': quality, 'vidtype':vidtype, 'rip':type, 'provider': provider, 'url': furl, 'durl':furl, 'urldata':createurldata(furl,quality), 'params':params, 'logo': logo, 'online': isOnlineT, 'allowsDownload':self.allowsDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':enabled, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(furl), 'misc':{'player':'iplayer', 'gp':False}, 'seq':seq})
+						seq += 1
 			except Exception as e:
 				log(type='ERROR',method='createMeta-3', err=u'%s' % e)
 		except Exception as e:
@@ -329,8 +277,8 @@ class host:
 		
 		return links
 		
-	def resolve(self, url):
-		return resolve(url)
+	def resolve(self, url, page_url=None, **kwargs):
+		return resolve(url, page_url=page_url)
 			
 	def resolveHostname(self, host):
 		return self.name
@@ -338,11 +286,12 @@ class host:
 	def testLink(self, url):
 		return check(url)
 	
-def resolve(url):
+def resolve(url, page_url=None, **kwargs):
 
-	if check(url)[0] == False: return
+	if check(url)[0] == False:
+		return (None, 'File removed', None)
 	
-	return url
+	return ([url], '', None)
 
 def getVideoMetaData(url, httpsskip=False):
 	try:

@@ -37,20 +37,20 @@ hdr = {
 	'Accept-Language': 'en-US,en;q=0.8',
 	'Connection': 'keep-alive'}
 
-name = 'mp4upload'
+name = 'xstreamcdn'
 loggertxt = []
 	
 class host:
 	def __init__(self):
 		del loggertxt[:]
 		self.ver = '0.0.1'
-		self.update_date = 'Mar. 15, 2019'
+		self.update_date = 'Mar. 19, 2019'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
-		self.logo = 'https://i.imgur.com/uqrHeB7.png'
+		self.logo = 'https://i.imgur.com/b89saq1.png'
 		self.name = name
-		self.host = ['mp4upload.com']
-		self.netloc = ['mp4upload.com']
+		self.host = ['xstreamcdn.com']
+		self.netloc = ['xstreamcdn.com']
 		self.quality = '720p'
 		self.loggertxt = []
 		self.captcha = False
@@ -58,7 +58,7 @@ class host:
 		self.resumeDownload = True
 		self.allowsStreaming = True
 		self.ac = False
-		self.pluginManagedPlayback = True
+		self.pluginManagedPlayback = False
 		self.speedtest = 0
 		testResults = self.testWorking()
 		self.working = testResults[0]
@@ -102,7 +102,7 @@ class host:
 			msg = ''
 			for testUrl in testUrls:
 				x1 = time.time()
-				bool = check(testUrl)
+				bool = check(testUrl['url'])
 				self.speedtest = time.time() - x1
 				
 				if bool == True:
@@ -124,7 +124,7 @@ class host:
 			links = []
 			bool = False
 			for testUrl in testUrls:
-				links = self.createMeta(testUrl, 'Test', '', '720p', links, 'testing', 'BRRIP')
+				links = self.createMeta(testUrl['url'], 'Test', '', '720p', links, 'testing', 'BRRIP', page_url=testUrl['page_url'])
 				if len(links) > 0:
 					bool = True
 					break
@@ -135,7 +135,7 @@ class host:
 		return bool
 		
 	def testUrl(self):
-		return ['https://www.mp4upload.com/embed-8x467xhnq2y9.html']
+		return [{'url':'https://www.xstreamcdn.com/v/3qo1y3pj2oy','page_url':'https://www1.gowatchseries.co/triple-frontier-episode-0'}]
 		
 	def createMeta(self, url, provider, logo, quality, links, key, riptype, vidtype='Movie', lang='en', sub_url=None, txt='', file_ext = '.mp4', testing=False, poster=None, headers=None, page_url=None):
 	
@@ -150,12 +150,12 @@ class host:
 			log('INFO','createMeta','Host Disabled by User')
 			return links
 			
-		try:
-			urldata = client.b64encode(json.dumps('', encoding='utf-8'))
-			params = client.b64encode(json.dumps('', encoding='utf-8'))
+		if '#' in url:
+			url = url.split('#')[0]
 			
+		try:
 			online = check(url)
-			vidurls, err, sub_url_t = getAllQuals(url, online)
+			vidurls, err, sub_url_t = getAllQuals(url, page_url, online)
 			
 			if vidurls == None:
 				log(type='ERROR',method='createMeta-1', err=u'%s' % err)
@@ -165,19 +165,23 @@ class host:
 				sub_url = sub_url_t
 			
 			seq = 0
-			for vv in vidurls:
-				durl = vv['page']
-				vidurl = vv['file']
+			for vv in vidurls: #{'quality':q, 'src':u, 'fs':fs, 'online':online, 'params':params, 'urldata':urldata}
+				durl = url
+				vidurl = vv['src']
+				
 				if vidurl != None:
-					quality = vv['label']
-					fs = vv['fs']
-
+					quality = vv['quality']
+					fs = int(vv['fs'])
+					online = vv['online']
+					params = vv['params']
+					urldata = vv['urldata']
+					
 					try:
 						log(type='INFO',method='createMeta', err=u'durl:%s ; res:%s; fs:%s' % (durl,quality,fs))
-						files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':txt, 'quality':quality, 'vidtype':vidtype, 'rip':riptype, 'provider':provider, 'orig_url':orig_url, 'url':vidurl, 'durl':durl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'poster':poster, 'sub_url':sub_url, 'subdomain':client.geturlhost(url), 'page_url':page_url, 'misc':{'player':'iplayer', 'gp':False}, 'seq':seq})
+						files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':txt, 'quality':quality, 'vidtype':vidtype, 'rip':riptype, 'provider':provider, 'orig_url':orig_url, 'url':vidurl, 'durl':durl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'poster':poster, 'sub_url':sub_url, 'subdomain':client.geturlhost(url), 'page_url':page_url, 'misc':{'player':'iplayer', 'gp':True}, 'seq':seq})
 					except Exception as e:
 						log(type='ERROR',method='createMeta', err=u'%s' % e)
-						files_ret.append({'source':urlhost, 'maininfo':'', 'titleinfo':txt, 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'orig_url':orig_url, 'url':vidurl, 'durl':durl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(url), 'page_url':page_url, 'misc':{'player':'iplayer', 'gp':False}, 'seq':seq})
+						files_ret.append({'source':urlhost, 'maininfo':'', 'titleinfo':txt, 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'orig_url':orig_url, 'url':vidurl, 'durl':durl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(url), 'page_url':page_url, 'misc':{'player':'iplayer', 'gp':True}, 'seq':0})
 					seq += 1
 		except Exception as e:
 			log('ERROR', 'createMeta', '%s' % e)
@@ -194,8 +198,8 @@ class host:
 			
 		return links
 		
-	def resolve(self, url, online=None, page_url=None, **kwargs):
-		return resolve(url, online=online, page_url=page_url)
+	def resolve(self, url, page_url=None, online=None, **kwargs):
+		return resolve(url, page_url=page_url, online=online)
 			
 	def resolveHostname(self, host):
 		return self.name
@@ -203,7 +207,7 @@ class host:
 	def testLink(self, url):
 		return check(url)
 	
-def resolve(url, online=None, page_url=None, **kwargs):
+def resolve(url, page_url=None, online=None, **kwargs):
 
 	try:
 		if online == None:
@@ -215,10 +219,8 @@ def resolve(url, online=None, page_url=None, **kwargs):
 		video_url = None
 		err = ''
 		try:
-			page_link = url
-			page_data_string = client.request(page_link, httpsskip=True)
-			video_url, err = decode(page_data_string)
-			if video_url == None:
+			video_url, err = decode(url, page_url)
+			if video_url == None or len(video_url) == 0:
 				raise Exception(err)
 		except Exception as e:
 			err = e
@@ -230,64 +232,55 @@ def resolve(url, online=None, page_url=None, **kwargs):
 		e = '{}'.format(e)
 		return (None, e, None)
 		
-def decode(html):
-	
-	source = None
+def decode(url,page_url):
+	items = []
 	err = ''
 	try:
-		try:
-			str_pattern="(eval\(function\(p,a,c,k,e,(?:r|d).*)"
-			
-			js = re.compile(str_pattern).findall(html)
-			if len(js) == 0:
-				raise Exception('No packer js found.')
-			
-			js = js[0]
-			if 'p,a,c,k,e,' not in js:
-				raise Exception('No packer js found.')
-			
-			html_with_unpacked_js = jsunpack.unpack(js)
-			if html_with_unpacked_js == None:
-				raise Exception('Could not unpack js.')
+		id = re.compile('//.+?/(?:embed|v)/([0-9a-zA-Z-_]+)').findall(url)[0]
+		headersx = {'Referer': url, 'User-Agent': client.agent()}
+		post_data = {'r':page_url, 'd':'www.xstreamcdn.com'}
+		api_url = 'https://www.xstreamcdn.com/api/source/%s' % id
+		page_data = client.request(api_url, post=client.encodePostData(post_data), headers=headersx)
+		
+		j_data = json.loads(page_data)
+		success = j_data['success']
+		if success == False:
+			raise Exception('API returned error: %s | Data: %s' % (api_url, post_data))
+		else:
+			srcs = j_data['data']
+			for src in srcs:
+				q = src['label']
+				u = src['file']
+				fs = client.getFileSize(u, retry429=True, headers=headersx)
+				online = check(u)
+				u1 = client.request(u, output='geturl')
+				if u1 != None:
+					u = u1
+				urldata = client.b64encode(json.dumps('', encoding='utf-8'))
+				params = client.b64encode(json.dumps('', encoding='utf-8'))
+				paramsx = {'headers':headersx}
+				params = client.b64encode(json.dumps(paramsx, encoding='utf-8'))
 				
-			source = re.findall(r':\"(http.*.mp4)\"', html_with_unpacked_js)
-		except Exception as e:
-			log('ERROR', 'decode', '%s' % (e), dolog=True)
-			err = 'Mp4Upload Error: %s' % e
-		if source != None and len(source) == 0:
-			raise Exception('No mp4 Videos found !')
+				items.append({'quality':q, 'src':u, 'fs':fs, 'online':online, 'params':params, 'urldata':urldata})
+		if len(items) == 0:
+			raise Exception('No videos found !')
 	except Exception as e:
-		err = 'Mp4Upload Error: %s' % e
+		err = 'xtreamcdn Error: %s' % e
 			
-	return source, err
+	return items, err
 
-def getAllQuals(url, online=None):
+def getAllQuals(url, page_url, online=None):
 	try:
 		if online == None:
 			if check(url) == False: 
 				raise Exception('Video not available')
 			
-		page_data_string = client.request(url, httpsskip=True)
-		video_urls, err = decode(page_data_string)
+		video_urls, err = decode(url, page_url)
 		
-		if video_urls == None:
+		if video_urls == None or len(video_urls) == 0 or err != '':
 			raise Exception(err)
 		
-		video_url_a = []
-		myheaders = {}
-		myheaders['User-Agent'] = client.agent()
-		myheaders['Referer'] = url
-		
-		for v in video_urls:
-			try:
-				fs = client.getFileSize(v, retry429=True)
-				qs = qual_based_on_fs(fs)
-				f_i = {'label': '%s' % qs, 'file':v, 'fs':fs, 'page':url}
-				video_url_a.append(f_i)
-			except:
-				pass
-		
-		video_urlf = video_url_a
+		video_urlf = video_urls
 		return (video_urlf, '', None)
 	except Exception as e:
 		e = '{}'.format(e)
@@ -319,8 +312,8 @@ def check(url, headers=None, cookie=None):
 	except:
 		return False
 		
-def test(url):
-	return resolve(url)
+def test(url, page_url=None):
+	return resolve(url, page_url)
 	
 def log(type='INFO', method='undefined', err='', dolog=True, logToControl=False, doPrint=True):
 	try:

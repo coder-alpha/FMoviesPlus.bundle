@@ -11,44 +11,45 @@ MC = common.NewMessageContainer(common.PREFIX, common.TITLE)
 
 ####################################################################################################
 @route(PREFIX+'/videoplayback')
-def CreateVideoObject(url, title, summary, thumb, params, duration, genres, videoUrl, videoRes, watch_title, include_container=False, playDirect=False, **kwargs):
+def CreateVideoObject(url, title, summary, thumb, params, duration, genres, videoUrl, videoRes, watch_title, include_container=False, playDirect=False, force_transcode=False, **kwargs):
 
 	videoUrl = videoUrl.decode('unicode_escape')
 	url = url if url != None else videoUrl
+	force_transcode = True if str(force_transcode) == 'True' else False
 	
 	if include_container:
 		video = MovieObject(
-			key = Callback(CreateVideoObject, url=url, title=title, summary=summary, thumb=thumb, params=params, duration=duration, genres=genres, videoUrl=videoUrl, videoRes=videoRes, watch_title=watch_title, include_container=True, playDirect=playDirect),
+			key = Callback(CreateVideoObject, url=url, title=title, summary=summary, thumb=thumb, params=params, duration=duration, genres=genres, videoUrl=videoUrl, videoRes=videoRes, watch_title=watch_title, include_container=True, playDirect=playDirect, force_transcode=force_transcode),
 			rating_key = url + title,
 			title = title,
 			summary = summary,
 			thumb = thumb,
 			items = [
 				MediaObject(
-						container = Container.MP4,	 # MP4, MKV, MOV, AVI
-						video_codec = VideoCodec.H264, # H264
-						audio_codec = AudioCodec.AAC,  # ACC, MP3
-						audio_channels = 2,			# 2, 6
-						video_resolution = int(videoRes.replace('p','')),
-						parts = [PartObject(key=Callback(PlayVideo,videoUrl=videoUrl, params=params, retResponse=include_container, url=url, title=title, summary=summary, thumb=thumb, watch_title=watch_title, playDirect=playDirect))],
+						container = Container.MP4 if not force_transcode else None,	 # MP4, MKV, MOV, AVI
+						video_codec = VideoCodec.H264 if not force_transcode else None, # H264
+						audio_codec = AudioCodec.AAC if not force_transcode else None,  # ACC, MP3
+						audio_channels = 2 if not force_transcode else None,			# 2, 6
+						video_resolution = int(videoRes.replace('p','')) if not force_transcode else None,
+						parts = [PartObject(key=Callback(PlayVideo,videoUrl=videoUrl, params=params, retResponse=include_container, url=url, title=title, summary=summary, thumb=thumb, watch_title=watch_title, playDirect=playDirect, force_transcode=force_transcode))],
 						optimized_for_streaming = True
 				)
 			]
 		)
 	else:
 		video = VideoClipObject(
-			key = Callback(CreateVideoObject, url=url, title=title, summary=summary, thumb=thumb, params=params, duration=duration, genres=genres, videoUrl=videoUrl, videoRes=videoRes, watch_title=watch_title, include_container=True, playDirect=playDirect),
+			key = Callback(CreateVideoObject, url=url, title=title, summary=summary, thumb=thumb, params=params, duration=duration, genres=genres, videoUrl=videoUrl, videoRes=videoRes, watch_title=watch_title, include_container=True, playDirect=playDirect, force_transcode=force_transcode),
 			rating_key = url + title,
 			title = title,
 			summary = summary,
 			thumb = thumb,
 			items = [
 				MediaObject(
-						container = Container.MP4,	 # MP4, MKV, MOV, AVI
-						video_codec = VideoCodec.H264, # H264
-						audio_codec = AudioCodec.AAC,  # ACC, MP3
-						audio_channels = 2,			# 2, 6
-						video_resolution = int(videoRes.replace('p','')),
+						container = Container.MP4 if not force_transcode else None,	 # MP4, MKV, MOV, AVI
+						video_codec = VideoCodec.H264 if not force_transcode else None, # H264
+						audio_codec = AudioCodec.AAC if not force_transcode else None,  # ACC, MP3
+						audio_channels = 2 if not force_transcode else None,			# 2, 6
+						video_resolution = int(videoRes.replace('p','')) if not force_transcode else None,
 						parts = [PartObject(key=Callback(PlayVideo,videoUrl=videoUrl, params=params, retResponse=include_container, url=url, title=title, summary=summary, thumb=thumb, watch_title=watch_title, playDirect=playDirect))],
 						optimized_for_streaming = True
 				)

@@ -78,7 +78,7 @@ def AddToAutoPilotDownloads(title, year, type, purl=None, thumb=None, summary=No
 				season_end = season_end
 				
 		if year == None:
-			return main.MyMessage(title='Error', msg='OMDB is not reachable at the mmoment. Please try again after some time.')
+			return main.MyMessage(title='Error', msg='OMDB is not reachable at the moment. Please try again after some time.')
 		
 		first_ep_idx = episode_start
 		last_ep_idx = episode_end
@@ -262,9 +262,9 @@ def AddToAutoPilotDownloads(title, year, type, purl=None, thumb=None, summary=No
 			season_end = season
 		
 		if type == 'show':
-			item = {'title':title, 'year':year, 'season':season, 'season_end':season_end, 'episode':int(episode_start), 'thumb':thumb, 'summary':summary, 'episode_start':int(episode_start), 'episode_end':int(episode_end), 'quality':quality, 'file_size':file_size, 'riptype':riptype, 'vidtype':vidtype, 'section_path':section_path, 'section_title':section_title, 'section_key':section_key, 'admin':admin, 'timeAdded':time.time(), 'first_time':time.time(), 'type':type, 'session':session, 'purl':purl, 'status':common.DOWNLOAD_AUTOPILOT_STATUS[3], 'fsBytes':0, 'uid':uid, 'all_seasons':all_seasons, 'sub_mand':sub_mand, 'scheduled':scheduled, 'smart_add':smart_add}
+			item = {'title':title, 'year':year, 'season':season, 'season_end':season_end, 'episode':int(episode_start), 'thumb':thumb, 'summary':summary, 'episode_start':int(episode_start), 'episode_end':int(episode_end), 'quality':quality, 'file_size':file_size, 'riptype':riptype, 'vidtype':vidtype, 'section_path':section_path, 'section_title':section_title, 'section_key':section_key, 'admin':admin, 'timeAdded':time.time(), 'first_time':time.time(), 'type':type, 'session':session, 'purl':purl, 'status':common.DOWNLOAD_AUTOPILOT_STATUS[3], 'fsBytes':0, 'uid':uid, 'all_seasons':all_seasons, 'sub_mand':sub_mand, 'scheduled':scheduled, 'smart_add':smart_add, 'smart_add_active':False}
 		else:
-			item = {'title':title, 'year':year, 'season':season, 'season_end':season_end, 'episode':episode_start, 'thumb':thumb, 'summary':summary, 'quality':quality, 'file_size':file_size, 'riptype':riptype, 'vidtype':vidtype, 'section_path':section_path, 'section_title':section_title, 'section_key':section_key, 'admin':admin, 'timeAdded':time.time(), 'first_time':time.time(), 'type':type, 'session':session, 'purl':purl, 'status':common.DOWNLOAD_AUTOPILOT_STATUS[3], 'fsBytes':0, 'uid':uid, 'all_seasons':all_seasons, 'sub_mand':sub_mand, 'scheduled':scheduled, 'smart_add':smart_add}
+			item = {'title':title, 'year':year, 'season':season, 'season_end':season_end, 'episode':episode_start, 'thumb':thumb, 'summary':summary, 'quality':quality, 'file_size':file_size, 'riptype':riptype, 'vidtype':vidtype, 'section_path':section_path, 'section_title':section_title, 'section_key':section_key, 'admin':admin, 'timeAdded':time.time(), 'first_time':time.time(), 'type':type, 'session':session, 'purl':purl, 'status':common.DOWNLOAD_AUTOPILOT_STATUS[3], 'fsBytes':0, 'uid':uid, 'all_seasons':all_seasons, 'sub_mand':sub_mand, 'scheduled':scheduled, 'smart_add':smart_add, 'smart_add_active':False}
 			
 		if mode == 'replace':
 			save_bool = False
@@ -464,7 +464,7 @@ def AutoPilotDownloadThread1(item=None, runForWaiting=False):
 				for item in common.DOWNLOAD_AUTOPILOT[type]:
 					if (item['status'] == common.DOWNLOAD_AUTOPILOT_STATUS[2]):
 						items_for_removal[type].append(item)
-					elif 'smart_add' in item.keys() and 'first_time' in item.keys() and item['smart_add'] == True and float(time.time() - item['first_time']) > float(60*60*24*15):
+					elif 'smart_add_active' in item.keys() and 'first_time' in item.keys() and item['smart_add_active'] == True and float(time.time() - item['first_time']) > float(60*60*24*15):
 						items_for_removal[type].append(item)
 					if (item['status'] != common.DOWNLOAD_AUTOPILOT_STATUS[2] and runForWaiting == False) or (runForWaiting == True and (item['status'] == common.DOWNLOAD_AUTOPILOT_STATUS[0] or item['status'] == common.DOWNLOAD_AUTOPILOT_STATUS[3])) or (item['status'] == common.DOWNLOAD_AUTOPILOT_STATUS[0] and float(time.time() - item['timeAdded']) > float(60*60)):
 						sources = None
@@ -589,6 +589,8 @@ def AutoPilotDownloadThread1(item=None, runForWaiting=False):
 							common.DOWNLOAD_AUTOPILOT[type_r].remove(item_i)
 							if bool == True:
 								item_i['episode'] = lastep + 1
+								item_i['first_time'] = time.time()
+								item_i['smart_add_active'] = True
 								items_for_smart_add[type_r].append(item_i)
 						except:
 							pass

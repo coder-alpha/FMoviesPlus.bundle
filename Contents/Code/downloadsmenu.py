@@ -454,15 +454,13 @@ def AutoPilotDownloadThread1(item=None, runForWaiting=False):
 	try:
 		removeEntry = False
 		removeEntry_item = None
+		items_for_removal = {}
 		
 		if item == None: # runs via Scheduler and after Initialization (plugin restart)
-		
-			items_for_removal = {}
-		
 			for type in common.DOWNLOAD_AUTOPILOT.keys():
 				items_for_removal[type] = []
 				for item in common.DOWNLOAD_AUTOPILOT[type]:
-					if (item['status'] == common.DOWNLOAD_AUTOPILOT_STATUS[2]):
+					if (item['status'] == common.DOWNLOAD_AUTOPILOT_STATUS[2] or item['status'] == common.DOWNLOAD_AUTOPILOT_STATUS[6]):
 						items_for_removal[type].append(item)
 					elif 'smart_add_active' in item.keys() and 'first_time' in item.keys() and item['smart_add_active'] == True and float(time.time() - item['first_time']) > float(60*60*24*15):
 						items_for_removal[type].append(item)
@@ -525,6 +523,7 @@ def AutoPilotDownloadThread1(item=None, runForWaiting=False):
 			sources = None
 			start_time = time.time()
 			type = item['type']
+			items_for_removal[type] = []
 			if type == 'show':
 				key = main.generatemoviekey(movtitle=None, year=item['year'], tvshowtitle=item['short_title'], season=item['season'], episode=str(item['episode']))
 				prog = common.interface.checkProgress(key)
@@ -557,7 +556,7 @@ def AutoPilotDownloadThread1(item=None, runForWaiting=False):
 						if type != 'show' or REMOVE_ENTRY_WHEN_ALL_EPS_IN_DOWNLOADS == False:
 							try:
 								#common.DOWNLOAD_AUTOPILOT[type].remove(item)
-								items_for_removal[item['type']].append(item)
+								items_for_removal[type].append(item)
 								item['status'] = common.DOWNLOAD_AUTOPILOT_STATUS[6]
 							except:
 								pass
@@ -580,25 +579,36 @@ def AutoPilotDownloadThread1(item=None, runForWaiting=False):
 		
 		# remove completed entries
 		for type_r in items_for_removal.keys():
-			items_for_smart_add[type_r] = {}
+			items_for_smart_add[type_r] = []
 			for item_r in items_for_removal[type_r]:
 				for item_i in common.DOWNLOAD_AUTOPILOT[type_r]:
 					if item_r['uid'] == item_i['uid']:
 						try:
+							if common.DEV_DEBUG == True and Prefs["use_debug"]:
+								Log('Item for removal: %s S%s E%s' % (item_i['short_title'],item_i['season'],item_i['episode']))
 							bool, lastep = verifyForSmart(item_i)
 							common.DOWNLOAD_AUTOPILOT[type_r].remove(item_i)
 							if bool == True:
 								item_i['episode'] = lastep + 1
 								item_i['first_time'] = time.time()
 								item_i['smart_add_active'] = True
+								item_i['status'] = common.DOWNLOAD_AUTOPILOT_STATUS[1]
+								item_i['title'] = '%s S%sE%s' % (item_i['short_title'], item_i['season'], item_i['episode'])
+								item_i['uid'] = common.makeUID(item_i['short_title'], item_i['year'], item_i['quality'], item_i['file_size'], item_i['purl'], item_i['season'], item_i['episode'])
+								if int(item_i['episode']) < 100:
+									item_i['watch_title'] = '%s S%sE%02d' % (item_i['short_title'],int(item_i['season']),int(item_i['episode']))
+								else:
+									item_i['watch_title'] = '%s S%sE%03d' % (item_i['short_title'],int(item_i['season']),int(item_i['episode']))
 								items_for_smart_add[type_r].append(item_i)
-						except:
-							pass
+						except Exception as e:
+							Log.Error('ERROR: downloadsmenu.py > AutoPilotDownloadThread1 > items_for_removal: %s' % e)
 						break
 						
 		for type_r in items_for_smart_add.keys():
 			for item_a in items_for_smart_add[type_r]:
 				common.DOWNLOAD_AUTOPILOT[type_r].append(item_a)
+				if common.DEV_DEBUG == True and Prefs["use_debug"]:
+					Log('Item for smart-add: %s S%s E%s' % (item_a['short_title'],item_a['season'],item_a['episode']))
 
 		Dict['DOWNLOAD_AUTOPILOT'] = E(JSON.StringFromObject(common.DOWNLOAD_AUTOPILOT))
 		Dict.Save()

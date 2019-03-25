@@ -1,7 +1,7 @@
 ################################################################################
 TITLE = "FMoviesPlus"
 VERSION = '0.77' # Release notation (x.y - where x is major and y is minor)
-TAG = 'dev 03-24-2019'
+TAG = 'dev 03-25-2019'
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
 ################################################################################

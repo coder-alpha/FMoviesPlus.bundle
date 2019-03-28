@@ -1,7 +1,7 @@
 ################################################################################
 TITLE = "FMoviesPlus"
 VERSION = '0.77' # Release notation (x.y - where x is major and y is minor)
-TAG = 'dev 03-25-2019'
+TAG = 'dev 03-28-2019'
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
 ################################################################################
@@ -551,6 +551,20 @@ def FixUrlInconsistencies3(url):
 		pass
 	
 	return url
+
+####################################################################################################
+def getSelectedItems(item_as_dict_enc):
+
+	try:
+		ret = ''
+		item = JSON.ObjectFromString(D(item_as_dict_enc))
+		filter_extSources = []
+		filter_extSources += [i for i in item.keys() if item[i] == True]
+		if len(filter_extSources) > 0:
+			ret = ', '.join(str(x) for x in filter_extSources)
+		return ret
+	except:
+		return ret
 
 ####################################################################################################
 def OrderBasedOn(srcs, use_host=True, use_filesize=False):

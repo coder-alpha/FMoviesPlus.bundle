@@ -305,7 +305,9 @@ class Downloader(object):
 					# ret_val_resolvers is always a tuple with first val. of returned url and second of error...
 					ret_val_resolvers = common.interface.getHostResolverMain().resolve(furl, page_url=page_url)
 					error = ret_val_resolvers[1]
-					if error != '':
+					if error == '' and furl == ret_val_resolvers[0]:
+						fs_r, error = common.client.getFileSize(furl, headers=headers, retError=True, retry429=True, cl=2)
+					if error != '' or float(fs_r) < float(1024*1024):
 						ret_val_resolvers  = common.interface.getHostResolverMain().resolve(durl, page_url=page_url)
 						error = ret_val_resolvers[1]
 					if error == '':
@@ -321,7 +323,7 @@ class Downloader(object):
 									headers = params['headers']
 							except:
 								pass
-							fs_r, error = common.client.getFileSize(furl, headers=headers, retError=True, retry429=True, cl=2)
+							fs_r, error = common.client.getFileSize(furl, headers=headers, retError=True, retry429=True, cl=2, timeout=30.0)
 							if common.DEV_DEBUG == True and Prefs["use_debug"]:
 								Log('Url: %s | FileSize: %s | Error: %s' % (furl, fs_r, error))
 						except Exception as e:
@@ -330,6 +332,7 @@ class Downloader(object):
 						if common.DEV_DEBUG == True and Prefs["use_debug"]:
 							Log('Host URL-f: %s' % furl)
 							Log('Host URL-d: %s' % durl)
+							Log('Host params: %s' % params)
 							Log('Host FileSize: %s' % fs_r)
 							Log('Host Error: %s' % error)
 						download_failed(url, error, progress, startPos, purgeKey)
@@ -835,6 +838,7 @@ def download_failed(url, error, progress, startPos, purgeKey):
 	file_meta['action'] = common.DOWNLOAD_PROPS[1]
 	file_meta['progress'] = progress
 	file_meta['startPos'] = startPos
+	file_meta['timeAdded'] = time.time()
 	Dict[purgeKey] = E(JSON.StringFromObject(file_meta))
 	
 	uid = file_meta['uid']

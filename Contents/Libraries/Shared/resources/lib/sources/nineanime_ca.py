@@ -71,9 +71,9 @@ class source:
 		self.siteonline = self.testSite()
 		self.testparser = 'Unknown'
 		self.testparser = self.testParser()
-		self.initAndSleepThread()
 		self.firstRunDisabled = False
 		self.init = True
+		self.initAndSleepThread()
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s End --' % (name, self.ver, self.update_date))
 		
 	def info(self):
@@ -126,11 +126,20 @@ class source:
 	def initAndSleepThread(self):
 		thread_i = workers.Thread(self.InitSleepThread)
 		thread_i.start()
-		
+			
 	def InitSleepThread(self):
-		while True:
-			time.sleep(60*10) # 10 min
-			self.initAndSleep()
+		try:
+			while self.init == True:
+				tuid = control.id_generator(16)
+				control.AddThread('%s-InitSleepThread' % self.name, 'Persists & Monitors Provider Requirements (Every 60 mins.)', time.time(), '4', True, tuid)
+				time.sleep(60*60)
+				self.siteonline = self.testSite()
+				self.testparser = self.testParser()
+				self.initAndSleep()
+				control.RemoveThread(tuid)
+		except Exception as e:
+			log('ERROR','InitSleepThread', '%s' % e)
+		control.RemoveThread(tuid)
 			
 	def initAndSleep(self):
 		try:

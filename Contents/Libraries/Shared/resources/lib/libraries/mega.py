@@ -655,20 +655,72 @@ class Mega(object):
 			encrypt_key(str_to_a32(tsid[:16]), self.master_key))
 		if key_encrypted == tsid[-16:]:
 			self.sid = resp['tsid']
-
-	def _api_request(self, data):
-		params = {'id': self.sequence_num}
+			
+	def getfile(self, file_id, file_key):
+		#key = base64_to_a32(file_key)
+		#k = (key[0] ^ key[4], key[1] ^ key[5], key[2] ^ key[6], key[3] ^ key[7])
+		#iv = key[4:6] + (0, 0)
+		#meta_mac = key[6:8]
+	 
+		file = self._api_request({'a': 'g', 'g': 1, 'p': file_id})
+		dl_url = file['g']
+		size = file['s']
+		print "Downloading (size: %d), url = %s" % (size, dl_url)
+		
+		#attributes = base64_url_encode(file['at']) 
+		#attributes = decrypt_attr(attributes, k)
+	 
+		#print "Downloading %s (size: %d), url = %s" % (attributes['n'], size, dl_url)
+		# return
+	 
+		# infile = urllib.urlopen(dl_url)
+		# outfile = open(attributes['n'], 'wb')
+		# decryptor = AES.new(a32_to_str(k), AES.MODE_CTR, counter = Counter.new(128, initial_value = ((iv[0] &lt;&lt; 32) + iv[1]) &lt;&lt; 64))
+	 
+		# file_mac = [0, 0, 0, 0]
+		# for chunk_start, chunk_size in sorted(get_chunks(file['s']).items()):
+			# chunk = infile.read(chunk_size)
+			# chunk = decryptor.decrypt(chunk)
+			# outfile.write(chunk)
+	 
+			# chunk_mac = [iv[0], iv[1], iv[0], iv[1]]
+			# for i in xrange(0, len(chunk), 16):
+				# block = chunk[i:i+16]
+				# if len(block) % 16:
+					# block += '\0' * (16 - (len(block) % 16))
+				# block = str_to_a32(block)
+				# chunk_mac = [chunk_mac[0] ^ block[0], chunk_mac[1] ^ block[1], chunk_mac[2] ^ block[2], chunk_mac[3] ^ block[3]]
+				# chunk_mac = aes_cbc_encrypt_a32(chunk_mac, k)
+	 
+			# file_mac = [file_mac[0] ^ chunk_mac[0], file_mac[1] ^ chunk_mac[1], file_mac[2] ^ chunk_mac[2], file_mac[3] ^ chunk_mac[3]]
+			# file_mac = aes_cbc_encrypt_a32(file_mac, k)
+	 
+		# outfile.close()
+		# infile.close()
+	 
+		# if (file_mac[0] ^ file_mac[1], file_mac[2] ^ file_mac[3]) != meta_mac:
+			# print "MAC mismatch"
+		# else:
+			# print "MAC OK"
+			
+		#getfile('RtQFAZZQ', 'OH8OnHm0VFw-9IzkYQa7VUdsjMp1G7hucXEk7QIZWvE')
+			
+	def files(self, f, mk):
+		data = [{'a': "f", 'c': 1, 'r': 1, 'ca': 1}]
+		params = {'id': self.sequence_num, 'n':f}
 		self.sequence_num += 1
 
-		if self.sid:
-			params.update({'sid': self.sid})
+		#if self.sid:
+		#	params.update({'sid': self.sid})
 
 		#ensure input data is a list
 		if not isinstance(data, list):
 			data = [data]
 
-		url = '%s://g.api.%s/cs?%s' % (self.schema, self.domain, urllib.urlencode(params))
-	
+		url = '%s://g.api.%s/cs?%s&domain=meganz&lang=en' % (self.schema, self.domain, urllib.urlencode(params))
+		#print url
+		#print 'https://g.api.mega.co.nz/cs?id=-1794764883&n=y6IGEQ6J&domain=meganz&lang=en'
+		
 		if 'use_client_lib' in self.options.keys() and self.options['use_client_lib']:
 			hr = client.request(url, post=dump_json(data), timeout=self.timeout, httpsskip=False)
 			json_resp = parse_json(hr)
@@ -679,20 +731,90 @@ class Mega(object):
 				raise RequestError('HTTP not OK: %s %s' % (hr.status, hr.reason))
 			json_resp = parse_json(hr.read())
 			
-	
-		if isinstance(json_resp, int):
-			raise RequestError('%s (%s)' % (MEGA_ERRORS.get(json_resp), json_resp))
-		if isinstance(json_resp[0], int):
-			raise RequestError('%s (%s)' % (MEGA_ERRORS.get(json_resp[0]), json_resp[0]))
-		return json_resp[0]
+		#print data
+		#print json_resp
+		
+		files = json_resp[0]
+		
+		#print 'files: %s' % files
+		
+		ret_files = []
+		filter_extSources = []
+		
+		for file in files['f']:
+			if file['t'] == 0:
+				
+				ret_files.append(file)
+				
+				#p = file['p']
+				#h = file['h']
+				#self.getfile(p, k)
+			elif file['t'] == 1:
+				folder_id = file['h']
+			elif file['t'] == 2:
+				root_id = file['h'] # Root ("Cloud Drive")
+			elif file['t'] == 3:
+				inbox_id = file['h'] # Inbox
+			elif file['t'] == 4:
+				trashbin_id = file['h'] # Trash Bin
+				
+		filter_extSources = sorted(ret_files, key=lambda k: k['s'], reverse=True)
+		return filter_extSources
+
+	def _api_request(self, data):
+		try:
+			params = {'id': self.sequence_num}
+			self.sequence_num += 1
+
+			if self.sid:
+				params.update({'sid': self.sid})
+
+			#ensure input data is a list
+			if not isinstance(data, list):
+				data = [data]
+
+			url = '%s://g.api.%s/cs?%s' % (self.schema, self.domain, urllib.urlencode(params))
+		
+			if 'use_client_lib' in self.options.keys() and self.options['use_client_lib']:
+				hr = client.request(url, post=dump_json(data), timeout=self.timeout, httpsskip=False)
+				json_resp = parse_json(hr)
+			else:
+				hr = send_http_request(url, data=dump_json(data), timeout=self.timeout)
+				
+				if hr.status != 200:
+					raise RequestError('HTTP not OK: %s %s' % (hr.status, hr.reason))
+				json_resp = parse_json(hr.read())
+				
+			#print data
+			#print json_resp
+		
+			if isinstance(json_resp, int):
+				raise RequestError('%s (%s)' % (MEGA_ERRORS.get(json_resp), json_resp))
+			if isinstance(json_resp[0], int):
+				raise RequestError('%s (%s)' % (MEGA_ERRORS.get(json_resp[0]), json_resp[0]))
+			return json_resp[0]
+		except:
+			return None
 
 	@classmethod
 	def _parse_url(self, url):
 		"""Returns (file_id, file_key."""
+		self.folderSupport = True
 		i = url.find('/#!')
-		if i < 0:
-			raise RequestError('Key missing from URL.')
-		path = url[i + 3:].split('!')
+		if i >= 0:
+			path = url[i + 3:].split('!')
+		elif i < 0 and self.folderSupport == False:
+			i = url.find('/#F!')
+			if i >= 0:
+				raise RequestError('Folder URL Not Supported Yet.')
+			else:
+				raise RequestError('Key missing from URL.')
+		elif i < 0:
+			i = url.find('/#F!')
+			path = url[i + 4:].split('!')
+			
+		#print path
+		
 		return path[:2]
 
 	@classmethod
@@ -718,6 +840,7 @@ class Mega(object):
 		"""
 		if self.sid is None:
 			self._login()
+
 		file_id, file_key = self._parse_url(url)
 		file_key = base64_to_a32(file_key)	# if is_public:
 		file_data = self._api_request({'a': 'g', 'g': 1, 'p': file_id})
@@ -760,30 +883,37 @@ class Mega(object):
 												 (yield_size, file_size))
 												 
 	def file_info(self, url):
-		file_id, file_key = self._parse_url(url)
-		file_key = base64_to_a32(file_key)	# if is_public:
-		file_data = self._api_request({'a': 'g', 'g': 1, 'p': file_id})
-		k = (file_key[0] ^ file_key[4], file_key[1] ^ file_key[5],
-			 file_key[2] ^ file_key[6], file_key[3] ^ file_key[7])
-		iv = file_key[4:6] + (0, 0)
-		meta_mac = file_key[6:8]
+		try:
+			file_id, file_key = self._parse_url(url)
+			file_key = base64_to_a32(file_key)	# if is_public:
+			file_data = self._api_request({'a': 'g', 'g': 1, 'p': file_id})
 
-		# Seems to happens sometime... When	this occurs, files are
-		# inaccessible also in the official also in the official web app.
-		# Strangely, files can come back later.
-		if 'g' not in file_data:
-			raise RequestError('File not accessible now.')
-		file_url = file_data['g']	# Can be non-ASCII UTF-8.
-		file_size = int(file_data['s'])	# Was already an int.
-		attribs = base64_url_decode(file_data['at'])
-		attribs = decrypt_attr(attribs, k)
-		file_name = attribs['n']	# Can be non-ASCII UTF-8.
-		key_str = a32_to_str(k)
-		#assert len(key_str) == 16
-		iv_str = struct.pack('>LLLL', iv[0], iv[1], 0, 0)
-		#assert len(iv_str) == 16
+			if file_data == None:
+				raise RequestError('File no longer available.')
+			
+			k = (file_key[0] ^ file_key[4], file_key[1] ^ file_key[5],
+				 file_key[2] ^ file_key[6], file_key[3] ^ file_key[7])
+			iv = file_key[4:6] + (0, 0)
+			meta_mac = file_key[6:8]
 
-		return {'name': file_name, 'size': file_size, 'url': file_url, 'key': key_str, 'iv': iv_str, 'id': file_id}
+			# Seems to happens sometime... When	this occurs, files are
+			# inaccessible also in the official also in the official web app.
+			# Strangely, files can come back later.
+			if 'g' not in file_data:
+				raise RequestError('File not accessible now.')
+			file_url = file_data['g']	# Can be non-ASCII UTF-8.
+			file_size = int(file_data['s'])	# Was already an int.
+			attribs = base64_url_decode(file_data['at'])
+			attribs = decrypt_attr(attribs, k)
+			file_name = attribs['n']	# Can be non-ASCII UTF-8.
+			key_str = a32_to_str(k)
+			#assert len(key_str) == 16
+			iv_str = struct.pack('>LLLL', iv[0], iv[1], 0, 0)
+			#assert len(iv_str) == 16
+
+			return {'name': file_name, 'size': file_size, 'url': file_url, 'key': key_str, 'iv': iv_str, 'id': file_id}, ''
+		except Exception as e:
+			return None, e
 	
 	def directDecode(self, chunk, key_str, iv_str):
 		yield_size = 0
@@ -885,20 +1015,65 @@ def download_mega_url(url, mega):
 	
 def get_mega_dl_link(mega_url):
 	#fix_ssl()
+	try:
+		err = ''
+		file_ext = None
+		file_url = mega_url
+		file_size = 0
+		mega = Mega()
+		log(type='INFO',method='get_mega_dl_link',err='created Mega service')
+		
+		try:
+			login = mega._login()
+			log(type='INFO',method='get_mega_dl_link',err='anon login')
+		except:
+			raise Exception('Could not create anon login')
+		
+		if '#F!' in mega_url:
+			parts = mega_url.split('!')
+			dl_infos = mega.files(parts[1],parts[2])
+			dl_info = dl_infos[0]
+			#print dl_info
+			file_size = dl_info['s']
+			err = 'Folder URL Not Supported Yet.'
+		else:
+			dl_info, err = mega.file_info(mega_url)
+			if err == '':
+				log(type='INFO',method='get_mega_dl_link',err='created Mega downloader')
+				
+				file_url = "%s/%s" % (dl_info['url'],dl_info['name'])
+				file_ext = dl_info['name'].split('.')
+				i = dl_info['name'].rfind('.')
+				if i > 0:
+					file_ext = dl_info['name'][i:]
+				else:
+					file_ext = '.%s' % file_ext[1]
+				file_size = dl_info['size']
+		
+		return file_url, file_size, file_ext, err
+	except Exception as e:
+		err = '%s' % e
+		log(type='CRITICAL-ERROR',method='get_mega_dl_link',err=err)
+		return mega_url, 0, '.mp4', err
+	
+def files(f,k):
+	#fix_ssl()
 	mega = Mega()
-	log(type='INFO',method='get_mega_dl_link',err='created Mega service')
+	log(type='INFO',method='getfile',err='created Mega service')
 	login = mega._login()
-	log(type='INFO',method='get_mega_dl_link',err='anon login')
-	dl_info = mega.file_info(mega_url)
-	log(type='INFO',method='get_mega_dl_link',err='created Mega downloader')
+	log(type='INFO',method='getfile',err='anon login')
+	mega.files(f,k)
+	log(type='INFO',method='getfile',err='Success')
 	
-	file_url = "%s/%s" % (dl_info['url'],dl_info['name'])
-	file_ext = dl_info['name'].split('.')
-	file_ext = '.%s' % file_ext[1]
-	
-	file_size = dl_info['size']
-	
-	return file_url, file_size, file_ext
+def getfile(f,k):
+	#fix_ssl()
+	mega = Mega()
+	log(type='INFO',method='getfile',err='created Mega service')
+	login = mega._login()
+	log(type='INFO',method='getfile',err='anon login')
+	mega.getfile(f,k)
+	log(type='INFO',method='getfile',err='Success')
+
 
 def test():
 	fix_ssl()

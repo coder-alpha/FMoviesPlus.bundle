@@ -185,6 +185,7 @@ def SleepPersistAndUpdateCookie(**kwargs):
 		if now.hour == int(Prefs['autopilot_schedule']) and Dict['Autopilot_Schedule_Complete'] != True:
 			if Prefs["use_debug"]:
 				Log("Running the Auto-Pilot Scheduled Run: %s" % time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
+			common.interface.clearSources() # clear sources cached before AutoPilot run
 			Thread.Create(downloadsmenu.AutoPilotDownloadThread1)
 			Dict['Autopilot_Schedule_Complete'] = True
 			Dict.Save()

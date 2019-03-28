@@ -219,10 +219,17 @@ class host:
 			params = client.b64encode(json.dumps('', encoding='utf-8'))
 			online = check(url)
 			titleinfo = txt
+			maininfo = ''
 			fs = 0
 
 			try:
-				furl, fs, file_ext = mega.get_mega_dl_link(url)
+				furl, fs, file_ext1, err = mega.get_mega_dl_link(url)
+				if err != '':
+					raise Exception(err)
+				if file_ext1 != None:
+					file_ext = file_ext1
+				if file_ext not in ['.mp4','.mkv','.avi']:
+					titleinfo = '%s%s' % (txt+' ' if len(txt)>0 else '', file_ext+' file')
 				
 				quality = qual_based_on_fs(quality, fs)
 				
@@ -232,13 +239,14 @@ class host:
 			except Exception as e:
 				online = False
 				log('FAIL', 'createMeta-1', '%s - %s' % (url,e))
+				maininfo = '*File Unavailable*'
 
 			try:
 				log(type='INFO',method='createMeta', err=u'durl:%s ; res:%s; fs:%s' % (url,quality,fs))
-				files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':titleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':riptype, 'provider':provider, 'orig_url':orig_url, 'durl':url, 'url':url, 'urldata':urldata, 'params':params, 'logo':logo, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'online':online, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':self.netloc[0], 'page_url':page_url, 'misc':{'player':'iplayer', 'gp':False}, 'seq':0})
+				files_ret.append({'source':self.name, 'maininfo':maininfo, 'titleinfo':titleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':riptype, 'provider':provider, 'orig_url':orig_url, 'durl':url, 'url':url, 'urldata':urldata, 'params':params, 'logo':logo, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'online':online, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':self.netloc[0], 'page_url':page_url, 'misc':{'player':'iplayer', 'gp':False}, 'seq':0})
 			except Exception as e:
 				log('ERROR', 'createMeta-2', '%s - %s' % (url,e))
-				files_ret.append({'source':urlhost, 'maininfo':'', 'titleinfo':titleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'orig_url':orig_url, 'durl':url, 'url':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':self.netloc[0], 'page_url':page_url, 'misc':{'player':'iplayer', 'gp':False}, 'seq':0})
+				files_ret.append({'source':urlhost, 'maininfo':maininfo, 'titleinfo':titleinfo, 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'orig_url':orig_url, 'durl':url, 'url':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':self.netloc[0], 'page_url':page_url, 'misc':{'player':'iplayer', 'gp':False}, 'seq':0})
 		except Exception as e:
 			log('ERROR', 'createMeta', '%s' % e)
 			
@@ -265,7 +273,7 @@ class host:
 	
 def resolve(url, page_url=None, **kwargs):
 
-	if check(url)[0] == False:
+	if check(url) == False:
 		return (None, 'File removed', None)
 	
 	return ([url], '', None)

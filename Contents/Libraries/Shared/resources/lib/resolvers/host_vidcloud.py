@@ -266,8 +266,30 @@ def resolve(url, online=None, page_url=None, **kwargs):
 		if online == None:
 			if check(url) == False: 
 				raise Exception('Video not available')
+				
+		video_url = None
+		headersx = {'Referer': url, 'User-Agent': client.agent()}
+		page_data, head, ret, cookie = client.request(url, output='extended', headers=headersx)
+		try:
+			cookie = re.findall(r'Set-Cookie:(.*)', str(ret), re.MULTILINE)[0].strip()
+		except:
+			pass
+		headersx['Cookie'] = cookie
+		mp4_vids = re.findall(r'\"(http.*?.mp4.*?)\"',page_data)
+		items = []
+		for u in mp4_vids:
+			u = u.strip().replace(' ','%20').replace('&amp;','&')
+			items.append(u)
 
-		return (url, '', None)
+		if len(items) > 0:
+			video_url = items
+		else:
+			raise Exception('Video not available')
+			
+		paramsx = {'headers':headersx}
+		params = client.b64encode(json.dumps(paramsx, encoding='utf-8'))
+		
+		return (video_url, '', params)
 		
 	except Exception as e:
 		e = '{}'.format(e)

@@ -456,7 +456,9 @@ class source:
 			
 			loc = url.replace(self.base_link+'/','')
 			url = testjs(result, self.base_link, loc)
+			vidtype = 'Movie'
 			if 'season' in url:
+				vidtype = 'Show'
 				url = url.replace('=tv-','=watch-').replace('/season','&season')
 				url = url.replace('season-','season=').replace('-episode-','&episode=')
 			log('INFO', 'get_sources-1B',url, dolog=False)
@@ -543,7 +545,7 @@ class source:
 							riptype = riptypex
 							quality = '480p'
 							
-						links_m = resolvers.createMeta(url, self.name, self.logo, quality, links_m, key, poster=poster, riptype=riptype, testing=testing)
+						links_m = resolvers.createMeta(url, self.name, self.logo, quality, links_m, key, vidtype=vidtype, poster=poster, riptype=riptype, testing=testing)
 				except:
 					pass
 					

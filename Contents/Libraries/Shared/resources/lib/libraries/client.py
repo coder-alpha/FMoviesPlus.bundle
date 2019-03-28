@@ -465,8 +465,11 @@ def getFileSize(link, headers=None, retError=False, retry429=False, cl=3, timeou
 		else:
 			return size
 	except Exception as e:
+		err = '{}'.format(e)
+		regex = re.compile('[()\\/!?;\'",]')
+		err = regex.sub('', err)
 		if retError == True:
-			return 0, '{}'.format(e)
+			return 0, err
 		else:
 			return 0
 		

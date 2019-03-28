@@ -16,7 +16,7 @@ ITEM_FOR_UPDATE = {}
 
 #######################################################################################################
 @route(PREFIX + '/AddToAutoPilotDownloads')
-def AddToAutoPilotDownloads(title, year, type, purl=None, thumb=None, summary=None, quality=None, file_size=None, riptype='BRRIP', season=None, season_end=None, episode_start=None, episode_end=None, vidtype=None, section_path=None, section_title=None, section_key=None, session=None, admin=False, all_seasons=False, edit=False, mode=None, sub_mand=False, scheduled=False, smart_add=False, **kwargs):
+def AddToAutoPilotDownloads(title, year, type, purl=None, thumb=None, summary=None, quality=None, file_size=None, riptype='BRRIP', season=None, season_end=None, episode_start=None, episode_end=None, vidtype=None, section_path=None, section_title=None, section_key=None, session=None, admin=False, all_seasons=False, edit=False, mode=None, sub_mand=False, scheduled=False, smart_add=False, ssources=None, sproviders=None, **kwargs):
 
 	try:
 		admin = True if str(admin) == 'True' else False
@@ -25,6 +25,18 @@ def AddToAutoPilotDownloads(title, year, type, purl=None, thumb=None, summary=No
 		sub_mand = True if str(sub_mand) == 'True' else False
 		scheduled = True if str(scheduled) == 'True' else False
 		smart_add = True if str(smart_add) == 'True' else False
+		
+		if ssources == None:
+			ssources_s = []
+			ssources_s += [i['name'] for i in common.INTERNAL_SOURCES if str(i['enabled']) == 'True']
+			ssources = {k:True for k in ssources_s}
+			ssources = E(JSON.StringFromObject(ssources))
+			
+		if sproviders == None:
+			sproviders_s = []
+			sproviders_s += [i['name'] for i in common.OPTIONS_PROVIDERS if str(i['enabled']) == 'True']
+			sproviders = {k:True for k in sproviders_s}
+			sproviders = E(JSON.StringFromObject(sproviders))
 		
 		ret = False
 		retInAQ = False
@@ -149,12 +161,12 @@ def AddToAutoPilotDownloads(title, year, type, purl=None, thumb=None, summary=No
 					if retInAQ == True:
 						oc = ObjectContainer(title1='Add New or Replace Existing AutoPilot Items ?', no_cache=common.isForceNoCache())
 						oc.add(DirectoryObject(
-							key = Callback(AddToAutoPilotDownloads, title=title, year=year, type=type, purl=purl, thumb=thumb, summary=summary, quality=quality, file_size=file_size, riptype=riptype, season=season, season_end=season_end, episode_start=episode_start, episode_end=episode_end, vidtype=vidtype, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, all_seasons=all_seasons, edit=edit, mode='add', sub_mand=sub_mand, scheduled=scheduled, smart_add=smart_add),
+							key = Callback(AddToAutoPilotDownloads, title=title, year=year, type=type, purl=purl, thumb=thumb, summary=summary, quality=quality, file_size=file_size, riptype=riptype, season=season, season_end=season_end, episode_start=episode_start, episode_end=episode_end, vidtype=vidtype, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, all_seasons=all_seasons, edit=edit, mode='add', sub_mand=sub_mand, scheduled=scheduled, smart_add=smart_add, ssources=ssources, sproviders=sproviders),
 							title = "Add as New Items"
 							)
 						)
 						oc.add(DirectoryObject(
-							key = Callback(AddToAutoPilotDownloads, title=title, year=year, type=type, purl=purl, thumb=thumb, summary=summary, quality=quality, file_size=file_size, riptype=riptype, season=season, season_end=season_end, episode_start=episode_start, episode_end=episode_end, vidtype=vidtype, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, all_seasons=all_seasons, edit=edit, mode='replace', sub_mand=sub_mand, scheduled=scheduled, smart_add=smart_add),
+							key = Callback(AddToAutoPilotDownloads, title=title, year=year, type=type, purl=purl, thumb=thumb, summary=summary, quality=quality, file_size=file_size, riptype=riptype, season=season, season_end=season_end, episode_start=episode_start, episode_end=episode_end, vidtype=vidtype, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, all_seasons=all_seasons, edit=edit, mode='replace', sub_mand=sub_mand, scheduled=scheduled, smart_add=smart_add, ssources=ssources, sproviders=sproviders),
 							title = "Replace Existing Items"
 							)
 						)
@@ -181,47 +193,58 @@ def AddToAutoPilotDownloads(title, year, type, purl=None, thumb=None, summary=No
 			else:
 				oc = ObjectContainer(title1='Select Quality or FileSize', no_cache=common.isForceNoCache())
 			oc.add(DirectoryObject(
-				key = Callback(AddToAutoPilotDownloads, title=title, year=year, type=type, purl=purl, thumb=thumb, summary=summary, quality=quality, file_size='%s:%s'%(0,100*common.TO_GB), riptype=riptype, season=season, season_end=season_end, episode_start=episode_start, episode_end=episode_end, vidtype=vidtype, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, all_seasons=all_seasons, edit=edit, mode=mode, sub_mand=sub_mand, scheduled=scheduled, smart_add=smart_add),
+				key = Callback(AddToAutoPilotDownloads, title=title, year=year, type=type, purl=purl, thumb=thumb, summary=summary, quality=quality, file_size='%s:%s'%(0,100*common.TO_GB), riptype=riptype, season=season, season_end=season_end, episode_start=episode_start, episode_end=episode_end, vidtype=vidtype, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, all_seasons=all_seasons, edit=edit, mode=mode, sub_mand=sub_mand, scheduled=scheduled, smart_add=smart_add, ssources=ssources, sproviders=sproviders),
 				title = "Enabled: %s | File-Size: %s" % (common.GetEmoji(type=True if file_size=='%s:%s'%(0,100*common.TO_GB) else False, mode='simple', session=session), 'Largest Available File')
 				)
 			)
 			for item in common.INTERNAL_SOURCES_SIZES:
 				if item['enabled']:
 					oc.add(DirectoryObject(
-						key = Callback(AddToAutoPilotDownloads, title=title, year=year, type=type, purl=purl, thumb=thumb, summary=summary, quality=quality, file_size='%s:%s'%(item['LL'],item['UL']), riptype=riptype, season=season, season_end=season_end, episode_start=episode_start, episode_end=episode_end, vidtype=vidtype, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, all_seasons=all_seasons, edit=edit, mode=mode, sub_mand=sub_mand, scheduled=scheduled, smart_add=smart_add),
+						key = Callback(AddToAutoPilotDownloads, title=title, year=year, type=type, purl=purl, thumb=thumb, summary=summary, quality=quality, file_size='%s:%s'%(item['LL'],item['UL']), riptype=riptype, season=season, season_end=season_end, episode_start=episode_start, episode_end=episode_end, vidtype=vidtype, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, all_seasons=all_seasons, edit=edit, mode=mode, sub_mand=sub_mand, scheduled=scheduled, smart_add=smart_add, ssources=ssources, sproviders=sproviders),
 						title = "Enabled: %s | File-Size: %s" % (common.GetEmoji(type=True if file_size=='%s:%s'%(item['LL'],item['UL']) else False, mode='simple', session=session), item['label'])
 						)
 					)
 			for item in common.INTERNAL_SOURCES_QUALS:
 				if item['enabled']:
 					oc.add(DirectoryObject(
-						key = Callback(AddToAutoPilotDownloads, title=title, year=year, type=type, purl=purl, thumb=thumb, summary=summary, quality=item['label'], file_size=file_size, riptype=riptype, season=season, season_end=season_end, episode_start=episode_start, episode_end=episode_end, vidtype=vidtype, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, all_seasons=all_seasons, edit=edit, mode=mode, sub_mand=sub_mand, scheduled=scheduled, smart_add=smart_add),
+						key = Callback(AddToAutoPilotDownloads, title=title, year=year, type=type, purl=purl, thumb=thumb, summary=summary, quality=item['label'], file_size=file_size, riptype=riptype, season=season, season_end=season_end, episode_start=episode_start, episode_end=episode_end, vidtype=vidtype, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, all_seasons=all_seasons, edit=edit, mode=mode, sub_mand=sub_mand, scheduled=scheduled, smart_add=smart_add, ssources=ssources, sproviders=sproviders),
 						title = "Enabled: %s | Quality: %s" % (common.GetEmoji(type=True if quality==item['label'] else False, mode='simple', session=session), item['label'])
 						)
 					)
 			for item in common.INTERNAL_SOURCES_RIPTYPE:
 				if 'BRRIP' in item['label']:
 					oc.add(DirectoryObject(
-						key = Callback(AddToAutoPilotDownloads, title=title, year=year, type=type, purl=purl, thumb=thumb, summary=summary, quality=quality, file_size=file_size, riptype=item['label'], season=season, season_end=season_end, episode_start=episode_start, episode_end=episode_end, vidtype=vidtype, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, all_seasons=all_seasons, edit=edit, mode=mode, sub_mand=sub_mand, scheduled=scheduled, smart_add=smart_add),
+						key = Callback(AddToAutoPilotDownloads, title=title, year=year, type=type, purl=purl, thumb=thumb, summary=summary, quality=quality, file_size=file_size, riptype=item['label'], season=season, season_end=season_end, episode_start=episode_start, episode_end=episode_end, vidtype=vidtype, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, all_seasons=all_seasons, edit=edit, mode=mode, sub_mand=sub_mand, scheduled=scheduled, smart_add=smart_add, ssources=ssources, sproviders=sproviders),
 						title = "Enabled: %s | Rip-Type: %s" % (common.GetEmoji(type=True if riptype==item['label'] else False, mode='simple', session=session), item['label'])
 						)
 					)
 			oc.add(DirectoryObject(
-				key = Callback(AddToAutoPilotDownloads, title=title, year=year, type=type, purl=purl, thumb=thumb, summary=summary, quality=quality, file_size=file_size, riptype=riptype, season=season, season_end=season_end, episode_start=episode_start, episode_end=episode_end, vidtype=vidtype, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, all_seasons=all_seasons, edit=edit, mode=mode, sub_mand=not sub_mand, scheduled=scheduled, smart_add=smart_add),
+				key = Callback(AddToAutoPilotDownloads, title=title, year=year, type=type, purl=purl, thumb=thumb, summary=summary, quality=quality, file_size=file_size, riptype=riptype, season=season, season_end=season_end, episode_start=episode_start, episode_end=episode_end, vidtype=vidtype, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, all_seasons=all_seasons, edit=edit, mode=mode, sub_mand=not sub_mand, scheduled=scheduled, smart_add=smart_add, ssources=ssources, sproviders=sproviders),
 				title = "Prefer Source with Subtitle: %s" % common.GetEmoji(type=sub_mand, mode='simple', session=session)
 				)
 			)
 			oc.add(DirectoryObject(
-				key = Callback(AddToAutoPilotDownloads, title=title, year=year, type=type, purl=purl, thumb=thumb, summary=summary, quality=quality, file_size=file_size, riptype=riptype, season=season, season_end=season_end, episode_start=episode_start, episode_end=episode_end, vidtype=vidtype, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, all_seasons=all_seasons, edit=edit, mode=mode, sub_mand=sub_mand, scheduled=not scheduled, smart_add=smart_add),
+				key = Callback(AddToAutoPilotDownloads, title=title, year=year, type=type, purl=purl, thumb=thumb, summary=summary, quality=quality, file_size=file_size, riptype=riptype, season=season, season_end=season_end, episode_start=episode_start, episode_end=episode_end, vidtype=vidtype, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, all_seasons=all_seasons, edit=edit, mode=mode, sub_mand=sub_mand, scheduled=not scheduled, smart_add=smart_add, ssources=ssources, sproviders=sproviders),
 				title = "Run Later via Scheduler: %s" % common.GetEmoji(type=scheduled, mode='simple', session=session)
 				)
 			)
 			if type == 'show':
 				oc.add(DirectoryObject(
-					key = Callback(AddToAutoPilotDownloads, title=title, year=year, type=type, purl=purl, thumb=thumb, summary=summary, quality=quality, file_size=file_size, riptype=riptype, season=season, season_end=season_end, episode_start=episode_start, episode_end=episode_end, vidtype=vidtype, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, all_seasons=all_seasons, edit=edit, mode=mode, sub_mand=sub_mand, scheduled=scheduled, smart_add=not smart_add),
+					key = Callback(AddToAutoPilotDownloads, title=title, year=year, type=type, purl=purl, thumb=thumb, summary=summary, quality=quality, file_size=file_size, riptype=riptype, season=season, season_end=season_end, episode_start=episode_start, episode_end=episode_end, vidtype=vidtype, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, all_seasons=all_seasons, edit=edit, mode=mode, sub_mand=sub_mand, scheduled=scheduled, smart_add=not smart_add, ssources=ssources, sproviders=sproviders),
 					title = "Smart Add for To Be Aired Episodes: %s" % common.GetEmoji(type=smart_add, mode='simple', session=session)
 					)
 				)
+			oc.add(DirectoryObject(
+				key = Callback(AddToAutoPilotDownloads, title=title, year=year, type=type, purl=purl, thumb=thumb, summary=summary, quality=quality, file_size=file_size, riptype=riptype, season=season, season_end=season_end, episode_start=episode_start, episode_end=episode_end, vidtype=vidtype, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, all_seasons=all_seasons, edit=edit, mode=mode, sub_mand=sub_mand, scheduled=scheduled, smart_add=smart_add, ssources=ssources, sproviders=sproviders),
+				title = "Sources: %s >>" % ('All' if ssources==None else common.getSelectedItems(ssources))
+				)
+			)
+			oc.add(DirectoryObject(
+				key = Callback(AddToAutoPilotDownloads, title=title, year=year, type=type, purl=purl, thumb=thumb, summary=summary, quality=quality, file_size=file_size, riptype=riptype, season=season, season_end=season_end, episode_start=episode_start, episode_end=episode_end, vidtype=vidtype, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, all_seasons=all_seasons, edit=edit, mode=mode, sub_mand=sub_mand, scheduled=scheduled, smart_add=smart_add, ssources=ssources, sproviders=sproviders),
+				title = "Providers: %s >>" % ('All' if sproviders==None else common.getSelectedItems(sproviders))
+				)
+			)
+			oc.add(DirectoryObject(key = Callback(main.MainMenu), title = '<< Main Menu'))
 			
 			if len(oc) == 0:
 				return MC.message_container('Quality or FileSize', 'A Quality or FileSize selection needs to be enabled under Interface Options')
@@ -237,7 +260,7 @@ def AddToAutoPilotDownloads(title, year, type, purl=None, thumb=None, summary=No
 			for item in common.DOWNLOAD_OPTIONS[type]:
 				if item['enabled']:
 					oc.add(DirectoryObject(
-						key = Callback(AddToAutoPilotDownloads, title=title, year=year, type=type, purl=purl, thumb=thumb, summary=summary, quality=quality, file_size=file_size, riptype=riptype, season=season, season_end=season_end, episode_start=episode_start, episode_end=episode_end, vidtype=vidtype, section_path=item['path'], section_title=item['title'], section_key=item['key'], session=session, admin=admin, all_seasons=all_seasons, edit=edit, mode=mode, sub_mand=sub_mand, scheduled=scheduled, smart_add=smart_add),
+						key = Callback(AddToAutoPilotDownloads, title=title, year=year, type=type, purl=purl, thumb=thumb, summary=summary, quality=quality, file_size=file_size, riptype=riptype, season=season, season_end=season_end, episode_start=episode_start, episode_end=episode_end, vidtype=vidtype, section_path=item['path'], section_title=item['title'], section_key=item['key'], session=session, admin=admin, all_seasons=all_seasons, edit=edit, mode=mode, sub_mand=sub_mand, scheduled=scheduled, smart_add=smart_add, ssources=ssources, sproviders=sproviders),
 						thumb = common.GetThumb(R(common.ICON_SAVE), session=session),
 						title = '%s | %s' % (item['title'], item['path'])
 						)
@@ -246,8 +269,8 @@ def AddToAutoPilotDownloads(title, year, type, purl=None, thumb=None, summary=No
 				return MC.message_container('Download Sources', 'No Download Location set under Download Options')
 			else:
 				if type == 'show':
-					DumbKeyboard(PREFIX, oc, AddToAutoPilotDownloadsInputEp, dktitle = 'Ep. Start Index:%s' % episode_start, dkthumb=common.GetThumb(R(common.ICON_DK_ENABLE), session=session), dkNumOnly=True, dkHistory=False, title=title, year=year, type=type, purl=purl, thumb=thumb, summary=summary, quality=quality, file_size=file_size, riptype=riptype, season=season, season_end=season_end, episode_start=episode_start, episode_end=episode_end, vidtype=vidtype, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, all_seasons=all_seasons, ep_id='start', edit=edit, mode=mode, sub_mand=sub_mand, scheduled=scheduled, smart_add=smart_add)
-					DumbKeyboard(PREFIX, oc, AddToAutoPilotDownloadsInputEp, dktitle = 'Ep. End Index:%s' % episode_end, dkthumb=common.GetThumb(R(common.ICON_DK_ENABLE), session=session), dkNumOnly=True, dkHistory=False, title=title, year=year, type=type, purl=purl, thumb=thumb, summary=summary, quality=quality, file_size=file_size, riptype=riptype, season=season, season_end=season_end, episode_start=episode_start, episode_end=episode_end, vidtype=vidtype, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, all_seasons=all_seasons, ep_id='end', edit=edit, mode=mode, sub_mand=sub_mand, scheduled=scheduled, smart_add=smart_add)
+					DumbKeyboard(PREFIX, oc, AddToAutoPilotDownloadsInputEp, dktitle = 'Ep. Start Index:%s' % episode_start, dkthumb=common.GetThumb(R(common.ICON_DK_ENABLE), session=session), dkNumOnly=True, dkHistory=False, title=title, year=year, type=type, purl=purl, thumb=thumb, summary=summary, quality=quality, file_size=file_size, riptype=riptype, season=season, season_end=season_end, episode_start=episode_start, episode_end=episode_end, vidtype=vidtype, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, all_seasons=all_seasons, ep_id='start', edit=edit, mode=mode, sub_mand=sub_mand, scheduled=scheduled, smart_add=smart_add, ssources=ssources, sproviders=sproviders)
+					DumbKeyboard(PREFIX, oc, AddToAutoPilotDownloadsInputEp, dktitle = 'Ep. End Index:%s' % episode_end, dkthumb=common.GetThumb(R(common.ICON_DK_ENABLE), session=session), dkNumOnly=True, dkHistory=False, title=title, year=year, type=type, purl=purl, thumb=thumb, summary=summary, quality=quality, file_size=file_size, riptype=riptype, season=season, season_end=season_end, episode_start=episode_start, episode_end=episode_end, vidtype=vidtype, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, all_seasons=all_seasons, ep_id='end', edit=edit, mode=mode, sub_mand=sub_mand, scheduled=scheduled, smart_add=smart_add, ssources=ssources, sproviders=sproviders)
 				oc.add(DirectoryObject(key = Callback(Downloads, title="Downloads", session = session), title = "<< Downloads", thumb = common.GetThumb(R(common.ICON_DOWNLOADS), session=session)))
 				oc.add(DirectoryObject(key = Callback(main.MainMenu), title = '<< Main Menu', thumb = common.GetThumb(R(common.ICON), session=session)))
 				return oc
@@ -262,9 +285,9 @@ def AddToAutoPilotDownloads(title, year, type, purl=None, thumb=None, summary=No
 			season_end = season
 		
 		if type == 'show':
-			item = {'title':title, 'year':year, 'season':season, 'season_end':season_end, 'episode':int(episode_start), 'thumb':thumb, 'summary':summary, 'episode_start':int(episode_start), 'episode_end':int(episode_end), 'quality':quality, 'file_size':file_size, 'riptype':riptype, 'vidtype':vidtype, 'section_path':section_path, 'section_title':section_title, 'section_key':section_key, 'admin':admin, 'timeAdded':time.time(), 'first_time':time.time(), 'type':type, 'session':session, 'purl':purl, 'status':common.DOWNLOAD_AUTOPILOT_STATUS[3], 'fsBytes':0, 'uid':uid, 'all_seasons':all_seasons, 'sub_mand':sub_mand, 'scheduled':scheduled, 'smart_add':smart_add, 'smart_add_active':False}
+			item = {'title':title, 'year':year, 'season':season, 'season_end':season_end, 'episode':int(episode_start), 'thumb':thumb, 'summary':summary, 'episode_start':int(episode_start), 'episode_end':int(episode_end), 'quality':quality, 'file_size':file_size, 'riptype':riptype, 'vidtype':vidtype, 'section_path':section_path, 'section_title':section_title, 'section_key':section_key, 'admin':admin, 'timeAdded':time.time(), 'first_time':time.time(), 'type':type, 'session':session, 'purl':purl, 'status':common.DOWNLOAD_AUTOPILOT_STATUS[3], 'fsBytes':0, 'uid':uid, 'all_seasons':all_seasons, 'sub_mand':sub_mand, 'scheduled':scheduled, 'smart_add':smart_add, 'smart_add_active':False, 'ssources':ssources, 'sproviders':sproviders}
 		else:
-			item = {'title':title, 'year':year, 'season':season, 'season_end':season_end, 'episode':episode_start, 'thumb':thumb, 'summary':summary, 'quality':quality, 'file_size':file_size, 'riptype':riptype, 'vidtype':vidtype, 'section_path':section_path, 'section_title':section_title, 'section_key':section_key, 'admin':admin, 'timeAdded':time.time(), 'first_time':time.time(), 'type':type, 'session':session, 'purl':purl, 'status':common.DOWNLOAD_AUTOPILOT_STATUS[3], 'fsBytes':0, 'uid':uid, 'all_seasons':all_seasons, 'sub_mand':sub_mand, 'scheduled':scheduled, 'smart_add':smart_add, 'smart_add_active':False}
+			item = {'title':title, 'year':year, 'season':season, 'season_end':season_end, 'episode':episode_start, 'thumb':thumb, 'summary':summary, 'quality':quality, 'file_size':file_size, 'riptype':riptype, 'vidtype':vidtype, 'section_path':section_path, 'section_title':section_title, 'section_key':section_key, 'admin':admin, 'timeAdded':time.time(), 'first_time':time.time(), 'type':type, 'session':session, 'purl':purl, 'status':common.DOWNLOAD_AUTOPILOT_STATUS[3], 'fsBytes':0, 'uid':uid, 'all_seasons':all_seasons, 'sub_mand':sub_mand, 'scheduled':scheduled, 'smart_add':smart_add, 'smart_add_active':False, 'ssources':ssources, 'sproviders':sproviders}
 			
 		if mode == 'replace':
 			save_bool = False
@@ -307,7 +330,7 @@ def AddToAutoPilotDownloads(title, year, type, purl=None, thumb=None, summary=No
 		
 ####################################################################################################
 @route(PREFIX + "/AddToAutoPilotDownloadsInputEp")
-def AddToAutoPilotDownloadsInputEp(query, title, year, type, purl=None, thumb=None, summary=None, quality=None, file_size=None, riptype='BRRIP', season=None, season_end=None, episode_start=None, episode_end=None, vidtype=None, section_path=None, section_title=None, section_key=None, session=None, admin=False, all_seasons=False, ep_id='start', edit=False, mode=None, sub_mand=False, scheduled=False, smart_add=False, **kwargs):
+def AddToAutoPilotDownloadsInputEp(query, title, year, type, purl=None, thumb=None, summary=None, quality=None, file_size=None, riptype='BRRIP', season=None, season_end=None, episode_start=None, episode_end=None, vidtype=None, section_path=None, section_title=None, section_key=None, session=None, admin=False, all_seasons=False, ep_id='start', edit=False, mode=None, sub_mand=False, scheduled=False, smart_add=False, ssources=None, sproviders=None, **kwargs):
 
 	if ep_id == 'start':
 		try:
@@ -320,7 +343,7 @@ def AddToAutoPilotDownloadsInputEp(query, title, year, type, purl=None, thumb=No
 		except:
 			episode_end = '1'
 
-	return AddToAutoPilotDownloads(title=title, year=year, type=type, purl=purl, thumb=thumb, summary=summary, quality=quality, file_size=file_size, riptype=riptype, season=season, season_end=season_end, episode_start=episode_start, episode_end=episode_end, vidtype=vidtype, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, all_seasons=all_seasons, edit=edit, mode=mode, sub_mand=sub_mand, scheduled=scheduled, smart_add=smart_add)
+	return AddToAutoPilotDownloads(title=title, year=year, type=type, purl=purl, thumb=thumb, summary=summary, quality=quality, file_size=file_size, riptype=riptype, season=season, season_end=season_end, episode_start=episode_start, episode_end=episode_end, vidtype=vidtype, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, all_seasons=all_seasons, edit=edit, mode=mode, sub_mand=sub_mand, scheduled=scheduled, smart_add=smart_add, ssources=ssources, sproviders=sproviders)
 
 #######################################################################################################
 def AutoPilotDownloadThread(item):
@@ -436,9 +459,72 @@ def createAutoPilotThreadTitle(item):
 		Log('ERROR: downloadsmenu.py > createAutoPilotThreadTitle: %s' % err)
 	return watch_title
 	
+#######################################################################################################
+@route(PREFIX + '/AutoPilotDownloadThreadCall')
+def AutoPilotDownloadThreadCall(item=None):
+	i = None
+	err = ''
+	try:
+		i = JSON.ObjectFromString(D(item))
+		if i == None:
+			raise Exception('Item is None')
+		else:
+			Thread.Create(AutoPilotDownloadThread1, {}, i, False, True)
+			time.sleep(3.0)
+			return MC.message_container('AutoPilotDownloadThread', 'Item is performing an AutoPilot Run')
+	except Exception as e:
+		err = '%s' % e
+	return MC.message_container('AutoPilotDownloadThread', 'Error in AutoPilot Run. %s' % err)
+	
+#######################################################################################################
+@route(PREFIX + '/AutoPilotDownloadCall')
+def AutoPilotDownloadCall(item=None, uid=None, session=None):
+	i = None
+	err = ''
+	try:
+		longstringObjs = JSON.ObjectFromString(D(Dict[uid]))
+		if 'temp_file' in longstringObjs:
+			filepath = longstringObjs['temp_file']
+			try:
+				Core.storage.remove_data_item(filepath)
+			except Exception as e:
+				Log("==== Temp File Deletion Error ====")
+				Log(e)
+		del Dict[uid]
+		Dict.Save()
+	except:
+		pass
+	try:
+		i = JSON.ObjectFromString(D(item))
+		if i == None:
+			raise Exception('Item is None')
+		else:
+			title = i['title']
+			year = i['year']
+			type = i['type']
+			purl = i['purl']
+			thumb = i['thumb']
+			summary = i['summary']
+			season = i['season']
+			season_end = i['season']
+			episode_start = i['episode']
+			episode_end = i['episode']
+			vidtype = i['vidtype']
+			section_path = i['section_path']
+			section_title = i['section_title']
+			section_key = i['section_key']
+			provider = i['provider']
+			source = i['source']
+			
+			return AddToAutoPilotDownloads(title=title, year=year, type=type, purl=purl, thumb=thumb, summary=summary, season=season, season_end=season_end, episode_start=episode_start, episode_end=episode_end, vidtype=vidtype, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=True, edit=True, mode='add')
+			
+	except Exception as e:
+		err = '%s' % e
+	return MC.message_container('AutoPilotDownloadCall', 'Error in adding to AutoPilot. %s' % err)
+	
 AutoPilotDownloadThread1_Singleton = []
 #######################################################################################################
-def AutoPilotDownloadThread1(item=None, runForWaiting=False):
+def AutoPilotDownloadThread1(item=None, runForWaiting=False, viaRunNow=False):
 	
 	run_via_scheduler = False
 	tuid = common.id_generator(16)
@@ -519,11 +605,18 @@ def AutoPilotDownloadThread1(item=None, runForWaiting=False):
 									i['status'] = common.DOWNLOAD_AUTOPILOT_STATUS[6]
 								except:
 									pass
-		else: # runs when added
+		else: # runs when added or via Run Now
 			sources = None
 			start_time = time.time()
 			type = item['type']
 			items_for_removal[type] = []
+			
+			if viaRunNow == True:
+				for i in common.DOWNLOAD_AUTOPILOT[type]:
+					if i['uid'] == item['uid']:
+						i['status'] = common.DOWNLOAD_AUTOPILOT_STATUS[0]
+						break
+						
 			if type == 'show':
 				key = main.generatemoviekey(movtitle=None, year=item['year'], tvshowtitle=item['short_title'], season=item['season'], episode=str(item['episode']))
 				prog = common.interface.checkProgress(key)
@@ -562,8 +655,18 @@ def AutoPilotDownloadThread1(item=None, runForWaiting=False):
 								pass
 				else:
 					item['status'] = common.DOWNLOAD_AUTOPILOT_STATUS[1]
+					if viaRunNow == True:
+						for i in common.DOWNLOAD_AUTOPILOT[type]:
+							if i['uid'] == item['uid']:
+								i['status'] = common.DOWNLOAD_AUTOPILOT_STATUS[1]
+								break
 			else:
 				item['status'] = common.DOWNLOAD_AUTOPILOT_STATUS[4]
+				if viaRunNow == True:
+					for i in common.DOWNLOAD_AUTOPILOT[type]:
+						if i['uid'] == item['uid']:
+							i['status'] = common.DOWNLOAD_AUTOPILOT_STATUS[4]
+							break
 					
 			if REMOVE_ENTRY_WHEN_ALL_EPS_IN_DOWNLOADS == True and removeEntry_item != None and removeEntry_item['type'] == 'show':
 				for i in common.DOWNLOAD_AUTOPILOT['show']:
@@ -574,7 +677,7 @@ def AutoPilotDownloadThread1(item=None, runForWaiting=False):
 							i['status'] = common.DOWNLOAD_AUTOPILOT_STATUS[6]
 						except:
 							pass
-		
+							
 		items_for_smart_add = {}
 		
 		# remove completed entries
@@ -1435,15 +1538,38 @@ def DownloadingFilesMenu(title, uid, choice=None, session=None, status=None, con
 							else:
 								wtitle = '%s (%s) | %s | %s | %s | %s' % (i['title'], i['year'], k.title(), q_fs, i['status'], timestr)
 							
-							key = Callback(DownloadingFilesMenu, title=i['watch_title'], uid=i['uid'], choice=common.DOWNLOAD_ACTIONS[0], session=session, status=status, autopilot=autopilot, type=type)
+							
 							oc.add(DirectoryObject(
 								title = 'Delete Entry - %s' % i['watch_title'],
 								thumb = common.GetThumb(i['thumb'], session=session),
 								summary = 'Delete this entry from the Auto-Pilot list',
 								tagline = timestr,
-								key = key
+								key = Callback(DownloadingFilesMenu, title=i['watch_title'], uid=i['uid'], choice=common.DOWNLOAD_ACTIONS[0], session=session, status=status, autopilot=autopilot, type=type)
 								)
 							)
+							oc.add(DirectoryObject(
+								title = 'Run Now - %s' % i['watch_title'],
+								thumb = common.GetThumb(R(common.ICON_ENTER), session=session),
+								summary = 'Perform an AutoPilot Run Now',
+								key = Callback(AutoPilotDownloadThreadCall, item=E(JSON.StringFromObject(i)))
+								)
+							)
+							if i['purl'] != None:
+								oc.add(DirectoryObject(
+									title = 'Video Page',
+									summary = 'Video Page: %s' % i['watch_title'],
+									key = Callback(main.EpisodeDetail, title=i['watch_title'], url=i['purl'], thumb=i['thumb'], session = session),
+									thumb = common.GetThumb(R(common.ICON_ENTER), session=session)
+									)
+								)
+							else:
+								oc.add(DirectoryObject(
+									title = 'Video Page (Unavailable)',
+									summary = 'Video Page: %s' % i['watch_title'],
+									key = Callback(main.MyMessage, title='Video Page', msg='This Video Page is Unavailable'),
+									thumb = common.GetThumb(R(common.ICON_ENTER), session=session)
+									)
+								)	
 							oc.add(DirectoryObject(
 								title = 'Update Entry for %s' % i['watch_title'],
 								key = Callback(AddToAutoPilotDownloads, title=i['title'], year=i['year'], type=i['type'], purl=i['purl'], thumb=i['thumb'], summary=i['summary'], quality=None, file_size=None, riptype=i['riptype'], season=None, season_end=None, episode_start=None, episode_end=None, vidtype=i['vidtype'], section_path=None, section_title=None, section_key=None, session=session, admin=i['admin'], all_seasons=False, edit=False, mode=None),
@@ -1554,6 +1680,15 @@ def DownloadingFilesMenu(title, uid, choice=None, session=None, status=None, con
 						thumb = common.GetThumb(R(common.ICON_ENTER), session=session)
 						)
 					)
+				elif status == common.DOWNLOAD_STATUS[3]:
+					oc.add(DirectoryObject(
+						title = 'Remove and Add to AutoPilot',
+						key = Callback(AutoPilotDownloadCall, item=E(JSON.StringFromObject(longstringObjs)), uid=uid, session=session),
+						summary = 'Remove this from Downloads and Add to AutoPilot',
+						thumb = common.GetThumb(R(common.ICON_ENTER), session=session)
+						)
+					)
+				
 				oc.add(DirectoryObject(
 					title = 'Refresh',
 					key = Callback(DownloadingFilesMenu, title=title, uid=uid, choice=choice, session=session, status=status, confirm=confirm, refresh=int(refresh)+1),

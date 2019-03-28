@@ -107,7 +107,7 @@ def resolve(url, page_url=None):
 			if urlhost in host['host']:
 				log("resolve > Found %s in host (%s)" % (urlhost, host['name']))
 				return host['call'].resolve(url, page_url=page_url)
-		(url, err, None)
+		return ([url], err, None) # if its hosted on a different host, return with no error and file-size check will validate it 
 	except Exception as e:
 		err = '{}'.format(e)
 		return (None, err, None)

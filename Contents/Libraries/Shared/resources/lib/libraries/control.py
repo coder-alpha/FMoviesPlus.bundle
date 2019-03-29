@@ -35,10 +35,13 @@ loggertxt = []
 setting_dict = {}
 control_json = {}
 doPrint = False
+debug = False
 phantomjs_choices = ["No","Yes - Threads Only","Yes - Universally"]
 
-ThreadsType = {'0':'Main', '1':'Interface', '2':'Download', '3':'AutoPilot' ,'4':'Provider', '5':'Host', '6':'Proxy'}
+ThreadsType = {'0':'Main', '1':'Interface', '2':'Download', '3':'AutoPilot' ,'4':'Provider', '5':'Host', '6':'Proxy', '5':'Thread'}
 Threads = []
+ThreadBlockOper = [False]
+
 
 def setting(key):
 	if key in setting_dict.keys():
@@ -59,14 +62,29 @@ def set_setting(key, value):
 	
 	setting_dict[key] = value
 	
-def AddThread(name, desc, start_time, type, persist_bool, uid):
-	Threads.append({'name':name, 'desc':desc, 'start_time':start_time, 'type':ThreadsType[type], 'persist':persist_bool, 'uid':uid})
+def AddThread(name, desc, start_time, type, persist_bool, uid, thread=None):
+	while ThreadBlockOper[0] == True:
+		time.sleep(0.1)
+	ThreadBlockOper[0] = True
+	try:
+		Threads.append({'name':name, 'desc':desc, 'start_time':start_time, 'type':ThreadsType[type], 'persist':persist_bool, 'uid':uid, 'thread':thread})
+	except Exception as e:
+		log2('Error in AddThread %s' % e, type='CRITICAL')
+
+	ThreadBlockOper[0] = False
 	
 def RemoveThread(uid):
-	for t in Threads:
-		if t['uid'] == uid:
-			Threads.remove(t)
-			break
+	while ThreadBlockOper[0] == True:
+		time.sleep(0.1)
+	ThreadBlockOper[0] = True
+	try:
+		for t in Threads:
+			if t['uid'] == uid:
+				Threads.remove(t)
+				break
+	except Exception as e:
+		log2('Error in RemoveThread %s' % e, type='CRITICAL')
+	ThreadBlockOper[0] = False
 	
 def getThreads():
 	return Threads

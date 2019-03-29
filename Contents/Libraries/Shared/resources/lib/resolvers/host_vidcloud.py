@@ -158,7 +158,51 @@ class host:
 			
 		try:
 			if 'vidcloud.icu/load' in url:
-				raise Exception('No mp4 Video\'s found')
+				raise Exception('No mp4 Video found')
+			elif 'vidcloud.icu/download' in url:
+				headersx = {'Referer': url, 'User-Agent': client.agent()}
+				page_data, head, ret, cookie = client.request(url, output='extended', headers=headersx)
+				try:
+					cookie = re.findall(r'Set-Cookie:(.*)', str(ret), re.MULTILINE)[0].strip()
+				except:
+					pass
+				headersx['Cookie'] = cookie
+				mp4_vids = re.findall(r'\"(http.*?.mp4.*?)\"',page_data)
+				items = []
+				for u in mp4_vids:
+					u = u.strip().replace(' ','%20').replace('&amp;','&')
+					fs = client.getFileSize(u, headers=headersx)
+					q = qual_based_on_fs(quality,fs)
+					online = check(u, headers=headersx)
+					urldata = client.b64encode(json.dumps('', encoding='utf-8'))
+					params = client.b64encode(json.dumps('', encoding='utf-8'))
+					if headersx != None:
+						paramsx = {'headers':headers}
+						params = client.b64encode(json.dumps(paramsx, encoding='utf-8'))
+					
+					items.append({'quality':q, 'riptype':riptype, 'src':u, 'fs':fs, 'online':online, 'params':params, 'urldata':urldata, 'allowsStreaming':False})
+					
+				seq = 0
+				for item in items:
+					
+					durl = url
+					vidurl = item['src']
+					allowsStreaming = item['allowsStreaming']
+					quality = item['quality']
+					riptype = item['riptype']
+					fs = item['fs']
+					online = item['online']
+					params = item['params']
+					urldata = item['urldata']
+					
+					try:
+						log(type='INFO',method='createMeta', err=u'durl:%s ; res:%s; fs:%s' % (durl,quality,fs))
+						files_ret.append({'source':self.name, 'maininfo':txt, 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':riptype, 'provider':provider, 'orig_url':orig_url, 'url':vidurl, 'durl':durl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':allowsStreaming, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(url), 'page_url':page_url, 'misc':{'player':'iplayer', 'gp':True}, 'seq':seq})
+					except Exception as e:
+						log(type='ERROR',method='createMeta', err=u'%s' % e)
+						files_ret.append({'source':urlhost, 'maininfo':txt, 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'orig_url':orig_url, 'url':vidurl, 'durl':durl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':allowsStreaming, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(url), 'page_url':page_url, 'misc':{'player':'iplayer', 'gp':True}, 'seq':seq})
+					seq += 1
+					
 			elif url != None:
 				online = True
 				result = client.request(orig_url, httpsskip=True)
@@ -187,13 +231,13 @@ class host:
 							mp4_vids = re.findall(r'http.*?mp4',res)
 							if len(mp4_vids) > 0:
 								try:
-									files_ret = resolvers.createMeta(u, provider, logo, quality, files_ret, key, poster=poster, riptype=riptype, vidtype=vidtype, sub_url=sub_url, testing=testing, headers=headers, page_url=page_url, urlhost='vidcloud.icu/download')
+									files_ret = resolvers.createMeta(u, provider, logo, quality, files_ret, key, poster=poster, riptype=riptype, vidtype=vidtype, sub_url=sub_url, testing=testing, headers=headers, page_url=page_url, urlhost='vidcloud.icu')
 								except Exception as e:
 									log(type='ERROR',method='createMeta', err=u'%s' % e)
 							elif len(mp4_vids) == 0 and video_url == vids[len(vids)-1] and len(files_ret) == 0:
-								raise Exception('No mp4 Video\'s found')
+								raise Exception('No mp4 Video found')
 		except Exception as e:
-			log('ERROR', 'createMeta', '%s' % e)
+			log('FAIL', 'createMeta', '%s' % e)
 		
 		for fr in files_ret:
 			links.append(fr)
@@ -207,8 +251,8 @@ class host:
 			
 		return links
 		
-	def resolve(self, url):
-		return resolve(url)
+	def resolve(self, url, online=None, page_url=None, **kwargs):
+		return resolve(url, online=online, page_url=page_url)
 			
 	def resolveHostname(self, host):
 		return self.name
@@ -216,18 +260,50 @@ class host:
 	def testLink(self, url):
 		return check(url)
 	
-def resolve(url, online=None):
+def resolve(url, online=None, page_url=None, **kwargs):
 
 	try:
 		if online == None:
 			if check(url) == False: 
 				raise Exception('Video not available')
+				
+		video_url = None
+		headersx = {'Referer': url, 'User-Agent': client.agent()}
+		page_data, head, ret, cookie = client.request(url, output='extended', headers=headersx)
+		try:
+			cookie = re.findall(r'Set-Cookie:(.*)', str(ret), re.MULTILINE)[0].strip()
+		except:
+			pass
+		headersx['Cookie'] = cookie
+		mp4_vids = re.findall(r'\"(http.*?.mp4.*?)\"',page_data)
+		items = []
+		for u in mp4_vids:
+			u = u.strip().replace(' ','%20').replace('&amp;','&')
+			items.append(u)
 
-		return (url, '', None)
+		if len(items) > 0:
+			video_url = items
+		else:
+			raise Exception('Video not available')
+			
+		paramsx = {'headers':headersx}
+		params = client.b64encode(json.dumps(paramsx, encoding='utf-8'))
+		
+		return (video_url, '', params)
 		
 	except Exception as e:
 		e = '{}'.format(e)
 		return (None, e, None)
+		
+def qual_based_on_fs(q,fs):
+	try:
+		if int(fs) > 2 * float(1024*1024*1024):
+			q = '1080p'
+		elif int(fs) > 1 * float(1024*1024*1024):
+			q = '720p'
+	except:
+		pass
+	return q
 	
 def check(url, headers=None, cookie=None):
 	try:

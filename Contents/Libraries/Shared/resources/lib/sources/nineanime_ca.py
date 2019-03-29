@@ -37,15 +37,15 @@ loggertxt = []
 class source:
 	def __init__(self):
 		del loggertxt[:]
-		self.ver = '0.1.1'
-		self.update_date = 'Feb. 22, 2019'
+		self.ver = '0.1.2'
+		self.update_date = 'Mar. 15, 2019'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
 		self.serverts = None
 		self.disabled = False
 		self.TOKEN_KEY = []
 		self.FLAGS = {}
-		self.base_link_alts = ['https://9anime.to','https://www1.9anime.to','https://9anime.is']
+		self.base_link_alts = ['https://9anime.ru','https://9anime.to']
 		self.base_link = self.base_link_alts[0]
 		self.grabber_api = "grabber-api/"
 		self.search_link = '/sitemap'
@@ -71,9 +71,9 @@ class source:
 		self.siteonline = self.testSite()
 		self.testparser = 'Unknown'
 		self.testparser = self.testParser()
-		self.initAndSleepThread()
 		self.firstRunDisabled = False
 		self.init = True
+		self.initAndSleepThread()
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s End --' % (name, self.ver, self.update_date))
 		
 	def info(self):
@@ -126,11 +126,20 @@ class source:
 	def initAndSleepThread(self):
 		thread_i = workers.Thread(self.InitSleepThread)
 		thread_i.start()
-		
+			
 	def InitSleepThread(self):
-		while True:
-			time.sleep(60*10) # 10 min
-			self.initAndSleep()
+		try:
+			while self.init == True:
+				tuid = control.id_generator(16)
+				control.AddThread('%s-InitSleepThread' % self.name, 'Persists & Monitors Provider Requirements (Every 60 mins.)', time.time(), '4', True, tuid)
+				time.sleep(60*60)
+				self.siteonline = self.testSite()
+				self.testparser = self.testParser()
+				self.initAndSleep()
+				control.RemoveThread(tuid)
+		except Exception as e:
+			log('ERROR','InitSleepThread', '%s' % e)
+		control.RemoveThread(tuid)
 			
 	def initAndSleep(self):
 		try:
@@ -149,13 +158,13 @@ class source:
 			self.headers['User-Agent'] = ua
 			
 			#get cf cookie
-			cookie1 = proxies.request(url=t_base_link, headers=self.headers, output='cookie', use_web_proxy=self.proxyrequired, httpsskip=True)
+			cookie1 = proxies.request(url=t_base_link, headers=self.headers, output='cookie', use_web_proxy=self.proxyrequired, httpsskip=True, timeout=7)
 			self.headers['Cookie'] = cookie1
 			
 			# get reqkey cookie
 			try:
 				token_url = urlparse.urljoin(t_base_link, self.token_link)
-				r1 = proxies.request(token_url, headers=self.headers, httpsskip=True)
+				r1 = proxies.request(token_url, headers=self.headers, httpsskip=True, timeout=7)
 				if r1 == None:
 					raise Exception('%s not reachable !' % token_url)
 				reqkey = self.decodeJSFCookie(r1)
@@ -189,7 +198,7 @@ class source:
 			hash_url = urlparse.urljoin(t_base_link, self.hash_menu_link)
 			hash_url = hash_url + '?' + urllib.urlencode(query)
 			
-			r1, headers, content, cookie2 = proxies.request(hash_url, headers=self.headers, limit='0', output='extended', httpsskip=True)
+			r1, headers, content, cookie2 = proxies.request(hash_url, headers=self.headers, limit='0', output='extended', httpsskip=True, timeout=7)
 
 			#cookie = cookie1 + '; ' + cookie2 + '; user-info=null; reqkey=' + reqkey
 			cookie = '%s; %s; user-info=null; reqkey=%s' % (cookie1 , cookie2 , reqkey)
@@ -200,9 +209,9 @@ class source:
 			log('ERROR','initAndSleep', '%s' % e)
 			
 	def getSetServerTs(self):
-		geturl = proxies.request('https://fmovies.taxi/home', output='geturl')
-		res = proxies.request(geturl)
 		try:
+			geturl = proxies.request('https://fmovies.taxi', output='geturl', httpsskip=True, timeout=7)
+			res = proxies.request(geturl, httpsskip=True, timeout=7)
 			myts1 = re.findall(r'data-ts="(.*?)"', res)[0]
 			myts = str(int(myts1))
 			return myts
@@ -300,7 +309,7 @@ class source:
 				return sources
 			
 			myts = str(((int(time.time())/3600)*3600))
-			log('INFO','get_sources-1', 'url: %s' % url, dolog=False)
+			log('INFO','get_sources-1', 'url: %s' % url, dolog=control.debug)
 			token_error = False
 			urls = []
 
@@ -326,7 +335,7 @@ class source:
 					search_url = search_url + '?' + urllib.urlencode(query)
 					result = proxies.request(search_url, headers=self.headers, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, httpsskip=True)
 					
-					log('INFO','get_sources-2', '%s' % search_url, dolog=False)
+					log('INFO','get_sources-2', '%s' % search_url, dolog=control.debug)
 					
 					rs = client.parseDOM(result, 'div', attrs = {'class': '[^"]*film-list[^"]*'})[0]
 					#print rs
@@ -388,7 +397,7 @@ class source:
 					try: url, episode = re.compile('(.+?)\?episode=(\d*)$').findall(url)[0]
 					except: pass
 					
-					log('INFO','get_sources-3', url, dolog=False)
+					log('INFO','get_sources-3', url, dolog=control.debug)
 
 					referer = url
 					result = resultT = proxies.request(url, headers=self.headers, limit='0', proxy_options=proxy_options, use_web_proxy=self.proxyrequired, httpsskip=True)
@@ -411,7 +420,7 @@ class source:
 					if result != None:
 						break
 				except Exception as e:
-					log('FAIL','get_sources-3', '%s : %s' % (url,e), dolog=False)
+					log('FAIL','get_sources-3', '%s : %s' % (url,e), dolog=control.debug)
 					
 			if result == None:
 				log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key))
@@ -428,13 +437,13 @@ class source:
 						raise Exception('Could not decode ts')
 					else:
 						myts = str(int(resp))
-						log('INFO','get_sources-3', 'could not parse ts ! will try and use decoded : %s' % myts, dolog=False)
+						log('INFO','get_sources-3', 'could not parse ts ! will try and use decoded : %s' % myts, dolog=control.debug)
 				except:
 					if self.serverts != None:
 						myts = str(self.serverts)
-						log('INFO','get_sources-3', 'could not parse ts ! will use borrowed one : %s' % myts, dolog=False)
+						log('INFO','get_sources-3', 'could not parse ts ! will use borrowed one : %s' % myts, dolog=control.debug)
 					else:
-						log('INFO','get_sources-3', 'could not parse ts ! will use generated one : %s' % myts, dolog=False)
+						log('INFO','get_sources-3', 'could not parse ts ! will use generated one : %s' % myts, dolog=control.debug)
 
 			trailers = []
 			links_m = []
@@ -499,7 +508,7 @@ class source:
 					headers['Referer'] = urlparse.urljoin(url, s[0])
 					headers['Cookie'] = self.headers['Cookie']
 					
-					log('INFO','get_sources-4', '%s' % hash_url, dolog=False)
+					log('INFO','get_sources-4', '%s' % hash_url, dolog=control.debug)
 					result = proxies.request(hash_url, headers=headers, limit='0', proxy_options=proxy_options, use_web_proxy=self.proxyrequired, httpsskip=True)
 					result = json.loads(result)
 					
@@ -537,7 +546,7 @@ class source:
 						quality = '480p'
 						#riptype = 'CAM'
 						
-					log('INFO','get_sources-5', result, dolog=False)
+					log('INFO','get_sources-5', result, dolog=control.debug)
 					
 					if result['target'] != "-":
 						pass
@@ -584,7 +593,7 @@ class source:
 						if grabber!=None and not grabber.startswith('http'):
 							grabber = 'http:'+grabber
 							
-						log('INFO','get_sources-6', grabber, dolog=False)
+						log('INFO','get_sources-6', grabber, dolog=control.debug)
 
 						result = proxies.request(grabber, headers=headers, referer=url, limit='0', proxy_options=proxy_options, use_web_proxy=self.proxyrequired, httpsskip=True)
 
@@ -611,7 +620,7 @@ class source:
 						links_m = resolvers.createMeta(target, self.name, self.logo, quality, links_m, key, riptype, sub_url=sub_url, testing=testing)
 
 				except Exception as e:
-					log('FAIL', 'get_sources-7','%s' % e, dolog=False)
+					log('FAIL', 'get_sources-7','%s' % e, dolog=control.debug)
 
 			sources += [l for l in links_m]
 			
@@ -634,7 +643,7 @@ class source:
 		except:
 			return
 	
-	def get_servers(self, page_url, proxy_options=None):	
+	def get_servers(self, page_url, proxy_options=None):
 		T_BASE_URL = self.base_link
 		T_BASE_URL = 'https://%s' % client.geturlhost(page_url)
 		page_id = page_url.rsplit('.', 1)[1]
@@ -645,10 +654,10 @@ class source:
 		html = '<html><body><div id="servers-container">%s</div></body></html>' % json.loads(result)['html'].replace('\n','').replace('\\','')
 		return html
 		
-	def r01(self, t, e, token_error=False, code_use=False):
+	def r01(self, t, e, token_error=False, use_code=False):
 		i = 0
 		n = 0
-		if code_use == True:
+		if use_code == True:
 			for i in range(0, max(len(t), len(e))):
 				if i < len(e):
 					n += ord(e[i])
@@ -767,7 +776,7 @@ class source:
 			unpacked_code = ''
 			cch = ''
 			if len(self.TOKEN_KEY) == 0:
-				all_js_pack_code = proxies.request(all_js_url, use_web_proxy=self.proxyrequired, httpsskip=True)
+				all_js_pack_code = proxies.request(all_js_url, use_web_proxy=self.proxyrequired, httpsskip=True, timeout=7)
 				unpacked_code = jsunpack.unpack(all_js_pack_code)
 				cch = re.findall(r'%s' % client.b64decode('ZnVuY3Rpb25cKFthLXpdLFthLXpdLFthLXpdXCl7XCJ1c2Ugc3RyaWN0XCI7ZnVuY3Rpb24gW2Etel1cKFwpe3JldHVybiAoLio/KX0='), unpacked_code)[0]
 				token_key = re.findall(r'%s=.*?\"(.*?)\"' % cch, unpacked_code)[0]
@@ -781,7 +790,7 @@ class source:
 
 		try:
 			if len(self.TOKEN_KEY) == 0:
-				token_key = proxies.request(self.TOKEN_KEY_PASTEBIN_URL, use_web_proxy=self.proxyrequired, httpsskip=True)
+				token_key = proxies.request(self.TOKEN_KEY_PASTEBIN_URL, use_web_proxy=self.proxyrequired, httpsskip=True, timeout=7)
 				if token_key !=None and token_key != '':
 					#cookie_dict.update({'token_key':token_key})
 					self.TOKEN_KEY.append(token_key)
@@ -790,7 +799,7 @@ class source:
 			log('ERROR', 'getVidToken-2','%s' % e, dolog=False)
 			
 		try:
-			fm_flags = proxies.request(self.FLAGS_PASTEBIN_URL, use_web_proxy=self.proxyrequired, httpsskip=True)
+			fm_flags = proxies.request(self.FLAGS_PASTEBIN_URL, use_web_proxy=self.proxyrequired, httpsskip=True, timeout=7)
 			if fm_flags !=None and fm_flags != '':
 				fm_flags = json.loads(fm_flags)
 				#cookie_dict.update({'token_key':token_key})

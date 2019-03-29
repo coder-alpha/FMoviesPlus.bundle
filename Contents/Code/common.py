@@ -1,6 +1,6 @@
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.76' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.77' # Release notation (x.y - where x is major and y is minor)
 TAG = ''
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
@@ -24,7 +24,10 @@ except:
 
 BASE_URL = "https://fmovies.taxi"
 BASE_URLS = ["https://bmovies.is","https://bmovies.to","https://bmovies.pro","https://bmovies.online","https://bmovies.club","https://bmovies.ru","https://fmovies.to","https://fmovies.is","https://fmovies.taxi","https://fmovies.se","https://ffmovies.ru"]
-	
+
+ES_API_URL = 'http://movies-v2.api-fetch.website'
+EXT_LIST_URLS = ["http://movies-v2.api-fetch.website","http://tv-v2.api-fetch.website"]
+
 JSEngines_ALLowed = ['Node']
 Engine_OK = False
 try:
@@ -59,6 +62,7 @@ CACHE_EXPIRY = 3600
 CACHE_COOKIE = []
 TOKEN_CODE = []
 TO_GB = float(1024*1024*1024)
+MIN_FILE_SIZE = 999999
 DOWNLOAD_CHUNK_SIZE = 1.0 # in MB
 
 # Help videos on Patebin
@@ -100,7 +104,7 @@ OPTIONS_PROVIDERS = []
 #INTERNAL_SOURCES_FILETYPE = [{'label':'Movie/Show','enabled': 'True'},{'label':'Trailer','enabled': 'True'},{'label':'Interviews','enabled': 'False'},{'label':'Behind the scenes','enabled': 'False'},{'label':'Music Video','enabled': 'False'},{'label':'Deleted Scenes','enabled': 'False'},{'label':'Misc.','enabled': 'False'}]
 #INTERNAL_SOURCES_SIZES = [{'label':'> 2GB','enabled': 'True','LL':2*TO_GB,'UL':100*TO_GB},{'label':'1GB - 2GB','enabled': 'True','LL':1*TO_GB,'UL':2*TO_GB},{'label':'0.5GB - 1GB','enabled': 'True','LL':0.5*TO_GB,'UL':1*TO_GB},{'label':'0GB - 0.5GB','enabled': 'True','LL':1,'UL':0.5*TO_GB},{'label':'0GB','enabled': 'False','LL':0,'UL':0}]
 
-INTERNAL_SOURCES_SIZES_CONST = [{'label':'> 10GB','enabled': 'False','LL':10*TO_GB,'UL':1024*TO_GB},{'label':'5GB >= 10GB','enabled': 'True','LL':5*TO_GB,'UL':10*TO_GB},{'label':'2GB >= 5GB','enabled': 'True','LL':2*TO_GB,'UL':5*TO_GB},{'label':'1GB >= 2GB','enabled': 'True','LL':1*TO_GB,'UL':2*TO_GB},{'label':'0.5GB >= 1GB','enabled': 'True','LL':0.5*TO_GB,'UL':1*TO_GB},{'label':'0GB >= 0.5GB','enabled': 'True','LL':999999,'UL':0.5*TO_GB},{'label':'0GB','enabled': 'False','LL':0,'UL':999999}]
+INTERNAL_SOURCES_SIZES_CONST = [{'label':'> 10GB','enabled': 'False','LL':10*TO_GB,'UL':1024*TO_GB},{'label':'5GB >= 10GB','enabled': 'True','LL':5*TO_GB,'UL':10*TO_GB},{'label':'2GB >= 5GB','enabled': 'True','LL':2*TO_GB,'UL':5*TO_GB},{'label':'1GB >= 2GB','enabled': 'True','LL':1*TO_GB,'UL':2*TO_GB},{'label':'0.5GB >= 1GB','enabled': 'True','LL':0.5*TO_GB,'UL':1*TO_GB},{'label':'0GB >= 0.5GB','enabled': 'True','LL':MIN_FILE_SIZE,'UL':0.5*TO_GB},{'label':'0GB','enabled': 'False','LL':0,'UL':MIN_FILE_SIZE}]
 INTERNAL_SOURCES_QUALS_CONST = [{'label':'4K','enabled': 'True'},{'label':'1080p','enabled': 'True'},{'label':'720p','enabled': 'True'},{'label':'480p','enabled': 'True'},{'label':'360p','enabled': 'True'}]
 INTERNAL_SOURCES_RIPTYPE_CONST = [{'label':'BRRIP','enabled': 'True'},{'label':'3D-BRRIP','enabled': 'True'},{'label':'PREDVD','enabled': 'True'},{'label':'CAM','enabled': 'True'},{'label':'TS','enabled': 'True'},{'label':'SCR','enabled': 'True'},{'label':'UNKNOWN','enabled': 'True'}]
 INTERNAL_SOURCES_FILETYPE_CONST = [{'label':'Movie/Show','enabled':'True'},{'label':'Trailer','enabled':'True'},{'label':'Featurette','enabled':'False'},{'label':'Interviews','enabled':'False'},{'label':'Behind the scenes','enabled':'False'},{'label':'Music Video','enabled':'False'},{'label':'Deleted Scenes','enabled':'False'},{'label':'Misc.','enabled':'False'}]
@@ -109,7 +113,7 @@ INTERNAL_SOURCES_QUALS = list(INTERNAL_SOURCES_QUALS_CONST)
 INTERNAL_SOURCES_RIPTYPE = list(INTERNAL_SOURCES_RIPTYPE_CONST)
 INTERNAL_SOURCES_FILETYPE = list(INTERNAL_SOURCES_FILETYPE_CONST)
 
-DEVICE_OPTIONS = ['Dumb-Keyboard','List-View','Redirector','Simple-Emoji','Vibrant-Emoji','Multi-Link-View','Full-poster display','Use-PhantomJS','No-Extra-Page-Info','Use-FileSize-Sorting','Force-Transcoding','No-Extra-Page-Info (Anime)','Downloads-Listing','Retry-Failed-Downloads']
+DEVICE_OPTIONS = ['Dumb-Keyboard','List-View','Redirector','Simple-Emoji','Vibrant-Emoji','Multi-Link-View','Full-poster display','Use-PhantomJS','No-Extra-Page-Info','Use-FileSize-Sorting','Force-Transcoding','No-Extra-Page-Info (Anime)','Downloads-Listing','Force-Transcoding (IMDb)']
 DEVICE_OPTION = {DEVICE_OPTIONS[0]:'The awesome Keyboard for Search impaired devices',
 				DEVICE_OPTIONS[1]:'Force List-View of Playback page listing sources',
 				DEVICE_OPTIONS[2]:'Required in certain cases - *Experimental (refer forum)',
@@ -120,10 +124,15 @@ DEVICE_OPTION = {DEVICE_OPTIONS[0]:'The awesome Keyboard for Search impaired dev
 				DEVICE_OPTIONS[7]:'Use PhantomJS - For parsing links. Binary download required',
 				DEVICE_OPTIONS[8]:'No-Extra-Page-Info - Speeds up navigation by not downloading detailed item info',
 				DEVICE_OPTIONS[9]:'Use-FileSize-Sorting - Uses FileSize instead of Resolution info provided by site which can be inaccurate',
-				DEVICE_OPTIONS[10]:'Force-Transcoding - Sets the item\'s container property to null in order to force transcoding by PMS',
+				DEVICE_OPTIONS[10]:'Force-Transcoding - Force transcoding by PMS for videos with audio/video issues',
 				DEVICE_OPTIONS[11]:'No-Extra-Page-Info (Anime) - Speeds up navigation by not downloading detailed item info',
 				DEVICE_OPTIONS[12]:'Downloads-Listing - Reverse the order of Downloads i.e. oldest entry on top',
-				DEVICE_OPTIONS[13]:'Retry-Failed-Downloads - On Plugin Initialization Retry Failed Downloads (Global Option)'}
+				DEVICE_OPTIONS[13]:'Force-Transcoding (IMDb) - Force transcoding IMDb videos by PMS'}
+
+GLOBAL_OPTIONS = ['Retry-Failed-Downloads','Dont-Refresh-Library-Downloads']
+GLOBAL_OPTION = {GLOBAL_OPTIONS[0]:'On Plugin Initialization Retry Failed Downloads',
+				GLOBAL_OPTIONS[1]:'Don\'t perform a Library Section Refresh after an Item is Downloaded'}
+
 DEVICE_OPTION_CONSTRAINTS = {DEVICE_OPTIONS[2]:[{'Pref':'use_https_alt','Desc':'Use Alternate SSL/TLS','ReqValue':'disabled'}]}
 DEVICE_OPTION_CONSTRAINTS2 = {DEVICE_OPTIONS[5]:[{'Option':6,'ReqValue':False}], DEVICE_OPTIONS[6]:[{'Option':5,'ReqValue':False}]}
 DEVICE_OPTION_PROPOGATE_TO_CONTROL = {DEVICE_OPTIONS[7]:True}
@@ -142,18 +151,22 @@ DOWNLOAD_STATS = {}
 DOWNLOAD_TEMP = {}
 DOWNLOAD_AUTOPILOT_CONST = {'movie':[], 'show':[], 'extras':[]}
 DOWNLOAD_AUTOPILOT = {'movie':[], 'show':[], 'extras':[]}
-DOWNLOAD_AUTOPILOT_STATUS = ['Processing','UnAvailable','In Download Queue','Waiting','Error']
+DOWNLOAD_AUTOPILOT_STATUS = ['Processing','UnAvailable','In Download Queue','Waiting','Error','Scheduled','Completed Pending Removal']
 DOWNLOAD_FMP_EXT = '.FMPTemp'
 
 ANIME_SEARCH = []
 ANIME_KEY = '9anime'
-ANIME_DOM = 'to'
+ANIME_DOMS = ['ru','to']
+ANIME_DOM = ANIME_DOMS[0]
 ANIME_URL = 'https://%s.%s' % (ANIME_KEY, ANIME_DOM)
 ANIME_SEARCH_URL = ANIME_URL + '/search?keyword=%s'
-ES_API_URL = 'http://movies-v2.api-fetch.website'
-ES_API_KEY = 'api-fetch'
-
-EXT_SITE_URLS = [ANIME_URL, ES_API_URL]
+ES_API_KEY = 'fetch.website'
+EXT_SITE_URLS = [ES_API_KEY]
+for d in ANIME_DOMS:	
+	u9 = 'https://%s.%s' % (ANIME_KEY, d)
+	EXT_SITE_URLS.append(u9)
+for d in EXT_LIST_URLS:
+	EXT_SITE_URLS.append(d)
 
 ART = "art-default.jpg"
 ICON = "icon-fmovies.png"
@@ -176,7 +189,9 @@ ICON_UNAV = "MoviePosterUnavailable.jpg"
 ICON_PREFS = "icon-prefs.png"
 ICON_UPDATE = "icon-update.png"
 ICON_UPDATE_NEW = "icon-update-new.png"
+ICON_UPDATER = "icon-updater.png"
 ICON_DEVICE_OPTIONS = "icon-device-options.png"
+ICON_GLOBAL_OPTIONS = "icon-global-options.png"
 ICON_OPTIONS = "icon-options.png"
 ICON_CLEAR = "icon-clear.png"
 ICON_DK_ENABLE = "icon-dumbKeyboardE.png"
@@ -215,6 +230,11 @@ ICON_REQUESTS = "icon-requests.png"
 ICON_TOOLS = "icon-tools.png"
 ICON_WARNING = "icon-warning.png"
 ICON_SYSSTATUS = "icon-status.png"
+ICON_FL_SAVE = "icon-floppysave.png"
+ICON_FL_LOAD = "icon-floppyload.png"
+
+ICON_OPENLOAD = "http://i.imgur.com/OM7VzQs.png"
+ICON_IMDB = "https://i.imgur.com/LqO2Fn0.png"
 
 MSG0 = "Please wait.."
 MSG1 = "Please give some time for the Interface to Load & Initialize plugins"
@@ -234,17 +254,22 @@ ALT_PLAYBACK = True
 ALT_PLAYBACK_INLINE = True
 SEARCH_EXT_SOURCES_FROM_SEARCH_MENU = True
 CHECK_BASE_URL_REDIRECTION = True
+CHECK_BASE_URL_REDIRECTION_HP = False
+CHECK_9BASE_URL_REDIRECTION = True
+CHECK_EXTLIST_URL_REDIRECTION = False
 DEV_BM_CONVERSION = False
 NO_MOVIE_INFO = False
 USE_CUSTOM_TIMEOUT = False
-MY_CLOUD_DISABLED = False
-FMOVIES_HOSTS_DISABLED = ['']
-SERVER_PLACEHOLDER = 'FMOVIES'
 ENCRYPTED_URLS = False
-DEV_DEBUG = False
 REFACTOR_WIP = True
 DOWNLOAD_ALL_SEASONS = True
 WBH = 'aHR0cHM6Ly9ob29rLmlvL2NvZGVyLWFscGhhL3Rlc3Q='
+SERVER_PLACEHOLDER = 'FMOVIES'
+FMOVIES_SERVER_REMAP = {'Server F':'Google-F', 'Server G':'Google-G', 'F5 Beta':'PrettyFast'}
+FMOVIES_HOSTS_DISABLED = ['MyCloud','PrettyFast']
+FMOVIES_HOSTS_UNPLAYABLE = True
+
+DEV_DEBUG = True if 'dev' in TAG else False
 
 ####################################################################################################
 # Get Key from a Dict using Val
@@ -416,10 +441,10 @@ def isArrayValueInString(arr, mystr, toLowercase=True):
 
 	for a in arr:
 		if toLowercase == True:
-			if a.lower() in mystr.lower():
+			if a.lower() in str(mystr).lower():
 				return True
 		else:
-			if a in mystr:
+			if a in str(mystr):
 				return True
 			
 	return False
@@ -504,6 +529,42 @@ def FixUrlInconsistencies(url):
 		pass
 	
 	return url
+	
+####################################################################################################
+def FixUrlInconsistencies2(url):
+	
+	try:
+		url = url.replace('www.','')
+	except:
+		pass
+	
+	return url
+	
+####################################################################################################
+def FixUrlInconsistencies3(url):
+	
+	try:
+		url = url.replace('.taxixixixi/','.taxi/')
+		url = url.replace('.taxixixi/','.taxi/')
+		url = url.replace('.taxixi/','.taxi/')
+	except:
+		pass
+	
+	return url
+
+####################################################################################################
+def getSelectedItems(item_as_dict_enc):
+
+	try:
+		ret = ''
+		item = JSON.ObjectFromString(D(item_as_dict_enc))
+		filter_extSources = []
+		filter_extSources += [i for i in item.keys() if item[i] == True]
+		if len(filter_extSources) > 0:
+			ret = ', '.join(str(x) for x in filter_extSources)
+		return ret
+	except:
+		return ret
 
 ####################################################################################################
 def OrderBasedOn(srcs, use_host=True, use_filesize=False):
@@ -578,7 +639,7 @@ def FilterBasedOn(srcs, use_quality=True, use_riptype=True, use_vidtype=True, us
 	#Log(INTERNAL_SOURCES_SIZES)
 	if use_filesize == True:
 		filter_extSources = []
-		for fs in INTERNAL_SOURCES_SIZES: filter_extSources += [i for i in srcs if (i['vidtype'].lower() in 'movie/show' and i['fs'] >= fs['LL'] and i['fs'] < fs['UL'] and str(fs['enabled'])=='True') or (i['vidtype'].lower() not in 'movie/show')]
+		for fs in INTERNAL_SOURCES_SIZES: filter_extSources += [i for i in srcs if (i['vidtype'].lower() in 'movie/show' and float(i['fs']) >= float(fs['LL']) and float(i['fs']) < float(fs['UL']) and str(fs['enabled'])=='True') or (i['vidtype'].lower() not in 'movie/show')]
 		srcs = filter_extSources
 	
 	# filter sources based on enabled rip-type in INTERNAL_SOURCES_RIPTYPE
@@ -797,7 +858,7 @@ def GetPageElements(url, headers=None, referer=None, timeout=15):
 		
 	except Exception as e:
 		if error == '':
-			error = e
+			error = '%s' % e
 		Log('ERROR common.py>GetPageElements: Error: %s URL: %s DATA: %s' % (error,url,page_data_string))
 
 	return page_data_elems, error
@@ -891,6 +952,7 @@ def GetPageAsString(url, headers=None, timeout=15, referer=None):
 		pass
 	else:
 		headers['Referer'] = url
+		headers['User-Agent'] = client.agent()
 	
 	if USE_COOKIES and ('fmovies' in url or 'bmovies' in url):
 		cookies, error = make_cookie_str()
@@ -986,7 +1048,25 @@ def OpenLoadUnpair(**kwargs):
 		for m in msg:
 			Log('OpenLoad UnPair: %s' % m)
 
-######################################################################################
+####################################################################################################
+
+def uidAltExists(uid, boolExt=False):
+
+	items = []
+	if Dict[uid] != None:
+		if boolExt == False:
+			items.append(uid)
+		else:
+			items.append([uid, 0])
+	for i in range(1,10):
+		nuid = uid + '-%s' % i
+		if Dict[nuid] != None:
+			if boolExt == False:
+				items.append(nuid)
+			else:
+				items.append([nuid, i])
+	
+	return items
 
 def makeUID(title, year='None', quality='None', source='None', url='None', season='None', episode='None'):
 	return E(title+str(year)+str(quality)+str(source)+str(url)+str(season)+str(episode))

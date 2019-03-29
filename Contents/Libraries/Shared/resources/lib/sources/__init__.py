@@ -72,6 +72,9 @@ class sources:
 		hosts = resolvers.info()
 		return hosts
 		
+	def getHostResolverMain(self):
+		return resolvers
+		
 	def hostsCaller(self):
 		return resolvers.sourceHostsCall
 		
@@ -167,9 +170,6 @@ class sources:
 
 	def getSources(self, name, title, year, imdb, tmdb, tvdb, tvrage, season, episode, tvshowtitle, alter, date, proxy_options, provider_options, key, session):
 		
-		tuid = control.id_generator(16)
-		control.AddThread('getSources', 'Initializing Search Item in Providers', time.time(), '1', False, tuid)
-		
 		try:
 			sourceDict = []
 			self.getSourcesAlive = True
@@ -186,14 +186,15 @@ class sources:
 			self.threadSlots[key] = []
 			pos = 0
 			if content == 'movie':
-				log(err='Initializing Search for Movie: %s' % title)
+				log(err='Initializing Search for Movie: %s (%s)' % (title, year))
 				title = cleantitle.normalize(title)
 				for source in myProviders:
 					try:
 						source_name = 'Unknow source (import error)'
 						source_name = source['name']
-						log(err='Queing Search for Movie: %s (%s) in Provider %s' % (title,year,source_name))
-						thread_i = workers.Thread(self.getMovieSource, title, year, imdb, proxy_options, key, re.sub('_mv_tv$|_mv$|_tv$', '', source['name']), source['call'])
+						log(err='Queuing Search for Movie: %s (%s) in Provider %s' % (title,year,source_name))
+						#thread_i = workers.Thread(self.getMovieSource, title, year, imdb, proxy_options, key, re.sub('_mv_tv$|_mv$|_tv$', '', source_name), source['call'])
+						thread_i = workers.Thread(self.getMovieSource, title, year, imdb, proxy_options, key, source_name, source['call'])
 						self.threads[key].append(thread_i)
 						self.threadSlots[key].append({'thread':thread_i, 'status':'idle', 'pos':pos, 'source':source_name})
 						pos += 1
@@ -214,8 +215,9 @@ class sources:
 					try:
 						source_name = 'Unknow source (import error)'
 						source_name = source['name']
-						log(err='Queing Search for Show: %s S%sE%s in Provider %s' % (tvshowtitle,season,episode,source_name))
-						thread_i = workers.Thread(self.getEpisodeSource, title, year, imdb, tvdb, season, episode, tvshowtitle, date, proxy_options, key, re.sub('_mv_tv$|_mv$|_tv$', '', source_name), source['call'])
+						log(err='Queuing Search for Show: %s S%sE%s in Provider %s' % (tvshowtitle,season,episode,source_name))
+						#thread_i = workers.Thread(self.getEpisodeSource, title, year, imdb, tvdb, season, episode, tvshowtitle, date, proxy_options, key, re.sub('_mv_tv$|_mv$|_tv$', '', source_name), source['call'])
+						thread_i = workers.Thread(self.getEpisodeSource, title, year, imdb, tvdb, season, episode, tvshowtitle, date, proxy_options, key, source_name, source['call'])
 						self.threads[key].append(thread_i)
 						self.threadSlots[key].append({'thread':thread_i, 'status':'idle', 'pos':pos, 'source':source_name})
 						pos += 1
@@ -225,27 +227,33 @@ class sources:
 
 			thread_ex = workers.Thread(self.executeThreads, key)
 			thread_ex.start()
-						
+			self.executeThreadsStatus(key, thread_ex)
+
 			#sourceLabel = [re.sub('_mv_tv$|_mv$|_tv$', '', i) for i in sourceDict]
 			#sourceLabel = [re.sub('v\d+$', '', i).upper() for i in sourceLabel]
 
 			#time.sleep(0.5)
 			self.getSourcesAlive = False
-			
-			control.RemoveThread(tuid)
+
 			return self.sources
 		except Exception as e:
 			log(type='ERROR-CRITICAL', err='getSources - %s' % e)
 		#	self.purgeSourcesKey(key=key)
-		
-			control.RemoveThread(tuid)
+
 			return self.sources
+			
+	def executeThreadsStatus(self, key, thread):
+		tuid = control.id_generator(16)
+		try:
+			title = cleantitle.title_from_key(key)
+			control.AddThread('executeThreadsStatus', 'Provider Search Manage Thread: %s' % title, time.time(), '1', False, tuid, thread)
+			while thread != None and thread.isAlive():
+				time.sleep(1.0)
+		except Exception as e:
+			log(type='ERROR-CRITICAL', err='executeThreadsStatus - %s' % e)
+		control.RemoveThread(tuid)
 		
 	def executeThreads(self, key):
-		
-		tuid = control.id_generator(16)
-		control.AddThread('executeThreads', 'Provider Search Manage Thread', time.time(), '1', False, tuid)
-			
 		try:
 			title = cleantitle.title_from_key(key)
 			log(type='SUCCESS', err='Starting Threads ! : %s' % title)
@@ -257,36 +265,34 @@ class sources:
 					for s1 in self.threadSlots[key]:
 						if s1['status'] == 'active':
 							active += 1
-						if 'done' in s1['status']:
-							done += 1
 						if s1['status'] == 'idle':
 							idle += 1
 						if s1['status'] == 'done-marked':
-							log(type='SUCCESS', err='Completed thread : %s > %s in %ss.' % (title, s1['source'], round(s1['e_time']-s1['s_time'], 2)))
-							s1['status'] = 'done'
+							log(type='SUCCESS', err='Completed Thread: %s > %s in %ss.' % (title, s1['source'], round(s1['e_time']-s1['s_time'], 2)))
 							control.RemoveThread(s1['tuid'])
+							s1['status'] = 'done'
+						if s1['status'] == 'done':
+							done += 1
 							
 					if done == len(self.threadSlots[key]):
 						log(type='SUCCESS', err='Completed Threads ! : %s with %s sources' % (title, len(self.sourcesFilter(key=key))))
 						control.savePermStore()
-						control.RemoveThread(tuid)
 						return
 							
 					if s['status'] == 'idle' and active < int(control.setting('control_concurrent_src_threads')):
-						s['thread'].start()
+						log(type='SUCCESS', err='Starting Thread: %s > %s' % (title, s['source']))
 						s['status'] = 'active'
 						s['s_time'] = time.time()
-						log(type='SUCCESS', err='Starting thread : %s > %s' % (title, s['source']))
 						tuid2 = control.id_generator(16)
-						control.AddThread('executeThreads', 'Provider Search Thread: %s > %s' % (title, s['source']), time.time(), '4', False, tuid2)
+						control.AddThread('executeThreads', 'Provider Search Thread: %s > %s' % (title, s['source']), time.time(), '4', False, tuid2, s['thread'])
 						s['tuid'] = tuid2
+						s['thread'].start()
 					
-					time.sleep(0.1)
+					time.sleep(1.0)
 				time.sleep(1.0)
 		except Exception as e:
 			log(type='ERROR-CRITICAL', err='Thread Title %s - %s' % (title,e))
 		control.savePermStore()
-		control.RemoveThread(tuid)
 
 	def checkProgress(self, key=None):
 	
@@ -297,10 +303,10 @@ class sources:
 					for s in self.threadSlots[key]:
 						if x == s['thread'] and 'done' in s['status']:
 							c += 1
-					
+			
 			if len(self.threads[key]) == 0:
 				return 100
-						
+			
 			return float(int(float((float(c)/float(len(self.threads[key])))*100.0))*100)/100.0
 		else:
 			filtered = [i for i in self.sources if i['key'] == key]
@@ -310,20 +316,25 @@ class sources:
 			
 	def getDescProgress(self, key=None):
 
-		str = []
-		if key in self.threads.keys():
-			for s in self.threadSlots[key]:
-				if 'done' in s['status']:
-					str.append('%s (%ss. %s)' % (s['source'], round(s['e_time']-s['s_time'], 2), u'\u2713'))
-				elif s['status'] == 'idle':
-					str.append('%s (%ss. %s)' % (s['source'], '0.00', u'\u21AD'))
-				elif s['status'] == 'active' and 's_time' not in s.keys():
-					str.append('%s (%ss. %s)' % (s['source'], round(0.01, 2), u'\u21AF'))
-				elif s['status'] == 'active' and 's_time' in s.keys():
-					str.append('%s (%ss. %s)' % (s['source'], round(time.time()-s['s_time'], 2), u'\u21AF'))
-					
-		ret_str = (' ,'.join(x for x in str))
-		return ret_str
+		try:
+			str = []
+			if key in self.threads.keys():
+				for s in self.threadSlots[key]:
+					if 'done' in s['status']:
+						str.append('%s (%ss. %s)' % (s['source'], round(s['e_time']-s['s_time'], 2), u'\u2713'))
+					elif s['status'] == 'idle':
+						str.append('%s (%ss. %s)' % (s['source'], '0.00', u'\u21AD'))
+					elif s['status'] == 'active' and 's_time' not in s.keys():
+						str.append('%s (%ss. %s)' % (s['source'], round(0.01, 2), u'\u21AF'))
+					elif s['status'] == 'active' and 's_time' in s.keys():
+						str.append('%s (%ss. %s)' % (s['source'], round(time.time()-s['s_time'], 2), u'\u21AF'))
+						
+			ret_str = (' ,'.join(x for x in str))
+			return ret_str
+		except Exception as e:
+			log(type='ERROR-CRITICAL', err='getDescProgress - %s' % e)
+			log(type='ERROR-CRITICAL', err='getDescProgress - %s' % s)
+			return 'Error retrieving status ! %s' % e.args
 		
 	def getETAProgress(self, key=None, type='movie'):
 
@@ -362,18 +373,31 @@ class sources:
 		except:
 			pass
 			
-		for s in self.threadSlots[key]:
-			if s['source'] == source:
-				s['status'] = 'done-marked'
-				s['e_time'] = time.time()
-				if 'movie' in self.providersTimer[source].keys():
-					self.providersTimer[source]['movie'] += s['e_time'] - s['s_time']
-					self.providersTimer[source]['movie'] = self.providersTimer[source]['movie']/2
-				else:
-					self.providersTimer[source]['movie'] = s['e_time'] - s['s_time']
-				control.control_json[source]['movie'] = self.providersTimer[source]['movie']
-				break
-
+		doneMarked = False
+		try:
+			s_in_threadSlots = self.threadSlots[key]
+			for s in s_in_threadSlots:
+				if s['source'] == source:
+					try:
+						s['e_time'] = time.time()
+						if 'movie' in self.providersTimer[source].keys():
+							self.providersTimer[source]['movie'] += s['e_time'] - s['s_time']
+							self.providersTimer[source]['movie'] = self.providersTimer[source]['movie']/2
+						else:
+							self.providersTimer[source]['movie'] = s['e_time'] - s['s_time']
+						control.control_json[source]['movie'] = self.providersTimer[source]['movie']
+					except:
+						pass
+					s['status'] = 'done-marked'
+					doneMarked = True
+					log(type='INFO', err='getMovieSource-done-marked: %s > %s (%s)' % (source, title, year), logToControl=control.debug)
+					#break
+			if doneMarked == False:
+				log(type='ERROR-CRITICAL', err='getMovieSource: %s' % s_in_threadSlots, logToControl=control.debug)
+		except Exception as e:
+			log(type='ERROR-CRITICAL', err='getMovieSource: %s > %s (%s)' % (e, title, year), logToControl=control.debug)
+			
+		log(type='INFO', err='getMovieSource: Completed %s > %s (%s)' % (source, title, year), logToControl=control.debug)
 
 	def getEpisodeSource(self, title, year, imdb, tvdb, season, episode, tvshowtitle, date, proxy_options, key, source, call):
 		
@@ -400,17 +424,31 @@ class sources:
 		except:
 			pass
 			
-		for s in self.threadSlots[key]:
-			if s['source'] == source:
-				s['status'] = 'done-marked'
-				s['e_time'] = time.time()
-				if 'tv' in self.providersTimer[source].keys():
-					self.providersTimer[source]['tv'] += s['e_time'] - s['s_time']
-					self.providersTimer[source]['tv'] = self.providersTimer[source]['tv']/2
-				else:
-					self.providersTimer[source]['tv'] = s['e_time'] - s['s_time']
-				control.control_json[source]['tv'] = self.providersTimer[source]['tv']
-				break
+		doneMarked = False
+		try:
+			s_in_threadSlots = self.threadSlots[key]
+			for s in s_in_threadSlots:
+				if s['source'] == source:
+					try:
+						s['e_time'] = time.time()
+						if 'tv' in self.providersTimer[source].keys():
+							self.providersTimer[source]['tv'] += s['e_time'] - s['s_time']
+							self.providersTimer[source]['tv'] = self.providersTimer[source]['tv']/2
+						else:
+							self.providersTimer[source]['tv'] = s['e_time'] - s['s_time']
+						control.control_json[source]['tv'] = self.providersTimer[source]['tv']
+					except:
+						pass
+					s['status'] = 'done-marked'
+					doneMarked = True
+					log(type='INFO', err='getEpisodeSource-done-marked: %s > %s (S%sE%s)' % (source, tvshowtitle, season, episode), logToControl=control.debug)
+					#break
+			if doneMarked == False:
+				log(type='ERROR-CRITICAL', err='getEpisodeSource: %s' % s_in_threadSlots, logToControl=control.debug)
+		except Exception as e:
+			log(type='ERROR-CRITICAL', err='getEpisodeSource: %s > %s (S%sE%s)' % (e, tvshowtitle, season, episode), logToControl=control.debug)
+			
+		log(type='INFO', err='getEpisodeSource: Completed %s > %s (S%sE%s)' % (source, tvshowtitle, season, episode), logToControl=control.debug)
 
 	def clearSources(self, key=None):
 		try:
@@ -419,39 +457,47 @@ class sources:
 			self.threads.clear()
 			self.threadSlots.clear()
 			self.threads = {}
-			self.threadSlots = {}	
+			self.threadSlots = {}
+			log(type='INFO', err='clearSources performed at %s' % time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
 		except Exception as e:
 			log(type='ERROR', err='clearSources : %s' % e)
 			
 	def purgeSources(self, maxcachetimeallowed=0, override=False):
 		try:
 			filtered = []
+			purgedItems = []
 			maxcachetimeallowed = float(maxcachetimeallowed)
 			curr_time = time.time()
 			if override == True:
 				pass
 			else:
-				# if cache time < 2min; then get the sources from last 2min. otherwise it will always return 0 sources
-				if maxcachetimeallowed < 2*60:
-					maxcachetimeallowed = 2*60
+				# if cache time < 5min; then get the sources from last 2min. otherwise it will always return 0 sources
+				if maxcachetimeallowed < 5*60:
+					maxcachetimeallowed = 5*60
 				for i in self.sources:
 					if (i['ts'] + float(maxcachetimeallowed)) >= curr_time:
 						filtered.append(i)
 				for k in self.threads:
 					if self.checkKeyInThread(k) == True and self.checkProgress(k) == 100:
+						purgedItems.append(k)
 						del self.threads[k]
 						del self.threadSlots[k]
 
 			del self.sources[:]
 			for i in filtered:
 				self.sources.append(i)
+				
+			if len(purgedItems) > 0 or len(filtered) > 0 or control.debug == True:
+				log(type='INFO', err='purgeSources performed at %s' % time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
+				log(type='INFO', err='purgeSources purged items %s' % (', '.join(cleantitle.title_from_key(x) for x in purgedItems)))
 		except Exception as e:
-			log(type='ERROR', err='clearSources : %s' % e)
+			log(type='ERROR', err='purgeSources : %s' % e)
 			
 	def purgeSourcesKey(self, key=None, maxcachetimeallowed=0):
 		try:
 			bool = False
 			filtered = []
+			purgedItems = []
 			curr_time = time.time()
 			if key == None:
 				return bool
@@ -467,10 +513,14 @@ class sources:
 						bool = True
 				
 				if self.checkKeyInThread(key) == True and self.checkProgress(key) == 100:
+					purgedItems.append(key)
 					del self.threads[key]
 					del self.threadSlots[key]
 					bool = True
-
+					
+			if len(purgedItems) > 0 or len(filtered) > 0 or control.debug == True:
+				log(type='INFO', err='purgeSourcesKey performed at %s' % time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
+				log(type='INFO', err='purgeSourcesKey purged items %s' % (', '.join(cleantitle.title_from_key(x) for x in purgedItems)))
 		except Exception as e:
 			log(type='ERROR', err='purgeSourcesKey : %s' % e)
 			bool = False

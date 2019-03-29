@@ -329,6 +329,8 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 
 		elif output == 'geturl':
 			result = response.geturl()
+			if result == None:
+				result = url
 
 		elif output == 'headers':
 			content = response.headers
@@ -358,12 +360,18 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 			setIP6()
 		return
 		
-def simpleCheck(link, headers={}, cookie={}, retError=False, retry429=False, cl=3):
+def simpleCheck(link, headers={}, cookie={}, retError=False, retry429=False, cl=3, timeout=None):
 	try:
 		code = '0'
 		size = '0'
-		red_url = None 
-		r = requests.get(link, headers=headers, cookies=cookie, stream=True, verify=False, allow_redirects=True)
+		red_url = None
+		
+		try:
+			timeout = int(timeout)
+		except:
+			timeout = GLOBAL_TIMEOUT_FOR_HTTP_REQUEST
+		
+		r = requests.get(link, headers=headers, cookies=cookie, stream=True, verify=False, allow_redirects=True, timeout=(timeout, timeout))
 		
 		if retry429 == True:
 			c = 0
@@ -389,10 +397,17 @@ def simpleCheck(link, headers={}, cookie={}, retError=False, retry429=False, cl=
 		else:
 			return code, red_url, size
 			
-def getRedirectingUrl(url, headers=None):
+
+def getRedirectingUrl(url, headers=None, timeout=None):
 	red = url
+	
 	try:
-		response = requests.get(url)
+		timeout = int(timeout)
+	except:
+		timeout = GLOBAL_TIMEOUT_FOR_HTTP_REQUEST
+	
+	try:
+		response = requests.get(url, timeout=(timeout, timeout))
 		if headers != None:
 			response.headers = headers
 		if response.history:
@@ -401,9 +416,32 @@ def getRedirectingUrl(url, headers=None):
 		pass
 	return red
 		
-def getFileSize(link, headers=None, retError=False, retry429=False, cl=3):
+def getFileSize(link, headers=None, retError=False, retry429=False, cl=3, timeout=None):
 	try:
-		r = requests.get(link, headers=headers, stream=True, verify=False, allow_redirects=True)
+		try:
+			timeout = int(timeout)
+		except:
+			timeout = GLOBAL_TIMEOUT_FOR_HTTP_REQUEST
+			
+		r = requests.get(link, headers=headers, stream=True, verify=False, allow_redirects=True, timeout=(timeout, timeout))
+		
+		if 'Content-length' not in r.headers:
+			try:
+				# https://stackoverflow.com/questions/52044489/how-to-get-content-length-for-google-drive-download
+				if headers == None:
+					headers = {'Range':'bytes=0-'}
+				else:
+					headers['Range'] = 'bytes=0-'
+				r = requests.get(link,headers=headers,stream=True).headers['Content-Range']
+				#contleng=int(re.split('\W+',r))[-1]
+				size = int(r.partition('/')[-1])
+				#contrange=int(re.split('\W+',r))[-2]
+				if retError == True:
+					return size, ''
+				else:
+					return size
+			except:
+				pass
 		
 		if headers != None and 'Content-length' in headers:
 			r.headers = headers
@@ -412,7 +450,7 @@ def getFileSize(link, headers=None, retError=False, retry429=False, cl=3):
 			c = 0
 			while r.status_code == 429 and c < cl:
 				time.sleep(5)
-				r = requests.get(link, headers=headers, stream=True, verify=False, allow_redirects=True)
+				r = requests.get(link, headers=headers, stream=True, verify=False, allow_redirects=True, timeout=(timeout, timeout))
 				if headers != None and 'Content-length' in headers:
 					r.headers = headers
 				c += 1
@@ -427,8 +465,11 @@ def getFileSize(link, headers=None, retError=False, retry429=False, cl=3):
 		else:
 			return size
 	except Exception as e:
+		err = '{}'.format(e)
+		regex = re.compile('[()\\/!?;\'",]')
+		err = regex.sub('', err)
 		if retError == True:
-			return 0, '{}'.format(e)
+			return 0, err
 		else:
 			return 0
 		

@@ -51,7 +51,7 @@ class source:
 		self.init = False
 		self.disabled = False
 		self.TOKEN_KEY = []
-		self.base_link_alts = ['https://fmovies.taxi','https://bmovies.pro','https://bmovies.is','https://bmovies.to','https://bmovies.club','https://bmovies.online','https://bmovies.ru','https://fmovies.to','https://fmovies.is','https://fmovies.se']
+		self.base_link_alts = ['https://fmovies.taxi','https://bmovies.pro','https://bmovies.club','https://bmovies.ru','https://fmovies.to','https://fmovies.ru']
 		self.base_link = self.base_link_alts[0]
 		self.grabber_api = "grabber-api/"
 		self.search_link = '/sitemap'
@@ -80,9 +80,9 @@ class source:
 		self.siteonline = self.testSite()
 		self.testparser = 'Unknown'
 		self.testparser = self.testParser()
-		self.initAndSleepThread()
 		self.firstRunDisabled = False
 		self.init = True
+		self.initAndSleepThread()
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s End --' % (name, self.ver, self.update_date))
 		
 	def info(self):
@@ -145,11 +145,18 @@ class source:
 		thread_i.start()
 		
 	def InitSleepThread(self):
-		while True:
-			time.sleep(60*100)
-			self.siteonline = self.testSite()
-			self.testparser = self.testParser()
-			self.initAndSleep()
+		try:
+			while self.init == True:
+				tuid = control.id_generator(16)
+				control.AddThread('%s-InitSleepThread' % self.name, 'Persists & Monitors Provider Requirements (Every 60 mins.)', time.time(), '4', True, tuid)
+				time.sleep(60*60)
+				self.siteonline = self.testSite()
+				self.testparser = self.testParser()
+				self.initAndSleep()
+				control.RemoveThread(tuid)
+		except Exception as e:
+			log('ERROR','InitSleepThread', '%s' % e)
+		control.RemoveThread(tuid)
 			
 	def initAndSleep(self):
 		try:

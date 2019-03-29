@@ -126,7 +126,13 @@ def MediaObjectsForURL(url, **kwargs):
 	https_skip = data['useSSL']
 	pairrequired = False
 	direct_play = True
+	provider = 'plugin'
 	
+	try:
+		provider = data['provider']
+	except:
+		pass
+		
 	try:
 		isTargetPlay = data['isTargetPlay']
 	except:
@@ -136,6 +142,12 @@ def MediaObjectsForURL(url, **kwargs):
 		direct_play = not data['force_transcode']
 	except:
 		pass
+		
+	if direct_play == True and provider == 'IMDb':
+		try:
+			direct_play = not data['force_transcode_imdb']
+		except:
+			pass
 
 	try:
 		openloadApiKey = data['control_openload_api_key']

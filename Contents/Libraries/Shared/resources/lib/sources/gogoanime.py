@@ -240,7 +240,6 @@ class source:
 
 			url = urlparse.urljoin(self.base_link, url)
 			
-			#r = client.request(url)
 			req = proxies.request(url, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, IPv4=True)
 
 			r = client.parseDOM(req, 'iframe', ret='src')

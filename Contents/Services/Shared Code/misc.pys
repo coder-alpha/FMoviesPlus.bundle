@@ -16,10 +16,14 @@ import sys,urllib2,HTMLParser,urllib,urlparse
 import random, time, cookielib
 import base64
 
+# import Shared Code
+import jsunpack as JSUNPACK
+
 from __builtin__ import eval
 
 USE_RESTRICT_RAPIDVIDEO = True
 RAPIDVIDEO_CAPTCHA = []
+USE_RESTRICT_MP4UPLOAD = True
 
 #-------------------------------------------------------------------------------------------------------------
 # Enforce IPv4 for GetlinkAPI nks Google li
@@ -53,7 +57,7 @@ IP_OVERIDE = True
 RE_SUB1 = Regex(r'(?m)(^[^\#])')
 RE_SOURCES = Regex(r'(?m)(^.+?\d+/(\d+).+$)')
 
-supported_hosts = ['mycloud.to','mcloud.to','rapidvideo.com','streamango.com','rapidvideo','streamango']
+supported_hosts = ['mycloud.to','mcloud.to','rapidvideo.com','streamango.com','rapidvideo','streamango','mp4upload']
 
 USE_POST = []
 RV_COOKIES = ['__cfduid=dda567790eb0b331fd9a8191dec20619e1534810793; PHPSESSID=5v3cqu54ml4rtsdfaejo533o17']
@@ -185,7 +189,35 @@ def resolve(url, https_skip=True, test=False, strip_url=True):
 					except:
 						pass
 				
+			if len(video_url_a) > 0:
 				video_urlf = video_url_a
+			else:
+				raise Exception('No Data found in page')
+				
+		elif 'mp4upload.' in ourl:
+			myheaders = {}
+			myheaders['User-Agent'] = agent()
+			myheaders['Referer'] = ourl
+			myParams['headers'] = myheaders
+			
+			page_data_string = request(ourl, headers=myheaders, httpsskip=True)
+			if 'File Not Found' in page_data_string or 'File was deleted' in page_data_string:
+				raise Exception('File not available')
+			else:
+				video_url, err = decode_mp4upload(page_data_string)
+				if err != '':
+					raise Exception(err)
+
+				for v in video_url:
+					f_i = {'file':v, 'label':'720'}
+					video_url_a.append(f_i)
+					if USE_RESTRICT_MP4UPLOAD == True:
+						break
+					
+			if len(video_url_a) > 0:
+				video_urlf = video_url_a
+			else:
+				raise Exception('No Data found in page')
 			
 		elif 'mycloud.' in ourl or 'mcloud.' in ourl:
 			#Log('============ MyCloud URL ==================')
@@ -318,12 +350,49 @@ def error(url, https_skip):
 				error = 'RapidVideo %s requires captcha verification' % url
 				RAPIDVIDEO_CAPTCHA.append('')
 				del RV_COOKIES[:]
+			elif ('mp4upload.' in ourl) and "File Not Found" in page_data_string:
+				error = 'Video Not Found'
+			elif ('mp4upload.' in ourl) and "File was deleted" in page_data_string:
+				error = 'Video removed or blocked.'
 		else:
 			error = 'Page returned None'
 	except:
 		error = 'Page could not be retrieved'
 		
 	return error
+	
+####################################################################################################
+def decode_mp4upload(html):
+	
+	source = None
+	err = ''
+	try:
+		try:
+			str_pattern="(eval\(function\(p,a,c,k,e,(?:r|d).*)"
+			
+			js = re.compile(str_pattern).findall(html)
+			if len(js) == 0:
+				raise Exception('No packer js found.')
+			
+			js = js[0]
+			if 'p,a,c,k,e,' not in js:
+				raise Exception('No packer js found.')
+			
+			html_with_unpacked_js = JSUNPACK.unpack(js)
+			if html_with_unpacked_js == None:
+				raise Exception('Could not unpack js.')
+				
+			source = re.findall(r':\"(http.*.mp4)\"', html_with_unpacked_js)
+		except Exception as e:
+			err = 'Mp4Upload Error: %s' % e
+			Log(err)
+		if source != None and len(source) == 0:
+			raise Exception('No mp4 Videos found !')
+	except Exception as e:
+		err = 'Mp4Upload Error: %s' % e
+		
+			
+	return source, err
 
 ####################################################################################################
 def decode_streamango(html):

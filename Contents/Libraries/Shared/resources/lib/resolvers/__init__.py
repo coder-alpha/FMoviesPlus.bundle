@@ -93,17 +93,24 @@ def request(url):
 
 	return None	
 		
-def resolve(url):
+def resolve(url, page_url=None):
+	err = ''
 	try:
-		ret = url
-		urlhost = re.findall('([\w]+[.][\w]+)$', urlparse.urlparse(url.strip().lower()).netloc)[0]
+		try:
+			urlhost = re.findall('([\w]+[.][\w]+)$', urlparse.urlparse(url.strip().lower()).netloc)[0]
+		except:
+			urlhost = re.findall('([\w]+[.][\w]+).*$', urlparse.urlparse(url.strip().lower()).netloc)[0]
+			urlhost = urlhost.split('.')[1]
+			
 		for host in sourceHostsCall:
+			log("resolve > Searching %s in host (%s)" % (urlhost, host['name']), logToControl=False)
 			if urlhost in host['host']:
-				ret = host['call'].resolve(url)
-				break
-		return ret
-	except:
-		return url
+				log("resolve > Found %s in host (%s)" % (urlhost, host['name']))
+				return host['call'].resolve(url, page_url=page_url)
+		return ([url], err, None) # if its hosted on a different host, return with no error and file-size check will validate it 
+	except Exception as e:
+		err = '{}'.format(e)
+		return (None, err, None)
 		
 def resolveHostname(h):
 	try:
@@ -135,7 +142,7 @@ def createMeta(url, provider, logo, quality, links, key, riptype=None, vidtype='
 	
 	for item in links:
 		if url == item['orig_url']:
-			log("%s has already been processed" % url)
+			log("createMeta > %s has already been processed" % url)
 			return links
 	
 	quality = fixquality(quality)
@@ -157,13 +164,13 @@ def createMeta(url, provider, logo, quality, links, key, riptype=None, vidtype='
 			else:
 				riptype_def = riptype
 			for host in sourceHostsCall:
-				log("Searching %s in host (%s)" % (urlhost, host['name']), logToControl=False)
+				log("createMeta > Searching %s in host (%s)" % (urlhost, host['name']), logToControl=False)
 
 				if urlhost in host['host']:
-					log("Found %s in host (%s)" % (urlhost, host['name']))
+					log("createMeta > Found %s in host (%s)" % (urlhost, host['name']))
 					return host['call'].createMeta(url, provider, logo, quality, links, key, riptype_def, vidtype=vidtype, lang=lang, sub_url=sub_url, txt=txt, file_ext=file_ext, testing=testing, poster=poster, headers=headers, page_url=page_url)
 				
-		log("urlhost '%s' not found in host/resolver plugins - creating generic meta for external services" % urlhost)
+		log("createMeta > urlhost '%s' not found in host/resolver plugins - creating generic meta for plex services" % urlhost)
 		
 		quality = file_quality(url, quality)
 		
@@ -172,7 +179,7 @@ def createMeta(url, provider, logo, quality, links, key, riptype=None, vidtype='
 		else:
 			type = riptype
 		
-		links_m.append({'source':urlhost, 'maininfo':'', 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':type, 'provider':provider, 'orig_url':url, 'url':url, 'durl':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':'Unknown', 'allowsDownload':False, 'resumeDownload':False, 'allowsStreaming':True, 'key':key, 'enabled':True, 'fs':int(0), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':urlhost, 'misc':{'player':'eplayer', 'gp':False}})
+		links_m.append({'source':urlhost, 'maininfo':'', 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':type, 'provider':provider, 'orig_url':url, 'url':url, 'durl':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':'Unknown', 'allowsDownload':False, 'resumeDownload':False, 'allowsStreaming':True, 'key':key, 'enabled':True, 'fs':int(0), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':urlhost, 'page_url':page_url, 'misc':{'player':'eplayer', 'gp':False}, 'seq':0})
 	except Exception as e:
 		log(type='ERROR', err="createMeta : %s url: %s" % (e.args, url))
 		

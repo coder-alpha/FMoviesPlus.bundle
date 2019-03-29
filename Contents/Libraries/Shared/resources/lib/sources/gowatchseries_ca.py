@@ -126,11 +126,18 @@ class source:
 		thread_i.start()
 		
 	def InitSleepThread(self):
-		while True:
-			time.sleep(60*100)
-			self.siteonline = self.testSite()
-			self.testparser = self.testParser()
-			self.initAndSleep()
+		try:
+			while self.init == True:
+				tuid = control.id_generator(16)
+				control.AddThread('%s-InitSleepThread' % self.name, 'Persists & Monitors Provider Requirements (Every 60 mins.)', time.time(), '4', True, tuid)
+				time.sleep(60*60)
+				self.siteonline = self.testSite()
+				self.testparser = self.testParser()
+				self.initAndSleep()
+				control.RemoveThread(tuid)
+		except Exception as e:
+			log('ERROR','InitSleepThread', '%s' % e)
+		control.RemoveThread(tuid)
 			
 	def initAndSleep(self):
 		try:

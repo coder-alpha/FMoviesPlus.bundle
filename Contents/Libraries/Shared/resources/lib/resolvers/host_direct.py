@@ -114,6 +114,7 @@ class host:
 				durl = url
 				
 				allowsStreaming = item['allowsStreaming']
+				allowsDownload = item['allowsDownload']
 				quality = item['quality']
 				riptype = item['riptype']
 				fs = item['fs']
@@ -123,10 +124,10 @@ class host:
 				
 				try:
 					log(type='INFO',method='createMeta', err=u'durl:%s ; res:%s; fs:%s' % (durl,quality,fs))
-					files_ret.append({'source':self.name, 'maininfo':txt, 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':riptype, 'provider':provider, 'orig_url':orig_url, 'url':vidurl, 'durl':durl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':allowsStreaming, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(url), 'page_url':page_url, 'misc':{'player':'eplayer', 'gp':True}, 'seq':seq})
+					files_ret.append({'source':self.name, 'maininfo':txt, 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':riptype, 'provider':provider, 'orig_url':orig_url, 'url':vidurl, 'durl':durl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':allowsStreaming, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(url), 'page_url':page_url, 'misc':{'player':'eplayer', 'gp':True}, 'seq':seq})
 				except Exception as e:
 					log(type='ERROR',method='createMeta', err=u'%s' % e)
-					files_ret.append({'source':urlhost, 'maininfo':txt, 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'orig_url':orig_url, 'url':vidurl, 'durl':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':allowsStreaming, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(url), 'page_url':page_url, 'misc':{'player':'eplayer', 'gp':True}, 'seq':seq})
+					files_ret.append({'source':urlhost, 'maininfo':txt, 'titleinfo':'', 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'orig_url':orig_url, 'url':vidurl, 'durl':url, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':allowsStreaming, 'key':key, 'enabled':True, 'fs':int(fs), 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(url), 'page_url':page_url, 'misc':{'player':'eplayer', 'gp':True}, 'seq':seq})
 				seq += 1
 				
 		except Exception as e:
@@ -186,7 +187,7 @@ class host:
 						paramsx = {'headers':headers}
 						params = client.b64encode(json.dumps(paramsx, encoding='utf-8'))
 					
-					items.append({'quality':q, 'riptype':r, 'src':u, 'fs':fs, 'online':online, 'params':params, 'urldata':urldata, 'allowsStreaming':True})
+					items.append({'quality':q, 'riptype':r, 'src':u, 'fs':fs, 'online':online, 'params':params, 'urldata':urldata, 'allowsStreaming':True, 'allowsDownload':True})
 					
 			elif '3donlinefilms.com' in url or '3dmoviesfullhd.com' in url or 'freedocufilms.com' in url:
 				data = urlparse.parse_qs(url)
@@ -236,7 +237,22 @@ class host:
 				paramsx = {'headers':headers}
 				params = client.b64encode(json.dumps(paramsx, encoding='utf-8'))
 				
-				items.append({'quality':q, 'riptype':r, 'src':url, 'fs':fs, 'online':online, 'params':params, 'urldata':urldata, 'allowsStreaming':False})
+				items.append({'quality':q, 'riptype':r, 'src':url, 'fs':fs, 'online':online, 'params':params, 'urldata':urldata, 'allowsStreaming':False, 'allowsDownload':True})
+			else:
+				fs = client.getFileSize(url, retry429=True, headers=headers)
+				if fs == None or int(fs) == 0:
+					fs = client.getFileSize(url, retry429=True)
+				q = qual_based_on_fs(q,fs)
+				online = check(url)
+				urldata = client.b64encode(json.dumps('', encoding='utf-8'))
+				params = client.b64encode(json.dumps('', encoding='utf-8'))
+				if headers != None:
+					paramsx = {'headers':headers}
+					params = client.b64encode(json.dumps(paramsx, encoding='utf-8'))
+				allowsDownload = True
+				if '.m3u8' in url:
+					allowsDownload = False
+				items.append({'quality':q, 'riptype':r, 'src':url, 'fs':fs, 'online':online, 'params':params, 'urldata':urldata, 'allowsStreaming':True, 'allowsDownload':allowsDownload})
 					
 		except Exception as e:
 			log(type='ERROR',method='process', err=u'%s' % e)
@@ -252,7 +268,7 @@ class host:
 			if headers != None:
 				paramsx = {'headers':headers}
 				params = client.b64encode(json.dumps(paramsx, encoding='utf-8'))
-			items.append({'quality':q, 'riptype':r, 'src':url, 'fs':fs, 'online':online, 'params':params, 'urldata':urldata, 'allowsStreaming':True, 'seq':0})
+			items.append({'quality':q, 'riptype':r, 'src':url, 'fs':fs, 'online':online, 'params':params, 'urldata':urldata, 'allowsStreaming':True, 'allowsDownload':True})
 			
 		return items
 		

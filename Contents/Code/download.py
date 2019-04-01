@@ -20,6 +20,9 @@ Dict['DOWNLOAD_RATE_LIMIT_BUFFER'] = []
 Dict['DOWNLOAD_RATE_LIMIT_TIME'] = []
 REMAP_EXTRAS = {'behind the scenes':'behindthescenes', 'deleted scenes':'deleted', 'featurette':'featurette', 'interviews':'interview', 'misc.':'scene', 'music video':'short', 'trailer':'trailer'}
 
+AUTOPILOT_SCHEDULER = [False]
+AUTOPILOT_SCHEDULER_POST_REFRESH = []
+
 QUEUE_RUN_ITEMS = {}
 WAIT_AND_RETRY_ON_429 = True
 CONNECTION_TIMEOUT = 60
@@ -817,10 +820,36 @@ def download_completed(final_abs_path, section_title, section_key, purgeKey, fil
 		else:	
 			Log('Download Completed - %s' % final_abs_path)
 		
-	if fileExists == False and common.UsingOption(key=common.GLOBAL_OPTIONS[1], session='None') == False:
+	if fileExists == False and common.UsingOption(key=common.GLOBAL_OPTIONS[1], session='None') == False and AUTOPILOT_SCHEDULER[0] == False:
 		Thread.Create(refresh_section, {}, section_title, section_key)
-	
+		
+	if fileExists == False and common.UsingOption(key=common.GLOBAL_OPTIONS[1], session='None') == False and AUTOPILOT_SCHEDULER[0] == True:
+		AUTOPILOT_SCHEDULER_POST_REFRESH.append([section_title, section_key])
+		
 	Thread.Create(trigger_que_run)
+	
+def post_autopilot_refresh():
+
+	tuid = common.id_generator(16)
+	common.control.AddThread('PostAutoPilotRefreshSections', 'Refresh Sections after AutoPilot Scheduler', time.time(), '3', False, tuid)
+	try:
+		if len(AUTOPILOT_SCHEDULER_POST_REFRESH) > 0 and AUTOPILOT_SCHEDULER[0] == True:
+			AUTOPILOT_SCHEDULER_POST_REFRESH = list(set(AUTOPILOT_SCHEDULER_POST_REFRESH))
+			
+			for i in AUTOPILOT_SCHEDULER_POST_REFRESH:
+				refresh_section(i[0], i[1])
+		
+	except Exception as e:
+		Log(e)
+		
+	try:
+		del AUTOPILOT_SCHEDULER[:]
+		del AUTOPILOT_SCHEDULER_POST_REFRESH[:]
+		AUTOPILOT_SCHEDULER.append(False)
+	except:
+		pass
+	
+	common.control.RemoveThread(tuid)
 	
 def download_failed(url, error, progress, startPos, purgeKey):
 

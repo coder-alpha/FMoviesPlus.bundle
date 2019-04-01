@@ -2480,7 +2480,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 				if True:
 					server_lab.append(label)
 					
-				if common.DEV_DEBUG == True:
+				if common.DEV_DEBUG == True and Prefs["use_debug"]:
 					Log('-- %s --' % label)
 					
 				items = server.xpath(".//ul//li")
@@ -2507,7 +2507,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 						try:
 							for cx in servers_list[common.SERVER_PLACEHOLDER]:
 								if cx['quality'] == servers_list[label][c]['quality'] and cx['loc'] != '':
-									if common.DEV_DEBUG == True:
+									if common.DEV_DEBUG == True and Prefs["use_debug"]:
 										Log('%s == %s' % (int(cx['quality']), int(servers_list[label][c]['quality'])))
 									doFill = False
 									break
@@ -2515,7 +2515,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 							pass
 					
 					if doFill == True and len(servers_list[label][c]) > 0:
-						if common.DEV_DEBUG == True:
+						if common.DEV_DEBUG == True and Prefs["use_debug"]:
 							Log('c = %s' % servers_list[label][c])
 						if len(servers_list[common.SERVER_PLACEHOLDER]) <= c:
 							servers_list[common.SERVER_PLACEHOLDER].append([])
@@ -2549,35 +2549,70 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 		server_lab.insert(0,common.SERVER_PLACEHOLDER)
 		
 		# remap server list - this way its easier to iterate for tv-show episodes
-		servers_list_new = []
-		c=0
-		c_p=0
+		
+		m_min = 0
 		try:
-			m_min = servers_list[common.SERVER_PLACEHOLDER][0]['quality']
-			if '-' in m_min:
-				m_min = m_min.split('-')
-				m_min = m_min[0]
-			m_min = filter(lambda x: x.isdigit(), m_min)
-			m_min = int(m_min)
+			if isTvSeries == True:
+				m_min = servers_list[common.SERVER_PLACEHOLDER][0]['quality']
+				if '-' in m_min:
+					m_min = m_min.split('-')
+					m_min = m_min[0]
+				m_min = filter(lambda x: x.isdigit(), m_min)
+				m_min = int(m_min)
 		except:
 			m_min = 0
+			
+		m_max = 1
 		try:
-			m_max = servers_list[common.SERVER_PLACEHOLDER][len(servers_list[common.SERVER_PLACEHOLDER])-1]['quality']
-			if '-' in m_max:
-				m_max = m_max.split('-')
-				try:
-					m_max = str(int(m_max[1]))
-				except:
-					m_max = m_max[0]
-			m_max = filter(lambda x: x.isdigit(), m_max)
+			if isTvSeries == True:
+				m_max = servers_list[common.SERVER_PLACEHOLDER][len(servers_list[common.SERVER_PLACEHOLDER])-1]['quality']
+				if '-' in m_max:
+					m_max = m_max.split('-')
+					try:
+						m_max = str(int(m_max[1]))
+					except:
+						m_max = m_max[0]
+				m_max = filter(lambda x: x.isdigit(), m_max)
 			m_max = int(m_max)+1
 		except:
 			m_max = 1
 			
+		prev_eps = {}
+		for label in servers_list.keys():
+			prev_eps[label] = []
+			
+		if isTvSeries == True:
+			clean_servers_list = True
+			while clean_servers_list == True:
+				doBreak = False
+				for label in servers_list.keys():
+					for i in servers_list[label]:
+						q = re.sub('[^0-9]+', '-', i['quality']).replace('-','')
+						if len(q) == 0:
+							prev_eps[label].append(i)
+							servers_list[label].remove(i)
+							doBreak = True
+							break
+					if doBreak == True:
+						break
+				if doBreak == False:
+					clean_servers_list = False
+					
+			if common.DEV_DEBUG == True and Prefs["use_debug"]:
+				Log('================= servers_list-1-cleaned ===============')
+				Log(servers_list)
+				Log(prev_eps)
+			
 		if common.DEV_DEBUG == True and Prefs["use_debug"]:
 			Log('======== Fill missing %s - %s ========' % (min(m_min,1), max(len(servers_list[common.SERVER_PLACEHOLDER]),m_max)))
+		
+		# remap server list - this way its easier to iterate for tv-show episodes
+		c=0
+		c_p=0
 		nos = 1-min(m_min,1)
-		if len(servers_list) > 0:
+		servers_list_new = []
+		
+		if len(servers_list[common.SERVER_PLACEHOLDER]) > 0:
 			for no in range(min(m_min,1), max(len(servers_list[common.SERVER_PLACEHOLDER]),m_max)):
 				servers_list_new.append([])
 				servers_list_new[no-1+nos] = {}
@@ -2592,20 +2627,19 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 						skip_c = False
 						try:
 							sno = "%02d" % (no) if (no) <= 99 else "%03d" % (no)
-							if sno not in servers_list[common.SERVER_PLACEHOLDER][c]['quality']:
-								if common.DEV_DEBUG == True:
+							if sno not in servers_list[common.SERVER_PLACEHOLDER][c]['quality'] and isTvSeries == True:
+								if common.DEV_DEBUG == True and Prefs["use_debug"]:
 									Log('%s -- %s' % (sno, servers_list[common.SERVER_PLACEHOLDER][c]['quality']))
 								fillBlank = False
 								skip_c = True
 								q_lab = re.sub('[^0-9]+', '-', servers_list[common.SERVER_PLACEHOLDER][c]['quality'])
 							else:
-								if common.DEV_DEBUG == True:
+								if common.DEV_DEBUG == True and Prefs["use_debug"]:
 									Log('%s - %s' % (sno, servers_list[common.SERVER_PLACEHOLDER][c]['quality']))
 						except Exception as e:
-							Log(e)
-							if common.DEV_DEBUG == True:
+							Log('Error -- %s' % e)
+							if common.DEV_DEBUG == True and Prefs["use_debug"]:
 								Log('%s <-> %s' % (sno, servers_list[common.SERVER_PLACEHOLDER][c]['quality']))
-							pass
 						if fillBlank == True:
 							for c2 in range(0,len(servers_list[label])):
 								if servers_list[common.SERVER_PLACEHOLDER][c]['quality'] == servers_list[label][c2]['quality']:
@@ -2621,10 +2655,10 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 												str(int(q_lab))
 											except:
 												q_lab = no
-									if common.DEV_DEBUG == True:
+									if common.DEV_DEBUG == True and Prefs["use_debug"]:
 										Log('q_lab : %s' % q_lab)
 									servers_list_new[no-1+nos][label] = {'quality':q_lab,'loc':servers_list[label][c2]['loc'],'serverid':servers_list[label][c2]['serverid']}
-									if common.DEV_DEBUG == True:
+									if common.DEV_DEBUG == True and Prefs["use_debug"]:
 										Log('Fill- %s' % servers_list_new[no-1+nos][label])
 									break
 						else:
@@ -2634,7 +2668,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 				if skip_c == False:
 					c += 1
 				else:
-					if common.DEV_DEBUG == True:
+					if common.DEV_DEBUG == True and Prefs["use_debug"]:
 						Log('Fill-- %s' % servers_list_new[no-1+nos][common.SERVER_PLACEHOLDER])
 					q_lab = servers_list_new[no-1+nos][common.SERVER_PLACEHOLDER]['quality']
 					if '-' in q_lab:
@@ -2643,11 +2677,28 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 							c_p = c_p + int(q_lab[1])-int(q_lab[0])
 						except:
 							c += 1
-					
+
 		if common.DEV_DEBUG == True and Prefs["use_debug"]:
 			Log('================= servers_list_new-1B ===============')
 			Log(servers_list_new)
-				
+			
+		for p in prev_eps[common.SERVER_PLACEHOLDER]:
+			item_to_insert = {}
+			for label in server_lab:
+				fillNone = True
+				for p2 in prev_eps[label]:
+					if p['quality'] == p2['quality']:
+						fillNone = False
+						item_to_insert[label]=p2
+						break
+				if fillNone == True:
+					item_to_insert[label]={'loc': '', 'serverid': None, 'quality': p['quality']}
+			servers_list_new.insert(0,item_to_insert)
+			
+		if common.DEV_DEBUG == True and Prefs["use_debug"]:
+			Log('================= servers_list_new-1C ===============')
+			Log(servers_list_new)
+
 		if common.FMOVIES_HOSTS_UNPLAYABLE == True:
 			for i in servers_list_new:
 				for h_unp in common.FMOVIES_HOSTS_DISABLED:
@@ -3340,32 +3391,46 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 		c=0
 		c2=0
 		
-		for eps in servers_list_new:	
-			if '-' in eps[server_lab[0]]['quality'] and verify2partcond(eps[server_lab[0]]['quality']): # 2 part episode condition
-				qual_i = max(int(eps[server_lab[0]]['quality'].split('-')[0])-eps_i,0)
-				eps_i += count2partcond(eps[server_lab[0]]['quality'])-1
-				try:
-					if episodes_list[qual_i]['air_date'] == episodes_list[qual_i+1]['air_date']:
-						c2 += count2partcond(eps[server_lab[0]]['quality'])-1
-				except:
-					pass
-			else:
-				try:
-					qual_i = max(int(eps[server_lab[0]]['quality'])-eps_i,0) + c2
-				except:
-					qual_i = c_not_missing+1 + c2
-					eps_i = eps_i-1 + c2
+		eps_c = 0
+		for eps in servers_list_new:
+			qual_i = eps_c
+			# if '-' in eps[server_lab[0]]['quality'] and verify2partcond(eps[server_lab[0]]['quality']): # 2 part episode condition
+				# qual_i = max(int(eps[server_lab[0]]['quality'].split('-')[0])-eps_i,0)
+				# eps_i += count2partcond(eps[server_lab[0]]['quality'])-1
+				# try:
+					# if episodes_list[qual_i]['air_date'] == episodes_list[qual_i+1]['air_date']:
+						# c2 += count2partcond(eps[server_lab[0]]['quality'])-1
+				# except:
+					# pass
+			# else:
+				# try:
+					# qual_i = max(int(eps[server_lab[0]]['quality'])-eps_i,0) + c2
+				# except:
+					# qual_i = c_not_missing+1 + c2
+					# eps_i = eps_i-1 + c2
 			
+			# try:
+				# if '-' in eps[server_lab[0]]['quality'] and episodes_list[qual_i]['name'] in eps[server_lab[0]]['quality'] and not verify2partcond(eps[server_lab[0]]['quality']):
+					# title_s = 'Ep:' + eps[server_lab[0]]['quality']
+					# episode = eps[server_lab[0]]['quality']
+				# else:
+					# title_s = 'Ep:' + eps[server_lab[0]]['quality'] + ' - ' + episodes_list[qual_i]['name']
+					# episode = eps[server_lab[0]]['quality']
+			# except:
+				# title_s = 'Ep:' + eps[server_lab[0]]['quality']
+				# episode = eps[server_lab[0]]['quality']
+				
 			try:
-				if '-' in eps[server_lab[0]]['quality'] and episodes_list[qual_i]['name'] in eps[server_lab[0]]['quality'] and not verify2partcond(eps[server_lab[0]]['quality']):
-					title_s = 'Ep:' + eps[server_lab[0]]['quality']
-					episode = eps[server_lab[0]]['quality']
-				else:
-					title_s = 'Ep:' + eps[server_lab[0]]['quality'] + ' - ' + episodes_list[qual_i]['name']
-					episode = eps[server_lab[0]]['quality']
-			except:
-				title_s = 'Ep:' + eps[server_lab[0]]['quality']
 				episode = eps[server_lab[0]]['quality']
+				title_s = 'Ep:%s - %s' % (episode,episodes_list[qual_i]['name'])
+			except:
+				try:
+					episode = eps[server_lab[0]]['quality']
+					title_s = 'Ep:%s' % episode
+				except:
+					episode = qual_i
+					title_s = 'Ep:%s' % episode
+
 			try:
 				desc = unicode('%s : %s' % (episodes_list[qual_i]['air_date'] , episodes_list[qual_i]['desc']))
 			except:
@@ -3375,9 +3440,9 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 			
 			try:
 				episodex = filter(lambda x: x.isdigit(), episode)
-				episode = episodex
+				episode = int(episodex)
 			except:
-				pass
+				episode = '0'
 			
 			try:
 				oc.add(DirectoryObject(
@@ -3390,6 +3455,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 				)
 				c_not_missing = qual_i
 				c += 1
+				eps_c += 1
 			except Exception as e:
 				Log('ERROR init.py>EpisodeDetail>Tv1 %s, %s %s' % (e.args, title, c))
 				pass
@@ -3428,6 +3494,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 			
 		c=0
 		episode = None
+		episodeN = 0
 		for eps in servers_list_new:
 			try:
 				episode = eps[server_lab[0]]['quality']
@@ -3435,10 +3502,13 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 				try:
 					episodex = filter(lambda x: x.isdigit(), episode)
 					episode = episodex
+					episodeN = int(episode)
 				except:
-					pass
+					if episodeN != 0:
+						episodeN += 1
+					
 				oc.add(DirectoryObject(
-					key = Callback(TvShowDetail, tvshow=title, title=title_s, url=url, servers_list_new=E(JSON.StringFromObject(servers_list_new[c])), server_lab=E(JSON.StringFromObject(server_lab)), summary='Episode Summary Not Available.\n ' + summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, serverts=serverts, session=session, season=SeasonN, episode=int(episode), imdb_id=imdb_id),
+					key = Callback(TvShowDetail, tvshow=title, title=title_s, url=url, servers_list_new=E(JSON.StringFromObject(servers_list_new[c])), server_lab=E(JSON.StringFromObject(server_lab)), summary='Episode Summary Not Available.\n ' + summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, serverts=serverts, session=session, season=SeasonN, episode=int(episodeN), imdb_id=imdb_id),
 					title = title_s,
 					summary = 'Episode Summary Not Available.\n ' + summary,
 					art = art,
@@ -3446,6 +3516,9 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 					)
 				)
 				c += 1
+				if episodeN == 0:
+					episodeN += 1
+				
 			except Exception as e:
 				Log('ERROR init.py>EpisodeDetail>Tv2 %s, %s %s' % (e.args, title, c))
 				pass
@@ -4276,7 +4349,7 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 	if season != None and episode != None:
 		watch_title = common.cleantitle.tvWatchTitle(tvshowtitlecleaned,season,episode,title)
 	
-	if Prefs["use_debug"] and common.DEV_DEBUG == True:
+	if common.DEV_DEBUG == True and Prefs["use_debug"]:
 		Log("---------=== DEV DEBUG START ===------------")
 		Log("Length sources: %s" % len(internal_extSources))
 		for source in internal_extSources:

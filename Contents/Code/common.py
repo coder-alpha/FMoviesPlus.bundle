@@ -1,6 +1,6 @@
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.77' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.78' # Release notation (x.y - where x is major and y is minor)
 TAG = ''
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
@@ -79,6 +79,8 @@ EMOJI_TV = u'\U0001F4FA'
 EMOJI_ANIME = u'\u2318'
 EMOJI_EXT = u'*'
 EMOJI_GLASSES = u'\U0001F453'
+EMOJI_DOWNARROW = u'\U00012B07'
+EMOJI_DOWNARROW2 = u'\U0001F53B'
 
 # Simple Emoji's
 EMOJI_HEART = u'\u2665'
@@ -129,9 +131,10 @@ DEVICE_OPTION = {DEVICE_OPTIONS[0]:'The awesome Keyboard for Search impaired dev
 				DEVICE_OPTIONS[12]:'Downloads-Listing - Reverse the order of Downloads i.e. oldest entry on top',
 				DEVICE_OPTIONS[13]:'Force-Transcoding (IMDb) - Force transcoding IMDb videos by PMS'}
 
-GLOBAL_OPTIONS = ['Retry-Failed-Downloads','Dont-Refresh-Library-Downloads']
+GLOBAL_OPTIONS = ['Retry-Failed-Downloads','Dont-Refresh-Library-Downloads','Extend-Smart-Add-For-Seasons']
 GLOBAL_OPTION = {GLOBAL_OPTIONS[0]:'On Plugin Initialization Retry Failed Downloads',
-				GLOBAL_OPTIONS[1]:'Don\'t perform a Library Section Refresh after an Item is Downloaded'}
+				GLOBAL_OPTIONS[1]:'Don\'t perform a Library Section Refresh after an Item is Downloaded',
+				GLOBAL_OPTIONS[2]:'Extend Smart Add AutoPilot Option for Seasons as well'}
 
 DEVICE_OPTION_CONSTRAINTS = {DEVICE_OPTIONS[2]:[{'Pref':'use_https_alt','Desc':'Use Alternate SSL/TLS','ReqValue':'disabled'}]}
 DEVICE_OPTION_CONSTRAINTS2 = {DEVICE_OPTIONS[5]:[{'Option':6,'ReqValue':False}], DEVICE_OPTIONS[6]:[{'Option':5,'ReqValue':False}]}

@@ -38,7 +38,7 @@ class source:
 		self.base_link_alts = ['https://3donlinefilms.com','https://3dmoviesfullhd.com','https://www.freedocufilms.com']
 		self.base_link = self.base_link_alts[0]
 		self.MainPageValidatingContent = '3D online Films: Watch 3D Movies on Virtual Reality Glasses or TV'
-		self.type_filter = ['movie', 'show', 'anime']
+		self.type_filter = ['movie']
 		self.name = name
 		self.disabled = False
 		self.loggertxt = []

@@ -41,7 +41,7 @@ class source:
 		self.priority = 1
 		self.disabled = False
 		self.language = ['en']
-		self.type_filter = ['anime']
+		self.type_filter = ['movie','show','anime']
 		self.domains = ['gogoanimemobile.com', 'gogoanimemobile.net', 'gogoanime.io']
 		self.base_link_alts = ['https://gogoanime.io','https://ww3.gogoanime.io','http://gogoanimemobile.com', 'http://gogoanimemobile.net']
 		self.base_link = self.base_link_alts[0]

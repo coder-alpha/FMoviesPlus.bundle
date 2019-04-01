@@ -429,6 +429,12 @@ def getFileLink(id, file_ext='.mp4', httpsskip=False):
 			#print durl
 			durl = client.request(durl, headers=headersD, cookie=cookieD, followredirect=True, output='geturl', limit='0')
 			durl = durl.replace('?e=download','?e=file.mp4')
+			
+			try:
+				fs1 = client.getFileSize(durl, retry429=True)
+				fs = int(fs1)
+			except:
+				pass
 			break
 		except Exception as e:
 			error = '%s' % e

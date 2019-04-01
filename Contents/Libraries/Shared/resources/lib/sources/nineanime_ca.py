@@ -56,7 +56,7 @@ class source:
 		self.hash_menu_link = "/user/ajax/menu-bar"
 		self.token_link = "/token"
 		self.MainPageValidatingContent = ['9anime']
-		self.type_filter = ['anime']
+		self.type_filter = ['movie','show','anime']
 		self.ssl = False
 		self.name = name
 		self.headers = {}

@@ -54,42 +54,60 @@ page.open('https://openload.co/embed/' + id + '/', function(status) {
 		var info = page.evaluate(function() {
 
 			function GetMySpanID(el) {
-				var elm = null;
-				var oid = null;
-				oid = window.shouldreport;
-				if (oid == null) {
-					oid = window.fileid;
-				}
-				if (oid == null) {
-					oid = document.querySelector('meta[name="og:url"]').content;
-					if (oid != null) {
-						oid = oid.split('/');
-						oid = oid[oid.length-1];
+				try {
+					var elm = null;
+					var oid = null;
+					oid = window.shouldreport;
+					if (oid == null) {
+						oid = window.fileid;
 					}
-				}
-				if (oid == null) {
-					return 'Exception: OID could not be found from window.';
-				}
-				var elms = document.getElementsByTagName(el);
-				for (var j = 0; j < elms.length; j++) {
-					if (elms[j].id.length > 0) {
-						var txt = elms[j].innerHTML;
-						if (txt.indexOf(oid+'~') > -1) {
-							return elms[j].id;
-						} else if (j == elms.length-1) {
-							return elms[j].id;
+					if (oid == null) {
+						oid = document.querySelector('meta[name="og:url"]').content;
+						if (oid != null) {
+							oid = oid.split('/');
+							oid = oid[oid.length-1];
 						}
 					}
+					if (oid == null) {
+						return 'Exception: OID could not be found from window.';
+					}
+					var elms = document.getElementsByTagName(el);
+					for (var j = 0; j < elms.length; j++) {
+						if (elms[j].id.length > 0) {
+							var txt = elms[j].innerHTML;
+							if (txt.indexOf(oid+'~') > -1) {
+								return elms[j].id;
+							} else if (j == elms.length-1) {
+								return elms[j].id;
+							}
+						}
+					}
+					return elm;
+				} catch(e) {
+					return 'Exception: Error occurred.';
 				}
-				return elm;
+				
 			};
 			
 			var spanID = GetMySpanID("p");
 			var spanID2 = GetMySpanID("span");
 			
+			if ((spanID == null || spanID.length == 0 || spanID.indexOf('Exception') > -1) && (spanID2 == null || spanID2.length == 0 || spanID2.indexOf('Exception') > -1)) {
+				return {
+					decoded_id: '',
+					decoded_id2: ''
+				};
+			}
 			if (spanID == null || spanID.length == 0 || spanID.indexOf('Exception') > -1) {
 				return {
-					decoded_id: spanID
+					decoded_id: document.getElementById(spanID2).innerHTML,
+					decoded_id2: ''
+				};
+			}
+			if (spanID2 == null || spanID2.length == 0 || spanID2.indexOf('Exception') > -1) {
+				return {
+					decoded_id: document.getElementById(spanID).innerHTML,
+					decoded_id2: ''
 				};
 			}
 			return {
@@ -105,14 +123,18 @@ page.open('https://openload.co/embed/' + id + '/', function(status) {
 			var url = 'https://openload.co/stream/' + info.decoded_id + '?mime=true';
 			var url2 = 'https://openload.co/stream/' + info.decoded_id2 + '?mime=true';
 			var url_search = page.content.match(/\w+~\d+~[\d\.]+~\w+/);
-			
-			if (info.decoded_id.indexOf('~') > 0) {
+			var url_search2 = page.content.match(/\w+~\d+~[\d\.]+~\w+/);
+
+			if (info.decoded_id.indexOf(id+'~') > -1) {
+				//console.log('1');
 				console.log(url);
 			} else {
-				if (info.decoded_id2.indexOf('~') > 0) {
+				if (info.decoded_id2.indexOf(id+'~') > -1) {
+					//console.log('2');
 					console.log(url2);
 				} else {
 					var url = 'https://openload.co/stream/' + url_search[0] + '?mime=true';
+					//console.log('3');
 					console.log(url);
 				}
 			}

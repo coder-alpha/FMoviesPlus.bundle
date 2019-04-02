@@ -2527,18 +2527,6 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 					c += 1
 	
 		if common.DEV_DEBUG == True and Prefs["use_debug"]:
-			Log('================= servers_list-0 ===============')
-			Log(servers_list)
-			
-		# servers_list_1 = {}
-		# for k in servers_list.keys():
-			# servers_list_1[k]=[]
-			# for s in servers_list[k]:
-				# if len(s) != 0:
-					# servers_list_1[k].append(s)
-		# servers_list = servers_list_1
-		
-		if common.DEV_DEBUG == True and Prefs["use_debug"]:
 			Log('================= servers_list-1 ===============')
 			Log(servers_list)
 
@@ -2547,6 +2535,12 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 		
 		#if len(server_lab) == 0:
 		server_lab.insert(0,common.SERVER_PLACEHOLDER)
+		
+		# fix two-part eps.
+		if isTvSeries == True:
+			for s in servers_list.keys():
+				for i in servers_list[s]:
+					i['quality'] = i['quality'].replace('+','-')
 		
 		# remap server list - this way its easier to iterate for tv-show episodes
 		
@@ -3370,6 +3364,26 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 			
 		episodes_list_new = sorted(episodes_list_new, key=lambda k: k['ord_date'], reverse=False)
 		
+		######################################################################################
+		### Fix faulty date data ###
+		fix_air_date = False
+		if len(episodes_list_new) > 5:
+			ord_date = episodes_list_new[0]['ord_date']
+			fix_air_date = True
+			for item in episodes_list_new:
+				if ord_date != item['ord_date']:
+					fix_air_date = False
+					break
+					
+			if fix_air_date == True:
+				t_i = 1
+				for item in episodes_list_new[1:]:
+					t_float = common.datetime_to_float(item['ord_date'][:4],item['ord_date'][4:6],item['ord_date'][6:8]) + int(60*60*24*7*t_i)
+					item['ord_date'] = common.float_to_datetime(t_float)
+					item['air_date'] = time.strftime('%A %d %b, %Y', time.localtime(float(t_float))) # Friday Jan 18, 2019
+					t_i += 1
+				episodes_list_new = sorted(episodes_list_new, key=lambda k: k['ord_date'], reverse=False)
+		
 		if common.DEV_DEBUG == True and Prefs["use_debug"]:
 			Log('================= episodes_list_new ===============')
 			Log(episodes_list_new)
@@ -3466,7 +3480,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 			title = "Other Seasons",
 			summary = 'Other Seasons of ' + common.cleantitle.removeParanthesis(title),
 			art = art,
-			thumb = R(common.ICON_OTHERSEASONS)
+			thumb = common.GetThumb(R(common.ICON_OTHERSEASONS), session=session)
 			))
 		if Prefs['disable_downloader'] == False and AuthTools.CheckAdmin() == True:
 			oc.add(DirectoryObject(
@@ -3474,7 +3488,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 				title = 'Add to AutoPilot Queue',
 				summary = 'Add to the AutoPilot Queue for Downloading',
 				art = art,
-				thumb = R(common.ICON_OTHERSOURCESDOWNLOAD_AUTO)
+				thumb = common.GetThumb(R(common.ICON_OTHERSOURCESDOWNLOAD_AUTO), session=session)
 				)
 			)
 	elif isTvSeries and len(episodes_XS)==0:
@@ -3528,7 +3542,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 			title = "Other Seasons",
 			summary = 'Other Seasons of ' + common.cleantitle.removeParanthesisAndSeason(title, SeasonN),
 			art = art,
-			thumb = R(common.ICON_OTHERSEASONS)
+			thumb = common.GetThumb(R(common.ICON_OTHERSEASONS), session=session)
 			))
 		if Prefs['disable_downloader'] == False and AuthTools.CheckAdmin() == True:
 			oc.add(DirectoryObject(
@@ -3536,7 +3550,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 				title = 'Add to AutoPilot Queue',
 				summary = 'Add to the AutoPilot Queue for Downloading',
 				art = art,
-				thumb = R(common.ICON_OTHERSOURCESDOWNLOAD_AUTO)
+				thumb = common.GetThumb(R(common.ICON_OTHERSOURCESDOWNLOAD_AUTO), session=session)
 				)
 			)
 	elif isTvSeries == False and isMovieWithMultiPart == True:
@@ -4295,12 +4309,12 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 				CACHE_EXPIRY = common.CACHE_EXPIRY_TIME
 			Thread.Create(common.interface.getExtSources, {}, movtitle=movtitle, year=year, tvshowtitle=tvshowtitlecleaned, season=season, episode=episode, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY, ver=common.VERSION, imdb_id=imdb_id, session=session)
 		if doSleepForProgress:
-			time.sleep(7)
+			time.sleep(common.DEFAULT_SLEEP)
 			doSleepForProgress = False
 		prog = common.interface.checkProgress(key)
 	if prog < 100:
 		if doSleepForProgress:
-			time.sleep(7)
+			time.sleep(common.DEFAULT_SLEEP)
 			doSleepForProgress = False
 		prog = common.interface.checkProgress(key)
 		desc_prog = common.interface.getDescProgress(key)
@@ -4601,12 +4615,12 @@ def ExtSourcesDownload(title, url, summary, thumb, art, rating, duration, genre,
 				CACHE_EXPIRY = common.CACHE_EXPIRY_TIME
 			Thread.Create(common.interface.getExtSources, {}, movtitle=movtitle, year=year, tvshowtitle=tvshowtitlecleaned, season=season, episode=episode, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY, ver=common.VERSION, imdb_id=imdb_id, session=session)
 		if doSleepForProgress:
-			time.sleep(7)
+			time.sleep(common.DEFAULT_SLEEP)
 			doSleepForProgress = False
 		prog = common.interface.checkProgress(key)
 	if prog < 100:
 		if doSleepForProgress:
-			time.sleep(7)
+			time.sleep(common.DEFAULT_SLEEP)
 			doSleepForProgress = False
 		prog = common.interface.checkProgress(key)
 		desc_prog = common.interface.getDescProgress(key)

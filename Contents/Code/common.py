@@ -1,12 +1,12 @@
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.78' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.79' # Release notation (x.y - where x is major and y is minor)
 TAG = ''
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
 ################################################################################
 
-import time, base64, unicodedata, re, random, string, hashlib, io
+import time, base64, unicodedata, re, random, string, hashlib, io, datetime
 from resources.lib.libraries import control, client, cleantitle, jsfdecoder, jsunpack
 from resources.lib.resolvers import host_openload, host_gvideo, host_mega, host_rapidvideo, host_streamango, host_direct
 import phantomjs
@@ -64,6 +64,7 @@ TOKEN_CODE = []
 TO_GB = float(1024*1024*1024)
 MIN_FILE_SIZE = 999999
 DOWNLOAD_CHUNK_SIZE = 1.0 # in MB
+DEFAULT_SLEEP = 1.0
 
 # Help videos on Patebin
 Help_Videos = "https://pastebin.com/raw/BMMHQund"
@@ -1192,7 +1193,17 @@ def convertMonthToInt(text):
 		m += 1
 		
 	return text.strip()
-		
+
+def datetime_to_float(y, m, d):
+	d = datetime.datetime(int(y), int(m), int(d), 12, 0)
+	epoch = datetime.datetime.utcfromtimestamp(0)
+	total_seconds =  (d - epoch).total_seconds()
+	# total_seconds will be in decimals (millisecond precision)
+	return total_seconds
+
+def float_to_datetime(fl):
+	return str(datetime.datetime.fromtimestamp(fl)).split(' ')[0].replace('-','')
+
 ####################################################################################################
 @route(PREFIX + "/removeAccents")
 def removeAccents(text):

@@ -243,7 +243,10 @@ class source:
 				poster = d['poster']
 				headers = {'Referer':url}
 				try:
-					links_m = resolvers.createMeta(vidurl, self.name, self.logo, quality, links_m, key, poster=poster, testing=testing, headers=headers)
+					l = resolvers.createMeta(vidurl, self.name, self.logo, quality, [], key, poster=poster, testing=testing, headers=headers)
+					if len(l) > 0:
+						control.setPartialSource(l[0],self.name)
+						links_m.append(l[0])
 					
 					if testing == True:
 						break

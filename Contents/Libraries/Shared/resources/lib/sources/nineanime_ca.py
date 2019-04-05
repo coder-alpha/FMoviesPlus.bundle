@@ -462,7 +462,13 @@ class source:
 					pass
 					
 				for trailer in trailers:
-					links_m = resolvers.createMeta(trailer, self.name, self.logo, '720p', links_m, key, vidtype='Trailer', testing=testing)
+					try:
+						l = resolvers.createMeta(trailer, self.name, self.logo, '720p', [], key, vidtype='Trailer', testing=testing)
+						if len(l) > 0:
+							control.setPartialSource(l[0],self.name)
+							links_m.append(l[0])
+					except:
+						pass
 			
 			riptype = None
 			try: quality = client.parseDOM(result, 'span', attrs = {'class': 'quality'})[0].lower()
@@ -603,7 +609,13 @@ class source:
 						result = [i['file'] for i in result['data'] if 'file' in i]
 						
 						for i in result:
-							links_m = resolvers.createMeta(i, self.name, self.logo, quality, links_m, key, riptype, sub_url=sub_url, testing=testing)
+							try:
+								l = resolvers.createMeta(i, self.name, self.logo, quality, [], key, riptype, sub_url=sub_url, testing=testing)
+								if len(l) > 0:
+									control.setPartialSource(l[0],self.name)
+									links_m.append(l[0])
+							except:
+								pass
 					else:
 						target = result['target']
 						b, resp = self.decode_t(target)
@@ -617,7 +629,13 @@ class source:
 						if target!=None and not target.startswith('http'):
 							target = 'http:' + target
 							
-						links_m = resolvers.createMeta(target, self.name, self.logo, quality, links_m, key, riptype, sub_url=sub_url, testing=testing)
+						try:
+							l = resolvers.createMeta(target, self.name, self.logo, quality, [], key, riptype, sub_url=sub_url, testing=testing)
+							if len(l) > 0:
+								control.setPartialSource(l[0],self.name)
+								links_m.append(l[0])
+						except:
+							pass
 
 				except Exception as e:
 					log('FAIL', 'get_sources-7','%s' % e, dolog=control.debug)

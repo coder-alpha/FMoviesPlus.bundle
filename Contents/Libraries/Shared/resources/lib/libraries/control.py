@@ -42,6 +42,8 @@ ThreadsType = {'0':'Main', '1':'Interface', '2':'Download', '3':'AutoPilot' ,'4'
 Threads = []
 ThreadBlockOper = [False]
 
+partial_sources = []
+
 
 def setting(key):
 	if key in setting_dict.keys():
@@ -61,6 +63,15 @@ def set_setting(key, value):
 		value = base64.b64decode(base64.b64decode(flix_up))
 	
 	setting_dict[key] = value
+	
+def setPartialSource(s,p):
+	try:
+		if s == None:
+			log2('None source ! Provider: %s' % p, type='CRITICAL')
+		else:
+			partial_sources.append(s)
+	except Exception as e:
+		log2('Error in appending partial source ! Provider: %s' % p, type='CRITICAL')
 	
 def AddThread(name, desc, start_time, type, persist_bool, uid, thread=None):
 	while ThreadBlockOper[0] == True:

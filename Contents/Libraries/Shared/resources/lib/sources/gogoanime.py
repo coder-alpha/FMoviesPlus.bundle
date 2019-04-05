@@ -250,7 +250,7 @@ class source:
 			except:
 				pass
 				
-			links = []
+			links_m = []
 
 			for u in r:
 				try:
@@ -275,13 +275,16 @@ class source:
 							except:
 								qualityt = u'720p'
 							try:
-								links = resolvers.createMeta(i, self.name, self.logo, qualityt, links, key, vidtype='Show', testing=testing)
+								l = resolvers.createMeta(i, self.name, self.logo, qualityt, [], key, vidtype='Show', testing=testing)
+								if len(l) > 0:
+									control.setPartialSource(l[0],self.name)
+									links_m.append(l[0])
 							except:
 								pass
 				except:
 					pass
 					
-			for i in links: sources.append(i)
+			for i in links_m: sources.append(i)
 			
 			if len(sources) == 0:
 				log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key))

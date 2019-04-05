@@ -188,7 +188,6 @@ class source:
 			log('ERROR', 'get_show','%s: %s' % (tvshowtitle,e), dolog=self.init)
 			return
 
-
 	def get_episode(self, url=None, imdb=None, tvdb=None, title=None, year=None, season=None, episode=None, proxy_options=None, key=None):
 		try:
 			if control.setting('Provider-%s' % name) == False:
@@ -373,7 +372,10 @@ class source:
 								if 'http' not in server:
 									server = 'http:' + server
 								
-								links_m = resolvers.createMeta(server, self.name, self.logo, quality, links_m, key, poster=poster, riptype=type, vidtype=vidtype, testing=testing)
+								l = resolvers.createMeta(server, self.name, self.logo, quality, [], key, poster=poster, riptype=type, vidtype=vidtype, testing=testing)
+								if len(l) > 0:
+									control.setPartialSource(l[0],self.name)
+									links_m.append(l[0])
 							except Exception as e:
 								pass
 							if testing and len(links_m) > 0:
@@ -390,7 +392,10 @@ class source:
 									server = 'http:' + server
 
 								try:
-									links_m = resolvers.createMeta(server, self.name, self.logo, quality, links_m, key, poster=poster, riptype=type, vidtype=vidtype, testing=testing)	
+									l = resolvers.createMeta(server, self.name, self.logo, quality, [], key, poster=poster, riptype=type, vidtype=vidtype, testing=testing)
+									if len(l) > 0:
+										control.setPartialSource(l[0],self.name)
+										links_m.append(l[0])
 								except:
 									pass
 					except:

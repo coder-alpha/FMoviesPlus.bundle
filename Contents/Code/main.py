@@ -216,14 +216,16 @@ def SleepAndUpdateThread(update=True, startthread=True, session=None, **kwargs):
 		BOOT_UP_CONTROL_SETTINGS = Dict['BOOT_UP_CONTROL_SETTINGS']
 		if BOOT_UP_CONTROL_SETTINGS != None:
 			BOOT_UP_CONTROL_SETTINGS = JSON.ObjectFromString(D(BOOT_UP_CONTROL_SETTINGS))
-			#Log("BOOT_UP_CONTROL_SETTINGS %s" % BOOT_UP_CONTROL_SETTINGS)
+			#if common.DEV_DEBUG == True and Prefs["use_debug"]:
+			#	Log("BOOT_UP_CONTROL_SETTINGS %s" % BOOT_UP_CONTROL_SETTINGS)
 			common.BOOT_UP_CONTROL_SETTINGS = BOOT_UP_CONTROL_SETTINGS
 	except Exception as e:
 		Log(e)
 		
 	try:
 		DOWNLOAD_AUTOPILOT_TEMP = JSON.ObjectFromString(D(Dict['DOWNLOAD_AUTOPILOT']))
-		#Log("DOWNLOAD_AUTOPILOT %s" % DOWNLOAD_AUTOPILOT_TEMP)
+		#if common.DEV_DEBUG == True and Prefs["use_debug"]:
+		#	Log("DOWNLOAD_AUTOPILOT %s" % DOWNLOAD_AUTOPILOT_TEMP)
 		if DOWNLOAD_AUTOPILOT_TEMP != None:
 			for k in DOWNLOAD_AUTOPILOT_TEMP.keys():
 				try:
@@ -236,13 +238,26 @@ def SleepAndUpdateThread(update=True, startthread=True, session=None, **kwargs):
 		
 	try:
 		DOWNLOAD_OPTIONS_SAVED = JSON.ObjectFromString(D(Dict['DOWNLOAD_OPTIONS']))
-		#Log("DOWNLOAD_OPTIONS %s" % DOWNLOAD_OPTIONS_SAVED)
+		#if common.DEV_DEBUG == True and Prefs["use_debug"]:
+		#	Log("DOWNLOAD_OPTIONS %s" % DOWNLOAD_OPTIONS_SAVED)
 		common.DOWNLOAD_OPTIONS = DOWNLOAD_OPTIONS_SAVED
 	except Exception as e:
 		Log(e)
 		DownloadOptions(session=session)
 		doSave = True
 		
+	try:
+		MISC_OPTIONS_SAVED = JSON.ObjectFromString(D(Dict['MISC_OPTIONS']))
+		#if common.DEV_DEBUG == True and Prefs["use_debug"]:
+		#	Log("MISC_OPTIONS %s" % MISC_OPTIONS_SAVED)
+		for k in common.MISC_OPTIONS.keys():
+			if k in MISC_OPTIONS_SAVED.keys():
+				common.MISC_OPTIONS[k]['val'] = MISC_OPTIONS_SAVED[k]['val']
+	except Exception as e:
+		Log(e)
+		GlobalOptions(session=session)
+		doSave = True
+	
 	####################################
 	for i in ['Provider','Host']:
 		for item_name in common.BOOT_UP_CONTROL_SETTINGS[i].keys():
@@ -383,7 +398,7 @@ def SleepAndUpdateThread(update=True, startthread=True, session=None, **kwargs):
 	except:
 		ExtHosts(session=session)
 		doSave = True
-		
+
 	if doSave == True:
 		Dict.Save()
 		
@@ -397,15 +412,6 @@ def SleepAndUpdateThread(update=True, startthread=True, session=None, **kwargs):
 	Thread.Create(downloadsmenu.AutoPilotDownloadThread1, {}, None, True)
 	
 	common.control.RemoveThread(tuid)
-		
-	# time.sleep(120)
-	# if startthread == True:
-		# while True:
-			# time.sleep(60*60)
-			# ret = common.interface.init()
-			# if Prefs["use_debug"]:
-				# Log("%s at %s !" % (ret, time.ctime(time.time())))
-		
 	
 ######################################################################################
 @route(PREFIX + "/GetCacheTimeString")
@@ -442,7 +448,7 @@ def Options(session, refresh=0, **kwargs):
 	
 	oc.add(DirectoryObject(key = Callback(tools.DevToolsC, session=session), title = "Tools", summary='Tools - Save/Load Bookmarks', thumb = R(common.ICON_TOOLS)))
 	
-	oc.add(DirectoryObject(key = Callback(DownloadOptions, title="Download Options", session = session), title = "Download Options", thumb = R(common.ICON_DOWNLOADS)))
+	oc.add(DirectoryObject(key = Callback(DownloadOptions, title="Download Library Options", session = session), title = "Download Library Options", thumb = R(common.ICON_DOWNLOADS)))
 	
 	oc.add(DirectoryObject(key = Callback(ThreadsStatus, title="Threads Status", session=session), title = "Threads Status", thumb = R(common.ICON_SYSSTATUS)))
 	
@@ -505,48 +511,81 @@ def DeviceOptions(session, **kwargs):
 	
 ######################################################################################
 @route(PREFIX + "/globaloptions")
-def GlobalOptions(session, **kwargs):
+def GlobalOptions(session, reset='false', **kwargs):
 
 	if AuthTools.CheckAdmin() == False:
 		return MC.message_container('Admin Access Only', 'Only the Admin can perform this action !')
 		
-	oc = ObjectContainer(title2='Global Options', no_cache=common.isForceNoCache())
+	if reset == 'true':
+		common.MISC_OPTIONS = common.MISC_OPTIONS_CONST.copy()
+		
+	oc = ObjectContainer(title2='AutoPilot Options', no_cache=common.isForceNoCache())
 	
-	c = 1
+	for ent in sorted(common.MISC_OPTIONS_KEYS):
+		item = common.MISC_OPTIONS[ent]
+		if item['type'] == 'num':
+			msg = item['desc'] % (item['LL'],item['UL'],item['val'])
+			DumbKeyboard(PREFIX, oc, SetMiscOptions, dktitle = msg, dkthumb=common.GetThumb(R(common.ICON_DK_ENABLE), session=session), dkNumOnly=True, dkHistory=False, title=item['title'], val=item['val'], key=ent, ntype=item['type'], ll=item['LL'], ul=item['UL'], session=session)
+		elif item['type'] == 'bool':
+			msg = item['desc'] % common.GetEmoji(type=item['val'], mode='simple', session=session)
+			q = True if str(item['val']).lower() == 'true' else False
+			oc.add(DirectoryObject(key=Callback(SetMiscOptions,  query=not q, title=item['title'], val=not q, key=ent, ntype=item['type'], ll=item['LL'], ul=item['UL'], session=session), title = msg))
+		
+	oc.add(DirectoryObject(
+		key = Callback(GlobalOptions, session=session, reset='true'),
+		title = 'Reset',
+		summary = 'Reset values to their Defaults',
+		thumb = R(common.ICON_REFRESH)
+	))
 	
-	user = common.control.setting('%s-%s' % (session, 'user'))
-	if user != None:
-		summary = 'UserName: %s' % user
-		title_msg = "00). %s" % summary
-		oc.add(DirectoryObject(key=Callback(MyMessage, 'Info', summary), title = title_msg))
-	
-	for key in sorted(common.GLOBAL_OPTIONS):
-		try:
-			try:
-				session_x = 'None'
-				summary = common.GLOBAL_OPTION[key]
-				
-				bool = False
-				try:
-					bool = False if (Dict['Toggle'+key+session_x] == None or Dict['Toggle'+key+session_x] == 'disabled') else True
-				except:
-					pass
-				
-				title_msg = "%02d). %s %s | %s" % (c, common.GetEmoji(type=bool, mode='simple', session=session), key, summary)
-				oc.add(DirectoryObject(key=Callback(common.setDictVal, key=key, val=not bool, session=session_x), title = title_msg))
-				c += 1
-			except Exception as e:
-				Log('Global Options Error: %s' % e)
-				oc.add(DirectoryObject(key=Callback(common.setDictVal, key=key, val=not bool, session=session_x), title = key))
-				c += 1
-		except Exception as e:
-			err = '%s' % e
-			title_msg = "%02d). %s %s | %s" % (c, '-', key, err)
-			oc.add(DirectoryObject(key=Callback(MyMessage, 'Info', err), title = title_msg))
-			c += 1
-			Log('Global Options Critical Error: %s' % e)
-	
+	oc.add(DirectoryObject(key = Callback(MainMenu),title = '<< Main Menu',thumb = R(common.ICON)))
+		
+	Dict['MISC_OPTIONS'] = E(JSON.StringFromObject(common.MISC_OPTIONS))
+	Dict.Save()
+
+	#if common.DEV_DEBUG == True and Prefs["use_debug"]:
+	#	Log(common.MISC_OPTIONS)
+
 	return oc
+	
+######################################################################################
+@route(common.PREFIX + "/SetMiscOptions")
+def SetMiscOptions(query, title, val, key, ntype, ll, ul, session, **kwargs):
+
+	try:
+		if ntype == 'num':
+			val = int(val)
+			val = int(query)
+			ll = int(ll)
+			ul = int(ul)
+			
+			if (val >= ll and val < ul) or (val > ll and val <= ul):
+				pass
+			else:
+				return MC.message_container('Error', 'Value out of range !')
+		elif ntype == 'bool':
+			val = True if str(val).lower() == 'true' else False
+			val = True if str(query).lower() == 'true' else False
+	except:
+		pass
+
+	try:
+		common.MISC_OPTIONS[key]['val'] = val
+		if ntype == 'num':
+			oc = ObjectContainer(title2='%s has been set to %s' % (title,val), no_cache=common.isForceNoCache())
+			oc.add(DirectoryObject(
+				key = Callback(GlobalOptions, session=session),
+				title = 'Global Options',
+				thumb = R(common.ICON_GLOBAL_OPTIONS)
+			))
+			oc.add(DirectoryObject(key = Callback(MainMenu),title = '<< Main Menu',thumb = R(common.ICON)))
+			return oc
+		else:
+			return MC.message_container(title, '%s has been set to %s' % (title,val))
+	except Exception as e:
+		Log.Error(e)
+		
+	return MC.message_container('Error', 'An Error occurred !')
 	
 ######################################################################################
 @route(PREFIX + "/ThreadsStatus")
@@ -639,7 +678,7 @@ def DownloadOptions(session, refresh=0, reset='false', **kwargs):
 	if reset == 'true':
 		common.DOWNLOAD_OPTIONS = common.DOWNLOAD_OPTIONS_CONST
 		
-	oc = ObjectContainer(title2='Download Options', no_cache=common.isForceNoCache())
+	oc = ObjectContainer(title2='Download Library Path Options', no_cache=common.isForceNoCache())
 	#Log(common.DOWNLOAD_OPTIONS)
 	
 	LIB_SECTIONS_TYPES = ['show', 'movie']
@@ -701,12 +740,7 @@ def DownloadOptions(session, refresh=0, reset='false', **kwargs):
 		thumb = R(common.ICON_REFRESH)
 	))
 	
-	oc.add(DirectoryObject(
-		key = Callback(MainMenu),
-		title = '<< Save Selection >>',
-		summary = 'Save the Selection for Download Options',
-		thumb = R(common.ICON_SAVE)
-	))
+	oc.add(DirectoryObject(key = Callback(MainMenu),title = '<< Main Menu',thumb = R(common.ICON)))
 		
 	Dict['DOWNLOAD_OPTIONS'] = E(JSON.StringFromObject(common.DOWNLOAD_OPTIONS))
 	Dict.Save()
@@ -714,7 +748,7 @@ def DownloadOptions(session, refresh=0, reset='false', **kwargs):
 	#Log(common.DOWNLOAD_OPTIONS)
 			
 	return oc
-	
+		
 ######################################################################################
 @route(common.PREFIX + "/setdownloadchoice")
 def SetDownloadChoice(session, title, type, path, key, bool, **kwargs):
@@ -814,14 +848,12 @@ def Summarize(session=None, **kwargs):
 def ControlLog(session=None, choice=None, **kwargs):
 
 	oc = ObjectContainer(title2='Control Interface Log')
-	choices = ['All','Critical','Error','Fail','Success','Info']
+	choices = ['All','Critical','Error','Fail','Success','Info','Attn']
 	if choice == None:
 		for c in choices:
 			oc.add(DirectoryObject(key = Callback(ControlLog, choice=c, session=session), title = c, thumb = R(common.ICON_LIST)))
 		return oc
 	
-	Log(" === CONTROL LOGGER txt START === ")
-
 	loggertxt = common.interface.getControlLoggerTxts(forceDump = True)
 	loggertxt = list(reversed(loggertxt))
 
@@ -831,8 +863,6 @@ def ControlLog(session=None, choice=None, **kwargs):
 		else:
 			if choice.upper() in title_msg:
 				oc.add(DirectoryObject(title = title_msg, key = Callback(MC.message_container, header="Control Interface Log", message="Does Nothing")))
-	
-	Log(" === CONTROL LOGGER txt END === ")
 	
 	return oc
 	
@@ -2497,7 +2527,8 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 					servers_list[label][c]={}
 					label_qual = item.xpath(".//a//text()")[0].strip()
 					
-					label_val = item.xpath(".//a//@data-id")[0]
+					label_val = item.xpath(".//a//@href")[0]
+					label_val = label_val[label_val.rfind('/')+1:]
 					servers_list[label][c]['quality'] = label_qual
 					servers_list[label][c]['loc'] = label_val
 					servers_list[label][c]['serverid'] = serverid
@@ -2693,7 +2724,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 			Log('================= servers_list_new-1C ===============')
 			Log(servers_list_new)
 
-		if common.FMOVIES_HOSTS_UNPLAYABLE == True:
+		if common.MISC_OPTIONS[common.MISC_OPTIONS_KEYS[7]]['val'] == False:
 			for i in servers_list_new:
 				for h_unp in common.FMOVIES_HOSTS_DISABLED:
 					if h_unp in i.keys():
@@ -3003,7 +3034,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 							servers_list_new[c][label] = {'quality':"%02d" % (c+1), 'loc':'', 'serverid':None}
 				c += 1
 				
-		if common.FMOVIES_HOSTS_UNPLAYABLE == True:
+		if common.MISC_OPTIONS[common.MISC_OPTIONS_KEYS[7]]['val'] == False:
 			for i in servers_list_new:
 				for h_unp in common.FMOVIES_HOSTS_DISABLED:
 					if h_unp in i.keys():
@@ -4337,7 +4368,7 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 		else:
 			return MC.message_container('External Sources', 'Sources are being fetched ! Progress %s%s' % (prog,'%'))
 		
-	extSour = common.interface.getSources(encode=False, key=key)
+	extSour = common.interface.getSources(encode=False, key=key, partialSrcs=common.MISC_OPTIONS[common.MISC_OPTIONS_KEYS[6]]['val'])
 	
 	if use_prog_conc and prog < 100:
 		pass
@@ -4647,7 +4678,7 @@ def ExtSourcesDownload(title, url, summary, thumb, art, rating, duration, genre,
 	if season != None and episode != None:
 		watch_title = common.cleantitle.tvWatchTitle(tvshowtitlecleaned,season,episode,title)
 		
-	extSour = common.interface.getSources(encode=False, key=key)
+	extSour = common.interface.getSources(encode=False, key=key, partialSrcs=common.MISC_OPTIONS[common.MISC_OPTIONS_KEYS[6]]['val'])
 	
 	if use_prog_conc and prog < 100:
 		pass

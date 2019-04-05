@@ -286,9 +286,12 @@ def getCacheSize():
 		
 	return 0
 	
-def getSources(key=None, encode=True):
+def getSources(key=None, encode=True, partialSrcs=False):
 	if wait_for_init() == False:
 		return
+		
+	if partialSrcs == True:
+		initA[0].extendPartialSources()
 
 	if encode:
 		return E(JSON.StringFromObject(initA[0].sourcesFilter(key=key)))

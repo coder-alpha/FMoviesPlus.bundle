@@ -297,7 +297,13 @@ class source:
 					pass
 					
 				for trailer in trailers:
-					links_m = resolvers.createMeta(trailer, self.name, self.logo, '720p', links_m, key, poster=poster, vidtype='Trailer', testing=testing)
+					try:
+						l = resolvers.createMeta(trailer, self.name, self.logo, '720p', [], key, poster=poster, vidtype='Trailer', testing=testing)
+						if len(l) > 0:
+							control.setPartialSource(l[0],self.name)
+							links_m.append(l[0])
+					except:
+						pass
 			
 			if 'streamdor' in result and Juicy == True:
 				src = re.findall('src\s*=\s*"(.*streamdor.co\/video\/\d+)"', result)[0]
@@ -388,14 +394,20 @@ class source:
 						xs = client.googletag(url)
 						for x in xs:
 							try:
-								links_m = resolvers.createMeta(x['url'], self.name, self.logo, x['quality'], links_m, key, riptype, poster=poster, testing=testing)
+								l = resolvers.createMeta(x['url'], self.name, self.logo, x['quality'], [], key, riptype, poster=poster, testing=testing)
+								if len(l) > 0:
+									control.setPartialSource(l[0],self.name)
+									links_m.append(l[0])
 								if testing == True and len(links_m) > 0:
 									break
 							except:
 								pass
 					else:
 						try:
-							links_m = resolvers.createMeta(link[0], self.name, self.logo, link[1], links_m, key, link[2], poster=poster, testing=testing)
+							l = resolvers.createMeta(link[0], self.name, self.logo, link[1], [], key, link[2], poster=poster, testing=testing)
+							if len(l) > 0:
+								control.setPartialSource(l[0],self.name)
+								links_m.append(l[0])
 							if testing == True and len(links_m) > 0:
 								break
 						except:

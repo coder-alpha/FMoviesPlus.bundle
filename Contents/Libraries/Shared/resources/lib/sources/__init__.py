@@ -369,7 +369,7 @@ class sources:
 			self.sources.extend(sources)
 		except:
 			pass
-			
+
 		doneMarked = False
 		try:
 			s_in_threadSlots = self.threadSlots[key]
@@ -523,19 +523,36 @@ class sources:
 			bool = False
 			
 		return bool
+		
+	def extendPartialSources(self):
+		try:
+			if len(control.partial_sources) > 0:
+				log(type='INFO', err='Moving %s partial sources from control.' % len(control.partial_sources))
+				self.sources.extend(control.partial_sources)
+				del control.partial_sources[:]
+		except Exception as e:
+			log(type='ERROR', err='extendPartialSources : %s' % e)
 
 	def sourcesFilter(self, key=None):
 		try:
 			filter_extSources = []
 			dups = []
+			rem_items = []
 			for i in self.sources:
-				if i['url'] not in dups:
+				if i not in dups:
 					if key == None:
 						filter_extSources.append(i)
-						dups.append(i['url'])
+						dups.append(i)
 					elif i['key'] == key:
 						filter_extSources.append(i)
-						dups.append(i['url'])
+						dups.append(i)
+				else:
+					rem_items.append(i)
+					
+			if len(rem_items) > 0:
+				for i in rem_items:
+					self.sources.remove(i)
+				log(type='INFO', err='Removed %s items as dups from sources !' % len(rem_items))
 					
 			return filter_extSources
 		except Exception as e:

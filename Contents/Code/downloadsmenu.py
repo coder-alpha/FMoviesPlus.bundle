@@ -10,12 +10,8 @@ PREFIX = common.PREFIX
 MC = common.NewMessageContainer(common.PREFIX, common.TITLE)
 
 REMOVE_ENTRY_WHEN_ALL_EPS_IN_DOWNLOADS = False
-SOURCE_SEARCH_TIMEOUT = float(5*60) # 5 min.
 
 ITEM_FOR_UPDATE = {}
-
-SMART_ADD_EP_FALLOUT_DAYS = 30
-SMART_ADD_SEASON_FALLOUT_DAYS = 365
 
 #######################################################################################################
 @route(PREFIX + '/AddToAutoPilotDownloads')
@@ -555,16 +551,16 @@ def AutoPilotDownloadThread1(item=None, runForWaiting=False, viaRunNow=False):
 			
 			for type in common.DOWNLOAD_AUTOPILOT.keys():
 				items_for_removal[type] = []
+				items_for_smart_add[type] = []
 				for item in common.DOWNLOAD_AUTOPILOT[type]:
 					if (item['status'] == common.DOWNLOAD_AUTOPILOT_STATUS[2] or item['status'] == common.DOWNLOAD_AUTOPILOT_STATUS[6]):
 						items_for_removal[type].append(item)
-					elif type == 'show' and 'smart_add_active_season' not in item.keys() and 'smart_add_active' in item.keys() and 'first_time' in item.keys() and item['smart_add_active'] == True and float(time.time() - item['first_time']) > float(60*60*24*SMART_ADD_EP_FALLOUT_DAYS):
-						if common.UsingOption(key=common.GLOBAL_OPTIONS[2], session='None') == True:
-							item_i = item.copy()
-							item_i = itemForSmartAadd(item=item_i, smarttype='season')
-							items_for_smart_add[type].append(item_i)
+					elif type == 'show' and 'smart_add_active_season' not in item.keys() and 'smart_add_active' in item.keys() and 'first_time' in item.keys() and item['smart_add_active'] == True and float(time.time() - item['first_time']) > float(60*60*24*common.MISC_OPTIONS[common.MISC_OPTIONS_KEYS[1]]['val']):
+						if common.MISC_OPTIONS[common.MISC_OPTIONS_KEYS[3]]['val'] == True:
+							item_sa = itemForSmartAadd(item=item.copy(), smarttype='season')
+							items_for_smart_add[type].append(item_sa)
 						items_for_removal[type].append(item)
-					elif type == 'show' and 'smart_add_active_season' in item.keys() and 'first_time' in item.keys() and item['smart_add_active_season'] == True and float(time.time() - item['first_time']) > float(60*60*24*SMART_ADD_SEASON_FALLOUT_DAYS):
+					elif type == 'show' and 'smart_add_active_season' in item.keys() and 'first_time' in item.keys() and item['smart_add_active_season'] == True and float(time.time() - item['first_time']) > float(60*60*24*common.MISC_OPTIONS[common.MISC_OPTIONS_KEYS[2]]['val']):
 						items_for_removal[type].append(item)
 					if (item['status'] != common.DOWNLOAD_AUTOPILOT_STATUS[2] and runForWaiting == False) or (runForWaiting == True and (item['status'] == common.DOWNLOAD_AUTOPILOT_STATUS[0] or item['status'] == common.DOWNLOAD_AUTOPILOT_STATUS[3])) or (item['status'] == common.DOWNLOAD_AUTOPILOT_STATUS[0] and float(time.time() - item['timeAdded']) > float(60*60)):
 						sources = None
@@ -577,20 +573,20 @@ def AutoPilotDownloadThread1(item=None, runForWaiting=False, viaRunNow=False):
 							while (prog > 0 and prog < 100):
 								time.sleep(5)
 								prog = common.interface.checkProgress(key)
-								if (time.time() - start_time) > SOURCE_SEARCH_TIMEOUT:
+								if (time.time() - start_time) > float(common.MISC_OPTIONS[common.MISC_OPTIONS_KEYS[0]]['val']):
 									Log('ERROR: downloadsmenu.py > AutoPilotDownloadThread1: Source Searching Timeout Reached !')
 									break
-							sources = common.interface.getExtSources(movtitle=None, year=item['year'], tvshowtitle=item['short_title'], season=item['season'], episode=str(item['episode']), proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=common.CACHE_EXPIRY_TIME, ver=common.VERSION, imdb_id=None, session=item['session'], timeout=SOURCE_SEARCH_TIMEOUT, forceRet=True)
+							sources = common.interface.getExtSources(movtitle=None, year=item['year'], tvshowtitle=item['short_title'], season=item['season'], episode=str(item['episode']), proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=common.CACHE_EXPIRY_TIME, ver=common.VERSION, imdb_id=None, session=item['session'], timeout=float(common.MISC_OPTIONS[common.MISC_OPTIONS_KEYS[0]]['val']), forceRet=True)
 						else:
 							key = main.generatemoviekey(movtitle=item['title'], year=item['year'], tvshowtitle=None, season=None, episode=None)
 							prog = common.interface.checkProgress(key)
 							while (prog > 0 and prog < 100):
 								time.sleep(5)
 								prog = common.interface.checkProgress(key)
-								if (time.time() - start_time) > SOURCE_SEARCH_TIMEOUT:
+								if (time.time() - start_time) > float(common.MISC_OPTIONS[common.MISC_OPTIONS_KEYS[0]]['val']):
 									Log('ERROR: downloadsmenu.py > AutoPilotDownloadThread1: Source Searching Timeout Reached !')
 									break
-							sources = common.interface.getExtSources(movtitle=item['title'], year=item['year'], tvshowtitle=None, season=None, episode=None, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=common.CACHE_EXPIRY_TIME, ver=common.VERSION, imdb_id=None, session=item['session'], timeout=SOURCE_SEARCH_TIMEOUT, forceRet=True)
+							sources = common.interface.getExtSources(movtitle=item['title'], year=item['year'], tvshowtitle=None, season=None, episode=None, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=common.CACHE_EXPIRY_TIME, ver=common.VERSION, imdb_id=None, session=item['session'], timeout=float(common.MISC_OPTIONS[common.MISC_OPTIONS_KEYS[0]]['val']), forceRet=True)
 							
 						if sources != None:
 							bool, fsBytes, removeEntry = AutoPilotDownloadThread2(item, sources)
@@ -640,20 +636,20 @@ def AutoPilotDownloadThread1(item=None, runForWaiting=False, viaRunNow=False):
 				while (prog > 0 and prog < 100):
 					time.sleep(5)
 					prog = common.interface.checkProgress(key)
-					if (time.time() - start_time) > SOURCE_SEARCH_TIMEOUT:
+					if (time.time() - start_time) > float(common.MISC_OPTIONS[common.MISC_OPTIONS_KEYS[0]]['val']):
 						Log('ERROR: downloadsmenu.py > AutoPilotDownloadThread1: Source Searching Timeout Reached !')
 						break
-				sources = common.interface.getExtSources(movtitle=None, year=item['year'], tvshowtitle=item['short_title'], season=item['season'], episode=str(item['episode']), proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=common.CACHE_EXPIRY_TIME, ver=common.VERSION, imdb_id=None, session=item['session'], timeout=SOURCE_SEARCH_TIMEOUT, forceRet=True)
+				sources = common.interface.getExtSources(movtitle=None, year=item['year'], tvshowtitle=item['short_title'], season=item['season'], episode=str(item['episode']), proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=common.CACHE_EXPIRY_TIME, ver=common.VERSION, imdb_id=None, session=item['session'], timeout=float(common.MISC_OPTIONS[common.MISC_OPTIONS_KEYS[0]]['val']), forceRet=True)
 			else:
 				key = main.generatemoviekey(movtitle=item['title'], year=item['year'], tvshowtitle=None, season=None, episode=None)
 				prog = common.interface.checkProgress(key)
 				while (prog > 0 and prog < 100):
 					time.sleep(5)
 					prog = common.interface.checkProgress(key)
-					if (time.time() - start_time) > SOURCE_SEARCH_TIMEOUT:
+					if (time.time() - start_time) > float(common.MISC_OPTIONS[common.MISC_OPTIONS_KEYS[0]]['val']):
 						Log('ERROR: downloadsmenu.py > AutoPilotDownloadThread1: Source Searching Timeout Reached !')
 						break
-				sources = common.interface.getExtSources(movtitle=item['title'], year=item['year'], tvshowtitle=None, season=None, episode=None, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=common.CACHE_EXPIRY_TIME, ver=common.VERSION, imdb_id=None, session=item['session'], timeout=SOURCE_SEARCH_TIMEOUT, forceRet=True)
+				sources = common.interface.getExtSources(movtitle=item['title'], year=item['year'], tvshowtitle=None, season=None, episode=None, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=common.CACHE_EXPIRY_TIME, ver=common.VERSION, imdb_id=None, session=item['session'], timeout=float(common.MISC_OPTIONS[common.MISC_OPTIONS_KEYS[0]]['val']), forceRet=True)
 
 			if sources != None:
 				bool, fsBytes, removeEntry = AutoPilotDownloadThread2(item, sources)
@@ -697,7 +693,8 @@ def AutoPilotDownloadThread1(item=None, runForWaiting=False, viaRunNow=False):
 							
 		# remove completed entries
 		for type_r in items_for_removal.keys():
-			items_for_smart_add[type_r] = []
+			if type_r not in items_for_smart_add.keys():
+				items_for_smart_add[type_r] = []
 			for item_r in items_for_removal[type_r]:
 				for item_i in common.DOWNLOAD_AUTOPILOT[type_r]:
 					if item_r['uid'] == item_i['uid']:
@@ -707,8 +704,8 @@ def AutoPilotDownloadThread1(item=None, runForWaiting=False, viaRunNow=False):
 							bool, lastep = verifyForSmart(item_i, smarttype='episode')
 							common.DOWNLOAD_AUTOPILOT[type_r].remove(item_i)
 							if bool == True:
-								item_i = itemForSmartAadd(item=item_i, smarttype='episode', lastep=lastep)
-								items_for_smart_add[type_r].append(item_i)
+								item_sa = itemForSmartAadd(item=item_i.copy(), smarttype='episode', lastep=lastep)
+								items_for_smart_add[type_r].append(item_sa)
 						except Exception as e:
 							Log.Error('ERROR: downloadsmenu.py > AutoPilotDownloadThread1 > items_for_removal: %s' % e)
 						break
@@ -734,8 +731,10 @@ def AutoPilotDownloadThread1(item=None, runForWaiting=False, viaRunNow=False):
 def itemForSmartAadd(item=None, smarttype='episode', lastep=0):
 
 	if item['type'] == 'show':
-		if type == 'episode':
+		if smarttype == 'episode':
 			item['episode'] = int(lastep) + 1
+			item['episode_end'] = item['episode']
+			item['season_end'] = item['season']
 			item['first_time'] = time.time()
 			item['smart_add_active'] = True
 			if 'smart_add_active_season' in item.keys():
@@ -747,9 +746,11 @@ def itemForSmartAadd(item=None, smarttype='episode', lastep=0):
 				item['watch_title'] = '%s S%sE%02d' % (item['short_title'],int(item['season']),int(item['episode']))
 			else:
 				item['watch_title'] = '%s S%sE%03d' % (item['short_title'],int(item['season']),int(item['episode']))
-		elif type == 'season':
-			item['episode'] = int(lastep) + 1
+		elif smarttype == 'season':
+			item['episode'] = 1
 			item['season'] = int(item['season']) + 1
+			item['episode_end'] = item['episode']
+			item['season_end'] = item['season']
 			item['first_time'] = time.time()
 			item['smart_add_active'] = True
 			item['smart_add_active_season'] = True
@@ -760,7 +761,7 @@ def itemForSmartAadd(item=None, smarttype='episode', lastep=0):
 				item['watch_title'] = '%s S%sE%02d' % (item['short_title'],int(item['season']),int(item['episode']))
 			else:
 				item['watch_title'] = '%s S%sE%03d' % (item['short_title'],int(item['season']),int(item['episode']))
-	
+				
 	return item
 
 #######################################################################################################
@@ -979,7 +980,7 @@ def AddToDownloadsListPre(title, year, url, durl, purl, summary, thumb, quality,
 				Dict[uid] = E(JSON.StringFromObject(EncTxt))
 				Dict.Save()
 				return MC.message_container('Item Update', 'Item has been updated with new download url')
-			elif admin == True and update == False and EncTxt['url'] != url:
+			elif admin == True and update == False and (EncTxt['url'] != url or EncTxt['durl'] == durl):
 				oc = ObjectContainer(title1='Item exists in Downloads List', no_cache=common.isForceNoCache())
 				
 				for u_i in uid_alts:
@@ -1373,14 +1374,14 @@ def Downloads(title, session = None, status = None, refresh = 0, isDir='N', item
 								key = Callback(DownloadingFilesMenu, title=longstringObjs['watch_title'], uid=longstringObjs['uid'], choice=None, session=session, status=status)
 							elif status == common.DOWNLOAD_STATUS[3]: # Failed
 								err = longstringObjs['last_error'] if longstringObjs['error'] == '' else longstringObjs['error']
-								wtitle = '%s (%s) | %s | %s - %s | %s | %s | %s - %s' % (longstringObjs['watch_title'], longstringObjs['year'], longstringObjs['type'].title(), longstringObjs['fs'], longstringObjs['quality'], longstringObjs['source'], str(longstringObjs['progress'])+'%', longstringObjs['status'], err)
+								wtitle = '%s (%s) | %s | %s - %s | %s [%s] | %s | %s - %s' % (longstringObjs['watch_title'], longstringObjs['year'], longstringObjs['type'].title(), longstringObjs['fs'], longstringObjs['quality'], longstringObjs['source'], longstringObjs['provider'] if 'provider' in longstringObjs.keys() else 'N/A', str(longstringObjs['progress'])+'%', longstringObjs['status'], err)
 								key = Callback(DownloadingFilesMenu, title=longstringObjs['watch_title'], uid=longstringObjs['uid'], choice=None, session=session, status=status)
 								summary = '%s | %s' % (wtitle, summary)
 							elif status == common.DOWNLOAD_STATUS[4]: # Requested
 								if 'user' in longstringObjs.keys() and longstringObjs['user'] != None and AuthTools.CheckAdmin() == True:
-									wtitle = '%s (%s) | %s | %s - %s | %s | %s (by %s) - %s | %s | %s MB/s | Subtitle:%s' % (longstringObjs['watch_title'], longstringObjs['year'], longstringObjs['type'].title(), longstringObjs['fs'], longstringObjs['quality'], longstringObjs['source'], longstringObjs['status'], longstringObjs['user'], common.DOWNLOAD_ACTIONS_K[longstringObjs['action']], str(longstringObjs['progress'])+'%', str(longstringObjs['avg_speed_curr']), common.GetEmoji(type=has_sub, mode='simple', session=session))
+									wtitle = '%s (%s) | %s | %s - %s | %s [%s] | %s (by %s) - %s | %s | %s MB/s | Subtitle:%s' % (longstringObjs['watch_title'], longstringObjs['year'], longstringObjs['type'].title(), longstringObjs['fs'], longstringObjs['quality'], longstringObjs['source'], longstringObjs['provider'] if 'provider' in longstringObjs.keys() else 'N/A', longstringObjs['status'], longstringObjs['user'], common.DOWNLOAD_ACTIONS_K[longstringObjs['action']], str(longstringObjs['progress'])+'%', str(longstringObjs['avg_speed_curr']), common.GetEmoji(type=has_sub, mode='simple', session=session))
 								else:
-									wtitle = '%s (%s) | %s | %s - %s | %s | %s - %s | %s | %s MB/s | Subtitle:%s' % (longstringObjs['watch_title'], longstringObjs['year'], longstringObjs['type'].title(), longstringObjs['fs'], longstringObjs['quality'], longstringObjs['source'], longstringObjs['status'], common.DOWNLOAD_ACTIONS_K[longstringObjs['action']], str(longstringObjs['progress'])+'%', str(longstringObjs['avg_speed_curr']), common.GetEmoji(type=has_sub, mode='simple', session=session))
+									wtitle = '%s (%s) | %s | %s - %s | %s [%s] | %s - %s | %s | %s MB/s | Subtitle:%s' % (longstringObjs['watch_title'], longstringObjs['year'], longstringObjs['type'].title(), longstringObjs['fs'], longstringObjs['quality'], longstringObjs['source'], longstringObjs['provider'] if 'provider' in longstringObjs.keys() else 'N/A', longstringObjs['status'], common.DOWNLOAD_ACTIONS_K[longstringObjs['action']], str(longstringObjs['progress'])+'%', str(longstringObjs['avg_speed_curr']), common.GetEmoji(type=has_sub, mode='simple', session=session))
 								key = Callback(DownloadingFilesMenu, title=longstringObjs['watch_title'], uid=longstringObjs['uid'], choice=None, session=session, status=status)
 							elif status == common.DOWNLOAD_STATUS[5]: # All
 								if longstringObjs['status'] == common.DOWNLOAD_STATUS[1]: # Downloading
@@ -1415,9 +1416,9 @@ def Downloads(title, session = None, status = None, refresh = 0, isDir='N', item
 									else:
 										eta_str = '%s min. %02d sec. remaining' % (int(eta), int(60 * (float(eta) - float(int(eta)))))
 										
-									wtitle = '%s (%s) | %s | %s - %s | %s | %s - %s | %s | %s MB/s ~ %s MB/s ~ %s MB/s | %s | Subtitle:%s' % (longstringObjs['watch_title'], longstringObjs['year'], longstringObjs['type'].title(), longstringObjs['fs'], longstringObjs['quality'], longstringObjs['source'], longstringObjs['status'], common.DOWNLOAD_ACTIONS_K[longstringObjs['action']], str(longstringObjs['progress'])+'%', str(longstringObjs['chunk_speed']), str(longstringObjs['avg_speed_curr']), str(longstringObjs['avg_speed']), str(eta_str), common.GetEmoji(type=has_sub, mode='simple', session=session))
+									wtitle = '%s (%s) | %s | %s - %s | %s [%s] | %s - %s | %s | %s MB/s ~ %s MB/s ~ %s MB/s | %s | Subtitle:%s' % (longstringObjs['watch_title'], longstringObjs['year'], longstringObjs['type'].title(), longstringObjs['fs'], longstringObjs['quality'], longstringObjs['source'], longstringObjs['provider'] if 'provider' in longstringObjs.keys() else 'N/A', longstringObjs['status'], common.DOWNLOAD_ACTIONS_K[longstringObjs['action']], str(longstringObjs['progress'])+'%', str(longstringObjs['chunk_speed']), str(longstringObjs['avg_speed_curr']), str(longstringObjs['avg_speed']), str(eta_str), common.GetEmoji(type=has_sub, mode='simple', session=session))
 								else:
-									wtitle = '%s (%s) | %s | %s - %s | %s | %s - %s | %s | %s MB/s | Subtitle:%s' % (longstringObjs['watch_title'], longstringObjs['year'], longstringObjs['type'].title(), longstringObjs['fs'], longstringObjs['quality'], longstringObjs['source'], longstringObjs['status'], common.DOWNLOAD_ACTIONS_K[longstringObjs['action']], str(longstringObjs['progress'])+'%', str(longstringObjs['avg_speed_curr']), common.GetEmoji(type=has_sub, mode='simple', session=session))
+									wtitle = '%s (%s) | %s | %s - %s | %s [%s] | %s - %s | %s | %s MB/s | Subtitle:%s' % (longstringObjs['watch_title'], longstringObjs['year'], longstringObjs['type'].title(), longstringObjs['fs'], longstringObjs['quality'], longstringObjs['source'], longstringObjs['provider'] if 'provider' in longstringObjs.keys() else 'N/A', longstringObjs['status'], common.DOWNLOAD_ACTIONS_K[longstringObjs['action']], str(longstringObjs['progress'])+'%', str(longstringObjs['avg_speed_curr']), common.GetEmoji(type=has_sub, mode='simple', session=session))
 									
 								key = Callback(DownloadingFilesMenu, title=longstringObjs['watch_title'], uid=longstringObjs['uid'], choice=None, session=session, status=longstringObjs['status'])
 								

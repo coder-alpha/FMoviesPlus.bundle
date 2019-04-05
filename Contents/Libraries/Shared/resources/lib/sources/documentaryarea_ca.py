@@ -319,7 +319,13 @@ class source:
 						riptype = TYPES_RIP[label]
 				
 					headers = {'Referer': page, 'User-Agent': self.user_agent}
-					links_m = resolvers.createMeta(file, self.name, self.logo, qual, links_m, key, riptype, testing=testing, sub_url=sub_url, headers=headers, poster=poster)
+					try:
+						l = resolvers.createMeta(file, self.name, self.logo, qual, [], key, riptype, testing=testing, sub_url=sub_url, headers=headers, poster=poster)
+						if len(l) > 0:
+							control.setPartialSource(l[0],self.name)
+							links_m.append(l[0])
+					except:
+						pass
 					
 					if testing == True and len(links_m) > 0:
 						break

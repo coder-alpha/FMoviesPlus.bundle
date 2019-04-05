@@ -377,7 +377,13 @@ class source:
 					pass
 					
 				for trailer in trailers:
-					links_m = resolvers.createMeta(trailer, self.name, self.logo, '720p', links_m, key, poster=poster, vidtype='Trailer', testing=testing)
+					try:
+						l = resolvers.createMeta(trailer, self.name, self.logo, '720p', [], key, poster=poster, vidtype='Trailer', testing=testing)
+						if len(l) > 0:
+							control.setPartialSource(l[0],self.name)
+							links_m.append(l[0])
+					except:
+						pass
 			
 			links = client.parseDOM(result, 'div', attrs = {'class': 'anime_muti_link'})
 			links = client.parseDOM(links, 'li', ret='data-video')
@@ -389,7 +395,13 @@ class source:
 				video_urls.append(l)
 				
 			for video_url in video_urls:
-				links_m = resolvers.createMeta(video_url, self.name, self.logo, quality, links_m, key, poster=poster, riptype=riptype, vidtype=vidtype, sub_url=sub_url, testing=testing, page_url=page_url)
+				try:
+					l = resolvers.createMeta(video_url, self.name, self.logo, quality, [], key, poster=poster, riptype=riptype, vidtype=vidtype, sub_url=sub_url, testing=testing, page_url=page_url)
+					if len(l) > 0:
+						control.setPartialSource(l[0],self.name)
+						links_m.append(l[0])
+				except:
+					pass
 			
 			sources += [l for l in links_m]
 			

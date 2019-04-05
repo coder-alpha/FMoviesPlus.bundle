@@ -20,9 +20,6 @@ Dict['DOWNLOAD_RATE_LIMIT_BUFFER'] = []
 Dict['DOWNLOAD_RATE_LIMIT_TIME'] = []
 REMAP_EXTRAS = {'behind the scenes':'behindthescenes', 'deleted scenes':'deleted', 'featurette':'featurette', 'interviews':'interview', 'misc.':'scene', 'music video':'short', 'trailer':'trailer'}
 
-AUTOPILOT_SCHEDULER = [False]
-AUTOPILOT_SCHEDULER_POST_REFRESH = []
-
 QUEUE_RUN_ITEMS = {}
 WAIT_AND_RETRY_ON_429 = True
 CONNECTION_TIMEOUT = 60
@@ -100,28 +97,51 @@ class DownloadThrottler(object):
 		Thread.Create(self.DownloadThrottlerThread)
 		
 	def DownloadThrottlerThread(self):
-		while self.threadRun:
-			time.sleep(self.updateTime)
-			
-			tot_down_size_KB = float(sum(self.DOWNLOAD_RATE_LIMIT_BUFFER)/1024.0)
-			download_speed_limit_KBps = float(Prefs['download_speed_limit'])
-			if tot_down_size_KB > 0 and download_speed_limit_KBps > 0:
-				tot_down_speed_KBps = round(float(tot_down_size_KB/self.updateTime), 3)
-				if Prefs['use_debug']:
-					Log('Download Throttler:---> Timestamp:%s | Total Down Speed: %s KB/s | Speed Limit: %s KB/s' % (time.time(), tot_down_speed_KBps, download_speed_limit_KBps))
+		tuid = common.id_generator(16)
+		orig_speed_set = float(Prefs['download_speed_limit'])
+		common.control.AddThread('download', 'Download Throttler Thread. Limiting Speed set to %s KB/s' % orig_speed_set, time.time(), '2', False, tuid)
+		
+		try:
+			if Prefs['use_debug']:
+				Log("Starting Download Throttler:--->")
+			while self.threadRun:
+				time.sleep(self.updateTime)
 				
-				if tot_down_speed_KBps > download_speed_limit_KBps:
-					self.throttle = True
-					self.throttleStateSleepTime = round(tot_down_speed_KBps/download_speed_limit_KBps,3)
-					if Prefs['use_debug']:
-						Log("Download Throttler:---> Sleep for %s sec." % self.throttleStateSleepTime)
-					time.sleep(self.throttleStateSleepTime)
+				tot_down_size_KB = float(sum(self.DOWNLOAD_RATE_LIMIT_BUFFER)/1024.0)
+				download_speed_limit_KBps = float(Prefs['download_speed_limit'])
+				if download_speed_limit_KBps == 0:
+					self.threadRun = False
+				elif orig_speed_set != download_speed_limit_KBps:
+					common.control.RemoveThread(tuid)
+					tuid = common.id_generator(16)
+					orig_speed_set = download_speed_limit_KBps
+					common.control.AddThread('download', 'Download Throttler Thread. Limiting Speed set to %s KB/s' % orig_speed_set, time.time(), '2', False, tuid)
 					
-			self.reset()
+				if tot_down_size_KB > 0 and download_speed_limit_KBps > 0:
+					tot_down_speed_KBps = round(float(tot_down_size_KB/self.updateTime), 3)
+					if Prefs['use_debug']:
+						Log('Download Throttler:---> Timestamp:%s | Total Down Speed: %s KB/s | Speed Limit: %s KB/s' % (time.time(), tot_down_speed_KBps, download_speed_limit_KBps))
+					
+					if tot_down_speed_KBps > download_speed_limit_KBps:
+						self.throttle = True
+						self.throttleStateSleepTime = round(tot_down_speed_KBps/download_speed_limit_KBps,3)
+						if Prefs['use_debug']:
+							Log("Download Throttler:---> Sleep for %s sec." % self.throttleStateSleepTime)
+						time.sleep(self.throttleStateSleepTime)
+						
+				self.reset()
+			if Prefs['use_debug']:
+				Log("Exiting Download Throttler:--->")
+		except Exception as e:
+			Log.Error('Download Throttler >> %s' % e)
+			
+		common.control.RemoveThread(tuid)
 			
 def resetDownloadThrottler():
 	if len(DLT) > 0:
 		DLT[0].reset()
+		if float(Prefs['download_speed_limit']) > 0:
+			DLT[0].start()
 	
 ##############################################################################################
 	
@@ -227,7 +247,7 @@ class Downloader(object):
 		
 			fname, fname_e = create_fname(file_meta, vidtype, riptype, file_ext, fid + common.DOWNLOAD_FMP_EXT)
 			if fname == None:
-				raise fname_e
+				raise Exception('Filename: %s' % fname_e)
 				
 			tuid = common.id_generator(16)
 			common.control.AddThread('download', 'Download File: %s' % fname, time.time(), '2', False, tuid)
@@ -242,11 +262,21 @@ class Downloader(object):
 			sub_url_t = None
 			if 'openload' in source.lower():
 				furl, error, sub_url_t, page_html = common.host_openload.resolve(furl)
+				if furl != None and isinstance(furl, list) == True and 'http' in furl[0]:
+					if len(furl) >= seq:
+						furl = furl[seq]
+					else:
+						furl = furl[0]
 				# check if file-link valid using fs of 1MB
 				if error == '':
 					fs_r, error = common.client.getFileSize(furl, headers=headers, retError=True, retry429=True, cl=2)
 				if error != '' or furl == None or float(fs_r) < float(1024*1024):
 					furl, error, sub_url_t, page_html = common.host_openload.resolve(durl)
+					if furl != None and isinstance(furl, list) == True and 'http' in furl[0]:
+						if len(furl) >= seq:
+							furl = furl[seq]
+						else:
+							furl = furl[0]
 				if error != '' or furl == None:
 					Log('OpenLoad URL-f: %s' % furl)
 					Log('OpenLoad URL-d: %s' % durl)
@@ -256,11 +286,21 @@ class Downloader(object):
 					return
 			elif 'rapidvideo' in source.lower():
 				furl, error, sub_url_t = common.host_rapidvideo.resolve(furl)
+				if furl != None and isinstance(furl, list) == True and 'http' in furl[0]:
+					if len(furl) >= seq:
+						furl = furl[seq]
+					else:
+						furl = furl[0]
 				# check if file-link valid using fs of 1MB
 				if error == '':
 					fs_r, error = common.client.getFileSize(furl, headers=headers, retError=True, retry429=True, cl=2)
 				if error != '' or furl == None or float(fs_r) < float(1024*1024):
 					furl, error, sub_url_t = common.host_rapidvideo.resolve(durl)
+					if furl != None and isinstance(furl, list) == True and 'http' in furl[0]:
+						if len(furl) >= seq:
+							furl = furl[seq]
+						else:
+							furl = furl[0]
 				if error != '' or furl == None:
 					Log('RapidVideo URL: %s' % furl)
 					Log('RapidVideo Error: %s' % error)
@@ -269,11 +309,21 @@ class Downloader(object):
 					return
 			elif 'streamango' in source.lower():
 				furl, error, sub_url_t = common.host_streamango.resolve(furl)
+				if furl != None and isinstance(furl, list) == True and 'http' in furl[0]:
+					if len(furl) >= seq:
+						furl = furl[seq]
+					else:
+						furl = furl[0]
 				# check if file-link valid using fs of 1MB
 				if error == '':
 					fs_r, error = common.client.getFileSize(furl, headers=headers, retError=True, retry429=True, cl=2)
 				if error != '' or furl == None or float(fs_r) < float(1024*1024):
 					furl, error, sub_url_t = common.host_streamango.resolve(durl)
+					if furl != None and isinstance(furl, list) == True and 'http' in furl[0]:
+						if len(furl) >= seq:
+							furl = furl[seq]
+						else:
+							furl = furl[0]
 				if error != '' or furl == None:
 					Log('Streamango URL: %s' % furl)
 					Log('Streamango Error: %s' % error)
@@ -282,8 +332,21 @@ class Downloader(object):
 					return
 			elif 'direct' in source.lower():
 				furl, error, params_enc  = common.host_direct.resolve(furl)
+				if furl != None and isinstance(furl, list) == True and 'http' in furl[0]:
+					if len(furl) >= seq:
+						furl = furl[seq]
+					else:
+						furl = furl[0]
+				# check if file-link valid using fs of 1MB
+				if error == '':
+					fs_r, error = common.client.getFileSize(furl, headers=headers, retError=True, retry429=True, cl=2)
 				if error != '' or furl == None or float(fs_r) < float(1024*1024):
 					furl, error, params_enc = common.host_direct.resolve(durl)
+					if furl != None and isinstance(furl, list) == True and 'http' in furl[0]:
+						if len(furl) >= seq:
+							furl = furl[seq]
+						else:
+							furl = furl[0]
 				if error != '' or furl == None:
 					Log('Direct host URL: %s' % furl)
 					Log('Direct host Error: %s' % error)
@@ -296,32 +359,51 @@ class Downloader(object):
 						headers = params['headers']
 				except:
 					pass
+			elif 'mega' in source.lower():
+				furlx, fs_r, file_ext1, error = common.host_mega.mega.get_mega_dl_link(furl)
+				if error != '' or furl == None or float(fs_r) < float(1024*1024):
+					Log('Mega host URL: %s' % furl)
+					Log('Mega host Error: %s' % error)
+					download_failed(url, error, progress, startPos, purgeKey)
+					common.control.RemoveThread(tuid)
+					return
+				try:
+					if furl != None and isinstance(furl, list) == True and 'http' in furl[0]:
+						if len(furl) >= seq:
+							furl = furl[seq]
+						else:
+							furl = furl[0]
+				except:
+					pass
 			else:
 				# check if file-link valid using fs of 1MB
 				fs_r, error = common.client.getFileSize(furl, headers=headers, retError=True, retry429=True, cl=2)
 				if common.DEV_DEBUG == True and Prefs["use_debug"]:
-					Log('Url: %s | Curr. FileSize: %s | Orig. FileSize: %s' % (furl, fs_r, fsBytes))
+					Log('Url: %s | Curr. FileSize: %s | Orig. FileSize: %s | Error: %s' % (furl, fs_r, fsBytes, error))
 				if fs_r != None and float(fs_r) > float(1024*1024): # 1MB
 					if common.DEV_DEBUG == True and Prefs["use_debug"]:
 						Log('File Health Looks Good with current download url !')
 				else:
 					# ret_val_resolvers is always a tuple with first val. of returned url and second of error...
-					ret_val_resolvers = common.interface.getHostResolverMain().resolve(furl, page_url=page_url)
-					error = ret_val_resolvers[1]
-					if error == '' and furl == ret_val_resolvers[0]:
+					furl, error, params_enc = common.interface.getHostResolverMain().resolve(furl, page_url=page_url)
+					if furl != None and isinstance(furl, list) == True and 'http' in furl[0]:
+						if len(furl) >= seq:
+							furl = furl[seq]
+						else:
+							furl = furl[0]
+					if error == '':
 						fs_r, error = common.client.getFileSize(furl, headers=headers, retError=True, retry429=True, cl=2)
 					if error != '' or float(fs_r) < float(1024*1024):
-						ret_val_resolvers  = common.interface.getHostResolverMain().resolve(durl, page_url=page_url)
-						error = ret_val_resolvers[1]
+						furl, error, params_enc  = common.interface.getHostResolverMain().resolve(durl, page_url=page_url)
+						if furl != None and isinstance(furl, list) == True and 'http' in furl[0]:
+							if len(furl) >= seq:
+								furl = furl[seq]
+							else:
+								furl = furl[0]
 					if error == '':
 						try:
-							furl = ret_val_resolvers[0]	
 							try:
-								if furl != None and len(furl) >= seq:
-									furl = furl[seq]
-								else:
-									furl = furl[0]
-								params = json.loads(base64.b64decode(ret_val_resolvers[2]))
+								params = json.loads(base64.b64decode(params_enc))
 								if 'headers' in params.keys():
 									headers = params['headers']
 							except:
@@ -357,7 +439,7 @@ class Downloader(object):
 			# https://support.plex.tv/articles/200220677-local-media-assets-movies/
 			fname, fname_e = create_fname(file_meta, vidtype, riptype, file_ext)
 			if fname == None:
-				raise fname_e
+				raise Exception('Filename: %s' % fname_e)
 			
 			final_abs_path = Core.storage.join_path(path, item_folder_name, fname)
 			
@@ -401,7 +483,12 @@ class Downloader(object):
 						time.sleep(5)
 						r, err = request_download(furl, headers=headers)
 						
-			if r == None or err != '':
+			if err != '':
+				raise Exception(err)
+				
+			if (r == None and source != 'mega') or err != '':
+				if r == None and err == '':
+					err = 'Download request is None'
 				raise Exception(err)
 			
 			file_meta_temp = file_meta
@@ -420,7 +507,7 @@ class Downloader(object):
 			del QUEUE_RUN_ITEMS[purgeKey]
 
 			FMPdownloader = None
-			
+
 			try:
 				try:
 					if not os.path.exists(directory):
@@ -429,6 +516,7 @@ class Downloader(object):
 							time.sleep(1)
 				except OSError as e:
 					raise Exception('%s' % e)
+
 				if source == 'mega' or r.status_code == 200 or r.status_code == 206:
 					
 					if source == 'mega':
@@ -441,9 +529,9 @@ class Downloader(object):
 								Log('**Resuming download**')
 							dl_info = FMPdownloader.next()
 							furl = "%s/%s" % (dl_info['url'],dl_info['name'])
-							r = resume_download(furl, startPos, headers=headers)
+							r, err = resume_download(furl, startPos, headers=headers)
 							
-							if r.status_code == 200 or r.status_code == 206:
+							if r != None and (r.status_code == 200 or r.status_code == 206):
 								FMPdownloader = r.iter_content(chunk_size)
 								write_mode = 'ab'
 								bytes_read = startPos
@@ -585,7 +673,7 @@ class Downloader(object):
 							c = 1
 							exact_same_file = False
 							
-							while (file_renamed_inc):
+							if file_renamed_inc == True:
 								CRC_Of_Files = []
 								while Core.storage.file_exists(final_abs_path):
 									try:
@@ -596,7 +684,7 @@ class Downloader(object):
 										
 									fname, fname_e = create_fname(file_meta, vidtype, riptype, file_ext, c=str(c))
 									if fname == None:
-										raise fname_e
+										raise Exception('Filename: %s' % fname_e)
 									
 									# new progressive name
 									final_abs_path = Core.storage.join_path(directory, fname)
@@ -606,7 +694,9 @@ class Downloader(object):
 									sub_file_path = Core.storage.join_path(directory, sub_fname)
 									
 									c += 1
-									
+									if (c > 10):
+										raise Exception('Multiple files with this name already exists !')
+								
 								try:
 									crc_new_file = common.md5(abs_path)
 									if crc_new_file in CRC_Of_Files:
@@ -616,6 +706,7 @@ class Downloader(object):
 										exact_same_file = True
 								except Exception as error:
 									Log('Error download.py >>> CRC compare : %s' % error)
+									
 								try:
 									if exact_same_file == True:
 										try:
@@ -625,16 +716,13 @@ class Downloader(object):
 											Log('Error download.py >>> CRC based removal : %s' % e)
 									else:
 										os.rename(abs_path, final_abs_path)
-										download_subtitle(file_meta['sub_url'], sub_file_path, params=params)
-										
-									file_renamed_inc = False
-									
+										try:
+											download_subtitle(file_meta['sub_url'], sub_file_path, params=params)
+										except Exception as error:
+											Log('Error download.py >>> Downloading subtitle : %s' % error)
 								except Exception as error:
 									Log('Error download.py >>> %s : %s' % (error, final_abs_path))
 									
-								if (c > 5):
-									raise Exception(error)
-							
 							# file_meta['status'] = common.DOWNLOAD_STATUS[2]
 							# file_meta['progress'] = progress
 							# Dict[purgeKey] = E(JSON.StringFromObject(file_meta)) 
@@ -654,6 +742,7 @@ class Downloader(object):
 					raise Exception('Error response - HTTP Code:%s' % r.status_code)
 					
 			except Exception as error:
+				Log.Error('Downloader Error 1 >> %s' % error)
 				error = '%s' % error
 				Dict[purgeKey] = E(JSON.StringFromObject(file_meta))
 				download_failed(url, error, progress, bytes_read, purgeKey)
@@ -667,7 +756,7 @@ class Downloader(object):
 			common.control.RemoveThread(tuid)
 		except Exception as e:
 			error = '%s' % e
-			Log.Error(e)
+			Log.Error('Downloader Error 2 >> %s' % e)
 			download_failed(url, error, progress, startPos, purgeKey)
 			common.control.RemoveThread(tuid)
 		
@@ -739,7 +828,7 @@ def do_download(file_meta_enc):
 	
 	while len(DLT) == 0:
 		time.sleep(1)
-	
+
 	downloader.setDownloadThrottler(DLT[0])
 	#thread_i = workers.Thread(downloader.download(file_meta_enc))
 	#thread_i.start()
@@ -750,33 +839,42 @@ def do_download(file_meta_enc):
 def download_subtitle(url, sub_file_path, params=None):
 	
 	try:
-		if url == None:
-			return
-		if params != None and 'headers' in params.keys():
-			headers = params['headers']
-		else:
-			headers = None
-		if Prefs['use_debug']:
-			Log('Download Subtitle : %s to %s' % (url, sub_file_path))
 		r = None
-		r, err = request_download(url, headers=headers)
-		if err != '' or r == None:
-			raise Exception(err)
-		if r.status_code == 200:
-			FMPdownloaderSub = r.iter_content(1024*64)
-			with io.open(sub_file_path, 'wb') as f:
-				for chunk in FMPdownloaderSub:
-					f.write(chunk)
-			f.close()
-		else:
-			raise("HTTP Error: %s" % str(r.status_code))
+		headers = None
+		try:
+			if url == None:
+				return
+			try:	
+				if params != None and params != '' and 'headers' in params.keys():
+					headers = params['headers']
+				else:
+					headers = None
+			except Exception as e:
+				Log('params: %s' % params)
+				Log(e)
+			
+			if Prefs['use_debug']:
+				Log('Download Subtitle : %s to %s' % (url, sub_file_path))
+			
+			r, err = request_download(url, headers=headers)
+			if err != '' or r == None:
+				raise Exception(err)
+			if r.status_code == 200:
+				FMPdownloaderSub = r.iter_content(1024*64)
+				with io.open(sub_file_path, 'wb') as f:
+					for chunk in FMPdownloaderSub:
+						f.write(chunk)
+				f.close()
+			else:
+				raise("HTTP Error: %s" % str(r.status_code))
+		except Exception as e:
+			Log(e)
+			if r != None:
+				r.close()
 	except Exception as e:
 		Log(e)
-		if r != None:
-			r.close()
 	
 def request_download(url, headers=None):
-
 	try:
 		r = requests.get(url, headers=headers, stream=True, verify=False, allow_redirects=True, timeout=CONNECTION_TIMEOUT)
 		return r, ''
@@ -787,15 +885,23 @@ def request_download(url, headers=None):
 	
 def resume_download(url, resume_byte_pos, headers=None):
 	try:
+		resume_header = None
 		resume_header = {'Range': 'bytes=%s-' % int(resume_byte_pos)}
 		if headers != None:
 			for h in headers.keys():
 				resume_header[h] = headers[h]
+				
+		# ensure resuming range wasn't overwritten
+		resume_header['Range'] = 'bytes=%s-' % int(resume_byte_pos)
+		
+		if common.DEV_DEBUG == True and Prefs["use_debug"]:
+			Log('resume_header: %s' % resume_header)
 		r = requests.get(url, headers=resume_header, stream=True, verify=False, allow_redirects=True, timeout=CONNECTION_TIMEOUT)
 		return r, ''
 	except Exception as e:
 		err = '%s' % e
 		Log.Error(e)
+		Log('resume_header: %s' % resume_header)
 		return None, err
 	
 def download_completed(final_abs_path, section_title, section_key, purgeKey, fileExists=False):
@@ -814,17 +920,22 @@ def download_completed(final_abs_path, section_title, section_key, purgeKey, fil
 		Dict['DOWNLOAD_TEMP'] = E(JSON.StringFromObject(common.DOWNLOAD_TEMP))
 		Dict.Save()
 
-	if Prefs['use_debug']:
-		if fileExists == True:
-			Log('Download Completed, but file with same name and crc match exists - File discarded')
-		else:	
-			Log('Download Completed - %s' % final_abs_path)
+	if fileExists == True:
+		Log('Download Completed, but file with same name and crc match exists - File discarded')
+	else:	
+		Log('Download Completed - %s' % final_abs_path)
 		
-	if fileExists == False and common.UsingOption(key=common.GLOBAL_OPTIONS[1], session='None') == False and AUTOPILOT_SCHEDULER[0] == False:
-		Thread.Create(refresh_section, {}, section_title, section_key)
-		
-	if fileExists == False and common.UsingOption(key=common.GLOBAL_OPTIONS[1], session='None') == False and AUTOPILOT_SCHEDULER[0] == True:
-		AUTOPILOT_SCHEDULER_POST_REFRESH.append([section_title, section_key])
+	try:
+		if fileExists == False and common.MISC_OPTIONS[common.MISC_OPTIONS_KEYS[5]]['val'] == False and common.AUTOPILOT_SCHEDULER[0] == False:
+			Thread.Create(refresh_section, {}, section_title, section_key)
+	except Exception as e:
+		Log.Error(e)
+	
+	try:
+		if fileExists == False and common.MISC_OPTIONS[common.MISC_OPTIONS_KEYS[5]]['val'] == False and common.AUTOPILOT_SCHEDULER[0] == True:
+			common.AUTOPILOT_SCHEDULER_POST_REFRESH.append([section_title, section_key])
+	except Exception as e:
+		Log.Error(e)
 		
 	Thread.Create(trigger_que_run)
 	
@@ -833,19 +944,20 @@ def post_autopilot_refresh():
 	tuid = common.id_generator(16)
 	common.control.AddThread('PostAutoPilotRefreshSections', 'Refresh Sections after AutoPilot Scheduler', time.time(), '3', False, tuid)
 	try:
-		if len(AUTOPILOT_SCHEDULER_POST_REFRESH) > 0 and AUTOPILOT_SCHEDULER[0] == True:
-			AUTOPILOT_SCHEDULER_POST_REFRESH = list(set(AUTOPILOT_SCHEDULER_POST_REFRESH))
+		if len(common.AUTOPILOT_SCHEDULER_POST_REFRESH) > 0 and common.AUTOPILOT_SCHEDULER[0] == True:
+			AUTOPILOT_SCHEDULER_POST_REFRESH = list(set(common.AUTOPILOT_SCHEDULER_POST_REFRESH))
 			
 			for i in AUTOPILOT_SCHEDULER_POST_REFRESH:
 				refresh_section(i[0], i[1])
+				time.sleep(3.0)
 		
 	except Exception as e:
-		Log(e)
+		Log.Error(e)
 		
 	try:
-		del AUTOPILOT_SCHEDULER[:]
-		del AUTOPILOT_SCHEDULER_POST_REFRESH[:]
-		AUTOPILOT_SCHEDULER.append(False)
+		del common.AUTOPILOT_SCHEDULER[:]
+		del common.AUTOPILOT_SCHEDULER_POST_REFRESH[:]
+		common.AUTOPILOT_SCHEDULER.append(False)
 	except:
 		pass
 	
@@ -891,7 +1003,7 @@ def end_download_by_user(title, url, purgeKey):
 		time.sleep(1)
 	except Exception as e:
 		Log("=============end_download_by_user Error-1============")
-		Log(e)
+		Log.Error(e)
 		
 	try:
 		dir_path = os.path.dirname(filepath)
@@ -900,7 +1012,7 @@ def end_download_by_user(title, url, purgeKey):
 			os.rmdir(dir_path)
 	except Exception as e:
 		Log("=============end_download_by_user Error-2============")
-		Log(e)
+		Log.Error(e)
 		
 	if purgeKey in common.DOWNLOAD_STATS.keys():
 		del common.DOWNLOAD_STATS[purgeKey]
@@ -969,9 +1081,9 @@ def trigger_que_run(skip = []):
 							elif file_meta['status'] == common.DOWNLOAD_STATUS[0] and file_meta['action'] == common.DOWNLOAD_ACTIONS[3] and (time.time() - float(file_meta['timeAdded'])) > 0:
 								Dict_Temp[each] = Dict[each]
 					except Exception as e:
-						Log(e)
+						Log.Error(e)
 		except Exception as e:
-			Log(e)
+			Log.Error(e)
 					
 		save_dict = False
 		try:
@@ -990,11 +1102,11 @@ def trigger_que_run(skip = []):
 						items_for_que_run.append({'label':str(file_meta['timeAdded']), 'data':EncTxt, 'uid':file_meta['uid']})
 						QUEUE_RUN_ITEMS[file_meta['uid']] = False
 				except Exception as e:
-					Log(e)
+					Log.Error(e)
 				if save_dict == True:
 					Dict.Save()
 		except Exception as e:
-			Log(e)
+			Log.Error(e)
 
 		if len(items_for_que_run) > 0:
 			newlistSorted = sorted(items_for_que_run, key=lambda k: k['label'], reverse=False)
@@ -1008,9 +1120,9 @@ def trigger_que_run(skip = []):
 					while (uid in QUEUE_RUN_ITEMS.keys()):
 						time.sleep(2.0)
 				except Exception as e:
-					Log(e)
+					Log.Error(e)
 	except Exception as e:
-		Log(e)
+		Log.Error(e)
 	
 	common.control.RemoveThread(tuid)
 	del trigger_que_run_singleton[:]
@@ -1059,7 +1171,7 @@ def move_unfinished_to_failed():
 				Dict[uid] = E(JSON.StringFromObject(file_meta))
 			except Exception as e:
 				Log("=============== move_unfinished_to_failed =================")
-				Log(e)
+				Log.Error(e)
 				Log(file_meta)
 				if uid != None:
 					items_to_del.append(uid)
@@ -1069,7 +1181,7 @@ def move_unfinished_to_failed():
 				try:
 					del Dict[each]
 				except Exception as e:
-					Log(e)
+					Log.Error(e)
 		
 		del Dict['DOWNLOAD_TEMP']
 		common.DOWNLOAD_TEMP = {}
@@ -1088,9 +1200,9 @@ def move_failed_to_queued():
 						items_to_change.append(each)
 				except Exception as e:
 					Log("============ move_failed_to_queued =============")
-					Log(e)
+					Log.Error(e)
 	except Exception as e:
-		Log(e)
+		Log.Error(e)
 	
 	if len(items_to_change) > 0:
 		if Prefs['use_debug']:
@@ -1127,12 +1239,16 @@ def DownloadInit():
 	
 	move_unfinished_to_failed()
 	time.sleep(1)
-	if common.UsingOption(key=common.GLOBAL_OPTIONS[0], session='None') == True:
+
+	if common.MISC_OPTIONS[common.MISC_OPTIONS_KEYS[4]]['val'] == True:
 		move_failed_to_queued()
 		time.sleep(1)
+	
 	dlt = DownloadThrottler()
 	DLT.append(dlt)
-	DLT[0].start()
+	if float(Prefs['download_speed_limit']) > 0:
+		DLT[0].start()
+	
 	Thread.Create(trigger_que_run)
 	
 	common.control.RemoveThread(tuid)

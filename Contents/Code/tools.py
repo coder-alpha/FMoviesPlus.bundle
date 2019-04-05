@@ -36,7 +36,7 @@ caches_path = os.path.join(support_path, 'Caches', identifier)
 
 MC = common.NewMessageContainer(PREFIX, TITLE)
 
-BACKUP_KEYS = ['DOWNLOAD_OPTIONS','INTERNAL_SOURCES_QUALS', 'INTERNAL_SOURCES_SIZES', 'INTERNAL_SOURCES_RIPTYPE', 'INTERNAL_SOURCES_FILETYPE', 'OPTIONS_PROVIDERS', 'OPTIONS_PROXY', 'INTERNAL_SOURCES', 'BOOT_UP_CONTROL_SETTINGS', 'DOWNLOAD_AUTOPILOT']
+BACKUP_KEYS = ['DOWNLOAD_OPTIONS','INTERNAL_SOURCES_QUALS', 'INTERNAL_SOURCES_SIZES', 'INTERNAL_SOURCES_RIPTYPE', 'INTERNAL_SOURCES_FILETYPE', 'OPTIONS_PROVIDERS', 'OPTIONS_PROXY', 'INTERNAL_SOURCES', 'BOOT_UP_CONTROL_SETTINGS', 'DOWNLOAD_AUTOPILOT', 'MISC_OPTIONS']
 
 RECENT_IMDB_SEARCHES = {}
 	
@@ -87,14 +87,18 @@ def DevToolsC(title=None, header=None, message=None, session=None, **kwargs):
 			if len(externals.BUSY_BOOL) > 0:
 				message = 'Checking externals. Please wait and try again.'
 			else:
-				Thread.Create(externals.checkRoutine)
+				Thread.Create(externals.checkRoutine, {}, session)
 				time.sleep(7)
 				if len(externals.BUSY_BOOL) > 0:
 					message = 'Checking externals. Please wait and try again.'
 				else:
 					if len(externals.CHECK_ROUTINE_LOG) > 0:
 						for item in externals.CHECK_ROUTINE_LOG:
-							oc.add(DirectoryObject(title=item,key=Callback(MyMessage, 'Info', item)))
+							if 'VerifiedForDownload' in item:
+								comps = item.split('|')
+								oc.add(DirectoryObject(title = '%s Download/Install %s %s' % (common.EMOJI_DOWNARROW3x, comps[1], common.EMOJI_DOWNARROW3x), thumb = R(common.ICON_OTHERSOURCESDOWNLOAD), key=Callback(SaveUrlToDest, filedata=E(JSON.StringFromObject(comps[2:])))))
+							else:
+								oc.add(DirectoryObject(title=item,key=Callback(MyMessage, 'Info', item)))
 						return oc
 					else:
 						message = 'Could not retrieve output from externals.'
@@ -178,39 +182,39 @@ def DevToolsC(title=None, header=None, message=None, session=None, **kwargs):
 
 		return MC.message_container('Info', message)
 
-	# oc.add(DirectoryObject(key=Callback(DevToolsC, title='plex_cache'),
+	# oc.add(DirectoryObject(key=Callback(DevToolsC, title='plex_cache', session=session),
 		# title=u'Reset {} Cache'.format(PLEX_CACHE_DIR),
 		# thumb = R(common.ICON_TOOLS),
 		# summary=u'Remove cached files from {} directory.'.format(caches_path)))
-	oc.add(DirectoryObject(key=Callback(DevToolsC, title='save_bm'),
+	oc.add(DirectoryObject(key=Callback(DevToolsC, title='save_bm', session=session),
 		title=u'Save Bookmarks',
 		thumb = R(common.ICON_FL_SAVE),
 		summary=u'Save Bookmarks to the Resource dir. (file: bookmarks.json)'))
-	oc.add(DirectoryObject(key=Callback(DevToolsC, title='load_bm'),
+	oc.add(DirectoryObject(key=Callback(DevToolsC, title='load_bm', session=session),
 		title=u'Load Bookmarks',
 		thumb = R(common.ICON_FL_LOAD),
 		summary=u'Load Bookmarks from the Resource dir. (file: bookmarks.json)'))
-	oc.add(DirectoryObject(key=Callback(DevToolsC, title='save_config'),
+	oc.add(DirectoryObject(key=Callback(DevToolsC, title='save_config', session=session),
 		title=u'Save Config',
 		thumb = R(common.ICON_FL_SAVE),
 		summary=u'Save Config to the Resource dir. (file: config.json). Device Options (all clients), Bookmarks, Recent WatchList, SearchQue, Downloads and Interface Options can be saved and restored using Config file.'))
-	oc.add(DirectoryObject(key=Callback(DevToolsC, title='load_config'),
+	oc.add(DirectoryObject(key=Callback(DevToolsC, title='load_config', session=session),
 		title=u'Load Config',
 		thumb = R(common.ICON_FL_LOAD),
 		summary=u'Load Config from the Resource dir. (file: config.json). Device Options (all clients), Bookmarks, Recent WatchList, SearchQue, Downloads and Interface Options can be saved and restored using Config file.'))
-	oc.add(DirectoryObject(key=Callback(DevToolsC, title='check_externals'),
+	oc.add(DirectoryObject(key=Callback(DevToolsC, title='check_externals', session=session),
 		title=u'Check Externals',
 		thumb = R(common.ICON_TOOLS),
 		summary=u'Check externals like PhantomJS and Cryptodome have been installed or not'))
-	oc.add(DirectoryObject(key=Callback(DevToolsC, title='set_base_url'),
+	oc.add(DirectoryObject(key=Callback(DevToolsC, title='set_base_url', session=session),
 		title=u'Set Base URL',
 		thumb = R(common.ICON_TOOLS),
 		summary=u'Set the Base URL to be used by the Channel'))
-	oc.add(DirectoryObject(key=Callback(DevToolsC, title='set_9base_url'),
+	oc.add(DirectoryObject(key=Callback(DevToolsC, title='set_9base_url', session=session),
 		title=u'Set 9Anime Base URL',
 		thumb = R(common.ICON_TOOLS),
 		summary=u'Set the 9Anime Base URL to be used by the Channel'))
-	oc.add(DirectoryObject(key=Callback(DevToolsC, title='set_ext_list_url'),
+	oc.add(DirectoryObject(key=Callback(DevToolsC, title='set_ext_list_url', session=session),
 		title=u'Set External Listing URL',
 		thumb = R(common.ICON_TOOLS),
 		summary=u'Set the External Listing URL to be used by the Channel'))
@@ -261,6 +265,30 @@ def ClearCache(itemname, timeout=None, **kwargs):
 	if Prefs["use_debug"]:
 		Log.Debug('* Cleaned {} Cached files from {} : {}'.format(count, itemname, path))
 	return count
+	
+@route(PREFIX + "/SaveUrlToDest")
+######################################################################################
+def SaveUrlToDest(filedata, confirm=None, **kwargs):
+
+	if confirm == None:
+		oc = ObjectContainer(title2='Confirm ?')
+		oc.add(DirectoryObject(key = Callback(SaveUrlToDest, filedata=filedata, confirm=True), title = 'Yes'))
+		oc.add(DirectoryObject(key = Callback(SaveUrlToDest, filedata=filedata, confirm=False), title = 'No'))
+		return oc
+
+	url, path, filename = JSON.ObjectFromString(D(filedata))
+		
+	confirm = True if str(confirm).lower()=='true' else False
+	
+	try:
+		data = common.client.request(url)
+		myfile = Core.storage.join_path(path, filename)
+		with io.open(myfile, 'w', encoding='utf8') as f:
+			f.write(unicode(data))
+		return MC.message_container('Success', 'File Downloaded and Installed.')
+	except Exception as e:
+		Log.Error('tools > SaveUrlToDest: %s' % e)
+		return MC.message_container('Error', 'An error occurred !')
 	
 ######################################################################################
 def SaveBookmarks(**kwargs):
@@ -550,6 +578,11 @@ def LoadConfig(**kwargs):
 					Dict[key] = E(JSON.StringFromObject(config[key]))
 					
 			Dict.Save()
+			
+			try:
+				common.MISC_OPTIONS = JSON.ObjectFromString(D(Dict['MISC_OPTIONS']))
+			except:
+				pass
 			
 			try:
 				common.DOWNLOAD_OPTIONS = JSON.ObjectFromString(D(Dict['DOWNLOAD_OPTIONS']))

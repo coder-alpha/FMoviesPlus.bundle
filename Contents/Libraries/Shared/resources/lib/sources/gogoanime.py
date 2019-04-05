@@ -41,7 +41,7 @@ class source:
 		self.priority = 1
 		self.disabled = False
 		self.language = ['en']
-		self.type_filter = ['anime']
+		self.type_filter = ['movie','show','anime']
 		self.domains = ['gogoanimemobile.com', 'gogoanimemobile.net', 'gogoanime.io']
 		self.base_link_alts = ['https://gogoanime.io','https://ww3.gogoanime.io','http://gogoanimemobile.com', 'http://gogoanimemobile.net']
 		self.base_link = self.base_link_alts[0]
@@ -250,7 +250,7 @@ class source:
 			except:
 				pass
 				
-			links = []
+			links_m = []
 
 			for u in r:
 				try:
@@ -275,13 +275,16 @@ class source:
 							except:
 								qualityt = u'720p'
 							try:
-								links = resolvers.createMeta(i, self.name, self.logo, qualityt, links, key, vidtype='Show', testing=testing)
+								l = resolvers.createMeta(i, self.name, self.logo, qualityt, [], key, vidtype='Show', testing=testing)
+								if len(l) > 0:
+									control.setPartialSource(l[0],self.name)
+									links_m.append(l[0])
 							except:
 								pass
 				except:
 					pass
 					
-			for i in links: sources.append(i)
+			for i in links_m: sources.append(i)
 			
 			if len(sources) == 0:
 				log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key))

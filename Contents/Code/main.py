@@ -216,14 +216,16 @@ def SleepAndUpdateThread(update=True, startthread=True, session=None, **kwargs):
 		BOOT_UP_CONTROL_SETTINGS = Dict['BOOT_UP_CONTROL_SETTINGS']
 		if BOOT_UP_CONTROL_SETTINGS != None:
 			BOOT_UP_CONTROL_SETTINGS = JSON.ObjectFromString(D(BOOT_UP_CONTROL_SETTINGS))
-			#Log("BOOT_UP_CONTROL_SETTINGS %s" % BOOT_UP_CONTROL_SETTINGS)
+			#if common.DEV_DEBUG == True and Prefs["use_debug"]:
+			#	Log("BOOT_UP_CONTROL_SETTINGS %s" % BOOT_UP_CONTROL_SETTINGS)
 			common.BOOT_UP_CONTROL_SETTINGS = BOOT_UP_CONTROL_SETTINGS
 	except Exception as e:
 		Log(e)
 		
 	try:
 		DOWNLOAD_AUTOPILOT_TEMP = JSON.ObjectFromString(D(Dict['DOWNLOAD_AUTOPILOT']))
-		#Log("DOWNLOAD_AUTOPILOT %s" % DOWNLOAD_AUTOPILOT_TEMP)
+		#if common.DEV_DEBUG == True and Prefs["use_debug"]:
+		#	Log("DOWNLOAD_AUTOPILOT %s" % DOWNLOAD_AUTOPILOT_TEMP)
 		if DOWNLOAD_AUTOPILOT_TEMP != None:
 			for k in DOWNLOAD_AUTOPILOT_TEMP.keys():
 				try:
@@ -236,13 +238,26 @@ def SleepAndUpdateThread(update=True, startthread=True, session=None, **kwargs):
 		
 	try:
 		DOWNLOAD_OPTIONS_SAVED = JSON.ObjectFromString(D(Dict['DOWNLOAD_OPTIONS']))
-		#Log("DOWNLOAD_OPTIONS %s" % DOWNLOAD_OPTIONS_SAVED)
+		#if common.DEV_DEBUG == True and Prefs["use_debug"]:
+		#	Log("DOWNLOAD_OPTIONS %s" % DOWNLOAD_OPTIONS_SAVED)
 		common.DOWNLOAD_OPTIONS = DOWNLOAD_OPTIONS_SAVED
 	except Exception as e:
 		Log(e)
 		DownloadOptions(session=session)
 		doSave = True
 		
+	try:
+		MISC_OPTIONS_SAVED = JSON.ObjectFromString(D(Dict['MISC_OPTIONS']))
+		#if common.DEV_DEBUG == True and Prefs["use_debug"]:
+		#	Log("MISC_OPTIONS %s" % MISC_OPTIONS_SAVED)
+		for k in common.MISC_OPTIONS.keys():
+			if k in MISC_OPTIONS_SAVED.keys():
+				common.MISC_OPTIONS[k]['val'] = MISC_OPTIONS_SAVED[k]['val']
+	except Exception as e:
+		Log(e)
+		GlobalOptions(session=session)
+		doSave = True
+	
 	####################################
 	for i in ['Provider','Host']:
 		for item_name in common.BOOT_UP_CONTROL_SETTINGS[i].keys():
@@ -383,7 +398,7 @@ def SleepAndUpdateThread(update=True, startthread=True, session=None, **kwargs):
 	except:
 		ExtHosts(session=session)
 		doSave = True
-		
+
 	if doSave == True:
 		Dict.Save()
 		
@@ -397,15 +412,6 @@ def SleepAndUpdateThread(update=True, startthread=True, session=None, **kwargs):
 	Thread.Create(downloadsmenu.AutoPilotDownloadThread1, {}, None, True)
 	
 	common.control.RemoveThread(tuid)
-		
-	# time.sleep(120)
-	# if startthread == True:
-		# while True:
-			# time.sleep(60*60)
-			# ret = common.interface.init()
-			# if Prefs["use_debug"]:
-				# Log("%s at %s !" % (ret, time.ctime(time.time())))
-		
 	
 ######################################################################################
 @route(PREFIX + "/GetCacheTimeString")
@@ -442,7 +448,7 @@ def Options(session, refresh=0, **kwargs):
 	
 	oc.add(DirectoryObject(key = Callback(tools.DevToolsC, session=session), title = "Tools", summary='Tools - Save/Load Bookmarks', thumb = R(common.ICON_TOOLS)))
 	
-	oc.add(DirectoryObject(key = Callback(DownloadOptions, title="Download Options", session = session), title = "Download Options", thumb = R(common.ICON_DOWNLOADS)))
+	oc.add(DirectoryObject(key = Callback(DownloadOptions, title="Download Library Options", session = session), title = "Download Library Options", thumb = R(common.ICON_DOWNLOADS)))
 	
 	oc.add(DirectoryObject(key = Callback(ThreadsStatus, title="Threads Status", session=session), title = "Threads Status", thumb = R(common.ICON_SYSSTATUS)))
 	
@@ -505,48 +511,81 @@ def DeviceOptions(session, **kwargs):
 	
 ######################################################################################
 @route(PREFIX + "/globaloptions")
-def GlobalOptions(session, **kwargs):
+def GlobalOptions(session, reset='false', **kwargs):
 
 	if AuthTools.CheckAdmin() == False:
 		return MC.message_container('Admin Access Only', 'Only the Admin can perform this action !')
 		
-	oc = ObjectContainer(title2='Global Options', no_cache=common.isForceNoCache())
+	if reset == 'true':
+		common.MISC_OPTIONS = common.MISC_OPTIONS_CONST.copy()
+		
+	oc = ObjectContainer(title2='AutoPilot Options', no_cache=common.isForceNoCache())
 	
-	c = 1
+	for ent in sorted(common.MISC_OPTIONS_KEYS):
+		item = common.MISC_OPTIONS[ent]
+		if item['type'] == 'num':
+			msg = item['desc'] % (item['LL'],item['UL'],item['val'])
+			DumbKeyboard(PREFIX, oc, SetMiscOptions, dktitle = msg, dkthumb=common.GetThumb(R(common.ICON_DK_ENABLE), session=session), dkNumOnly=True, dkHistory=False, title=item['title'], val=item['val'], key=ent, ntype=item['type'], ll=item['LL'], ul=item['UL'], session=session)
+		elif item['type'] == 'bool':
+			msg = item['desc'] % common.GetEmoji(type=item['val'], mode='simple', session=session)
+			q = True if str(item['val']).lower() == 'true' else False
+			oc.add(DirectoryObject(key=Callback(SetMiscOptions,  query=not q, title=item['title'], val=not q, key=ent, ntype=item['type'], ll=item['LL'], ul=item['UL'], session=session), title = msg))
+		
+	oc.add(DirectoryObject(
+		key = Callback(GlobalOptions, session=session, reset='true'),
+		title = 'Reset',
+		summary = 'Reset values to their Defaults',
+		thumb = R(common.ICON_REFRESH)
+	))
 	
-	user = common.control.setting('%s-%s' % (session, 'user'))
-	if user != None:
-		summary = 'UserName: %s' % user
-		title_msg = "00). %s" % summary
-		oc.add(DirectoryObject(key=Callback(MyMessage, 'Info', summary), title = title_msg))
-	
-	for key in sorted(common.GLOBAL_OPTIONS):
-		try:
-			try:
-				session_x = 'None'
-				summary = common.GLOBAL_OPTION[key]
-				
-				bool = False
-				try:
-					bool = False if (Dict['Toggle'+key+session_x] == None or Dict['Toggle'+key+session_x] == 'disabled') else True
-				except:
-					pass
-				
-				title_msg = "%02d). %s %s | %s" % (c, common.GetEmoji(type=bool, mode='simple', session=session), key, summary)
-				oc.add(DirectoryObject(key=Callback(common.setDictVal, key=key, val=not bool, session=session_x), title = title_msg))
-				c += 1
-			except Exception as e:
-				Log('Global Options Error: %s' % e)
-				oc.add(DirectoryObject(key=Callback(common.setDictVal, key=key, val=not bool, session=session_x), title = key))
-				c += 1
-		except Exception as e:
-			err = '%s' % e
-			title_msg = "%02d). %s %s | %s" % (c, '-', key, err)
-			oc.add(DirectoryObject(key=Callback(MyMessage, 'Info', err), title = title_msg))
-			c += 1
-			Log('Global Options Critical Error: %s' % e)
-	
+	oc.add(DirectoryObject(key = Callback(MainMenu),title = '<< Main Menu',thumb = R(common.ICON)))
+		
+	Dict['MISC_OPTIONS'] = E(JSON.StringFromObject(common.MISC_OPTIONS))
+	Dict.Save()
+
+	#if common.DEV_DEBUG == True and Prefs["use_debug"]:
+	#	Log(common.MISC_OPTIONS)
+
 	return oc
+	
+######################################################################################
+@route(common.PREFIX + "/SetMiscOptions")
+def SetMiscOptions(query, title, val, key, ntype, ll, ul, session, **kwargs):
+
+	try:
+		if ntype == 'num':
+			val = int(val)
+			val = int(query)
+			ll = int(ll)
+			ul = int(ul)
+			
+			if (val >= ll and val < ul) or (val > ll and val <= ul):
+				pass
+			else:
+				return MC.message_container('Error', 'Value out of range !')
+		elif ntype == 'bool':
+			val = True if str(val).lower() == 'true' else False
+			val = True if str(query).lower() == 'true' else False
+	except:
+		pass
+
+	try:
+		common.MISC_OPTIONS[key]['val'] = val
+		if ntype == 'num':
+			oc = ObjectContainer(title2='%s has been set to %s' % (title,val), no_cache=common.isForceNoCache())
+			oc.add(DirectoryObject(
+				key = Callback(GlobalOptions, session=session),
+				title = 'Global Options',
+				thumb = R(common.ICON_GLOBAL_OPTIONS)
+			))
+			oc.add(DirectoryObject(key = Callback(MainMenu),title = '<< Main Menu',thumb = R(common.ICON)))
+			return oc
+		else:
+			return MC.message_container(title, '%s has been set to %s' % (title,val))
+	except Exception as e:
+		Log.Error(e)
+		
+	return MC.message_container('Error', 'An Error occurred !')
 	
 ######################################################################################
 @route(PREFIX + "/ThreadsStatus")
@@ -639,7 +678,7 @@ def DownloadOptions(session, refresh=0, reset='false', **kwargs):
 	if reset == 'true':
 		common.DOWNLOAD_OPTIONS = common.DOWNLOAD_OPTIONS_CONST
 		
-	oc = ObjectContainer(title2='Download Options', no_cache=common.isForceNoCache())
+	oc = ObjectContainer(title2='Download Library Path Options', no_cache=common.isForceNoCache())
 	#Log(common.DOWNLOAD_OPTIONS)
 	
 	LIB_SECTIONS_TYPES = ['show', 'movie']
@@ -701,12 +740,7 @@ def DownloadOptions(session, refresh=0, reset='false', **kwargs):
 		thumb = R(common.ICON_REFRESH)
 	))
 	
-	oc.add(DirectoryObject(
-		key = Callback(MainMenu),
-		title = '<< Save Selection >>',
-		summary = 'Save the Selection for Download Options',
-		thumb = R(common.ICON_SAVE)
-	))
+	oc.add(DirectoryObject(key = Callback(MainMenu),title = '<< Main Menu',thumb = R(common.ICON)))
 		
 	Dict['DOWNLOAD_OPTIONS'] = E(JSON.StringFromObject(common.DOWNLOAD_OPTIONS))
 	Dict.Save()
@@ -714,7 +748,7 @@ def DownloadOptions(session, refresh=0, reset='false', **kwargs):
 	#Log(common.DOWNLOAD_OPTIONS)
 			
 	return oc
-	
+		
 ######################################################################################
 @route(common.PREFIX + "/setdownloadchoice")
 def SetDownloadChoice(session, title, type, path, key, bool, **kwargs):
@@ -814,14 +848,12 @@ def Summarize(session=None, **kwargs):
 def ControlLog(session=None, choice=None, **kwargs):
 
 	oc = ObjectContainer(title2='Control Interface Log')
-	choices = ['All','Critical','Error','Fail','Success','Info']
+	choices = ['All','Critical','Error','Fail','Success','Info','Attn']
 	if choice == None:
 		for c in choices:
 			oc.add(DirectoryObject(key = Callback(ControlLog, choice=c, session=session), title = c, thumb = R(common.ICON_LIST)))
 		return oc
 	
-	Log(" === CONTROL LOGGER txt START === ")
-
 	loggertxt = common.interface.getControlLoggerTxts(forceDump = True)
 	loggertxt = list(reversed(loggertxt))
 
@@ -831,8 +863,6 @@ def ControlLog(session=None, choice=None, **kwargs):
 		else:
 			if choice.upper() in title_msg:
 				oc.add(DirectoryObject(title = title_msg, key = Callback(MC.message_container, header="Control Interface Log", message="Does Nothing")))
-	
-	Log(" === CONTROL LOGGER txt END === ")
 	
 	return oc
 	
@@ -2480,7 +2510,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 				if True:
 					server_lab.append(label)
 					
-				if common.DEV_DEBUG == True:
+				if common.DEV_DEBUG == True and Prefs["use_debug"]:
 					Log('-- %s --' % label)
 					
 				items = server.xpath(".//ul//li")
@@ -2497,7 +2527,8 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 					servers_list[label][c]={}
 					label_qual = item.xpath(".//a//text()")[0].strip()
 					
-					label_val = item.xpath(".//a//@data-id")[0]
+					label_val = item.xpath(".//a//@href")[0]
+					label_val = label_val[label_val.rfind('/')+1:]
 					servers_list[label][c]['quality'] = label_qual
 					servers_list[label][c]['loc'] = label_val
 					servers_list[label][c]['serverid'] = serverid
@@ -2507,7 +2538,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 						try:
 							for cx in servers_list[common.SERVER_PLACEHOLDER]:
 								if cx['quality'] == servers_list[label][c]['quality'] and cx['loc'] != '':
-									if common.DEV_DEBUG == True:
+									if common.DEV_DEBUG == True and Prefs["use_debug"]:
 										Log('%s == %s' % (int(cx['quality']), int(servers_list[label][c]['quality'])))
 									doFill = False
 									break
@@ -2515,7 +2546,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 							pass
 					
 					if doFill == True and len(servers_list[label][c]) > 0:
-						if common.DEV_DEBUG == True:
+						if common.DEV_DEBUG == True and Prefs["use_debug"]:
 							Log('c = %s' % servers_list[label][c])
 						if len(servers_list[common.SERVER_PLACEHOLDER]) <= c:
 							servers_list[common.SERVER_PLACEHOLDER].append([])
@@ -2527,18 +2558,6 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 					c += 1
 	
 		if common.DEV_DEBUG == True and Prefs["use_debug"]:
-			Log('================= servers_list-0 ===============')
-			Log(servers_list)
-			
-		# servers_list_1 = {}
-		# for k in servers_list.keys():
-			# servers_list_1[k]=[]
-			# for s in servers_list[k]:
-				# if len(s) != 0:
-					# servers_list_1[k].append(s)
-		# servers_list = servers_list_1
-		
-		if common.DEV_DEBUG == True and Prefs["use_debug"]:
 			Log('================= servers_list-1 ===============')
 			Log(servers_list)
 
@@ -2548,36 +2567,77 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 		#if len(server_lab) == 0:
 		server_lab.insert(0,common.SERVER_PLACEHOLDER)
 		
+		# fix two-part eps.
+		if isTvSeries == True:
+			for s in servers_list.keys():
+				for i in servers_list[s]:
+					i['quality'] = i['quality'].replace('+','-')
+		
 		# remap server list - this way its easier to iterate for tv-show episodes
-		servers_list_new = []
-		c=0
-		c_p=0
+		
+		m_min = 0
 		try:
-			m_min = servers_list[common.SERVER_PLACEHOLDER][0]['quality']
-			if '-' in m_min:
-				m_min = m_min.split('-')
-				m_min = m_min[0]
-			m_min = filter(lambda x: x.isdigit(), m_min)
-			m_min = int(m_min)
+			if isTvSeries == True:
+				m_min = servers_list[common.SERVER_PLACEHOLDER][0]['quality']
+				if '-' in m_min:
+					m_min = m_min.split('-')
+					m_min = m_min[0]
+				m_min = filter(lambda x: x.isdigit(), m_min)
+				m_min = int(m_min)
 		except:
 			m_min = 0
+			
+		m_max = 1
 		try:
-			m_max = servers_list[common.SERVER_PLACEHOLDER][len(servers_list[common.SERVER_PLACEHOLDER])-1]['quality']
-			if '-' in m_max:
-				m_max = m_max.split('-')
-				try:
-					m_max = str(int(m_max[1]))
-				except:
-					m_max = m_max[0]
-			m_max = filter(lambda x: x.isdigit(), m_max)
+			if isTvSeries == True:
+				m_max = servers_list[common.SERVER_PLACEHOLDER][len(servers_list[common.SERVER_PLACEHOLDER])-1]['quality']
+				if '-' in m_max:
+					m_max = m_max.split('-')
+					try:
+						m_max = str(int(m_max[1]))
+					except:
+						m_max = m_max[0]
+				m_max = filter(lambda x: x.isdigit(), m_max)
 			m_max = int(m_max)+1
 		except:
 			m_max = 1
 			
+		prev_eps = {}
+		for label in servers_list.keys():
+			prev_eps[label] = []
+			
+		if isTvSeries == True:
+			clean_servers_list = True
+			while clean_servers_list == True:
+				doBreak = False
+				for label in servers_list.keys():
+					for i in servers_list[label]:
+						q = re.sub('[^0-9]+', '-', i['quality']).replace('-','')
+						if len(q) == 0:
+							prev_eps[label].append(i)
+							servers_list[label].remove(i)
+							doBreak = True
+							break
+					if doBreak == True:
+						break
+				if doBreak == False:
+					clean_servers_list = False
+					
+			if common.DEV_DEBUG == True and Prefs["use_debug"]:
+				Log('================= servers_list-1-cleaned ===============')
+				Log(servers_list)
+				Log(prev_eps)
+			
 		if common.DEV_DEBUG == True and Prefs["use_debug"]:
 			Log('======== Fill missing %s - %s ========' % (min(m_min,1), max(len(servers_list[common.SERVER_PLACEHOLDER]),m_max)))
+		
+		# remap server list - this way its easier to iterate for tv-show episodes
+		c=0
+		c_p=0
 		nos = 1-min(m_min,1)
-		if len(servers_list) > 0:
+		servers_list_new = []
+		
+		if len(servers_list[common.SERVER_PLACEHOLDER]) > 0:
 			for no in range(min(m_min,1), max(len(servers_list[common.SERVER_PLACEHOLDER]),m_max)):
 				servers_list_new.append([])
 				servers_list_new[no-1+nos] = {}
@@ -2592,20 +2652,19 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 						skip_c = False
 						try:
 							sno = "%02d" % (no) if (no) <= 99 else "%03d" % (no)
-							if sno not in servers_list[common.SERVER_PLACEHOLDER][c]['quality']:
-								if common.DEV_DEBUG == True:
+							if sno not in servers_list[common.SERVER_PLACEHOLDER][c]['quality'] and isTvSeries == True:
+								if common.DEV_DEBUG == True and Prefs["use_debug"]:
 									Log('%s -- %s' % (sno, servers_list[common.SERVER_PLACEHOLDER][c]['quality']))
 								fillBlank = False
 								skip_c = True
 								q_lab = re.sub('[^0-9]+', '-', servers_list[common.SERVER_PLACEHOLDER][c]['quality'])
 							else:
-								if common.DEV_DEBUG == True:
+								if common.DEV_DEBUG == True and Prefs["use_debug"]:
 									Log('%s - %s' % (sno, servers_list[common.SERVER_PLACEHOLDER][c]['quality']))
 						except Exception as e:
-							Log(e)
-							if common.DEV_DEBUG == True:
+							Log('Error -- %s' % e)
+							if common.DEV_DEBUG == True and Prefs["use_debug"]:
 								Log('%s <-> %s' % (sno, servers_list[common.SERVER_PLACEHOLDER][c]['quality']))
-							pass
 						if fillBlank == True:
 							for c2 in range(0,len(servers_list[label])):
 								if servers_list[common.SERVER_PLACEHOLDER][c]['quality'] == servers_list[label][c2]['quality']:
@@ -2621,10 +2680,10 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 												str(int(q_lab))
 											except:
 												q_lab = no
-									if common.DEV_DEBUG == True:
+									if common.DEV_DEBUG == True and Prefs["use_debug"]:
 										Log('q_lab : %s' % q_lab)
 									servers_list_new[no-1+nos][label] = {'quality':q_lab,'loc':servers_list[label][c2]['loc'],'serverid':servers_list[label][c2]['serverid']}
-									if common.DEV_DEBUG == True:
+									if common.DEV_DEBUG == True and Prefs["use_debug"]:
 										Log('Fill- %s' % servers_list_new[no-1+nos][label])
 									break
 						else:
@@ -2634,7 +2693,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 				if skip_c == False:
 					c += 1
 				else:
-					if common.DEV_DEBUG == True:
+					if common.DEV_DEBUG == True and Prefs["use_debug"]:
 						Log('Fill-- %s' % servers_list_new[no-1+nos][common.SERVER_PLACEHOLDER])
 					q_lab = servers_list_new[no-1+nos][common.SERVER_PLACEHOLDER]['quality']
 					if '-' in q_lab:
@@ -2643,12 +2702,29 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 							c_p = c_p + int(q_lab[1])-int(q_lab[0])
 						except:
 							c += 1
-					
+
 		if common.DEV_DEBUG == True and Prefs["use_debug"]:
 			Log('================= servers_list_new-1B ===============')
 			Log(servers_list_new)
-				
-		if common.FMOVIES_HOSTS_UNPLAYABLE == True:
+			
+		for p in prev_eps[common.SERVER_PLACEHOLDER]:
+			item_to_insert = {}
+			for label in server_lab:
+				fillNone = True
+				for p2 in prev_eps[label]:
+					if p['quality'] == p2['quality']:
+						fillNone = False
+						item_to_insert[label]=p2
+						break
+				if fillNone == True:
+					item_to_insert[label]={'loc': '', 'serverid': None, 'quality': p['quality']}
+			servers_list_new.insert(0,item_to_insert)
+			
+		if common.DEV_DEBUG == True and Prefs["use_debug"]:
+			Log('================= servers_list_new-1C ===============')
+			Log(servers_list_new)
+
+		if common.MISC_OPTIONS[common.MISC_OPTIONS_KEYS[7]]['val'] == False:
 			for i in servers_list_new:
 				for h_unp in common.FMOVIES_HOSTS_DISABLED:
 					if h_unp in i.keys():
@@ -2958,7 +3034,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 							servers_list_new[c][label] = {'quality':"%02d" % (c+1), 'loc':'', 'serverid':None}
 				c += 1
 				
-		if common.FMOVIES_HOSTS_UNPLAYABLE == True:
+		if common.MISC_OPTIONS[common.MISC_OPTIONS_KEYS[7]]['val'] == False:
 			for i in servers_list_new:
 				for h_unp in common.FMOVIES_HOSTS_DISABLED:
 					if h_unp in i.keys():
@@ -3319,6 +3395,26 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 			
 		episodes_list_new = sorted(episodes_list_new, key=lambda k: k['ord_date'], reverse=False)
 		
+		######################################################################################
+		### Fix faulty date data ###
+		fix_air_date = False
+		if len(episodes_list_new) > 5:
+			ord_date = episodes_list_new[0]['ord_date']
+			fix_air_date = True
+			for item in episodes_list_new:
+				if ord_date != item['ord_date']:
+					fix_air_date = False
+					break
+					
+			if fix_air_date == True:
+				t_i = 1
+				for item in episodes_list_new[1:]:
+					t_float = common.datetime_to_float(item['ord_date'][:4],item['ord_date'][4:6],item['ord_date'][6:8]) + int(60*60*24*7*t_i)
+					item['ord_date'] = common.float_to_datetime(t_float)
+					item['air_date'] = time.strftime('%A %d %b, %Y', time.localtime(float(t_float))) # Friday Jan 18, 2019
+					t_i += 1
+				episodes_list_new = sorted(episodes_list_new, key=lambda k: k['ord_date'], reverse=False)
+		
 		if common.DEV_DEBUG == True and Prefs["use_debug"]:
 			Log('================= episodes_list_new ===============')
 			Log(episodes_list_new)
@@ -3340,32 +3436,46 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 		c=0
 		c2=0
 		
-		for eps in servers_list_new:	
-			if '-' in eps[server_lab[0]]['quality'] and verify2partcond(eps[server_lab[0]]['quality']): # 2 part episode condition
-				qual_i = max(int(eps[server_lab[0]]['quality'].split('-')[0])-eps_i,0)
-				eps_i += count2partcond(eps[server_lab[0]]['quality'])-1
-				try:
-					if episodes_list[qual_i]['air_date'] == episodes_list[qual_i+1]['air_date']:
-						c2 += count2partcond(eps[server_lab[0]]['quality'])-1
-				except:
-					pass
-			else:
-				try:
-					qual_i = max(int(eps[server_lab[0]]['quality'])-eps_i,0) + c2
-				except:
-					qual_i = c_not_missing+1 + c2
-					eps_i = eps_i-1 + c2
+		eps_c = 0
+		for eps in servers_list_new:
+			qual_i = eps_c
+			# if '-' in eps[server_lab[0]]['quality'] and verify2partcond(eps[server_lab[0]]['quality']): # 2 part episode condition
+				# qual_i = max(int(eps[server_lab[0]]['quality'].split('-')[0])-eps_i,0)
+				# eps_i += count2partcond(eps[server_lab[0]]['quality'])-1
+				# try:
+					# if episodes_list[qual_i]['air_date'] == episodes_list[qual_i+1]['air_date']:
+						# c2 += count2partcond(eps[server_lab[0]]['quality'])-1
+				# except:
+					# pass
+			# else:
+				# try:
+					# qual_i = max(int(eps[server_lab[0]]['quality'])-eps_i,0) + c2
+				# except:
+					# qual_i = c_not_missing+1 + c2
+					# eps_i = eps_i-1 + c2
 			
+			# try:
+				# if '-' in eps[server_lab[0]]['quality'] and episodes_list[qual_i]['name'] in eps[server_lab[0]]['quality'] and not verify2partcond(eps[server_lab[0]]['quality']):
+					# title_s = 'Ep:' + eps[server_lab[0]]['quality']
+					# episode = eps[server_lab[0]]['quality']
+				# else:
+					# title_s = 'Ep:' + eps[server_lab[0]]['quality'] + ' - ' + episodes_list[qual_i]['name']
+					# episode = eps[server_lab[0]]['quality']
+			# except:
+				# title_s = 'Ep:' + eps[server_lab[0]]['quality']
+				# episode = eps[server_lab[0]]['quality']
+				
 			try:
-				if '-' in eps[server_lab[0]]['quality'] and episodes_list[qual_i]['name'] in eps[server_lab[0]]['quality'] and not verify2partcond(eps[server_lab[0]]['quality']):
-					title_s = 'Ep:' + eps[server_lab[0]]['quality']
-					episode = eps[server_lab[0]]['quality']
-				else:
-					title_s = 'Ep:' + eps[server_lab[0]]['quality'] + ' - ' + episodes_list[qual_i]['name']
-					episode = eps[server_lab[0]]['quality']
-			except:
-				title_s = 'Ep:' + eps[server_lab[0]]['quality']
 				episode = eps[server_lab[0]]['quality']
+				title_s = 'Ep:%s - %s' % (episode,episodes_list[qual_i]['name'])
+			except:
+				try:
+					episode = eps[server_lab[0]]['quality']
+					title_s = 'Ep:%s' % episode
+				except:
+					episode = qual_i
+					title_s = 'Ep:%s' % episode
+
 			try:
 				desc = unicode('%s : %s' % (episodes_list[qual_i]['air_date'] , episodes_list[qual_i]['desc']))
 			except:
@@ -3375,9 +3485,9 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 			
 			try:
 				episodex = filter(lambda x: x.isdigit(), episode)
-				episode = episodex
+				episode = int(episodex)
 			except:
-				pass
+				episode = '0'
 			
 			try:
 				oc.add(DirectoryObject(
@@ -3390,6 +3500,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 				)
 				c_not_missing = qual_i
 				c += 1
+				eps_c += 1
 			except Exception as e:
 				Log('ERROR init.py>EpisodeDetail>Tv1 %s, %s %s' % (e.args, title, c))
 				pass
@@ -3400,7 +3511,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 			title = "Other Seasons",
 			summary = 'Other Seasons of ' + common.cleantitle.removeParanthesis(title),
 			art = art,
-			thumb = R(common.ICON_OTHERSEASONS)
+			thumb = common.GetThumb(R(common.ICON_OTHERSEASONS), session=session)
 			))
 		if Prefs['disable_downloader'] == False and AuthTools.CheckAdmin() == True:
 			oc.add(DirectoryObject(
@@ -3408,7 +3519,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 				title = 'Add to AutoPilot Queue',
 				summary = 'Add to the AutoPilot Queue for Downloading',
 				art = art,
-				thumb = R(common.ICON_OTHERSOURCESDOWNLOAD_AUTO)
+				thumb = common.GetThumb(R(common.ICON_OTHERSOURCESDOWNLOAD_AUTO), session=session)
 				)
 			)
 	elif isTvSeries and len(episodes_XS)==0:
@@ -3428,6 +3539,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 			
 		c=0
 		episode = None
+		episodeN = 0
 		for eps in servers_list_new:
 			try:
 				episode = eps[server_lab[0]]['quality']
@@ -3435,10 +3547,13 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 				try:
 					episodex = filter(lambda x: x.isdigit(), episode)
 					episode = episodex
+					episodeN = int(episode)
 				except:
-					pass
+					if episodeN != 0:
+						episodeN += 1
+					
 				oc.add(DirectoryObject(
-					key = Callback(TvShowDetail, tvshow=title, title=title_s, url=url, servers_list_new=E(JSON.StringFromObject(servers_list_new[c])), server_lab=E(JSON.StringFromObject(server_lab)), summary='Episode Summary Not Available.\n ' + summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, serverts=serverts, session=session, season=SeasonN, episode=int(episode), imdb_id=imdb_id),
+					key = Callback(TvShowDetail, tvshow=title, title=title_s, url=url, servers_list_new=E(JSON.StringFromObject(servers_list_new[c])), server_lab=E(JSON.StringFromObject(server_lab)), summary='Episode Summary Not Available.\n ' + summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, serverts=serverts, session=session, season=SeasonN, episode=int(episodeN), imdb_id=imdb_id),
 					title = title_s,
 					summary = 'Episode Summary Not Available.\n ' + summary,
 					art = art,
@@ -3446,6 +3561,9 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 					)
 				)
 				c += 1
+				if episodeN == 0:
+					episodeN += 1
+				
 			except Exception as e:
 				Log('ERROR init.py>EpisodeDetail>Tv2 %s, %s %s' % (e.args, title, c))
 				pass
@@ -3455,7 +3573,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 			title = "Other Seasons",
 			summary = 'Other Seasons of ' + common.cleantitle.removeParanthesisAndSeason(title, SeasonN),
 			art = art,
-			thumb = R(common.ICON_OTHERSEASONS)
+			thumb = common.GetThumb(R(common.ICON_OTHERSEASONS), session=session)
 			))
 		if Prefs['disable_downloader'] == False and AuthTools.CheckAdmin() == True:
 			oc.add(DirectoryObject(
@@ -3463,7 +3581,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 				title = 'Add to AutoPilot Queue',
 				summary = 'Add to the AutoPilot Queue for Downloading',
 				art = art,
-				thumb = R(common.ICON_OTHERSOURCESDOWNLOAD_AUTO)
+				thumb = common.GetThumb(R(common.ICON_OTHERSOURCESDOWNLOAD_AUTO), session=session)
 				)
 			)
 	elif isTvSeries == False and isMovieWithMultiPart == True:
@@ -4222,12 +4340,12 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 				CACHE_EXPIRY = common.CACHE_EXPIRY_TIME
 			Thread.Create(common.interface.getExtSources, {}, movtitle=movtitle, year=year, tvshowtitle=tvshowtitlecleaned, season=season, episode=episode, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY, ver=common.VERSION, imdb_id=imdb_id, session=session)
 		if doSleepForProgress:
-			time.sleep(7)
+			time.sleep(common.DEFAULT_SLEEP)
 			doSleepForProgress = False
 		prog = common.interface.checkProgress(key)
 	if prog < 100:
 		if doSleepForProgress:
-			time.sleep(7)
+			time.sleep(common.DEFAULT_SLEEP)
 			doSleepForProgress = False
 		prog = common.interface.checkProgress(key)
 		desc_prog = common.interface.getDescProgress(key)
@@ -4250,7 +4368,7 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 		else:
 			return MC.message_container('External Sources', 'Sources are being fetched ! Progress %s%s' % (prog,'%'))
 		
-	extSour = common.interface.getSources(encode=False, key=key)
+	extSour = common.interface.getSources(encode=False, key=key, partialSrcs=common.MISC_OPTIONS[common.MISC_OPTIONS_KEYS[6]]['val'])
 	
 	if use_prog_conc and prog < 100:
 		pass
@@ -4276,7 +4394,7 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 	if season != None and episode != None:
 		watch_title = common.cleantitle.tvWatchTitle(tvshowtitlecleaned,season,episode,title)
 	
-	if Prefs["use_debug"] and common.DEV_DEBUG == True:
+	if common.DEV_DEBUG == True and Prefs["use_debug"]:
 		Log("---------=== DEV DEBUG START ===------------")
 		Log("Length sources: %s" % len(internal_extSources))
 		for source in internal_extSources:
@@ -4528,12 +4646,12 @@ def ExtSourcesDownload(title, url, summary, thumb, art, rating, duration, genre,
 				CACHE_EXPIRY = common.CACHE_EXPIRY_TIME
 			Thread.Create(common.interface.getExtSources, {}, movtitle=movtitle, year=year, tvshowtitle=tvshowtitlecleaned, season=season, episode=episode, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY, ver=common.VERSION, imdb_id=imdb_id, session=session)
 		if doSleepForProgress:
-			time.sleep(7)
+			time.sleep(common.DEFAULT_SLEEP)
 			doSleepForProgress = False
 		prog = common.interface.checkProgress(key)
 	if prog < 100:
 		if doSleepForProgress:
-			time.sleep(7)
+			time.sleep(common.DEFAULT_SLEEP)
 			doSleepForProgress = False
 		prog = common.interface.checkProgress(key)
 		desc_prog = common.interface.getDescProgress(key)
@@ -4560,7 +4678,7 @@ def ExtSourcesDownload(title, url, summary, thumb, art, rating, duration, genre,
 	if season != None and episode != None:
 		watch_title = common.cleantitle.tvWatchTitle(tvshowtitlecleaned,season,episode,title)
 		
-	extSour = common.interface.getSources(encode=False, key=key)
+	extSour = common.interface.getSources(encode=False, key=key, partialSrcs=common.MISC_OPTIONS[common.MISC_OPTIONS_KEYS[6]]['val'])
 	
 	if use_prog_conc and prog < 100:
 		pass

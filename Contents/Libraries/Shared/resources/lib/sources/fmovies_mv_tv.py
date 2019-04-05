@@ -452,7 +452,13 @@ class source:
 					pass
 					
 				for trailer in trailers:
-					links_m = resolvers.createMeta(trailer, self.name, self.logo, '720p', links_m, key, poster=poster, vidtype='Trailer', testing=testing)
+					try:
+						l = resolvers.createMeta(trailer, self.name, self.logo, '720p', [], key, poster=poster, vidtype='Trailer', testing=testing)
+						if len(l) > 0:
+							control.setPartialSource(l[0],self.name)
+							links_m.append(l[0])
+					except:
+						pass
 			
 			riptype = None
 			try: quality = client.parseDOM(result, 'span', attrs = {'class': 'quality'})[0].lower()
@@ -598,7 +604,13 @@ class source:
 							
 							for i in result:
 								video_url = i
-								links_m = resolvers.createMeta(i, self.name, self.logo, quality, links_m, key, poster=poster, riptype=riptype, vidtype=vidtype, sub_url=sub_url, testing=testing)
+								try:
+									l = resolvers.createMeta(i, self.name, self.logo, quality, [], key, poster=poster, riptype=riptype, vidtype=vidtype, sub_url=sub_url, testing=testing)
+									if len(l) > 0:
+										control.setPartialSource(l[0],self.name)
+										links_m.append(l[0])
+								except:
+									pass
 						else:
 							target = result['target']
 							b, resp = self.decode_t(target, -18)
@@ -613,7 +625,13 @@ class source:
 								target = 'http:' + target
 								
 							video_url = target
-							links_m = resolvers.createMeta(target, self.name, self.logo, quality, links_m, key, poster=poster, riptype=riptype, vidtype=vidtype, sub_url=sub_url, testing=testing)
+							try:
+								l = resolvers.createMeta(target, self.name, self.logo, quality, [], key, poster=poster, riptype=riptype, vidtype=vidtype, sub_url=sub_url, testing=testing)
+								if len(l) > 0:
+									control.setPartialSource(l[0],self.name)
+									links_m.append(l[0])
+							except:
+								pass
 
 				except Exception as e:
 					log('FAIL', 'get_sources-7','%s' % e, dolog=False)
@@ -632,7 +650,13 @@ class source:
 									video_url = v_url
 									ret_error = ''
 									log(type='SUCCESS',method='get_sources-4.a.2', err=u'*PhantomJS* method is working: %s' % vx_url)
-									links_m = resolvers.createMeta(video_url, self.name, self.logo, quality, links_m, key, poster=poster, riptype=riptype, vidtype=vidtype, sub_url=sub_url, testing=testing)
+									try:
+										l = resolvers.createMeta(video_url, self.name, self.logo, quality, [], key, poster=poster, riptype=riptype, vidtype=vidtype, sub_url=sub_url, testing=testing)
+										if len(l) > 0:
+											control.setPartialSource(l[0],self.name)
+											links_m.append(l[0])
+									except:
+										pass
 							except Exception as e:
 								raise Exception('phantomjs (fmovies.js) not working: %s' % e)
 						else:

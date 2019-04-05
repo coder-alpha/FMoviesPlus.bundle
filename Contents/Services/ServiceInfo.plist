@@ -10,6 +10,13 @@
 				<string>^fmovies\:\/\/.+</string>
 			</array>
 		</dict>
+		<key>YouTube</key>
+		<dict>
+			<key>URLPatterns</key>
+			<array>
+				<string>^fmoviesyt\:\/\/.+</string>
+			</array>
+		</dict>
 	</dict>
 </dict>
 </plist>

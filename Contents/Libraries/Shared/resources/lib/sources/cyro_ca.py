@@ -210,32 +210,32 @@ class source:
 			data = dict([(i, data[i][0]) if data[i] else (i, '') for i in data])
 			
 			if 'episode' in data and 'season' in data:
-				url0 = (data['title'].translate(None, '\/:*?"\'<>|!,')).replace(' ', '-').replace('--', '-').lower() + "/s%s/e%s" % (data['season'],data['episode'])
+				url0 = (data['title'].translate(None, '\/:*?"\'<>|!,.')).replace(' ', '-').replace('--', '-').lower() + "/s%s/e%s" % (data['season'],data['episode'])
 				url_arr.append(url0)
 			else:
-				url1 = (data['title'].translate(None, '\/:*?"\'<>|!,')).replace(' ', '-').replace('--', '-').lower()
-				url2 = (data['title'].translate(None, '\/:*?"\'<>|!,')).replace(' ', '-').replace('--', '-').lower() + "-%s" % (data['year'])
+				url1 = (data['title'].translate(None, '\/:*?"\'<>|!,.')).replace(' ', '-').replace('--', '-').lower()
+				url2 = (data['title'].translate(None, '\/:*?"\'<>|!,.')).replace(' ', '-').replace('--', '-').lower() + "-%s" % (data['year'])
 				url_arr.append(url1)
 				url_arr.append(url2)
 				try:
 					title = data['title']
 					title = title.split(':')
 					title = title[0]
-					url3 = (title.translate(None, '\/:*?"\'<>|!,')).replace(' ', '-').replace('--', '-').lower()
+					url3 = (title.translate(None, '\/:*?"\'<>|!,.')).replace(' ', '-').replace('--', '-').lower()
 					url_arr.append(url3)
 				except:
 					pass
 				
 			if 'episode' in data and 'season' in data:
 				try:
-					url1 = (data['title'].split(':')[0].translate(None, '\/:*?"\'<>|!,')).replace(' ', '-').replace('--', '-').lower() + "/s%s/e%s" % (data['season'],data['episode'])
+					url1 = (data['title'].split(':')[0].translate(None, '\/:*?"\'<>|!,.')).replace(' ', '-').replace('--', '-').lower() + "/s%s/e%s" % (data['season'],data['episode'])
 					url_arr.append(url1)
 				except:
 					pass
 			else:
 				try:
-					url4 = (data['title'].split(':')[0].translate(None, '\/:*?"\'<>|!,')).replace(' ', '-').replace('--', '-').lower()
-					url5 = (data['title'].split(':')[0].translate(None, '\/:*?"\'<>|!,')).replace(' ', '-').replace('--', '-').lower()+ "-%s" % (data['year'])
+					url4 = (data['title'].split(':')[0].translate(None, '\/:*?"\'<>|!,.')).replace(' ', '-').replace('--', '-').lower()
+					url5 = (data['title'].split(':')[0].translate(None, '\/:*?"\'<>|!,.')).replace(' ', '-').replace('--', '-').lower()+ "-%s" % (data['year'])
 					url_arr.append(url4)
 					url_arr.append(url5)
 				except:
@@ -306,7 +306,10 @@ class source:
 						#print r
 						r = client.parseDOM(r, 'a', ret='href', attrs = {'id': 'dm1'})[0]
 						#print r
-						links = resolvers.createMeta(r, self.name, self.logo, quality, links, key, poster=poster, vidtype='Movie', sub_url=sub_url, testing=testing)
+						l = resolvers.createMeta(r, self.name, self.logo, quality, [], key, poster=poster, vidtype='Movie', sub_url=sub_url, testing=testing)
+						if len(l) > 0:
+							control.setPartialSource(l[0],self.name)
+							links.append(l[0])
 					except Exception as e:
 						log('FAIL', 'get_sources-1A', e , dolog=False)
 						try:
@@ -314,14 +317,20 @@ class source:
 							#print r
 							r = client.parseDOM(r, 'a', ret='href', attrs = {'id': 'mega'})[0]
 							#print r
-							links = resolvers.createMeta(r, self.name, self.logo, quality, links, key, poster=poster, vidtype='Movie', sub_url=sub_url, testing=testing)
+							l = resolvers.createMeta(r, self.name, self.logo, quality, [], key, poster=poster, vidtype='Movie', sub_url=sub_url, testing=testing)
+							if len(l) > 0:
+								control.setPartialSource(l[0],self.name)
+								links.append(l[0])
 						except Exception as e:
 							log('FAIL', 'get_sources-1B', e , dolog=False)	
 						
 					try:
 						r = self.returnFinalLink(url)
 						if r != None:
-							links = resolvers.createMeta(r, self.name, self.logo, quality, links, key, poster=poster, vidtype='Movie', sub_url=sub_url, testing=testing)
+							l = resolvers.createMeta(r, self.name, self.logo, quality, [], key, poster=poster, vidtype='Movie', sub_url=sub_url, testing=testing)
+							if len(l) > 0:
+								control.setPartialSource(l[0],self.name)
+								links.append(l[0])
 					except Exception as e:
 						log('FAIL', 'get_sources-2', e , dolog=False)	
 				
@@ -373,10 +382,19 @@ class source:
 									
 								if part2:
 									#print '2-part video'
-									links = resolvers.createMeta(r, self.name, self.logo, qualityt, links, key, poster=poster, vidtype=vidtype, txt='Part-1', sub_url=sub_url, testing=testing)
-									links = resolvers.createMeta(rx, self.name, self.logo, qualityt, links, key, poster=poster, vidtype=vidtype, txt='Part-2', sub_url=sub_url, testing=testing)
+									l = resolvers.createMeta(r, self.name, self.logo, qualityt, [], key, poster=poster, vidtype=vidtype, txt='Part-1', sub_url=sub_url, testing=testing)
+									if len(l) > 0:
+										control.setPartialSource(l[0],self.name)
+										links.append(l[0])
+									l = resolvers.createMeta(rx, self.name, self.logo, qualityt, [], key, poster=poster, vidtype=vidtype, txt='Part-2', sub_url=sub_url, testing=testing)
+									if len(l) > 0:
+										control.setPartialSource(l[0],self.name)
+										links.append(l[0])
 								else:
-									links = resolvers.createMeta(r, self.name, self.logo, qualityt, links, key, poster=poster, vidtype=vidtype, sub_url=sub_url, testing=testing)
+									l = resolvers.createMeta(r, self.name, self.logo, qualityt, [], key, poster=poster, vidtype=vidtype, sub_url=sub_url, testing=testing)
+									if len(l) > 0:
+										control.setPartialSource(l[0],self.name)
+										links.append(l[0])
 								
 							except:
 								pass

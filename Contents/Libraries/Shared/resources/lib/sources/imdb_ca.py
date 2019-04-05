@@ -282,15 +282,16 @@ class source:
 									try:
 										l = resolvers.createMeta(vidurl, self.name, self.logo, quality, [], key, vidtype=vidtype, testing=testing, txt=txt, poster=poster)
 										l = l[0]
+										control.setPartialSource(l,self.name)
 										if testing == True:
 											links.append(l)
 											break
 									except Exception as e:
 										log('ERROR', 'get_sources-0', '%s' % e, dolog=not testing)	
 									if l['quality'] in selection_map[txt].keys():
-										selection_map[txt][l['quality']].append({'fs' : int(l['fs']), 'link': l})
+										selection_map[txt][l['quality']].append({'fs' : int(l['fs']), 'src': l})
 									else:
-										selection_map[txt][l['quality']] = [{'fs' : int(l['fs']), 'link': l}]
+										selection_map[txt][l['quality']] = [{'fs' : int(l['fs']), 'src': l}]
 							except Exception as e:
 								log('ERROR', 'get_sources-1', '%s' % e, dolog=not testing)
 					except Exception as e:
@@ -306,7 +307,7 @@ class source:
 					qls = selection_map[sel_titles][sel]
 					files = sorted(qls, key=lambda k: k['fs'], reverse=True)
 					file = files[0]
-					links.append(file['link'])
+					links.append(file['src'])
 					
 			for i in links: sources.append(i)
 			

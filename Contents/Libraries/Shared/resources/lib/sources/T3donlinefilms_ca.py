@@ -38,7 +38,7 @@ class source:
 		self.base_link_alts = ['https://3donlinefilms.com','https://3dmoviesfullhd.com','https://www.freedocufilms.com']
 		self.base_link = self.base_link_alts[0]
 		self.MainPageValidatingContent = '3D online Films: Watch 3D Movies on Virtual Reality Glasses or TV'
-		self.type_filter = ['movie', 'show', 'anime']
+		self.type_filter = ['movie']
 		self.name = name
 		self.disabled = False
 		self.loggertxt = []
@@ -422,7 +422,10 @@ class source:
 					
 					file_data = urllib.urlencode(data_j)
 					
-					links_m = resolvers.createMeta(file_data, self.name, self.logo, qual, links_m, key, riptype, testing=testing, sub_url=sub_url, urlhost=client.geturlhost(page), poster=poster)
+					l = resolvers.createMeta(file_data, self.name, self.logo, qual, [], key, riptype, testing=testing, sub_url=sub_url, urlhost=client.geturlhost(page), poster=poster)
+					if len(l) > 0:
+						control.setPartialSource(l[0],self.name)
+						links_m.append(l[0])
 					
 					if testing == True and len(links_m) > 0:
 						break

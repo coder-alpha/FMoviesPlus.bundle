@@ -119,7 +119,7 @@ class sources:
 					self.providerInProcess.append('%s.py' % name)
 					c = __import__(name, globals(), locals(), [], -1).source()
 					log("Adding Provider %s : %s to Interface" % (c.info()['name'], c.info()['url']),name='providers')
-					self.providersCaller.append({'name':c.info()['name'], 'url':c.info()['url'], 'call':c})
+					self.providersCaller.append({'name':c.info()['name'], 'url':c.info()['url'], 'call':c, 'types':c.type_filter})
 					self.providers.append(c.info())
 					self.providersTimer[c.info()['name']] = {}
 					control.control_json[c.info()['name']] = {}
@@ -129,7 +129,7 @@ class sources:
 					try:
 						c = __import__(name, globals(), locals(), [], -1).source()
 						log("Adding Provider %s : %s to Interface" % (c.info()['name'], c.info()['url']),name='providers')
-						self.providersCaller.append({'name':c.info()['name'], 'url':c.info()['url'], 'call':c})
+						self.providersCaller.append({'name':c.info()['name'], 'url':c.info()['url'], 'call':c, 'types':c.type_filter})
 						self.providers.append(c.info())
 						self.providersTimer[c.info()['name']] = {}
 						control.control_json[c.info()['name']] = {}
@@ -192,13 +192,14 @@ class sources:
 					try:
 						source_name = 'Unknow source (import error)'
 						source_name = source['name']
-						log(err='Queuing Search for Movie: %s (%s) in Provider %s' % (title,year,source_name))
-						#thread_i = workers.Thread(self.getMovieSource, title, year, imdb, proxy_options, key, re.sub('_mv_tv$|_mv$|_tv$', '', source_name), source['call'])
-						thread_i = workers.Thread(self.getMovieSource, title, year, imdb, proxy_options, key, source_name, source['call'])
-						self.threads[key].append(thread_i)
-						self.threadSlots[key].append({'thread':thread_i, 'status':'idle', 'pos':pos, 'source':source_name})
-						pos += 1
-						#thread_i.start()
+						if content in source['types']:
+							log(err='Queuing Search for Movie: %s (%s) in Provider %s' % (title,year,source_name))
+							thread_i = workers.Thread(self.getMovieSource, title, year, imdb, proxy_options, key, source_name, source['call'])
+							self.threads[key].append(thread_i)
+							self.threadSlots[key].append({'thread':thread_i, 'status':'idle', 'pos':pos, 'source':source_name})
+							pos += 1
+						else:
+							log(err='Content Movie: %s (%s) not supported in Provider %s' % (title,year,source_name))
 					except Exception as e:
 						log(type='ERROR-CRITICAL', err='getSources %s - %s' % (source_name,e))
 			else:
@@ -215,13 +216,14 @@ class sources:
 					try:
 						source_name = 'Unknow source (import error)'
 						source_name = source['name']
-						log(err='Queuing Search for Show: %s S%sE%s in Provider %s' % (tvshowtitle,season,episode,source_name))
-						#thread_i = workers.Thread(self.getEpisodeSource, title, year, imdb, tvdb, season, episode, tvshowtitle, date, proxy_options, key, re.sub('_mv_tv$|_mv$|_tv$', '', source_name), source['call'])
-						thread_i = workers.Thread(self.getEpisodeSource, title, year, imdb, tvdb, season, episode, tvshowtitle, date, proxy_options, key, source_name, source['call'])
-						self.threads[key].append(thread_i)
-						self.threadSlots[key].append({'thread':thread_i, 'status':'idle', 'pos':pos, 'source':source_name})
-						pos += 1
-						#thread_i.start()
+						if content in source['types']:
+							log(err='Queuing Search for Show: %s S%sE%s in Provider %s' % (tvshowtitle,season,episode,source_name))
+							thread_i = workers.Thread(self.getEpisodeSource, title, year, imdb, tvdb, season, episode, tvshowtitle, date, proxy_options, key, source_name, source['call'])
+							self.threads[key].append(thread_i)
+							self.threadSlots[key].append({'thread':thread_i, 'status':'idle', 'pos':pos, 'source':source_name})
+							pos += 1
+						else:
+							log(err='Content Show: %s S%sE%s not supported in Provider %s' % (tvshowtitle,season,episode,source_name))
 					except Exception as e:
 						log(type='ERROR-CRITICAL', err='getSources %s - %s' % (source_name,e))
 
@@ -229,16 +231,11 @@ class sources:
 			thread_ex.start()
 			self.executeThreadsStatus(key, thread_ex)
 
-			#sourceLabel = [re.sub('_mv_tv$|_mv$|_tv$', '', i) for i in sourceDict]
-			#sourceLabel = [re.sub('v\d+$', '', i).upper() for i in sourceLabel]
-
-			#time.sleep(0.5)
 			self.getSourcesAlive = False
 
 			return self.sources
 		except Exception as e:
 			log(type='ERROR-CRITICAL', err='getSources - %s' % e)
-		#	self.purgeSourcesKey(key=key)
 
 			return self.sources
 			
@@ -372,7 +369,7 @@ class sources:
 			self.sources.extend(sources)
 		except:
 			pass
-			
+
 		doneMarked = False
 		try:
 			s_in_threadSlots = self.threadSlots[key]
@@ -526,19 +523,36 @@ class sources:
 			bool = False
 			
 		return bool
+		
+	def extendPartialSources(self):
+		try:
+			if len(control.partial_sources) > 0:
+				log(type='INFO', err='Moving %s partial sources from control.' % len(control.partial_sources))
+				self.sources.extend(control.partial_sources)
+				del control.partial_sources[:]
+		except Exception as e:
+			log(type='ERROR', err='extendPartialSources : %s' % e)
 
 	def sourcesFilter(self, key=None):
 		try:
 			filter_extSources = []
 			dups = []
+			rem_items = []
 			for i in self.sources:
-				if i['url'] not in dups:
+				if i not in dups:
 					if key == None:
 						filter_extSources.append(i)
-						dups.append(i['url'])
+						dups.append(i)
 					elif i['key'] == key:
 						filter_extSources.append(i)
-						dups.append(i['url'])
+						dups.append(i)
+				else:
+					rem_items.append(i)
+					
+			if len(rem_items) > 0:
+				for i in rem_items:
+					self.sources.remove(i)
+				log(type='INFO', err='Removed %s items as dups from sources !' % len(rem_items))
 					
 			return filter_extSources
 		except Exception as e:

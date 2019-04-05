@@ -484,7 +484,13 @@ class source:
 					pass
 					
 				for trailer in trailers:
-					links_m = resolvers.createMeta(trailer, self.name, self.logo, '720p', links_m, key, vidtype='Trailer', testing=testing)
+					try:
+						l = resolvers.createMeta(trailer, self.name, self.logo, '720p', [], key, vidtype='Trailer', testing=testing)
+						if len(l) > 0:
+							control.setPartialSource(l[0],self.name)
+							links_m.append(l[0])
+					except:
+						pass
 			
 			links = client.parseDOM(result, 'tbody')
 			
@@ -545,7 +551,13 @@ class source:
 							riptype = riptypex
 							quality = '480p'
 							
-						links_m = resolvers.createMeta(url, self.name, self.logo, quality, links_m, key, vidtype=vidtype, poster=poster, riptype=riptype, testing=testing)
+						try:
+							l = resolvers.createMeta(url, self.name, self.logo, quality, [], key, vidtype=vidtype, poster=poster, riptype=riptype, testing=testing)
+							if len(l) > 0:
+								control.setPartialSource(l[0],self.name)
+								links_m.append(l[0])
+						except:
+							pass
 				except:
 					pass
 					

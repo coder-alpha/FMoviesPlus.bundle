@@ -1,12 +1,12 @@
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.77' # Release notation (x.y - where x is major and y is minor)
-TAG = 'dev 03-29-2019'
+VERSION = '0.80' # Release notation (x.y - where x is major and y is minor)
+TAG = 'dev'
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
 ################################################################################
 
-import time, base64, unicodedata, re, random, string, hashlib, io
+import time, base64, unicodedata, re, random, string, hashlib, io, datetime
 from resources.lib.libraries import control, client, cleantitle, jsfdecoder, jsunpack
 from resources.lib.resolvers import host_openload, host_gvideo, host_mega, host_rapidvideo, host_streamango, host_direct
 import phantomjs
@@ -64,6 +64,7 @@ TOKEN_CODE = []
 TO_GB = float(1024*1024*1024)
 MIN_FILE_SIZE = 999999
 DOWNLOAD_CHUNK_SIZE = 1.0 # in MB
+DEFAULT_SLEEP = 1.0
 
 # Help videos on Patebin
 Help_Videos = "https://pastebin.com/raw/BMMHQund"
@@ -80,11 +81,15 @@ EMOJI_ANIME = u'\u2318'
 EMOJI_EXT = u'*'
 EMOJI_GLASSES = u'\U0001F453'
 
+EMOJI_DOWNARROW2 = u'\U0001F53B'
+
 # Simple Emoji's
 EMOJI_HEART = u'\u2665'
 EMOJI_TICK = u'\u2713'
 EMOJI_CROSS = u'\u2717'
 EMOJI_QUESTION = u'?'
+EMOJI_DOWNARROW = u'\u2B07'
+EMOJI_DOWNARROW3x = u'\u2B07'+u'\u2B07'+u'\u2B07'
 
 # Text Emoji equivalent
 EMOJI_TXT_POS = u'(v)'
@@ -129,10 +134,6 @@ DEVICE_OPTION = {DEVICE_OPTIONS[0]:'The awesome Keyboard for Search impaired dev
 				DEVICE_OPTIONS[12]:'Downloads-Listing - Reverse the order of Downloads i.e. oldest entry on top',
 				DEVICE_OPTIONS[13]:'Force-Transcoding (IMDb) - Force transcoding IMDb videos by PMS'}
 
-GLOBAL_OPTIONS = ['Retry-Failed-Downloads','Dont-Refresh-Library-Downloads']
-GLOBAL_OPTION = {GLOBAL_OPTIONS[0]:'On Plugin Initialization Retry Failed Downloads',
-				GLOBAL_OPTIONS[1]:'Don\'t perform a Library Section Refresh after an Item is Downloaded'}
-
 DEVICE_OPTION_CONSTRAINTS = {DEVICE_OPTIONS[2]:[{'Pref':'use_https_alt','Desc':'Use Alternate SSL/TLS','ReqValue':'disabled'}]}
 DEVICE_OPTION_CONSTRAINTS2 = {DEVICE_OPTIONS[5]:[{'Option':6,'ReqValue':False}], DEVICE_OPTIONS[6]:[{'Option':5,'ReqValue':False}]}
 DEVICE_OPTION_PROPOGATE_TO_CONTROL = {DEVICE_OPTIONS[7]:True}
@@ -153,6 +154,25 @@ DOWNLOAD_AUTOPILOT_CONST = {'movie':[], 'show':[], 'extras':[]}
 DOWNLOAD_AUTOPILOT = {'movie':[], 'show':[], 'extras':[]}
 DOWNLOAD_AUTOPILOT_STATUS = ['Processing','UnAvailable','In Download Queue','Waiting','Error','Scheduled','Completed Pending Removal']
 DOWNLOAD_FMP_EXT = '.FMPTemp'
+
+SERVER_PLACEHOLDER = 'FMOVIES'
+FMOVIES_SERVER_REMAP = {'Server F':'Google-F', 'Server G':'Google-G', 'F5 Beta':'PrettyFast', 'F5 - HQ':'PrettyFast'}
+FMOVIES_HOSTS_DISABLED = ['MyCloud','PrettyFast']
+
+MISC_OPTIONS_KEYS = ['SOURCE_SEARCH_TIMEOUT','SMART_ADD_EP_FALLOUT_DAYS','SMART_ADD_SEASON_FALLOUT_DAYS','Extend-Smart-Add-For-Seasons','Retry-Failed-Downloads','Dont-Refresh-Library-Downloads','Retrieve-And-Display-Partial-Sources','FMOVIES_HOSTS_UNPLAYABLE']
+MISC_OPTIONS_CONST = {
+					MISC_OPTIONS_KEYS[0]:{'type':'num','title':'AutoPilot Source Search Timeout','val':600, 'unit':'sec', 'desc':'AutoPilot Source Timeout seconds (%s-%s): %s','LL':300,'UL':300*4}, 
+					MISC_OPTIONS_KEYS[1]:{'type':'num','title':'AutoPilot Smart Add (Episode) Entry','val':30,'unit':'day', 'desc':'AutoPilot Smart Add (Episode) Entry retain days (%s-%s): %s','LL':15,'UL':15*6}, 
+					MISC_OPTIONS_KEYS[2]:{'type':'num','title':'AutoPilot Smart Add (Season) Entry','val':365,'unit':'day', 'desc':'AutoPilot Smart Add (Season) Entry retain days (%s-%s): %s','LL':365,'UL':365*2}, 
+					MISC_OPTIONS_KEYS[3]:{'type':'bool','title':'Extend Smart Add AutoPilot Option for Seasons as well','val':False,'unit':'', 'desc':'Extend Smart Add AutoPilot Option for Seasons as well: %s','LL':0,'UL':0}, MISC_OPTIONS_KEYS[4]:{'type':'bool','title':'On Plugin Initialization Retry Failed Downloads','val':False,'unit':'', 'desc':'On Plugin Initialization Retry Failed Downloads: %s','LL':0,'UL':0}, 
+					MISC_OPTIONS_KEYS[5]:{'type':'bool','title':'Don\'t perform a Library Section Refresh after an Item is Downloaded','val':False,'unit':'', 'desc':'Don\'t perform a Library Section Refresh after an Item is Downloaded: %s','LL':0,'UL':0}, 
+					MISC_OPTIONS_KEYS[6]:{'type':'bool','title':'Retrieve And Display Partial Sources','val':False,'unit':'', 'desc':'Retrieve And Display Partial Sources while Provider is processing All Sources: %s','LL':0,'UL':0},
+					MISC_OPTIONS_KEYS[7]:{'type':'bool','title':'Show Unplayable Hosts for FMovies site','val':False,'unit':'', 'desc':'Show Unplayable Hosts for FMovies site in item listing %s: %s' % (FMOVIES_HOSTS_DISABLED, '%s'),'LL':0,'UL':0}
+					}
+MISC_OPTIONS = MISC_OPTIONS_CONST.copy()
+
+AUTOPILOT_SCHEDULER = [False]
+AUTOPILOT_SCHEDULER_POST_REFRESH = []
 
 ANIME_SEARCH = []
 ANIME_KEY = '9anime'
@@ -264,10 +284,6 @@ ENCRYPTED_URLS = False
 REFACTOR_WIP = True
 DOWNLOAD_ALL_SEASONS = True
 WBH = 'aHR0cHM6Ly9ob29rLmlvL2NvZGVyLWFscGhhL3Rlc3Q='
-SERVER_PLACEHOLDER = 'FMOVIES'
-FMOVIES_SERVER_REMAP = {'Server F':'Google-F', 'Server G':'Google-G', 'F5 Beta':'PrettyFast'}
-FMOVIES_HOSTS_DISABLED = ['MyCloud','PrettyFast']
-FMOVIES_HOSTS_UNPLAYABLE = True
 
 DEV_DEBUG = True if 'dev' in TAG else False
 
@@ -667,6 +683,16 @@ def GetThumb(thumb, session=None, force_list_view_off=False, **kwargs):
 	if thumb != None and thumb == 'N/A':
 		thumb = R(ICON_UNAV)
 	return thumb
+	
+####################################################################################################
+@route(PREFIX + "/GetSummary")	
+def GetSummary(summary, session=None, force_list_view_off=False, **kwargs):
+	if force_list_view_off == False and UsingOption(key=DEVICE_OPTIONS[1], session=session):
+		return None
+	
+	if summary != None and summary == 'N/A':
+		summary = 'Summary Not Available'
+	return summary
 	
 ####################################################################################################
 # Get HTTP response code (200 == good)
@@ -1189,7 +1215,17 @@ def convertMonthToInt(text):
 		m += 1
 		
 	return text.strip()
-		
+
+def datetime_to_float(y, m, d):
+	d = datetime.datetime(int(y), int(m), int(d), 12, 0)
+	epoch = datetime.datetime.utcfromtimestamp(0)
+	total_seconds =  (d - epoch).total_seconds()
+	# total_seconds will be in decimals (millisecond precision)
+	return total_seconds
+
+def float_to_datetime(fl):
+	return str(datetime.datetime.fromtimestamp(fl)).split(' ')[0].replace('-','')
+
 ####################################################################################################
 @route(PREFIX + "/removeAccents")
 def removeAccents(text):

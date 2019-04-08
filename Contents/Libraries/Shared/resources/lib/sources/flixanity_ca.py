@@ -52,6 +52,7 @@ class source:
 		self.language = ['en']
 		self.type_filter = ['movie', 'show', 'anime']
 		self.domains = ['flixanity.site']
+		self.avoidHosts = ['cartoonhd.pw']
 		self.base_link_alts = [BASE_URL]
 		self.base_link = self.base_link_alts[0]
 		self.MainPageValidatingContent = 'FliXanity - Watch Movies & TV Shows Online'
@@ -243,17 +244,20 @@ class source:
 				poster = d['poster']
 				headers = {'Referer':url}
 				try:
-					l = resolvers.createMeta(vidurl, self.name, self.logo, quality, [], key, poster=poster, testing=testing, headers=headers)
-					if len(l) > 0:
-						control.setPartialSource(l[0],self.name)
-						links_m.append(l[0])
-					
-					if testing == True:
-						break
+					if client.geturlhost(vidurl) not in self.avoidHosts:
+						l = resolvers.createMeta(vidurl, self.name, self.logo, quality, [], key, poster=poster, testing=testing, headers=headers)
+						for ll in l:
+							if ll != None and 'key' in ll.keys():
+								links_m.append(ll)
+						
+						if testing == True:
+							break
 				except Exception as e:
 					log('ERROR', 'get_sources-0', '%s' % e, dolog=not testing)	
 					
-			for i in links_m: sources.append(i)
+			for l in links_m:
+				if l != None and 'key' in l.keys():
+					sources.append(l)
 			
 			if len(sources) == 0:
 				log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key))

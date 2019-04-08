@@ -276,15 +276,17 @@ class source:
 								qualityt = u'720p'
 							try:
 								l = resolvers.createMeta(i, self.name, self.logo, qualityt, [], key, vidtype='Show', testing=testing)
-								if len(l) > 0:
-									control.setPartialSource(l[0],self.name)
-									links_m.append(l[0])
+								for ll in l:
+									if ll != None and 'key' in ll.keys():
+										links_m.append(ll)
 							except:
 								pass
 				except:
 					pass
 					
-			for i in links_m: sources.append(i)
+			for l in links_m:
+				if l != None and 'key' in l.keys():
+					sources.append(l)
 			
 			if len(sources) == 0:
 				log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key))

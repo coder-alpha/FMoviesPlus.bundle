@@ -43,6 +43,8 @@ CACHE_IGNORELIST = ['apidata.googleusercontent.com']
 PAIRS = []
 FLAGS = []
 
+USE_PHANTOMJS = False
+
 newmarketgidstorage = 'MarketGidStorage=%7B%220%22%3A%7B%22svspr%22%3A%22%22%2C%22svsds%22%3A15%2C%22TejndEEDj%22%3A%22MTQ5MzIxMTc0OTQ0NDExMDAxNDc3NDE%3D%22%7D%2C%22C110014%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493215038742%7D%2C%22C110025%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493216772437%7D%2C%22C110023%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493216771928%7D%7D'
 
 ####################################################################################################
@@ -948,23 +950,24 @@ def get_sources2(url, key, prev_error=None, use_debug=True, session=None, **kwar
 		error = ''
 		host_type = None
 		subtitle = None
-		if (common.control.setting('use_phantomjs') == common.control.phantomjs_choices[1] and common.control.setting('%s-%s' % (session, 'Use-PhantomJS')) == True) or common.control.setting('use_phantomjs') == common.control.phantomjs_choices[2]:
-			vx_url = '%s/%s' % (url,key)
-			Log(u'Trying phantomjs method: %s' % vx_url)
-			try:
-				v_url, bool = common.phantomjs.decode(vx_url, js='fmovies.js')
-				if bool == False:
-					ret_error = v_url
-					raise Exception(ret_error)
-				else:
-					video_url = v_url
-					ret_error = ''
-					Log(u'*PhantomJS* method is working: %s' % vx_url)
-					host_type = common.client.geturlhost(video_url)
-			except:
-				raise Exception('phantomjs (fmovies.js) not working')
-		else:
-			raise Exception('phantomjs is disabled')
+		if USE_PHANTOMJS == True:
+			if (common.control.setting('use_phantomjs') == common.control.phantomjs_choices[1] and common.control.setting('%s-%s' % (session, 'Use-PhantomJS')) == True) or common.control.setting('use_phantomjs') == common.control.phantomjs_choices[2]:
+				vx_url = '%s/%s' % (url,key)
+				Log(u'Trying phantomjs method: %s' % vx_url)
+				try:
+					v_url, bool = common.phantomjs.decode(vx_url, js='fmovies.js')
+					if bool == False:
+						ret_error = v_url
+						raise Exception(ret_error)
+					else:
+						video_url = v_url
+						ret_error = ''
+						Log(u'*PhantomJS* method is working: %s' % vx_url)
+						host_type = common.client.geturlhost(video_url)
+				except:
+					raise Exception('phantomjs (fmovies.js) not working')
+			else:
+				raise Exception('phantomjs is disabled')
 	except Exception as e:
 		error = u'%s' % e
 		Log(error)
@@ -972,18 +975,59 @@ def get_sources2(url, key, prev_error=None, use_debug=True, session=None, **kwar
 			error = prev_error + ' and ' + error
 	return video_url, isTargetPlay, error, host_type, subtitle
 	
-def get_servers(serverts, page_url, is9Anime=False, use_https_alt=False):
-	
+def get_item_page(page_url, is9Anime=False, use_https_alt=False):
 	try:
-		T_BASE_URL = BASE_URL
-		T_BASE_URL = 'https://%s' % common.client.geturlhost(page_url)
-		page_id = page_url.rsplit('.', 1)[1]
-		server_query = '/ajax/film/servers/%s' % page_id
-		server_url = urlparse.urljoin(T_BASE_URL, server_query)
-		result = common.interface.request_via_proxy_as_backup(server_url, httpsskip=use_https_alt)
-		html = '<html><body><div id="servers-container">%s</div></body></html>' % json.loads(result)['html'].replace('\n','').replace('\\','')
-		return html
-	except:
+		htm = None
+		error = ''
+		if USE_PHANTOMJS == True:
+			if (common.control.setting('use_phantomjs') == common.control.phantomjs_choices[1] and common.control.setting('%s-%s' % (session, 'Use-PhantomJS')) == True) or common.control.setting('use_phantomjs') == common.control.phantomjs_choices[2]:
+				Log(u'Trying phantomjs method: %s' % page_url)
+				try:
+					v_url, bool = common.phantomjs.decode(page_url, js='fmoviesPage.js')
+					if bool == False:
+						ret_error = v_url
+						raise Exception(ret_error)
+					else:
+						video_url = v_url
+						ret_error = ''
+						Log(u'*PhantomJS* method is working: %s' % page_url)
+						host_type = common.client.geturlhost(video_url)
+				except:
+					raise Exception('phantomjs (fmoviesPage.js) not working')
+			else:
+				raise Exception('phantomjs is disabled')
+	except Exception as e:
+		error = u'%s' % e
+		Log(error)
+	return htm, error
+	
+def get_servers(serverts, page_url, is9Anime=False, use_https_alt=False):
+	try:
+		if USE_PHANTOMJS == True and ((common.control.setting('use_phantomjs') == common.control.phantomjs_choices[1] and common.control.setting('%s-%s' % (session, 'Use-PhantomJS')) == True) or common.control.setting('use_phantomjs') == common.control.phantomjs_choices[2]):
+			Log(u'Trying phantomjs method: %s' % page_url)
+			try:
+				v_url, bool = common.phantomjs.decode(page_url, js='fmoviesServers.js')
+				if bool == False:
+					ret_error = v_url
+					raise Exception(ret_error)
+				else:
+					htm = v_url
+					ret_error = ''
+					Log(u'*PhantomJS* method is working: %s' % page_url)
+					return htm
+			except:
+				raise Exception('phantomjs (fmoviesServers.js) not working')
+		else:
+			T_BASE_URL = BASE_URL
+			T_BASE_URL = 'https://%s' % common.client.geturlhost(page_url)
+			page_id = page_url.rsplit('.', 1)[1]
+			server_query = '/ajax/film/servers/%s' % page_id
+			server_url = urlparse.urljoin(T_BASE_URL, server_query)
+			result = common.interface.request_via_proxy_as_backup(server_url, httpsskip=use_https_alt)
+			html = '<html><body><div id="servers-container">%s</div></body></html>' % json.loads(result)['html'].replace('\n','').replace('\\','')
+			return html
+	except Exception as e:
+		Log(e)
 		return None
 		
 def r01(t, e, token_error=False, use_code=True):

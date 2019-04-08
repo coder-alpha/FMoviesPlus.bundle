@@ -182,14 +182,16 @@ class host:
 						log(type='INFO',method='createMeta', err=u'durl:%s ; res:%s; fs:%s' % (vidurl,quality,fs))
 						files_ret.append({'source':self.name, 'maininfo':'', 'titleinfo':txt, 'quality':quality, 'vidtype':vidtype, 'rip':riptype, 'provider':provider, 'orig_url':orig_url, 'url':durl, 'durl':durl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':fs, 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'poster':poster, 'sub_url':sub_url, 'subdomain':client.geturlhost(url), 'page_url':page_url, 'misc':{'player':'iplayer', 'gp':False}, 'seq':seq})
 					except Exception as e:
-						log(type='ERROR',method='createMeta', err=u'%s' % e)
+						log(type='FAIL',method='createMeta', err=u'%s' % e)
 						files_ret.append({'source':urlhost, 'maininfo':'', 'titleinfo':txt, 'quality':quality, 'vidtype':vidtype, 'rip':'Unknown' ,'provider':provider, 'orig_url':orig_url, 'url':durl, 'durl':durl, 'urldata':urldata, 'params':params, 'logo':logo, 'online':online, 'allowsDownload':self.allowsDownload, 'resumeDownload':self.resumeDownload, 'allowsStreaming':self.allowsStreaming, 'key':key, 'enabled':True, 'fs':fs, 'file_ext':file_ext, 'ts':time.time(), 'lang':lang, 'sub_url':sub_url, 'poster':poster, 'subdomain':client.geturlhost(url), 'page_url':page_url, 'misc':{'player':'iplayer', 'gp':False}, 'seq':seq})
 					seq += 1
 		except Exception as e:
 			log('ERROR', 'createMeta', '%s' % e)
 			
 		for fr in files_ret:
-			links.append(fr)
+			if fr != None and 'key' in fr.keys():
+				control.setPartialSource(fr,self.name)
+				links.append(fr)
 
 		if len(files_ret) > 0:
 			log('SUCCESS', 'createMeta', 'Successfully processed %s link >>> %s' % (provider, orig_url), dolog=self.init)
@@ -258,7 +260,7 @@ def resolve(url, online=None, USE_POST=False, page_url=None, **kwargs):
 				raise Exception('No mp4 video found')
 		except Exception as e:
 			err = e
-			log('ERROR', 'resolve', 'link > %s : %s' % (url, e), dolog=True)
+			log('FAIL', 'resolve', 'link > %s : %s' % (url, e), dolog=True)
 
 		return (video_url, err, None)
 		

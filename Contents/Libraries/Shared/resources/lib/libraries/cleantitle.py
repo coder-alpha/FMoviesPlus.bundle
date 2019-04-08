@@ -19,7 +19,7 @@
 '''
 
 
-import re,unicodedata,base64,urlparse
+import re,unicodedata,base64,urlparse,string
 
 
 def movie(title):
@@ -130,6 +130,14 @@ def title_from_key(key):
 	except:
 		title = 'Unknown Title'
 	return title
+	
+def asciiOnly(s):
+	try:
+		printable = set(string.printable)
+		r = filter(lambda x: x in printable, s)
+		return r
+	except:
+		return s
 
 def get(title):
 	if title == None: return

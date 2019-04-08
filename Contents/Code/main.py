@@ -2563,183 +2563,184 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 
 		# label array of servers available - sort them so that presentation order is consistent
 		server_lab = sorted(server_lab)
-		
-		#if len(server_lab) == 0:
-		server_lab.insert(0,common.SERVER_PLACEHOLDER)
-		
-		# fix two-part eps.
-		if isTvSeries == True:
-			for s in servers_list.keys():
-				for i in servers_list[s]:
-					i['quality'] = i['quality'].replace('+','-')
-		
-		# remap server list - this way its easier to iterate for tv-show episodes
-		
-		m_min = 0
-		try:
-			if isTvSeries == True:
-				m_min = servers_list[common.SERVER_PLACEHOLDER][0]['quality']
-				if '-' in m_min:
-					m_min = m_min.split('-')
-					m_min = m_min[0]
-				m_min = filter(lambda x: x.isdigit(), m_min)
-				m_min = int(m_min)
-		except:
-			m_min = 0
-			
-		m_max = 1
-		try:
-			if isTvSeries == True:
-				m_max = servers_list[common.SERVER_PLACEHOLDER][len(servers_list[common.SERVER_PLACEHOLDER])-1]['quality']
-				if '-' in m_max:
-					m_max = m_max.split('-')
-					try:
-						m_max = str(int(m_max[1]))
-					except:
-						m_max = m_max[0]
-				m_max = filter(lambda x: x.isdigit(), m_max)
-			m_max = int(m_max)+1
-		except:
-			m_max = 1
-			
-		prev_eps = {}
-		for label in servers_list.keys():
-			prev_eps[label] = []
-			
-		if isTvSeries == True:
-			clean_servers_list = True
-			while clean_servers_list == True:
-				doBreak = False
-				for label in servers_list.keys():
-					for i in servers_list[label]:
-						q = re.sub('[^0-9]+', '-', i['quality']).replace('-','')
-						if len(q) == 0:
-							prev_eps[label].append(i)
-							servers_list[label].remove(i)
-							doBreak = True
-							break
-					if doBreak == True:
-						break
-				if doBreak == False:
-					clean_servers_list = False
-					
-			if common.DEV_DEBUG == True and Prefs["use_debug"]:
-				Log('================= servers_list-1-cleaned ===============')
-				Log(servers_list)
-				Log(prev_eps)
-			
-		if common.DEV_DEBUG == True and Prefs["use_debug"]:
-			Log('======== Fill missing %s - %s ========' % (min(m_min,1), max(len(servers_list[common.SERVER_PLACEHOLDER]),m_max)))
-		
-		# remap server list - this way its easier to iterate for tv-show episodes
-		c=0
-		c_p=0
-		nos = 1-min(m_min,1)
 		servers_list_new = []
 		
-		if len(servers_list[common.SERVER_PLACEHOLDER]) > 0:
-			for no in range(min(m_min,1), max(len(servers_list[common.SERVER_PLACEHOLDER]),m_max)):
-				servers_list_new.append([])
-				servers_list_new[no-1+nos] = {}
-				skip_c = False
-				for label in servers_list.keys():
-					if c > 99:
-						servers_list_new[no-1+nos][label] = {'quality':"%03d" % (no), 'loc':'', 'serverid':None}
-					else:
-						servers_list_new[no-1+nos][label] = {'quality':"%02d" % (no), 'loc':'', 'serverid':None}
-					try:
-						fillBlank = True
-						skip_c = False
+		#if len(server_lab) == 0:
+		if len(servers_list.keys()) > 0:
+			server_lab.insert(0,common.SERVER_PLACEHOLDER)
+		
+			# fix two-part eps.
+			if isTvSeries == True:
+				for s in servers_list.keys():
+					for i in servers_list[s]:
+						i['quality'] = i['quality'].replace('+','-')
+			
+			# remap server list - this way its easier to iterate for tv-show episodes
+			
+			m_min = 0
+			try:
+				if isTvSeries == True:
+					m_min = servers_list[common.SERVER_PLACEHOLDER][0]['quality']
+					if '-' in m_min:
+						m_min = m_min.split('-')
+						m_min = m_min[0]
+					m_min = filter(lambda x: x.isdigit(), m_min)
+					m_min = int(m_min)
+			except:
+				m_min = 0
+				
+			m_max = 1
+			try:
+				if isTvSeries == True:
+					m_max = servers_list[common.SERVER_PLACEHOLDER][len(servers_list[common.SERVER_PLACEHOLDER])-1]['quality']
+					if '-' in m_max:
+						m_max = m_max.split('-')
 						try:
-							sno = "%02d" % (no) if (no) <= 99 else "%03d" % (no)
-							if sno not in servers_list[common.SERVER_PLACEHOLDER][c]['quality'] and isTvSeries == True:
-								if common.DEV_DEBUG == True and Prefs["use_debug"]:
-									Log('%s -- %s' % (sno, servers_list[common.SERVER_PLACEHOLDER][c]['quality']))
-								fillBlank = False
-								skip_c = True
-								q_lab = re.sub('[^0-9]+', '-', servers_list[common.SERVER_PLACEHOLDER][c]['quality'])
-							else:
-								if common.DEV_DEBUG == True and Prefs["use_debug"]:
-									Log('%s - %s' % (sno, servers_list[common.SERVER_PLACEHOLDER][c]['quality']))
-						except Exception as e:
-							Log('Error -- %s' % e)
-							if common.DEV_DEBUG == True and Prefs["use_debug"]:
-								Log('%s <-> %s' % (sno, servers_list[common.SERVER_PLACEHOLDER][c]['quality']))
-						if fillBlank == True:
-							for c2 in range(0,len(servers_list[label])):
-								if servers_list[common.SERVER_PLACEHOLDER][c]['quality'] == servers_list[label][c2]['quality']:
-									
-									q_lab = servers_list[label][c2]['quality']
-									if isTvSeries == True:
-										q_lab = q_lab.replace(' ','')
-										q_lab = re.sub('[^0-9]+', '-', q_lab)
-										if '-' in q_lab:
-											q_lab = q_lab.split('-')
-											q_lab = q_lab[0]
-											try:
-												str(int(q_lab))
-											except:
-												q_lab = no
-									if common.DEV_DEBUG == True and Prefs["use_debug"]:
-										Log('q_lab : %s' % q_lab)
-									servers_list_new[no-1+nos][label] = {'quality':q_lab,'loc':servers_list[label][c2]['loc'],'serverid':servers_list[label][c2]['serverid']}
-									if common.DEV_DEBUG == True and Prefs["use_debug"]:
-										Log('Fill- %s' % servers_list_new[no-1+nos][label])
-									break
+							m_max = str(int(m_max[1]))
+						except:
+							m_max = m_max[0]
+					m_max = filter(lambda x: x.isdigit(), m_max)
+				m_max = int(m_max)+1
+			except:
+				m_max = 1
+				
+			prev_eps = {}
+			for label in servers_list.keys():
+				prev_eps[label] = []
+				
+			if isTvSeries == True:
+				clean_servers_list = True
+				while clean_servers_list == True:
+					doBreak = False
+					for label in servers_list.keys():
+						for i in servers_list[label]:
+							q = re.sub('[^0-9]+', '-', i['quality']).replace('-','')
+							if len(q) == 0:
+								prev_eps[label].append(i)
+								servers_list[label].remove(i)
+								doBreak = True
+								break
+						if doBreak == True:
+							break
+					if doBreak == False:
+						clean_servers_list = False
+						
+				if common.DEV_DEBUG == True and Prefs["use_debug"]:
+					Log('================= servers_list-1-cleaned ===============')
+					Log(servers_list)
+					Log(prev_eps)
+				
+			if common.DEV_DEBUG == True and Prefs["use_debug"]:
+				Log('======== Fill missing %s - %s ========' % (min(m_min,1), max(len(servers_list[common.SERVER_PLACEHOLDER]),m_max)))
+			
+			# remap server list - this way its easier to iterate for tv-show episodes
+			c=0
+			c_p=0
+			nos = 1-min(m_min,1)
+			
+			if len(servers_list[common.SERVER_PLACEHOLDER]) > 0:
+				for no in range(min(m_min,1), max(len(servers_list[common.SERVER_PLACEHOLDER]),m_max)):
+					servers_list_new.append([])
+					servers_list_new[no-1+nos] = {}
+					skip_c = False
+					for label in servers_list.keys():
+						if c > 99:
+							servers_list_new[no-1+nos][label] = {'quality':"%03d" % (no), 'loc':'', 'serverid':None}
 						else:
-							pass
-					except:
-						pass
-				if skip_c == False:
-					c += 1
-				else:
-					if common.DEV_DEBUG == True and Prefs["use_debug"]:
-						Log('Fill-- %s' % servers_list_new[no-1+nos][common.SERVER_PLACEHOLDER])
-					q_lab = servers_list_new[no-1+nos][common.SERVER_PLACEHOLDER]['quality']
-					if '-' in q_lab:
-						q_lab = q_lab.split('-')
+							servers_list_new[no-1+nos][label] = {'quality':"%02d" % (no), 'loc':'', 'serverid':None}
 						try:
-							c_p = c_p + int(q_lab[1])-int(q_lab[0])
+							fillBlank = True
+							skip_c = False
+							try:
+								sno = "%02d" % (no) if (no) <= 99 else "%03d" % (no)
+								if sno not in servers_list[common.SERVER_PLACEHOLDER][c]['quality'] and isTvSeries == True:
+									if common.DEV_DEBUG == True and Prefs["use_debug"]:
+										Log('%s -- %s' % (sno, servers_list[common.SERVER_PLACEHOLDER][c]['quality']))
+									fillBlank = False
+									skip_c = True
+									q_lab = re.sub('[^0-9]+', '-', servers_list[common.SERVER_PLACEHOLDER][c]['quality'])
+								else:
+									if common.DEV_DEBUG == True and Prefs["use_debug"]:
+										Log('%s - %s' % (sno, servers_list[common.SERVER_PLACEHOLDER][c]['quality']))
+							except Exception as e:
+								Log('Error -- %s' % e)
+								if common.DEV_DEBUG == True and Prefs["use_debug"]:
+									Log('%s <-> %s' % (sno, servers_list[common.SERVER_PLACEHOLDER][c]['quality']))
+							if fillBlank == True:
+								for c2 in range(0,len(servers_list[label])):
+									if servers_list[common.SERVER_PLACEHOLDER][c]['quality'] == servers_list[label][c2]['quality']:
+										
+										q_lab = servers_list[label][c2]['quality']
+										if isTvSeries == True:
+											q_lab = q_lab.replace(' ','')
+											q_lab = re.sub('[^0-9]+', '-', q_lab)
+											if '-' in q_lab:
+												q_lab = q_lab.split('-')
+												q_lab = q_lab[0]
+												try:
+													str(int(q_lab))
+												except:
+													q_lab = no
+										if common.DEV_DEBUG == True and Prefs["use_debug"]:
+											Log('q_lab : %s' % q_lab)
+										servers_list_new[no-1+nos][label] = {'quality':q_lab,'loc':servers_list[label][c2]['loc'],'serverid':servers_list[label][c2]['serverid']}
+										if common.DEV_DEBUG == True and Prefs["use_debug"]:
+											Log('Fill- %s' % servers_list_new[no-1+nos][label])
+										break
+							else:
+								pass
 						except:
-							c += 1
+							pass
+					if skip_c == False:
+						c += 1
+					else:
+						if common.DEV_DEBUG == True and Prefs["use_debug"]:
+							Log('Fill-- %s' % servers_list_new[no-1+nos][common.SERVER_PLACEHOLDER])
+						q_lab = servers_list_new[no-1+nos][common.SERVER_PLACEHOLDER]['quality']
+						if '-' in q_lab:
+							q_lab = q_lab.split('-')
+							try:
+								c_p = c_p + int(q_lab[1])-int(q_lab[0])
+							except:
+								c += 1
 
-		if common.DEV_DEBUG == True and Prefs["use_debug"]:
-			Log('================= servers_list_new-1B ===============')
-			Log(servers_list_new)
-			
-		for p in prev_eps[common.SERVER_PLACEHOLDER]:
-			item_to_insert = {}
-			for label in server_lab:
-				fillNone = True
-				for p2 in prev_eps[label]:
-					if p['quality'] == p2['quality']:
-						fillNone = False
-						item_to_insert[label]=p2
-						break
-				if fillNone == True:
-					item_to_insert[label]={'loc': '', 'serverid': None, 'quality': p['quality']}
-			servers_list_new.insert(0,item_to_insert)
-			
-		if common.DEV_DEBUG == True and Prefs["use_debug"]:
-			Log('================= servers_list_new-1C ===============')
-			Log(servers_list_new)
+			if common.DEV_DEBUG == True and Prefs["use_debug"]:
+				Log('================= servers_list_new-1B ===============')
+				Log(servers_list_new)
+				
+			for p in prev_eps[common.SERVER_PLACEHOLDER]:
+				item_to_insert = {}
+				for label in server_lab:
+					fillNone = True
+					for p2 in prev_eps[label]:
+						if p['quality'] == p2['quality']:
+							fillNone = False
+							item_to_insert[label]=p2
+							break
+					if fillNone == True:
+						item_to_insert[label]={'loc': '', 'serverid': None, 'quality': p['quality']}
+				servers_list_new.insert(0,item_to_insert)
+				
+			if common.DEV_DEBUG == True and Prefs["use_debug"]:
+				Log('================= servers_list_new-1C ===============')
+				Log(servers_list_new)
 
-		if common.MISC_OPTIONS[common.MISC_OPTIONS_KEYS[7]]['val'] == False:
-			for i in servers_list_new:
+			if common.MISC_OPTIONS[common.MISC_OPTIONS_KEYS[7]]['val'] == False:
+				for i in servers_list_new:
+					for h_unp in common.FMOVIES_HOSTS_DISABLED:
+						if h_unp in i.keys():
+							try:
+								del i[h_unp]
+							except:
+								pass
 				for h_unp in common.FMOVIES_HOSTS_DISABLED:
-					if h_unp in i.keys():
+					if h_unp in server_lab:
 						try:
-							del i[h_unp]
+							server_lab.remove(h_unp)
 						except:
 							pass
-			for h_unp in common.FMOVIES_HOSTS_DISABLED:
-				if h_unp in server_lab:
-					try:
-						server_lab.remove(h_unp)
-					except:
-						pass
-			if len(server_lab) == 0:
-				server_lab.append(common.SERVER_PLACEHOLDER)
+				if len(server_lab) == 0:
+					server_lab.append(common.SERVER_PLACEHOLDER)
 		
 		if common.DEV_DEBUG == True and Prefs["use_debug"]:
 			Log('================= servers_list_new-1 ===============')
@@ -4560,7 +4561,7 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 					Log(gen_play)
 				Log(e)
 	
-	if common.USE_EXT_URLSERVICES:
+	if common.USE_EXT_URLSERVICES == True and common.MISC_OPTIONS[common.MISC_OPTIONS_KEYS[8]]['val'] == True:
 		external_extSources = extSourKey
 		
 		external_extSources = common.FilterBasedOn(external_extSources, use_host=False, use_filesize=False)

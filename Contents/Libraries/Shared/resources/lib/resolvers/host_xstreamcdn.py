@@ -187,7 +187,9 @@ class host:
 			log('ERROR', 'createMeta', '%s' % e)
 			
 		for fr in files_ret:
-			links.append(fr)
+			if fr != None and 'key' in fr.keys():
+				control.setPartialSource(fr,self.name)
+				links.append(fr)
 			
 		if len(files_ret) > 0:
 			log('SUCCESS', 'createMeta', 'Successfully processed %s link >>> %s' % (provider, orig_url), dolog=self.init)
@@ -237,7 +239,7 @@ def decode(url,page_url):
 	err = ''
 	try:
 		id = re.compile('//.+?/(?:embed|v)/([0-9a-zA-Z-_]+)').findall(url)[0]
-		headersx = {'Referer': url, 'User-Agent': client.agent()}
+		headersx = {'Referer': 'https://www.xstreamcdn.com/v/%s' % id, 'User-Agent': client.agent()}
 		post_data = {'r':page_url, 'd':'www.xstreamcdn.com'}
 		api_url = 'https://www.xstreamcdn.com/api/source/%s' % id
 		page_data = client.request(api_url, post=client.encodePostData(post_data), headers=headersx)
@@ -245,7 +247,11 @@ def decode(url,page_url):
 		j_data = json.loads(page_data)
 		success = j_data['success']
 		if success == False:
-			raise Exception('API returned error: %s | Data: %s' % (api_url, post_data))
+			try:
+				msd = j_data['data']
+			except:
+				msd = ""
+			raise Exception('API returned error: %s | Data: %s | Return msg: %s' % (api_url, post_data, msd))
 		else:
 			srcs = j_data['data']
 			for src in srcs:

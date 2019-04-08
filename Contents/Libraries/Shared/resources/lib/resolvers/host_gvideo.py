@@ -271,8 +271,10 @@ class host:
 
 			
 		for fr in files_ret:
-			fr['resumeDownload'] = self.resumeDownload
-			links.append(fr)
+			if fr != None and 'key' in fr.keys():
+				fr['resumeDownload'] = self.resumeDownload
+				control.setPartialSource(fr,self.name)
+				links.append(fr)
 		
 		if len(files_ret) > 0:
 			log('SUCCESS', 'createMeta', 'Successfully processed %s link >>> %s' % (provider, orig_url), dolog=self.init)

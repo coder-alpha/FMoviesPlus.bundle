@@ -423,17 +423,18 @@ class source:
 					file_data = urllib.urlencode(data_j)
 					
 					l = resolvers.createMeta(file_data, self.name, self.logo, qual, [], key, riptype, testing=testing, sub_url=sub_url, urlhost=client.geturlhost(page), poster=poster)
-					if len(l) > 0:
-						control.setPartialSource(l[0],self.name)
-						links_m.append(l[0])
+					for ll in l:
+						if ll != None and 'key' in ll.keys():
+							links_m.append(ll)
 					
 					if testing == True and len(links_m) > 0:
 						break
 				except:
 					pass
 					
-			for l in links_m:
-				sources.append(l)
+			for link in links_m:
+				if link != None and 'key' in link.keys():
+					sources.append(link)
 
 			if len(sources) == 0:
 				log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key))

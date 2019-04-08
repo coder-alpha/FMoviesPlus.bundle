@@ -218,6 +218,7 @@ class host:
 						if 'http' not in video_urlx:
 							video_urlx = 'http:' + video_urlx
 						if video_urlx != None and 'vidcloud.icu/load' not in video_urlx:
+							log(type='INFO',method='createMeta', err=u'url:%s requires additional processing' % video_urlx)
 							video_url1 = '%s' % client.request(video_urlx, followredirect=True, httpsskip=True, output='geturl')
 							if video_url1 != None and 'http' in video_url1 and 'vidcloud.icu' not in video_url1:
 								try:
@@ -225,6 +226,7 @@ class host:
 								except Exception as e:
 									log(type='ERROR',method='createMeta', err=u'%s' % e)
 						elif video_urlx != None and 'vidcloud.icu/load' in video_urlx:
+							log(type='INFO',method='createMeta', err=u'url:%s requires additional processing' % video_urlx)
 							id = re.findall(r'id=(.*?)&',video_urlx)[0]
 							u = 'https://vidcloud.icu/download?id=%s' % id
 							res = client.request(u)
@@ -240,7 +242,9 @@ class host:
 			log('FAIL', 'createMeta', '%s' % e)
 		
 		for fr in files_ret:
-			links.append(fr)
+			if fr != None and 'key' in fr.keys():
+				control.setPartialSource(fr,self.name)
+				links.append(fr)
 
 		if len(files_ret) > 0:
 			log('SUCCESS', 'createMeta', 'Successfully processed %s link >>> %s' % (provider, orig_url), dolog=self.init)

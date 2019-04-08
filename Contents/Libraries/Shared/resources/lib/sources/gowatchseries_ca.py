@@ -379,9 +379,9 @@ class source:
 				for trailer in trailers:
 					try:
 						l = resolvers.createMeta(trailer, self.name, self.logo, '720p', [], key, poster=poster, vidtype='Trailer', testing=testing)
-						if len(l) > 0:
-							control.setPartialSource(l[0],self.name)
-							links_m.append(l[0])
+						for ll in l:
+							if ll != None and 'key' in ll.keys():
+								links_m.append(ll)
 					except:
 						pass
 			
@@ -397,13 +397,15 @@ class source:
 			for video_url in video_urls:
 				try:
 					l = resolvers.createMeta(video_url, self.name, self.logo, quality, [], key, poster=poster, riptype=riptype, vidtype=vidtype, sub_url=sub_url, testing=testing, page_url=page_url)
-					if len(l) > 0:
-						control.setPartialSource(l[0],self.name)
-						links_m.append(l[0])
+					for ll in l:
+						if ll != None and 'key' in ll.keys():
+							links_m.append(ll)
 				except:
 					pass
 			
-			sources += [l for l in links_m]
+			for l in links_m:
+				if l != None and 'key' in l.keys():
+					sources.append(l)
 			
 			if len(sources) == 0:
 				log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key))

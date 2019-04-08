@@ -321,9 +321,9 @@ class source:
 					headers = {'Referer': page, 'User-Agent': self.user_agent}
 					try:
 						l = resolvers.createMeta(file, self.name, self.logo, qual, [], key, riptype, testing=testing, sub_url=sub_url, headers=headers, poster=poster)
-						if len(l) > 0:
-							control.setPartialSource(l[0],self.name)
-							links_m.append(l[0])
+						for ll in l:
+							if ll != None and 'key' in ll.keys():
+								links_m.append(ll)
 					except:
 						pass
 					
@@ -333,7 +333,8 @@ class source:
 					pass
 					
 			for l in links_m:
-				sources.append(l)
+				if l != None and 'key' in l.keys():
+					sources.append(l)
 
 			if len(sources) == 0:
 				log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key))

@@ -168,7 +168,9 @@ class host:
 			log('ERROR', 'createMeta', '%s' % e)
 			
 		for fr in files_ret:
-			links.append(fr)
+			if fr != None and 'key' in fr.keys():
+				control.setPartialSource(fr,self.name)
+				links.append(fr)
 
 		if len(files_ret) > 0:
 			log('SUCCESS', 'createMeta', 'Successfully processed %s link >>> %s' % (provider, orig_url), dolog=self.init)

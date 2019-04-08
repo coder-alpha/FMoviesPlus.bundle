@@ -66,7 +66,8 @@ def decode(url, python_dir=None, debug=False, ssl=True, js='openload.js'):
 			file_cmd.insert(1,'--ssl-protocol=any')
 
 		if sys.platform == "darwin":
-			#print file_cmd
+			#if debug:
+			#	print file_cmd
 			PROCESSES[url_encode] = {'url':url,'ts':time.time(),'Completed':False}
 			process = subprocess.Popen(file_cmd, shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, close_fds=True)
 			PROCESSES[url_encode].update({'process':process})
@@ -74,7 +75,8 @@ def decode(url, python_dir=None, debug=False, ssl=True, js='openload.js'):
 			output = process.stdout.read()
 			#PROCESSES[url_encode].update({'output':output})
 		else:
-			#print file_cmd
+			#if debug:
+			#	print file_cmd
 			PROCESSES[url_encode] = {'url':url,'ts':time.time(),'Completed':False}
 			process = subprocess.Popen(file_cmd, shell=False, cwd=PHANTOMJS_PLUGIN_CHANNEL_PATH, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 			PROCESSES[url_encode].update({'process':process})
@@ -82,7 +84,8 @@ def decode(url, python_dir=None, debug=False, ssl=True, js='openload.js'):
 			output = process.stdout.read()
 			#PROCESSES[url_encode].update({'output':output})
 
-		#print output
+		#if debug:
+		#	print output
 		PROCESSES[url_encode].update({'output':output})
 		if 'ERROR' in output:
 			raise Exception(output)
@@ -154,6 +157,7 @@ def md5(fname):
 		
 def test():
 	control.doPrint = True
+	control.set_setting('control_phantomjs_path', 'C:\PhantomJS')
 	print "PhantomJS binary file presence: %s | MD5 Checksum: %s" % checkBinaryPresence()
 	resp = decode("https://openload.co/embed/kUEfGclsU9o", debug=False, js='openload.js')
 	print resp[0]
@@ -161,6 +165,7 @@ def test():
 	
 def test2():
 	control.doPrint = True
+	control.set_setting('control_phantomjs_path', 'C:\PhantomJS')
 	print "PhantomJS binary file presence: %s | MD5 Checksum: %s" % checkBinaryPresence()
 	resp = decode("https://fmovies.taxi/film/incredibles-2.5kj1m/njpppj", debug=False, js='fmovies.js')
 	print resp[0]
@@ -168,16 +173,26 @@ def test2():
 	
 def test3():
 	control.doPrint = True
+	control.set_setting('control_phantomjs_path', 'C:\PhantomJS')
 	print "PhantomJS binary file presence: %s | MD5 Checksum: %s" % checkBinaryPresence()
-	resp = decode("https://www6.9anime.is/watch/ginga-eiyuu-densetsu-die-neue-these-kaikou.0y5r/j1xj1y", debug=False, js='fmovies.js')
+	resp = decode("https://www6.9anime.is/watch/ginga-eiyuu-densetsu-die-neue-these-kaikou.0y5r/j1xj1y", debug=False, js='9anime.js')
 	print resp[0]
 	log(PROCESSES)
 
 def test4():
 	control.doPrint = True
+	control.set_setting('control_phantomjs_path', 'C:\PhantomJS')
 	print "PhantomJS binary file presence: %s | MD5 Checksum: %s" % checkBinaryPresence()
-	resp = decode("https://fmovies.taxi/film/incredibles-2.5kj1m/njpppj", debug=False, js='fmoviesPage.js')
+	resp = decode("https://fmovies.taxi/film/venom.v5z07", debug=True, js='fmoviesPage.js')
 	print resp[0]
 	log(PROCESSES)
 	
-#test()
+def test5():
+	control.doPrint = True
+	control.set_setting('control_phantomjs_path', 'C:\PhantomJS')
+	print "PhantomJS binary file presence: %s | MD5 Checksum: %s" % checkBinaryPresence()
+	resp = decode("https://fmovies.taxi/film/venom.v5z07", debug=True, js='genericPage.js')
+	print resp[0]
+	log(PROCESSES)
+	
+#test4()

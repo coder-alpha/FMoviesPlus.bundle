@@ -41,14 +41,7 @@ page.open(page_url, function(status) {
 		var info = page.evaluate(function() {
 			function GetIframeLink() {
 				try {
-					var elms = document.getElementsByTagName("body");
-					var txt = "";
-					for (var j = 0; j < elms.length; j++) {
-						var srctxt = elms[j].innerHTML;
-						if (srctxt != null && srctxt.length > 0) {
-							txt = txt + srctxt;
-						}
-					}
+					var txt = page.content;
 					if (txt != null && txt.length > 0) {
 						return txt;
 					}

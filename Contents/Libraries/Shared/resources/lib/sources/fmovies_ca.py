@@ -293,7 +293,7 @@ class source:
 			for url in urls:
 				try:
 					log('INFO','get_sources','url == %s' % url, dolog=False, doPrint=True)
-					
+					page_url = url
 					page = result = proxies.request(url, headers=self.headers, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, httpsskip=True)
 					
 					quality = '480p'
@@ -368,14 +368,16 @@ class source:
 									server = 'http:' + server
 
 								result = proxies.request(server, headers=self.headers, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, httpsskip=True)
-								server = client.parseDOM(result, 'iframe', ret='src')[0]
-								if 'http' not in server:
-									server = 'http:' + server
 								
-								l = resolvers.createMeta(server, self.name, self.logo, quality, [], key, poster=poster, riptype=type, vidtype=vidtype, testing=testing)
-								if len(l) > 0:
-									control.setPartialSource(l[0],self.name)
-									links_m.append(l[0])
+								server = client.parseDOM(result, 'iframe', ret='src')[0]
+								if len(server) > 0:
+									if 'http' not in server:
+										server = 'http:' + server
+									
+									l = resolvers.createMeta(server, self.name, self.logo, quality, [], key, poster=poster, riptype=type, vidtype=vidtype, testing=testing, page_url=page_url)
+									for ll in l:
+										if ll != None and 'key' in ll.keys():
+											links_m.append(ll)
 							except Exception as e:
 								pass
 							if testing and len(links_m) > 0:
@@ -392,10 +394,10 @@ class source:
 									server = 'http:' + server
 
 								try:
-									l = resolvers.createMeta(server, self.name, self.logo, quality, [], key, poster=poster, riptype=type, vidtype=vidtype, testing=testing)
-									if len(l) > 0:
-										control.setPartialSource(l[0],self.name)
-										links_m.append(l[0])
+									l = resolvers.createMeta(server, self.name, self.logo, quality, [], key, poster=poster, riptype=type, vidtype=vidtype, testing=testing, page_url=page_url)
+									for ll in l:
+										if ll != None and 'key' in ll.keys():
+											links_m.append(ll)
 								except:
 									pass
 					except:
@@ -406,7 +408,8 @@ class source:
 					pass
 				
 			for link in links_m:
-				sources.append(link)
+				if link != None and 'key' in link.keys():
+					sources.append(link)
 				
 			if len(sources) == 0:
 				log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key))

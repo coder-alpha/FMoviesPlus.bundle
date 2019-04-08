@@ -464,9 +464,9 @@ class source:
 				for trailer in trailers:
 					try:
 						l = resolvers.createMeta(trailer, self.name, self.logo, '720p', [], key, vidtype='Trailer', testing=testing)
-						if len(l) > 0:
-							control.setPartialSource(l[0],self.name)
-							links_m.append(l[0])
+						for ll in l:
+							if ll != None and 'key' in ll.keys():
+								links_m.append(ll)
 					except:
 						pass
 			
@@ -611,9 +611,9 @@ class source:
 						for i in result:
 							try:
 								l = resolvers.createMeta(i, self.name, self.logo, quality, [], key, riptype, sub_url=sub_url, testing=testing)
-								if len(l) > 0:
-									control.setPartialSource(l[0],self.name)
-									links_m.append(l[0])
+								for ll in l:
+									if ll != None and 'key' in ll.keys():
+										links_m.append(ll)
 							except:
 								pass
 					else:
@@ -631,16 +631,18 @@ class source:
 							
 						try:
 							l = resolvers.createMeta(target, self.name, self.logo, quality, [], key, riptype, sub_url=sub_url, testing=testing)
-							if len(l) > 0:
-								control.setPartialSource(l[0],self.name)
-								links_m.append(l[0])
+							for ll in l:
+								if ll != None and 'key' in ll.keys():
+									links_m.append(ll)
 						except:
 							pass
 
 				except Exception as e:
 					log('FAIL', 'get_sources-7','%s' % e, dolog=control.debug)
 
-			sources += [l for l in links_m]
+			for l in links_m:
+				if l != None and 'key' in l.keys():
+					sources.append(l)
 			
 			if len(sources) == 0:
 				log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key))

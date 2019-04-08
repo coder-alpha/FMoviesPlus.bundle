@@ -1,6 +1,6 @@
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.80' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.81' # Release notation (x.y - where x is major and y is minor)
 TAG = 'dev'
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
@@ -159,7 +159,7 @@ SERVER_PLACEHOLDER = 'FMOVIES'
 FMOVIES_SERVER_REMAP = {'Server F':'Google-F', 'Server G':'Google-G', 'F5 Beta':'PrettyFast', 'F5 - HQ':'PrettyFast'}
 FMOVIES_HOSTS_DISABLED = ['MyCloud','PrettyFast']
 
-MISC_OPTIONS_KEYS = ['SOURCE_SEARCH_TIMEOUT','SMART_ADD_EP_FALLOUT_DAYS','SMART_ADD_SEASON_FALLOUT_DAYS','Extend-Smart-Add-For-Seasons','Retry-Failed-Downloads','Dont-Refresh-Library-Downloads','Retrieve-And-Display-Partial-Sources','FMOVIES_HOSTS_UNPLAYABLE']
+MISC_OPTIONS_KEYS = ['SOURCE_SEARCH_TIMEOUT','SMART_ADD_EP_FALLOUT_DAYS','SMART_ADD_SEASON_FALLOUT_DAYS','Extend-Smart-Add-For-Seasons','Retry-Failed-Downloads','Dont-Refresh-Library-Downloads','Retrieve-And-Display-Partial-Sources','FMOVIES_HOSTS_UNPLAYABLE','SHOW_PLEX_SERVICE_LINKS']
 MISC_OPTIONS_CONST = {
 					MISC_OPTIONS_KEYS[0]:{'type':'num','title':'AutoPilot Source Search Timeout','val':600, 'unit':'sec', 'desc':'AutoPilot Source Timeout seconds (%s-%s): %s','LL':300,'UL':300*4}, 
 					MISC_OPTIONS_KEYS[1]:{'type':'num','title':'AutoPilot Smart Add (Episode) Entry','val':30,'unit':'day', 'desc':'AutoPilot Smart Add (Episode) Entry retain days (%s-%s): %s','LL':15,'UL':15*6}, 
@@ -167,7 +167,8 @@ MISC_OPTIONS_CONST = {
 					MISC_OPTIONS_KEYS[3]:{'type':'bool','title':'Extend Smart Add AutoPilot Option for Seasons as well','val':False,'unit':'', 'desc':'Extend Smart Add AutoPilot Option for Seasons as well: %s','LL':0,'UL':0}, MISC_OPTIONS_KEYS[4]:{'type':'bool','title':'On Plugin Initialization Retry Failed Downloads','val':False,'unit':'', 'desc':'On Plugin Initialization Retry Failed Downloads: %s','LL':0,'UL':0}, 
 					MISC_OPTIONS_KEYS[5]:{'type':'bool','title':'Don\'t perform a Library Section Refresh after an Item is Downloaded','val':False,'unit':'', 'desc':'Don\'t perform a Library Section Refresh after an Item is Downloaded: %s','LL':0,'UL':0}, 
 					MISC_OPTIONS_KEYS[6]:{'type':'bool','title':'Retrieve And Display Partial Sources','val':False,'unit':'', 'desc':'Retrieve And Display Partial Sources while Provider is processing All Sources: %s','LL':0,'UL':0},
-					MISC_OPTIONS_KEYS[7]:{'type':'bool','title':'Show Unplayable Hosts for FMovies site','val':False,'unit':'', 'desc':'Show Unplayable Hosts for FMovies site in item listing %s: %s' % (FMOVIES_HOSTS_DISABLED, '%s'),'LL':0,'UL':0}
+					MISC_OPTIONS_KEYS[7]:{'type':'bool','title':'Show Unplayable Hosts for FMovies site','val':False,'unit':'', 'desc':'Show Unplayable Hosts for FMovies site in item listing %s: %s' % (FMOVIES_HOSTS_DISABLED, '%s'),'LL':0,'UL':0},
+					MISC_OPTIONS_KEYS[8]:{'type':'bool','title':'Show Plex Service Links','val':False,'unit':'', 'desc':'Show Plex Service Links: %s','LL':0,'UL':0}
 					}
 MISC_OPTIONS = MISC_OPTIONS_CONST.copy()
 

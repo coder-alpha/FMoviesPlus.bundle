@@ -254,6 +254,7 @@ class source:
 			return
 
 	def get_show(self, imdb=None, tvdb=None, tvshowtitle=None, year=None, season=None, proxy_options=None, key=None):
+		query = None
 		try:
 			if control.setting('Provider-%s' % name) == False:
 				log('INFO','get_show','Provider Disabled by User')
@@ -268,6 +269,7 @@ class source:
 
 			log('INFO','get_show-1', query, dolog=False)
 			query = proxies.request(query, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+			query = cleantitle.asciiOnly(query)
 			
 			keyx = client.parseDOM(query, 'input', ret='value', attrs = {'name': 'search_keywords'})[0]
 			#log('SUCCESS', 'get_movie-1b', query, doPrint=True)
@@ -280,6 +282,8 @@ class source:
 			log('INFO','get_show-3', query, dolog=False)
 
 			result = proxies.request(query, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+			result = cleantitle.asciiOnly(result)
+			#print result
 			
 			if 'Sorry but I couldn\'t find anything like that' in result:
 				query = self.tvsearch_link % urllib.quote_plus(cleantitle.query(tvshowtitle).lower().replace(str(season),''))
@@ -287,6 +291,7 @@ class source:
 
 				#result = str(proxies.request(query, 'index_item', proxy_options=proxy_options, use_web_proxy=self.proxyrequired))
 				result = proxies.request(query, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+				result = cleantitle.asciiOnly(result)
 				#tvshowtitle = 'watch' + cleantitle.get(tvshowtitle).replace(str(season),'').strip()
 			else:
 				pass
@@ -295,6 +300,7 @@ class source:
 			#if 'page=2' in result or 'page%3D2' in result: result += str(proxies.request(query + '&page=2', 'index_item', proxy_options=proxy_options, use_web_proxy=self.proxyrequired))
 			if 'page=2' in result or 'page%3D2' in result: 
 				result = proxies.request(query + '&page=2', proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+				result = cleantitle.asciiOnly(result)
 
 			# .//div[@class='tv_container']/div[@data-id="2"]
 			result = client.parseDOM(result, 'div', attrs = {'class': 'index_item index_item_ie'})
@@ -345,6 +351,7 @@ class source:
 					#r = proxies.request(urlparse.urljoin(self.base_link, i), 'tv_episode_item', proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
 					if imdb != None:
 						r = proxies.request(i, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+						r = cleantitle.asciiOnly(r)
 						if imdb in str(r): url = i ; break
 					else:
 						url = match2[0]
@@ -357,7 +364,7 @@ class source:
 			url = url.encode('utf-8')
 			return url
 		except Exception as e: 
-			log('ERROR', 'get_show','%s: %s' % (tvshowtitle,e), dolog=self.init)
+			log('ERROR', 'get_show','%s (%s): %s' % (tvshowtitle,query,e), dolog=self.init)
 			return
 
 
@@ -372,12 +379,14 @@ class source:
 			log('INFO', 'get_episode-1A',xurl, dolog=False)
 			
 			result = proxies.request(xurl, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+			result = cleantitle.asciiOnly(result)
 			
 			loc = url.replace(self.base_link+'/','')
 			url = testjs(result, self.base_link, loc)
 			log('INFO', 'get_episode-1B',url, dolog=False)
 			
 			result = proxies.request(url, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+			result = cleantitle.asciiOnly(result)
 			#print result
 			
 			if len(result) == 0:
@@ -385,6 +394,7 @@ class source:
 					if site != self.base_link:
 						turl = urlparse.urljoin(site, url)
 						result = proxies.request(turl, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+						result = cleantitle.asciiOnly(result)
 						if len(result) > 0:
 							xurl = turl
 							break
@@ -445,6 +455,7 @@ class source:
 			#result = proxies.request(url, 'choose_tabs', proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
 			
 			result = proxies.request(url, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+			result = cleantitle.asciiOnly(result)
 			
 			try:
 				poster1 = client.parseDOM(result, 'div', attrs = {'class': 'movie_thumb'})[0]
@@ -464,6 +475,7 @@ class source:
 			log('INFO', 'get_sources-1B',url, dolog=False)
 			
 			result = proxies.request(url, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
+			result = cleantitle.asciiOnly(result)
 			
 			links_m = []
 			trailers = []
@@ -486,9 +498,9 @@ class source:
 				for trailer in trailers:
 					try:
 						l = resolvers.createMeta(trailer, self.name, self.logo, '720p', [], key, vidtype='Trailer', testing=testing)
-						if len(l) > 0:
-							control.setPartialSource(l[0],self.name)
-							links_m.append(l[0])
+						for ll in l:
+							if ll != None and 'key' in ll.keys():
+								links_m.append(ll)
 					except:
 						pass
 			
@@ -506,6 +518,7 @@ class source:
 					url = urlparse.urljoin(self.base_link, url)
 					#print url
 					r = client.request(url)
+					r = cleantitle.asciiOnly(r)
 					links = client.parseDOM(r, 'script')
 					p = False
 					urls_p = []
@@ -553,16 +566,17 @@ class source:
 							
 						try:
 							l = resolvers.createMeta(url, self.name, self.logo, quality, [], key, vidtype=vidtype, poster=poster, riptype=riptype, testing=testing)
-							if len(l) > 0:
-								control.setPartialSource(l[0],self.name)
-								links_m.append(l[0])
+							for ll in l:
+								if ll != None and 'key' in ll.keys():
+									links_m.append(ll)
 						except:
 							pass
 				except:
 					pass
 					
 			for l in links_m:
-				sources.append(l)
+				if l != None and 'key' in l.keys():
+					sources.append(l)
 
 			if len(sources) == 0:
 				log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key))

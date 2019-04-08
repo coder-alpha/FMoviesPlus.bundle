@@ -454,9 +454,9 @@ class source:
 				for trailer in trailers:
 					try:
 						l = resolvers.createMeta(trailer, self.name, self.logo, '720p', [], key, poster=poster, vidtype='Trailer', testing=testing)
-						if len(l) > 0:
-							control.setPartialSource(l[0],self.name)
-							links_m.append(l[0])
+						for ll in l:
+							if ll != None and 'key' in ll.keys():
+								links_m.append(ll)
 					except:
 						pass
 			
@@ -481,8 +481,9 @@ class source:
 			#print result_servers
 			#result_servers = []
 			#servers = client.parseDOM(result, 'li', attrs = {'data-type': 'direct'})
-			result_servers = zip(client.parseDOM(result_servers, 'a', ret='data-id'), client.parseDOM(result_servers, 'a'))
-			#print result_servers
+			result_servers = zip(client.parseDOM(result_servers, 'a', ret='href'), client.parseDOM(result_servers, 'a'))
+			result_servers_1 = [(i[0][i[0].rfind('/')+1:], i[1]) for i in result_servers]
+			result_servers = result_servers_1
 			
 			result_servers = [(i[0], re.findall('(\d+)', i[1])) for i in result_servers]
 			#print result_servers
@@ -606,9 +607,9 @@ class source:
 								video_url = i
 								try:
 									l = resolvers.createMeta(i, self.name, self.logo, quality, [], key, poster=poster, riptype=riptype, vidtype=vidtype, sub_url=sub_url, testing=testing)
-									if len(l) > 0:
-										control.setPartialSource(l[0],self.name)
-										links_m.append(l[0])
+									for ll in l:
+										if ll != None and 'key' in ll.keys():
+											links_m.append(ll)
 								except:
 									pass
 						else:
@@ -627,9 +628,9 @@ class source:
 							video_url = target
 							try:
 								l = resolvers.createMeta(target, self.name, self.logo, quality, [], key, poster=poster, riptype=riptype, vidtype=vidtype, sub_url=sub_url, testing=testing)
-								if len(l) > 0:
-									control.setPartialSource(l[0],self.name)
-									links_m.append(l[0])
+								for ll in l:
+									if ll != None and 'key' in ll.keys():
+										links_m.append(ll)
 							except:
 								pass
 
@@ -652,9 +653,9 @@ class source:
 									log(type='SUCCESS',method='get_sources-4.a.2', err=u'*PhantomJS* method is working: %s' % vx_url)
 									try:
 										l = resolvers.createMeta(video_url, self.name, self.logo, quality, [], key, poster=poster, riptype=riptype, vidtype=vidtype, sub_url=sub_url, testing=testing)
-										if len(l) > 0:
-											control.setPartialSource(l[0],self.name)
-											links_m.append(l[0])
+										for ll in l:
+											if ll != None and 'key' in ll.keys():
+												links_m.append(ll)
 									except:
 										pass
 							except Exception as e:
@@ -665,7 +666,9 @@ class source:
 					log(type='FAIL',method='get_sources-4.a.3', err=u'%s' % e)
 				s_count += 1
 
-			sources += [l for l in links_m]
+			for l in links_m:
+				if l != None and 'key' in l.keys():
+					sources.append(l)
 			
 			if len(sources) == 0:
 				log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key))

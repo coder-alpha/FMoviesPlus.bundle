@@ -247,7 +247,7 @@ class source:
 				url_arr_t.append(u)
 				
 			url_arr = list(set(url_arr_t))
-			links = []
+			links_m = []
 			for url in url_arr:
 				try:
 					#print url
@@ -307,9 +307,9 @@ class source:
 						r = client.parseDOM(r, 'a', ret='href', attrs = {'id': 'dm1'})[0]
 						#print r
 						l = resolvers.createMeta(r, self.name, self.logo, quality, [], key, poster=poster, vidtype='Movie', sub_url=sub_url, testing=testing)
-						if len(l) > 0:
-							control.setPartialSource(l[0],self.name)
-							links.append(l[0])
+						for ll in l:
+							if ll != None and 'key' in ll.keys():
+								links_m.append(ll)
 					except Exception as e:
 						log('FAIL', 'get_sources-1A', e , dolog=False)
 						try:
@@ -318,9 +318,9 @@ class source:
 							r = client.parseDOM(r, 'a', ret='href', attrs = {'id': 'mega'})[0]
 							#print r
 							l = resolvers.createMeta(r, self.name, self.logo, quality, [], key, poster=poster, vidtype='Movie', sub_url=sub_url, testing=testing)
-							if len(l) > 0:
-								control.setPartialSource(l[0],self.name)
-								links.append(l[0])
+							for ll in l:
+								if ll != None and 'key' in ll.keys():
+									links_m.append(ll)
 						except Exception as e:
 							log('FAIL', 'get_sources-1B', e , dolog=False)	
 						
@@ -328,9 +328,9 @@ class source:
 						r = self.returnFinalLink(url)
 						if r != None:
 							l = resolvers.createMeta(r, self.name, self.logo, quality, [], key, poster=poster, vidtype='Movie', sub_url=sub_url, testing=testing)
-							if len(l) > 0:
-								control.setPartialSource(l[0],self.name)
-								links.append(l[0])
+							for ll in l:
+								if ll != None and 'key' in ll.keys():
+									links_m.append(ll)
 					except Exception as e:
 						log('FAIL', 'get_sources-2', e , dolog=False)	
 				
@@ -383,18 +383,18 @@ class source:
 								if part2:
 									#print '2-part video'
 									l = resolvers.createMeta(r, self.name, self.logo, qualityt, [], key, poster=poster, vidtype=vidtype, txt='Part-1', sub_url=sub_url, testing=testing)
-									if len(l) > 0:
-										control.setPartialSource(l[0],self.name)
-										links.append(l[0])
+									for ll in l:
+										if ll != None and 'key' in ll.keys():
+											links_m.append(ll)
 									l = resolvers.createMeta(rx, self.name, self.logo, qualityt, [], key, poster=poster, vidtype=vidtype, txt='Part-2', sub_url=sub_url, testing=testing)
-									if len(l) > 0:
-										control.setPartialSource(l[0],self.name)
-										links.append(l[0])
+									for ll in l:
+										if ll != None and 'key' in ll.keys():
+											links_m.append(ll)
 								else:
 									l = resolvers.createMeta(r, self.name, self.logo, qualityt, [], key, poster=poster, vidtype=vidtype, sub_url=sub_url, testing=testing)
-									if len(l) > 0:
-										control.setPartialSource(l[0],self.name)
-										links.append(l[0])
+									for ll in l:
+										if ll != None and 'key' in ll.keys():
+											links_m.append(ll)
 								
 							except:
 								pass
@@ -404,7 +404,9 @@ class source:
 				except Exception as e:
 					log('FAIL', 'get_sources-3.1', e , dolog=False)
 
-			for i in links: sources.append(i)		
+			for l in links_m:
+				if l != None and 'key' in l.keys():
+					sources.append(l)		
 			
 			if len(sources) == 0:
 				log('FAIL','get_sources','Could not find a matching title: %s' % cleantitle.title_from_key(key))

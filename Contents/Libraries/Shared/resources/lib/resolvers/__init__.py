@@ -23,6 +23,7 @@ import re,urllib,urlparse,pkgutil,json,time
 
 from resources.lib.libraries import client
 from resources.lib.libraries import control
+from resources.lib.libraries import cleantitle
 	
 sourceHosts = []
 sourceHostsCall = []
@@ -135,12 +136,18 @@ def testLink(url):
 		
 def createMeta(url, provider, logo, quality, links, key, riptype=None, vidtype='Movie', lang='en', sub_url=None, txt='', file_ext='.mp4', testing=False, urlhost=None, poster=None, headers=None, page_url=None):
 
-	if url == None or url == '' or url == 'http:' or url == 'https:':
+	if url == None or url == '' or url == 'http:' or url == 'https:' or 'http' not in url:
+		log(type='ERROR', err="createMeta > Title: %s Provider:%s  url:%s" % (cleantitle.title_from_key(key), provider, url))
 		return links
 		
 	url = url.strip()
 	
 	for item in links:
+		if url == item['orig_url']:
+			log("createMeta > %s has already been processed" % url)
+			return links
+			
+	for item in control.getExtSource():
 		if url == item['orig_url']:
 			log("createMeta > %s has already been processed" % url)
 			return links
@@ -164,13 +171,14 @@ def createMeta(url, provider, logo, quality, links, key, riptype=None, vidtype='
 			else:
 				riptype_def = riptype
 			for host in sourceHostsCall:
-				log("createMeta > Searching %s in host (%s)" % (urlhost, host['name']), logToControl=False)
+				log("createMeta > Searching %s in host (%s) for provider (%s)" % (urlhost, host['name'], provider), logToControl=False)
 
 				if urlhost in host['host']:
 					log("createMeta > Found %s in host (%s)" % (urlhost, host['name']))
 					return host['call'].createMeta(url, provider, logo, quality, links, key, riptype_def, vidtype=vidtype, lang=lang, sub_url=sub_url, txt=txt, file_ext=file_ext, testing=testing, poster=poster, headers=headers, page_url=page_url)
 				
-		log("createMeta > urlhost '%s' not found in host/resolver plugins - creating generic meta for plex services" % urlhost)
+		log("createMeta > urlhost '%s' not found in host/resolver plugins - creating generic services > provider:%s" % (urlhost,provider))
+		log("createMeta > url:%s" % (url))
 		
 		quality = file_quality(url, quality)
 		

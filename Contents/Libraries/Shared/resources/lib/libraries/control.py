@@ -44,6 +44,7 @@ ThreadBlockOper = [False]
 
 partial_sources = []
 
+ext_sources = []
 
 def setting(key):
 	if key in setting_dict.keys():
@@ -72,6 +73,20 @@ def setPartialSource(s,p):
 			partial_sources.append(s)
 	except Exception as e:
 		log2('Error in appending partial source ! Provider: %s' % p, type='CRITICAL')
+		
+def setExtSource(s):
+	try:
+		del ext_sources[:]
+		ext_sources.extend(s)
+	except Exception as e:
+		log2('Error in setExtSource > %s' % e, type='CRITICAL')
+		
+def getExtSource():
+	try:
+		return ext_sources
+	except Exception as e:
+		log2('Error in setExtSource > %s' % e, type='CRITICAL')
+		return []
 	
 def AddThread(name, desc, start_time, type, persist_bool, uid, thread=None):
 	while ThreadBlockOper[0] == True:

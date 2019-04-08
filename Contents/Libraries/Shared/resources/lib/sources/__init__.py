@@ -293,22 +293,26 @@ class sources:
 
 	def checkProgress(self, key=None):
 	
-		if key in self.threads.keys():
-			c = 0
-			for x in self.threads[key]:
-				if not x.isAlive(): 
-					for s in self.threadSlots[key]:
-						if x == s['thread'] and 'done' in s['status']:
-							c += 1
-			
-			if len(self.threads[key]) == 0:
-				return 100
-			
-			return float(int(float((float(c)/float(len(self.threads[key])))*100.0))*100)/100.0
-		else:
-			filtered = [i for i in self.sources if i['key'] == key]
-			if len(filtered) > 0:
-				return 100
+		try:
+			if key in self.threads.keys():
+				c = 0
+				for x in self.threads[key]:
+					if not x.isAlive(): 
+						for s in self.threadSlots[key]:
+							if x == s['thread'] and 'done' in s['status']:
+								c += 1
+				
+				if len(self.threads[key]) == 0:
+					return 100
+				
+				return float(int(float((float(c)/float(len(self.threads[key])))*100.0))*100)/100.0
+			else:
+				filtered = [i for i in self.sources if i != None and 'key' in i.keys() and i['key'] == key]
+				if len(filtered) > 0:
+					return 100
+				return 0
+		except Exception as e:
+			log(type='ERROR-CRITICAL', err='checkProgress - %e' % e)
 			return 0
 			
 	def getDescProgress(self, key=None):
@@ -369,6 +373,8 @@ class sources:
 			self.sources.extend(sources)
 		except:
 			pass
+			
+		control.setExtSource(self.sources)
 
 		doneMarked = False
 		try:
@@ -420,6 +426,8 @@ class sources:
 			self.sources.extend(sources)
 		except:
 			pass
+			
+		control.setExtSource(self.sources)
 			
 		doneMarked = False
 		try:
@@ -538,6 +546,9 @@ class sources:
 			filter_extSources = []
 			dups = []
 			rem_items = []
+			
+			self.sources[:] = [x for x in self.sources if (x != None or x != [])]
+			
 			for i in self.sources:
 				if i not in dups:
 					if key == None:

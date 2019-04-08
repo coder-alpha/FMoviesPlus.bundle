@@ -4561,6 +4561,21 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 					Log(gen_play)
 				Log(e)
 	
+	if common.USE_EXTRAS == True and common.MISC_OPTIONS[common.MISC_OPTIONS_KEYS[9]]['val'] == True:
+		for source in extras_playback_links:
+			extExtrasSources_urlservice.append(source)
+			
+		extExtrasSources_urlservice = common.OrderBasedOn(extExtrasSources_urlservice, use_host=False, use_filesize=common.UsingOption(key=common.DEVICE_OPTIONS[9], session=session))
+		cx = len(extExtrasSources_urlservice)
+		
+		if cx > 0:
+			ext_summmary = ', '.join('%s (%s)' % (x['label'],'enabled' if str(x['enabled']).lower()=='true' else 'disabled') for x in common.INTERNAL_SOURCES_FILETYPE if 'Movie/Show' not in x['label'])
+			ocp = DirectoryObject(title = 'Extras (%s items)' % str(cx), key = Callback(PSExtSources, con_title='Extras (%s items)' % str(cx), extSources_play=E(JSON.StringFromObject(extExtrasSources_urlservice)), session=session, watch_title=watch_title, year=year, summary=summary, thumb=thumb, art=art, url=url, duration=duration, rating=rating, genre=genre, mode_trailer=True), summary=ext_summmary,thumb=R(common.ICON_PLEX))
+			if prog < 100:
+				oc.insert(1,ocp)
+			else:
+				oc.insert(0,ocp)
+	
 	if common.USE_EXT_URLSERVICES == True and common.MISC_OPTIONS[common.MISC_OPTIONS_KEYS[8]]['val'] == True:
 		external_extSources = extSourKey
 		
@@ -4575,12 +4590,6 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 					break
 			if bool == True:
 				extSources_urlservice.append(source)
-				
-		for source in extras_playback_links:
-			extExtrasSources_urlservice.append(source)
-			
-		extExtrasSources_urlservice = common.OrderBasedOn(extExtrasSources_urlservice, use_host=False, use_filesize=common.UsingOption(key=common.DEVICE_OPTIONS[9], session=session))
-		cx = len(extExtrasSources_urlservice)
 		
 		for source in plexservice_playback_links:
 			extSources_urlservice.append(source)
@@ -4599,13 +4608,6 @@ def ExtSources(title, url, summary, thumb, art, rating, duration, genre, directo
 		if common.DEV_DEBUG == True and Prefs["use_debug"] == True:
 			Log(extSources_urlservice)
 		
-		if cx > 0:
-			ext_summmary = ', '.join('%s (%s)' % (x['label'],'enabled' if str(x['enabled']).lower()=='true' else 'disabled') for x in common.INTERNAL_SOURCES_FILETYPE if 'Movie/Show' not in x['label'])
-			ocp = DirectoryObject(title = 'Extras (%s items)' % str(cx), key = Callback(PSExtSources, con_title='Extras (%s items)' % str(cx), extSources_play=E(JSON.StringFromObject(extExtrasSources_urlservice)), session=session, watch_title=watch_title, year=year, summary=summary, thumb=thumb, art=art, url=url, duration=duration, rating=rating, genre=genre, mode_trailer=True), summary=ext_summmary,thumb=R(common.ICON_PLEX))
-			if prog < 100:
-				oc.insert(1,ocp)
-			else:
-				oc.insert(0,ocp)
 		if c > 0:
 			ocp = DirectoryObject(title = 'External Sources (via Plex-Service) %s links' % str(c), key = Callback(PSExtSources, con_title='External Sources (via Plex-Service) %s links' % str(c), extSources_play=E(JSON.StringFromObject(extSources_urlservice)), session=session, watch_title=watch_title, year=year, summary=summary, thumb=thumb, art=art, url=url, duration=duration, rating=rating, genre=genre), summary='Playable via Plex services that are available and a Generic Player that tries its best to handle the rest.', thumb=R(common.ICON_PLEX))
 			oc.append(ocp)

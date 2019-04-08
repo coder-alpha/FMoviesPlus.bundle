@@ -159,7 +159,7 @@ SERVER_PLACEHOLDER = 'FMOVIES'
 FMOVIES_SERVER_REMAP = {'Server F':'Google-F', 'Server G':'Google-G', 'F5 Beta':'PrettyFast', 'F5 - HQ':'PrettyFast'}
 FMOVIES_HOSTS_DISABLED = ['MyCloud','PrettyFast']
 
-MISC_OPTIONS_KEYS = ['SOURCE_SEARCH_TIMEOUT','SMART_ADD_EP_FALLOUT_DAYS','SMART_ADD_SEASON_FALLOUT_DAYS','Extend-Smart-Add-For-Seasons','Retry-Failed-Downloads','Dont-Refresh-Library-Downloads','Retrieve-And-Display-Partial-Sources','FMOVIES_HOSTS_UNPLAYABLE','SHOW_PLEX_SERVICE_LINKS']
+MISC_OPTIONS_KEYS = ['SOURCE_SEARCH_TIMEOUT','SMART_ADD_EP_FALLOUT_DAYS','SMART_ADD_SEASON_FALLOUT_DAYS','Extend-Smart-Add-For-Seasons','Retry-Failed-Downloads','Dont-Refresh-Library-Downloads','Retrieve-And-Display-Partial-Sources','FMOVIES_HOSTS_UNPLAYABLE','SHOW_PLEX_SERVICE_LINKS','SHOW_EXTRAS']
 MISC_OPTIONS_CONST = {
 					MISC_OPTIONS_KEYS[0]:{'type':'num','title':'AutoPilot Source Search Timeout','val':600, 'unit':'sec', 'desc':'AutoPilot Source Timeout seconds (%s-%s): %s','LL':300,'UL':300*4}, 
 					MISC_OPTIONS_KEYS[1]:{'type':'num','title':'AutoPilot Smart Add (Episode) Entry','val':30,'unit':'day', 'desc':'AutoPilot Smart Add (Episode) Entry retain days (%s-%s): %s','LL':15,'UL':15*6}, 
@@ -168,7 +168,8 @@ MISC_OPTIONS_CONST = {
 					MISC_OPTIONS_KEYS[5]:{'type':'bool','title':'Don\'t perform a Library Section Refresh after an Item is Downloaded','val':False,'unit':'', 'desc':'Don\'t perform a Library Section Refresh after an Item is Downloaded: %s','LL':0,'UL':0}, 
 					MISC_OPTIONS_KEYS[6]:{'type':'bool','title':'Retrieve And Display Partial Sources','val':False,'unit':'', 'desc':'Retrieve And Display Partial Sources while Provider is processing All Sources: %s','LL':0,'UL':0},
 					MISC_OPTIONS_KEYS[7]:{'type':'bool','title':'Show Unplayable Hosts for FMovies site','val':False,'unit':'', 'desc':'Show Unplayable Hosts for FMovies site in item listing %s: %s' % (FMOVIES_HOSTS_DISABLED, '%s'),'LL':0,'UL':0},
-					MISC_OPTIONS_KEYS[8]:{'type':'bool','title':'Show Plex Service Links','val':False,'unit':'', 'desc':'Show Plex Service Links: %s','LL':0,'UL':0}
+					MISC_OPTIONS_KEYS[8]:{'type':'bool','title':'Show Plex Service Links','val':False,'unit':'', 'desc':'Show Plex Service Links: %s','LL':0,'UL':0},
+					MISC_OPTIONS_KEYS[9]:{'type':'bool','title':'Show Extras','val':True,'unit':'', 'desc':'Show Extras (Trailer, etc.): %s','LL':0,'UL':0}
 					}
 MISC_OPTIONS = MISC_OPTIONS_CONST.copy()
 
@@ -265,6 +266,7 @@ SHOW_EXT_SRC_WHILE_LOADING = True
 USE_DOWNLOAD_RESUME_GEN = True
 USE_DOWNLOAD_RESUME_MEGA = True
 USE_EXT_URLSERVICES = True
+USE_EXTRAS = True
 USE_COOKIES = True
 DOWNLOAD_BACKUP_OPER = True
 USE_SECOND_REQUEST = True

@@ -301,15 +301,21 @@ def SaveBookmarks(**kwargs):
 	for each in Dict:
 		longstring = str(Dict[each])
 		
-		if (('fmovies.' in longstring or 'bmovies.' in longstring or '9anime.' in longstring) or common.isArrayValueInString(common.EXT_SITE_URLS, longstring) == True) and 'Key5Split' in longstring:	
+		if (('fmovies.' in longstring or 'bmovies.' in longstring or '9anime.' in longstring) or common.isArrayValueInString(common.EXT_SITE_URLS, longstring) == True or 'http://ES' in longstring) and 'Key5Split' in longstring:
+		
 			stitle = unicode(longstring.split('Key5Split')[0])
 			url = longstring.split('Key5Split')[1]
 			summary = unicode(longstring.split('Key5Split')[2])
 			thumb = longstring.split('Key5Split')[3]
-			
-			url = common.FixUrlInconsistencies(url)
-			url = common.FixUrlInconsistencies2(url)
-			url = common.FixUrlInconsistencies3(url)
+			type = 'movie'
+			try:
+				type = longstring.split('Key5Split')[4]
+			except:
+				pass
+			if 'http://ES' not in longstring:
+				url = common.FixUrlInconsistencies(url)
+				url = common.FixUrlInconsistencies2(url)
+				url = common.FixUrlInconsistencies3(url)
 			
 			if common.DEV_DEBUG == True and Prefs["use_debug"] == True:
 				Log("Save BM-1 : %s" % url)
@@ -323,7 +329,7 @@ def SaveBookmarks(**kwargs):
 				Log("Save BM-2 : %s" % url)
 				
 			if url not in items_in_bm:
-				items_in_bm.append({'title':stitle,'url':url,'summary':summary,'thumb':thumb})
+				items_in_bm.append({'title':stitle,'url':url,'summary':summary,'thumb':thumb,'type':type})
 					
 	if len(items_in_bm) > 0:
 		bkup_file = Core.storage.join_path(resources_path, 'bookmarks.json')
@@ -361,10 +367,24 @@ def LoadBookmarks(**kwargs):
 			url = item['url']
 			summary = item['summary']
 			thumb = item['thumb']
-			
-			url = common.FixUrlInconsistencies(url)
-			url = common.FixUrlInconsistencies2(url)
-			url = common.FixUrlInconsistencies3(url)
+			type = 'movie'
+			try:
+				type = item['type']
+			except:
+				pass
+				
+			data = None
+			if 'http://ES' in url:
+				data = url
+				mydata = url.replace('http://ES','')
+				urldata = JSON.ObjectFromString(D(mydata))
+				stitle = urldata['title']
+				year = urldata['year']
+				url = 'http://ES'+E(JSON.StringFromObject({'title':stitle,'year':year}))
+			else:
+				url = common.FixUrlInconsistencies(url)
+				url = common.FixUrlInconsistencies2(url)
+				url = common.FixUrlInconsistencies3(url)
 			
 			if common.DEV_DEBUG == True and Prefs["use_debug"] == True:
 				Log("Load BM-1 : %s" % url)
@@ -377,7 +397,10 @@ def LoadBookmarks(**kwargs):
 			if common.DEV_DEBUG == True and Prefs["use_debug"] == True:
 				Log("Load BM-2 : %s" % url)
 			
-			Dict[title+'-'+E(url)] = (title + 'Key5Split' + url +'Key5Split'+ summary + 'Key5Split' + thumb)
+			if data != None:
+				Dict[title+'-'+E(url)] = (title + 'Key5Split' + data +'Key5Split'+ summary + 'Key5Split' + thumb + 'Key5Split' + type)
+			else:
+				Dict[title+'-'+E(url)] = (title + 'Key5Split' + url +'Key5Split'+ summary + 'Key5Split' + thumb + 'Key5Split' + type)
 		
 		if len(items_in_bm) > 0:
 			Dict.Save()
@@ -403,29 +426,35 @@ def SaveConfig(**kwargs):
 	for each in Dict:
 		longstring = str(Dict[each])
 		
-		if (('fmovies.' in longstring or 'bmovies.' in longstring or '9anime.' in longstring) or common.isArrayValueInString(common.EXT_SITE_URLS, longstring) == True) and 'Key5Split' in longstring:	
+		if (('fmovies.' in longstring or 'bmovies.' in longstring or '9anime.' in longstring) or common.isArrayValueInString(common.EXT_SITE_URLS, longstring) == True or 'http://ES' in longstring) and 'Key5Split' in longstring:
+		
 			stitle = unicode(longstring.split('Key5Split')[0])
 			url = longstring.split('Key5Split')[1]
 			summary = unicode(longstring.split('Key5Split')[2])
 			thumb = longstring.split('Key5Split')[3]
-			
-			url = common.FixUrlInconsistencies(url)
-			url = common.FixUrlInconsistencies2(url)
-			url = common.FixUrlInconsistencies3(url)
+			type = 'movie'
+			try:
+				type = longstring.split('Key5Split')[4]
+			except:
+				pass
+			if 'http://ES' not in longstring:
+				url = common.FixUrlInconsistencies(url)
+				url = common.FixUrlInconsistencies2(url)
+				url = common.FixUrlInconsistencies3(url)
 			
 			if common.DEV_DEBUG == True and Prefs["use_debug"] == True:
-				Log("Save Config BM-1 : %s" % url)
+				Log("Save BM-1 : %s" % url)
 			
 			if ('fmovies.' in url or 'bmovies.' in url):
-				url = url.replace(common.client.getUrlHost(url),fmovies_base)
+				url = url.replace(common.client.getUrlHost(url),fmovies_base)	
 			elif ('9anime.' in url):
 				url = url.replace(common.client.getUrlHost(url),anime_base)
 				
 			if common.DEV_DEBUG == True and Prefs["use_debug"] == True:
-				Log("Save Config BM-2 : %s" % url)
+				Log("Save BM-2 : %s" % url)
 				
 			if url not in items_in_bm:
-				items_in_bm.append({'title':stitle,'url':url,'summary':summary,'thumb':thumb})
+				items_in_bm.append({'title':stitle,'url':url,'summary':summary,'thumb':thumb,'type':type})
 				
 	urls_list = []
 	items_to_del = []
@@ -550,7 +579,25 @@ def LoadConfig(**kwargs):
 				url = item['url']
 				summary = item['summary']
 				thumb = item['thumb']
-				Dict[title+'-'+E(url)] = (title + 'Key5Split' + url +'Key5Split'+ summary + 'Key5Split' + thumb)
+				type = 'movie'
+				try:
+					type = item['type']
+				except:
+					pass
+					
+				data = None
+				if 'http://ES' in url:
+					data = url
+					mydata = url.replace('http://ES','')
+					urldata = JSON.ObjectFromString(D(mydata))
+					stitle = urldata['title']
+					year = urldata['year']
+					url = 'http://ES'+E(JSON.StringFromObject({'title':stitle,'year':year}))
+				
+				if data != None:
+					Dict[title+'-'+E(url)] = (title + 'Key5Split' + data +'Key5Split'+ summary + 'Key5Split' + thumb + 'Key5Split' + type)
+				else:
+					Dict[title+'-'+E(url)] = (title + 'Key5Split' + url +'Key5Split'+ summary + 'Key5Split' + thumb + 'Key5Split' + type)
 				
 			for item in items_in_recent:
 				title = item['title']

@@ -66,8 +66,8 @@ def decode(url, python_dir=None, debug=False, ssl=True, js='openload.js'):
 			file_cmd.insert(1,'--ssl-protocol=any')
 
 		if sys.platform == "darwin":
-			#if debug:
-			#	print file_cmd
+			if debug:
+				print file_cmd
 			PROCESSES[url_encode] = {'url':url,'ts':time.time(),'Completed':False}
 			process = subprocess.Popen(file_cmd, shell=False, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, close_fds=True)
 			PROCESSES[url_encode].update({'process':process})
@@ -75,8 +75,8 @@ def decode(url, python_dir=None, debug=False, ssl=True, js='openload.js'):
 			output = process.stdout.read()
 			#PROCESSES[url_encode].update({'output':output})
 		else:
-			#if debug:
-			#	print file_cmd
+			if debug:
+				print file_cmd
 			PROCESSES[url_encode] = {'url':url,'ts':time.time(),'Completed':False}
 			process = subprocess.Popen(file_cmd, shell=False, cwd=PHANTOMJS_PLUGIN_CHANNEL_PATH, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 			PROCESSES[url_encode].update({'process':process})
@@ -84,8 +84,8 @@ def decode(url, python_dir=None, debug=False, ssl=True, js='openload.js'):
 			output = process.stdout.read()
 			#PROCESSES[url_encode].update({'output':output})
 
-		#if debug:
-		#	print output
+		if debug:
+			print output
 		PROCESSES[url_encode].update({'output':output})
 		if 'ERROR' in output:
 			raise Exception(output)

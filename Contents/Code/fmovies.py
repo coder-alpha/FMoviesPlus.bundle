@@ -226,6 +226,12 @@ def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web
 		
 def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quiet=False):
 
+	try:
+		if common.USE_SELENIUM == True:
+			common.seleniumca.setFAQPage(urlparse.urljoin(BASE_URL, "faq"))
+	except:
+		pass
+	
 	if common.USE_COOKIES == False:
 		if use_debug or dump:
 			Log("Cookie Usage has been disabled from options !")
@@ -274,9 +280,23 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 		except:
 			pass
 	
+	UA = cookie_dict['UA']
+	if UA == '':
+		try:
+			UA = common.CACHE['cookie']['UA']
+		except:
+			UA = common.client.randomagent()
+		
+	if use_debug == True:
+		Log("=============== cookie_dict ===============")
+		Log(cookie_dict)
+	
 	if time.time() - cookie_dict['ts'] < CACHE_EXPIRY:
 		try:
 			cookie = cookie_dict['cookie']
+			cookie1 = cookie_dict['cookie1']
+			cookie2 = cookie_dict['cookie2']
+			UA = cookie_dict['UA']
 			reqkey_cookie = cookie_dict['reqkey']
 			token_key = cookie_dict['token_key']
 			token_oper = cookie_dict['token_oper']
@@ -284,13 +304,21 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 			TOKEN_KEY.append(token_key)
 			del TOKEN_OPER[:]
 			TOKEN_OPER.append(token_oper)
-		except:
+			
+			common.CACHE['cookie'] = {}
+			common.CACHE['cookie']['cookie1'] = cookie1
+			common.CACHE['cookie']['cookie2'] = cookie2
+			common.CACHE['cookie']['myts'] = cookie_dict['ts']
+			common.CACHE['cookie']['UA'] = UA
+			common.CACHE['cookie']['reqkey'] = reqkey_cookie
+		except Exception as e:
+			Log.Error(e)
 			setTokenCookie(use_debug=use_debug, reset=True)
 
 		Thread.Create(fetch_dev_notice)
 		Thread.Create(fetch_announcement)
 		
-		if dump or use_debug and quiet == False:
+		if dump or use_debug and (quiet == False or common.DEV_DEBUG == True):
 			Log("=====================TOKEN START============================")
 			Log("USING SAVED COOKIE TOKEN - TO DUMP TOKEN PERFORM RESET COOKIE UNDER OPTIONS MENU")
 			Log("Retrieved Saved Cookie: %s" % cookie)
@@ -298,17 +326,19 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 			Log("Retrieved Saved Video-Token-Key: %s" % E(token_key))
 			Log("=====================TOKEN END============================")
 	else:
+		reqkey_cookie = ''
+		cookie1 = ''
+		cookie2 = ''
+	
 		if serverts == None:
 			serverts = str(((int(time.time())/3600)*3600))
-
-		UA = common.client.randomagent()
-		
+			
 		headersS = {'X-Requested-With': 'XMLHttpRequest'}
 		headersS['Referer'] = BASE_URL
 		headersS['User-Agent'] = UA
 		
 		result, headers, content, cookie1 = common.interface.request_via_proxy_as_backup(BASE_URL, headers=headersS, limit='0', output='extended', httpsskip=use_https_alt, hideurl=True)
-		Log(cookie1)
+		#Log(cookie1)
 		
 		try:
 			if '__cfduid' in cookie1:
@@ -318,177 +348,231 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 						cookie1 = cfdd.strip()
 		except:
 			pass
-		
-		ALL_JS = None
-		try:
-			page_data_elems = HTML.ElementFromString(result)
-			ALL_JS =  page_data_elems.xpath(".//script[@src[contains(.,'all.js')]]//@src")[0]
-		except Exception as e:
-			Log.Error(e)
-		
-		headersS['Cookie'] = cookie1
-		time.sleep(0.1)
-		
-		try:
-			token_url = urlparse.urljoin(BASE_URL, TOKEN_PATH)
-			
-			reqkey_cookie = ''
-			del TOKEN_KEY[:]
-			del TOKEN_OPER[:]
-			
-			use_token_url = True
-			if len(FLAGS) > 0 and 'use_token_url' in FLAGS[0].keys():
-				use_token_urlx = FLAGS[0]['use_token_url']
-				use_token_url = True if str(use_token_urlx).lower()=='true' else False
-				
-			counter = 0
-			
-			if use_token_url == True:
-				while reqkey_cookie == '' and counter < 5:
-					r, r1 = common.interface.request_via_proxy_as_backup(token_url, headers=headersS, httpsskip=use_https_alt, output='response', hideurl=True)
-					time.sleep(0.1)
-					del common.TOKEN_CODE[:]
-					
-					if r in common.client.HTTP_GOOD_RESP_CODES and '503 Service Unavailable' not in r1 and 'NotFoundHttpException' not in r1:
-						token_enc = common.client.b64encode(r1)
-						common.TOKEN_CODE.append(token_enc)
-						
-						quiet = True
-						if counter == 4:
-							quiet = False
-						
-						try:
-							reqkey_cookie = decodeAndParse(token_enc,use_debug,use_https_alt, quiet=quiet)
-						except:
-							reqkey_cookie = ''
-							
-					if '503 Service Unavailable' in r1 and counter > 2:
-						break
-							
-					time.sleep(2.0)
-					counter += 1
-			
-			if dump or use_debug:
-				Log("=====================TOKEN START============================")
-				if len(common.TOKEN_CODE) == 0:
-					Log('NO COOKIE TOKEN USED/REQUIRED')
-				else:
-					Log(common.TOKEN_CODE[0])
-				Log("=====================TOKEN END============================")
-		except Exception as e:
-			Log(e)
-			if dump or use_debug:
-				Log("=====================TOKEN START============================")
-				Log("Token URL %s is not reachable !" % token_url)
-				Log("If the Token URL is not reachable using a browser as well it should not affect operations of this plugin.")
-				Log("=====================TOKEN END============================")
 
-		cookie_dict = {}
-		
-		try:
-			try:
-				token_pairs = common.interface.request_via_proxy_as_backup(TOKEN_PAIRS_PASTEBIN_URL, httpsskip=use_https_alt, hideurl=True)
-				if token_pairs != None and token_pairs != '':
-					token_pairs = json.loads(token_pairs)
-					#cookie_dict.update({'token_pairs':token_pairs})
-					del PAIRS[:]
-					PAIRS.append(token_pairs)
-					Dict['TOKEN_PAIRS'] = E(JSON.StringFromObject(PAIRS))
-			except Exception as e:
-				Log('ERROR fmovies.py>Token-fetch-3.a: %s' % e)
+		if 'Please complete the security check to continue!' in result:
+			common.FMOVIES_AVAILABLE = False
+			if dump or use_debug:
+				Log("=====================TOKEN START============================")
+				Log('RE-CAPTCHA COOKIE TOKEN USED/REQUIRED')
+				Log("=====================TOKEN END============================")
+			
+			if common.USE_SELENIUM == True:
+				Log("=====================SELENIUM START============================")
+				Log("Attempting Selenium Retrieval")
 				
-			try:
-				fm_flags = common.interface.request_via_proxy_as_backup(FLAGS_PASTEBIN_URL, httpsskip=use_https_alt, hideurl=True)
-				if fm_flags != None and fm_flags != '':
-					fm_flags = json.loads(fm_flags)
-					#cookie_dict.update({'token_pairs':token_pairs})
-					del FLAGS[:]
-					FLAGS.append(fm_flags)
-					Dict['TOKEN_FLAGS'] = E(JSON.StringFromObject(FLAGS))
-			except Exception as e:
-				Log('ERROR fmovies.py>Token-fetch-3.b: %s' % e)
-				
-			if len(TOKEN_KEY) == 0 and ALL_JS != None:
 				try:
-					if 'http' in ALL_JS:
-						all_js_url = ALL_JS
+					my_cookies_via_sel, pg_src, UA = common.seleniumca.getMyCookies(urlparse.urljoin(BASE_URL, "faq"))
+					for x in my_cookies_via_sel:
+						if x['name'] == '__cfduid':
+							cookie1 = '%s=%s' % (x['name'],x['value'])
+							my_cookies_via_sel.remove(x)
+							break
+					Log(cookie1)
+					cookie2 = (';'.join('%s=%s' % (x['name'],x['value']) for x in my_cookies_via_sel))
+					Log(cookie2)
+					common.FMOVIES_AVAILABLE = True
+				except Exception as e:
+					Log.Error(e)
+				Log("=====================SELENIUM END============================")
+		else:
+			common.FMOVIES_AVAILABLE = True
+			ALL_JS = None
+			try:
+				page_data_elems = HTML.ElementFromString(result)
+				ALL_JS =  page_data_elems.xpath(".//script[@src[contains(.,'all.js')]]//@src")[0]
+			except Exception as e:
+				Log.Error(e)
+			
+			headersS['Cookie'] = cookie1
+			time.sleep(0.1)
+			
+			try:
+				token_url = urlparse.urljoin(BASE_URL, TOKEN_PATH)
+				
+				reqkey_cookie = ''
+				del TOKEN_KEY[:]
+				del TOKEN_OPER[:]
+				
+				use_token_url = True
+				if len(FLAGS) > 0 and 'use_token_url' in FLAGS[0].keys():
+					use_token_urlx = FLAGS[0]['use_token_url']
+					use_token_url = True if str(use_token_urlx).lower()=='true' else False
+					
+				counter = 0
+				
+				if use_token_url == True:
+					while reqkey_cookie == '' and counter < 5:
+						r, r1 = common.interface.request_via_proxy_as_backup(token_url, headers=headersS, httpsskip=use_https_alt, output='response', hideurl=True)
+						time.sleep(0.1)
+						del common.TOKEN_CODE[:]
+						
+						if r in common.client.HTTP_GOOD_RESP_CODES and '503 Service Unavailable' not in r1 and 'NotFoundHttpException' not in r1:
+							token_enc = common.client.b64encode(r1)
+							common.TOKEN_CODE.append(token_enc)
+							
+							quiet = True
+							if counter == 4:
+								quiet = False
+							
+							try:
+								reqkey_cookie = decodeAndParse(token_enc,use_debug,use_https_alt, quiet=quiet)
+							except:
+								reqkey_cookie = ''
+								
+						if '503 Service Unavailable' in r1 and counter > 2:
+							break
+								
+						time.sleep(2.0)
+						counter += 1
+				
+				if dump or use_debug:
+					Log("=====================TOKEN START============================")
+					if len(common.TOKEN_CODE) == 0:
+						Log('NO COOKIE TOKEN USED/REQUIRED')
 					else:
-						all_js_url = urlparse.urljoin(BASE_URL, ALL_JS)
-						
-					try:
-						vid_token_key = all_js_url.split('?')[1]
-						if len(PAIRS) > 0 and PAIRS[0] != None:
-							if len(PAIRS) > 0 and vid_token_key in PAIRS[0].keys():
-								TOKEN_KEY.append(PAIRS[0][vid_token_key])
-							elif len(PAIRS) > 0:
-								TOKEN_KEY.append(PAIRS[0]["None"])
-					except:
-						pass
-						
-					all_js_pack_code = common.interface.request_via_proxy_as_backup(all_js_url, httpsskip=use_https_alt, hideurl=True)
-					unpacked_code = all_js_pack_code
-					
-					try:
-						if common.jsunpack.detect(all_js_pack_code):
-							unpacked_code = common.jsunpack.unpack(all_js_pack_code)
-					except:
-						pass
-						
-					if len(TOKEN_KEY) == 0:
-						try:
-							parts = re.findall(r'%s' % common.client.b64decode('ZnVuY3Rpb24gZlwoXClce3JldHVybiguKj8pXH0='), unpacked_code)[0].strip()
-							parts_s = parts.split('+')
-							val_str = ''
-							if len(parts_s) > 0:
-								for p in parts_s:
-									p = re.escape(p)
-									val_str += re.findall(r'%s\=\"(.*?)\",' % p, unpacked_code)[0]
-								token_key = val_str
-							else:
-								raise Exception("ALL JS Parts were not found !")
-							if token_key !=None and token_key != '':
-								#cookie_dict.update({'token_key':token_key})
-								TOKEN_KEY.append(token_key)
-						except Exception as e:
-							Log('ERROR fmovies.py>Token-fetch-1.1a: %s' % e)
-						
-					if len(TOKEN_KEY) == 0:
-						try:
-							cch = re.findall(r'%s' % common.client.b64decode('ZnVuY3Rpb25cKHQsaSxuXCl7XCJ1c2Ugc3RyaWN0XCI7ZnVuY3Rpb24gZVwoXCl7cmV0dXJuICguKj8pfWZ1bmN0aW9uIHJcKHRcKQ=='), unpacked_code)[0]
-							token_key = re.findall(r'%s=.*?\"(.*?)\"' % cch, unpacked_code)[0]
-							if token_key !=None and token_key != '':
-								#cookie_dict.update({'token_key':token_key})
-								TOKEN_KEY.append(token_key)
-						except Exception as e:
-							Log('ERROR fmovies.py>Token-fetch-1.2a: %s' % e)
-						
-					if len(TOKEN_KEY) == 0:
-						try:
-							cch = re.findall(r'%s' % common.client.b64decode('ZnVuY3Rpb25cKFthLXpdLFthLXpdLFthLXpdXCl7XCJ1c2Ugc3RyaWN0XCI7ZnVuY3Rpb24gW2Etel1cKFwpe3JldHVybiAoLio/KX1mdW5jdGlvbiBbYS16XVwoW2Etel1cKQ=='), unpacked_code)[0]
-							token_key = re.findall(r'%s=.*?\"(.*?)\"' % cch, unpacked_code)[0]
-							if token_key !=None and token_key != '':
-								#cookie_dict.update({'token_key':token_key})
-								TOKEN_KEY.append(token_key)
-						except Exception as e:
-							Log('ERROR fmovies.py>Token-fetch-1.3a: %s' % e)
-							
+						Log(common.TOKEN_CODE[0])
+					Log("=====================TOKEN END============================")
+			except Exception as e:
+				Log(e)
+				if dump or use_debug:
+					Log("=====================TOKEN START============================")
+					Log("Token URL %s is not reachable !" % token_url)
+					Log("If the Token URL is not reachable using a browser as well it should not affect operations of this plugin.")
+					Log("=====================TOKEN END============================")
+
+			cookie_dict = {}
+			
+			try:
+				try:
+					token_pairs = common.interface.request_via_proxy_as_backup(TOKEN_PAIRS_PASTEBIN_URL, httpsskip=use_https_alt, hideurl=True)
+					if token_pairs != None and token_pairs != '':
+						token_pairs = json.loads(token_pairs)
+						#cookie_dict.update({'token_pairs':token_pairs})
+						del PAIRS[:]
+						PAIRS.append(token_pairs)
+						Dict['TOKEN_PAIRS'] = E(JSON.StringFromObject(PAIRS))
 				except Exception as e:
-					Log('ERROR fmovies.py>Token-fetch-1a: %s' % e)
+					Log('ERROR fmovies.py>Token-fetch-3.a: %s' % e)
 					
 				try:
-					token_oper = re.findall(r'%s' % common.client.b64decode('blwrPXRcWy4qP11cKGlcKS4qPyguKj8pOw=='), unpacked_code)[0]
-					if token_oper !=None and token_oper != '' and len(token_oper) < 3:
-						#cookie_dict.update({'token_oper':token_oper})
-						token_oper = token_oper.replace('i','e')
-						TOKEN_OPER.append(token_oper)
+					fm_flags = common.interface.request_via_proxy_as_backup(FLAGS_PASTEBIN_URL, httpsskip=use_https_alt, hideurl=True)
+					if fm_flags != None and fm_flags != '':
+						fm_flags = json.loads(fm_flags)
+						#cookie_dict.update({'token_pairs':token_pairs})
+						del FLAGS[:]
+						FLAGS.append(fm_flags)
+						Dict['TOKEN_FLAGS'] = E(JSON.StringFromObject(FLAGS))
 				except Exception as e:
-					Log('ERROR fmovies.py>Token-fetch-1b: %s' % e)
-					if common.DEV_DEBUG:
-						Log(match_exp)
-						Log(unpacked_code)
-		except Exception as e:
-			Log('ERROR fmovies.py>Token-fetch-1: %s' % e)
+					Log('ERROR fmovies.py>Token-fetch-3.b: %s' % e)
+					
+				if len(TOKEN_KEY) == 0 and ALL_JS != None:
+					try:
+						if 'http' in ALL_JS:
+							all_js_url = ALL_JS
+						else:
+							all_js_url = urlparse.urljoin(BASE_URL, ALL_JS)
+							
+						try:
+							vid_token_key = all_js_url.split('?')[1]
+							if len(PAIRS) > 0 and PAIRS[0] != None:
+								if len(PAIRS) > 0 and vid_token_key in PAIRS[0].keys():
+									TOKEN_KEY.append(PAIRS[0][vid_token_key])
+								elif len(PAIRS) > 0:
+									TOKEN_KEY.append(PAIRS[0]["None"])
+						except:
+							pass
+							
+						all_js_pack_code = common.interface.request_via_proxy_as_backup(all_js_url, httpsskip=use_https_alt, hideurl=True)
+						unpacked_code = all_js_pack_code
+						
+						try:
+							if common.jsunpack.detect(all_js_pack_code):
+								unpacked_code = common.jsunpack.unpack(all_js_pack_code)
+						except:
+							pass
+							
+						if len(TOKEN_KEY) == 0:
+							try:
+								parts = re.findall(r'%s' % common.client.b64decode('ZnVuY3Rpb24gZlwoXClce3JldHVybiguKj8pXH0='), unpacked_code)[0].strip()
+								parts_s = parts.split('+')
+								val_str = ''
+								if len(parts_s) > 0:
+									for p in parts_s:
+										p = re.escape(p)
+										val_str += re.findall(r'%s\=\"(.*?)\",' % p, unpacked_code)[0]
+									token_key = val_str
+								else:
+									raise Exception("ALL JS Parts were not found !")
+								if token_key !=None and token_key != '':
+									#cookie_dict.update({'token_key':token_key})
+									TOKEN_KEY.append(token_key)
+							except Exception as e:
+								Log('ERROR fmovies.py>Token-fetch-1.1a: %s' % e)
+							
+						if len(TOKEN_KEY) == 0:
+							try:
+								cch = re.findall(r'%s' % common.client.b64decode('ZnVuY3Rpb25cKHQsaSxuXCl7XCJ1c2Ugc3RyaWN0XCI7ZnVuY3Rpb24gZVwoXCl7cmV0dXJuICguKj8pfWZ1bmN0aW9uIHJcKHRcKQ=='), unpacked_code)[0]
+								token_key = re.findall(r'%s=.*?\"(.*?)\"' % cch, unpacked_code)[0]
+								if token_key !=None and token_key != '':
+									#cookie_dict.update({'token_key':token_key})
+									TOKEN_KEY.append(token_key)
+							except Exception as e:
+								Log('ERROR fmovies.py>Token-fetch-1.2a: %s' % e)
+							
+						if len(TOKEN_KEY) == 0:
+							try:
+								cch = re.findall(r'%s' % common.client.b64decode('ZnVuY3Rpb25cKFthLXpdLFthLXpdLFthLXpdXCl7XCJ1c2Ugc3RyaWN0XCI7ZnVuY3Rpb24gW2Etel1cKFwpe3JldHVybiAoLio/KX1mdW5jdGlvbiBbYS16XVwoW2Etel1cKQ=='), unpacked_code)[0]
+								token_key = re.findall(r'%s=.*?\"(.*?)\"' % cch, unpacked_code)[0]
+								if token_key !=None and token_key != '':
+									#cookie_dict.update({'token_key':token_key})
+									TOKEN_KEY.append(token_key)
+							except Exception as e:
+								Log('ERROR fmovies.py>Token-fetch-1.3a: %s' % e)
+								
+					except Exception as e:
+						Log('ERROR fmovies.py>Token-fetch-1a: %s' % e)
+						
+					try:
+						token_oper = re.findall(r'%s' % common.client.b64decode('blwrPXRcWy4qP11cKGlcKS4qPyguKj8pOw=='), unpacked_code)[0]
+						if token_oper !=None and token_oper != '' and len(token_oper) < 3:
+							#cookie_dict.update({'token_oper':token_oper})
+							token_oper = token_oper.replace('i','e')
+							TOKEN_OPER.append(token_oper)
+					except Exception as e:
+						Log('ERROR fmovies.py>Token-fetch-1b: %s' % e)
+						if common.DEV_DEBUG:
+							Log(match_exp)
+							Log(unpacked_code)
+			except Exception as e:
+				Log('ERROR fmovies.py>Token-fetch-1: %s' % e)
+	
+			query = {'ts': serverts}
+			tk = get_token(query)
+			query.update(tk)
+			hash_url = urlparse.urljoin(BASE_URL, HASH_PATH_MENU)
+			hash_url = hash_url + '?' + urllib.urlencode(query)
 
+			r1, headers, content, cookie2 = common.interface.request_via_proxy_as_backup(hash_url, headers=headersS, limit='0', output='extended', httpsskip=use_https_alt, hideurl=True)
+			#Log(cookie2)
+			try:
+				if '__cfduid' in cookie2:
+					cookie2w = []
+					cfd = cookie2.split(';')
+					skip = False
+					for cfdd in cfd:
+						if '__cfduid' in cfdd and not skip:
+							cookie1 = cfdd
+							skip = True
+						else:
+							cookie2w.append(cfdd)
+							
+					try:
+						cookie2 = ('; '.join(x for x in sorted(cookie2w)))
+					except:
+						pass
+			except:
+				pass
+				
 		try:
 			if len(TOKEN_KEY) == 0:
 				token_key = common.interface.request_via_proxy_as_backup(TOKEN_KEY_PASTEBIN_URL, httpsskip=use_https_alt, hideurl=True)
@@ -512,33 +596,6 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 			
 		if len(TOKEN_OPER) > 0:
 			cookie_dict.update({'token_oper':TOKEN_OPER[0]})
-			
-		query = {'ts': serverts}
-		tk = get_token(query)
-		query.update(tk)
-		hash_url = urlparse.urljoin(BASE_URL, HASH_PATH_MENU)
-		hash_url = hash_url + '?' + urllib.urlencode(query)
-
-		r1, headers, content, cookie2 = common.interface.request_via_proxy_as_backup(hash_url, headers=headersS, limit='0', output='extended', httpsskip=use_https_alt, hideurl=True)
-		Log(cookie2)
-		try:
-			if '__cfduid' in cookie2:
-				cookie2w = []
-				cfd = cookie2.split(';')
-				skip = False
-				for cfdd in cfd:
-					if '__cfduid' in cfdd and not skip:
-						cookie1 = cfdd
-						skip = True
-					else:
-						cookie2w.append(cfdd)
-						
-				try:
-					cookie2 = ('; '.join(x for x in sorted(cookie2w)))
-				except:
-					pass
-		except:
-			pass
 		
 		common.CACHE['cookie'] = {}
 		common.CACHE['cookie']['cookie1'] = cookie1
@@ -553,18 +610,21 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 			Log.Error(e)
 			cookie = 'NotFound; %s; %s; user-info=null; %s' % (cookie1,cookie2,newmarketgidstorage)
 		
-		cookie_dict.update({'ts':time.time(), 'cookie': cookie, 'UA': UA, 'reqkey':reqkey_cookie})
+		cookie_dict.update({'ts':time.time(), 'cookie1': cookie1, 'cookie2': cookie2, 'cookie': cookie, 'UA': UA, 'reqkey':reqkey_cookie})
 		
 		if dump or use_debug:
 			Log("Storing Cookie: %s" % cookie)
 			Log("Storing reqkey Cookie: %s" % reqkey_cookie)
-			Log("Storing Video-Token-Key: %s" % E(TOKEN_KEY[0]))
-			Log("Storing Video-Token-Oper: %s" % TOKEN_OPER[0])
+			if len(TOKEN_KEY) > 0:
+				Log("Storing Video-Token-Key: %s" % E(TOKEN_KEY[0]))
+			if len(TOKEN_OPER) > 0:
+				Log("Storing Video-Token-Oper: %s" % TOKEN_OPER[0])
 			if len(TOKEN_OPER) > 1:
 				Log("Storing Video-Token-Oper2: %s" % TOKEN_OPER[1])
+
 		Dict['CACHE_COOKIE'] = E(JSON.StringFromObject(cookie_dict))
 		Dict.Save()
-
+		
 	del common.CACHE_COOKIE[:]
 	common.CACHE_COOKIE.append(cookie_dict)
 	
@@ -950,6 +1010,25 @@ def get_sources2(url, key, prev_error=None, use_debug=True, session=None, **kwar
 		error = ''
 		host_type = None
 		subtitle = None
+		
+		if use_debug == True:
+			Log("USE_PHANTOMJS: %s, USE_SELENIUM:%s" % (USE_PHANTOMJS, common.USE_SELENIUM))
+		if common.USE_SELENIUM == True:
+			Log("=====================SELENIUM START============================")
+			vx_url = '%s/%s' % (url,key)
+			Log(u'Trying Selenium method: %s' % vx_url)
+			try:
+				my_cookies_via_sel, pg_src, UA = common.seleniumca.getMyCookies(vx_url)
+				video_url = common.client.parseDOM(pg_src, 'div', attrs = {'id': 'player'})[0]
+				Log(video_url)
+				video_url = common.client.parseDOM(video_url, 'iframe', ret='src')[0]
+				Log(video_url)
+				Log(u'*Selenium* method is working: %s' % vx_url)
+				host_type = common.client.geturlhost(video_url)
+			except Exception as e:
+				Log("=====================SELENIUM END============================")
+				raise Exception('Selenium method not working. %s' % e)
+			Log("=====================SELENIUM END============================")
 		if USE_PHANTOMJS == True:
 			if (common.control.setting('use_phantomjs') == common.control.phantomjs_choices[1] and common.control.setting('%s-%s' % (session, 'Use-PhantomJS')) == True) or common.control.setting('use_phantomjs') == common.control.phantomjs_choices[2]:
 				vx_url = '%s/%s' % (url,key)
@@ -968,6 +1047,8 @@ def get_sources2(url, key, prev_error=None, use_debug=True, session=None, **kwar
 					raise Exception('phantomjs (fmovies.js) not working')
 			else:
 				raise Exception('phantomjs is disabled')
+		if common.USE_SELENIUM == False and USE_PHANTOMJS == False:
+			raise Exception('No headless service available')
 	except Exception as e:
 		error = u'%s' % e
 		Log(error)
@@ -1018,12 +1099,14 @@ def get_servers(serverts, page_url, is9Anime=False, use_https_alt=False):
 			except:
 				raise Exception('phantomjs (fmoviesServers.js) not working')
 		else:
+			Log(u'Trying ajax method: %s' % page_url)
 			T_BASE_URL = BASE_URL
 			T_BASE_URL = 'https://%s' % common.client.geturlhost(page_url)
 			page_id = page_url.rsplit('.', 1)[1]
 			server_query = '/ajax/film/servers/%s' % page_id
 			server_url = urlparse.urljoin(T_BASE_URL, server_query)
-			result = common.interface.request_via_proxy_as_backup(server_url, httpsskip=use_https_alt)
+			#result = common.interface.request_via_proxy_as_backup(server_url, httpsskip=use_https_alt)
+			result, error = common.GetPageAsString(url=server_url, headers=None, referer=page_url)
 			html = '<html><body><div id="servers-container">%s</div></body></html>' % json.loads(result)['html'].replace('\n','').replace('\\','')
 			return html
 	except Exception as e:

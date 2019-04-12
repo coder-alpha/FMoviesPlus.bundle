@@ -32,8 +32,8 @@ AVOID_DOMAINS = ['9c40a04e9732e6a6.com','egresspath.com']
 class source:
 	def __init__(self):
 		del loggertxt[:]
-		self.ver = '0.1.4'
-		self.update_date = 'Feb. 10, 2019'
+		self.ver = '0.2.0'
+		self.update_date = 'Apr. 10, 2019'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
 		self.base_link_alts = ['https://letmewatchthis.cx']
@@ -288,6 +288,7 @@ class source:
 			if 'Sorry but I couldn\'t find anything like that' in result:
 				query = self.tvsearch_link % urllib.quote_plus(cleantitle.query(tvshowtitle).lower().replace(str(season),''))
 				query = urlparse.urljoin(self.base_link, query)
+				log('INFO','get_show-4', query, dolog=False)
 
 				#result = str(proxies.request(query, 'index_item', proxy_options=proxy_options, use_web_proxy=self.proxyrequired))
 				result = proxies.request(query, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
@@ -319,7 +320,7 @@ class source:
 			years = list(set(years))
 			#print years
 				
-			result = [(client.parseDOM(i, 'a', ret='href'), client.parseDOM(i, 'a', ret='title')) for i in result]
+			result = [(client.parseDOM(i, 'a', ret='href'), client.parseDOM(i, 'a', ret='title')) for i in result]			
 			result = [(i[0][0], i[1][0]) for i in result if len(i[0]) > 0 and len(i[1]) > 0]
 			result = [i for i in result if any(x in i[1] for x in years)]
 			
@@ -343,13 +344,16 @@ class source:
 			
 			match2 = [i[0] for i in r]
 			match2 = [x for y,x in enumerate(match2) if x not in match2[:y]]
+
 			if match2 == []: return
 
+			USE_IMDB = False
+			url = None
 			for i in match2[:5]:
 				try:
 					if len(match) > 0: url = match[0] ; break
 					#r = proxies.request(urlparse.urljoin(self.base_link, i), 'tv_episode_item', proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
-					if imdb != None:
+					if imdb != None and USE_IMDB == True:
 						r = proxies.request(i, proxy_options=proxy_options, use_web_proxy=self.proxyrequired)
 						r = cleantitle.asciiOnly(r)
 						if imdb in str(r): url = i ; break
@@ -358,7 +362,10 @@ class source:
 						break
 				except:
 					pass
-
+					
+			if url == None:
+				return None
+				
 			url = re.findall('(?://.+?|)(/.+)', url)[0]
 			url = client.replaceHTMLCodes(url)
 			url = url.encode('utf-8')
@@ -544,7 +551,7 @@ class source:
 					c=c+1
 					
 					for url in urls_p:
-						log('INFO', 'get_sources-2A-%s' % c, url, dolog=False)
+						log('INFO', 'get_sources-2A-%s: %s' % (c, url), dolog=False)
 						
 						if 'http' not in url:
 							raise Exception()

@@ -138,6 +138,13 @@ def asciiOnly(s):
 		return r
 	except:
 		return s
+		
+def decodeFix(s):
+	try:
+		r = r.decode().encode('utf-8')
+		return r
+	except:
+		return s
 
 def get(title):
 	if title == None: return

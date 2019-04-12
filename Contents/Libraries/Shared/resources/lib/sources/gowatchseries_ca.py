@@ -35,8 +35,8 @@ loggertxt = []
 class source:
 	def __init__(self):
 		del loggertxt[:]
-		self.ver = '0.0.1'
-		self.update_date = 'Feb. 12, 2019'
+		self.ver = '0.2.0'
+		self.update_date = 'Apr. 10, 2019'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
 		self.refreshCookies = False
@@ -327,25 +327,31 @@ class source:
 			mov_url = None
 			
 			for l in links:
-				mov_urlx = urlparse.urljoin(self.base_link,client.parseDOM(l, 'a', ret='href')[0])
-				ep_title = client.parseDOM(l, 'a', ret='title')[0]
+				try:
+					mov_urlx = urlparse.urljoin(self.base_link,client.parseDOM(l, 'a', ret='href')[0])
+					ep_title = client.parseDOM(l, 'a', ret='title')[0]
 
-				if season == None:
-					mov_url = mov_urlx
-				else:
-					try:
-						ep_nr = re.findall(r'Episode (.*?) ',ep_title)[0]
-					except:
+					if season == None:
+						mov_url = mov_urlx
+					else:
 						try:
-							ep_nr = re.findall(r'Episode (.*?)-',ep_title)[0]
+							ep_nr = re.findall(r'Episode (.*?) ',ep_title)[0]
 						except:
 							try:
-								ep_nr = re.findall(r'Episode (.*?):',ep_title)[0]
-							except: 
-								ep_nr = re.findall(r'Episode (.*)',ep_title)[0]
-					ep_nr = ep_nr.replace('-','').replace(':','').replace(' ','')
-					if int(episode) == int(ep_nr):
-						mov_url = mov_urlx
+								ep_nr = re.findall(r'Episode (.*?)-',ep_title)[0]
+							except:
+								try:
+									ep_nr = re.findall(r'Episode (.*?):',ep_title)[0]
+								except: 
+									ep_nr = re.findall(r'Episode (.*)',ep_title)[0]
+									
+						ep_nr = ep_nr.replace('-','').replace(':','').replace(' ','')
+						ep_nr = filter(lambda x: x.isdigit(), ep_nr)
+						
+						if int(episode) == int(ep_nr):
+							mov_url = mov_urlx
+				except Exception as e:
+					log('FAIL', 'get_sources-4-A','%s: %s' % (title,e), dolog=False)
 				
 			if mov_url == None:
 				raise Exception('No match found !')

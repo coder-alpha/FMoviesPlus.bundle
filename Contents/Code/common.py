@@ -1,6 +1,6 @@
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.81' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.82' # Release notation (x.y - where x is major and y is minor)
 TAG = ''
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
@@ -12,6 +12,15 @@ from resources.lib.resolvers import host_openload, host_gvideo, host_mega, host_
 import phantomjs
 import interface
 from __builtin__ import ord, format, eval, iter
+
+USE_SELENIUM = False
+try:
+	import seleniumca
+	Log('Selenium imported successfully !')
+	USE_SELENIUM = True
+except Exception as e:
+	Log('Error importing Selenium: %s' % e)
+	pass
 
 host_misc_resolvers = SharedCodeService.misc
 
@@ -30,6 +39,7 @@ EXT_LIST_URLS = ["http://movies-v2.api-fetch.website","http://tv-v2.api-fetch.we
 
 JSEngines_ALLowed = ['Node']
 Engine_OK = False
+
 try:
 	# Twoure's check routine - https://github.com/Twoure/9anime.bundle/tree/dev
 	import execjs_110 as execjs
@@ -287,6 +297,8 @@ ENCRYPTED_URLS = False
 REFACTOR_WIP = True
 DOWNLOAD_ALL_SEASONS = True
 WBH = 'aHR0cHM6Ly9ob29rLmlvL2NvZGVyLWFscGhhL3Rlc3Q='
+
+FMOVIES_AVAILABLE = None
 
 DEV_DEBUG = True if 'dev' in TAG else False
 

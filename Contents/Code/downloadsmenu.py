@@ -1269,7 +1269,7 @@ def Downloads(title, session = None, status = None, refresh = 0, isDir='N', item
 									first_episode = first_episode_x
 								if first_episode_x < first_episode:
 									first_episode = first_episode_x
-								Log('Item: %s %s %s' % (title, int(i['season']), int(i['episode'])))
+								#Log('Item: %s %s %s' % (title, int(i['season']), int(i['episode'])))
 						elif k == 'extras':
 							if isDir == 'N':
 								addShow = True

@@ -70,14 +70,14 @@ def MainMenu(**kwargs):
 		return DisplayMsgs()
 	
 	oc = ObjectContainer(title2=TITLE, no_cache=common.isForceNoCache())
-	oc.add(DirectoryObject(key = Callback(ShowMenu, title = CAT_GROUPS[0], session=session), title = CAT_GROUPS[0], thumb = R(common.ICON_HOT)))
-	oc.add(DirectoryObject(key = Callback(ShowMenu, title = CAT_GROUPS[1], session=session), title = CAT_GROUPS[1], thumb = R(common.ICON_MOVIES)))
-	oc.add(DirectoryObject(key = Callback(ShowMenu, title = CAT_GROUPS[2], session=session), title = CAT_GROUPS[2], thumb = R(common.ICON_FILTER)))
+	oc.add(DirectoryObject(key = Callback(ShowMenu, title = CAT_GROUPS[0], session=session), title = '%s%s' % (CAT_GROUPS[0], '' if common.FMOVIES_AVAILABLE==None else (' [%s]'%common.GetEmoji(common.FMOVIES_AVAILABLE, mode='simple'))), thumb = R(common.ICON_HOT)))
+	oc.add(DirectoryObject(key = Callback(ShowMenu, title = CAT_GROUPS[1], session=session), title = '%s%s' % (CAT_GROUPS[1], '' if common.FMOVIES_AVAILABLE==None else (' [%s]'%common.GetEmoji(common.FMOVIES_AVAILABLE, mode='simple'))), thumb = R(common.ICON_MOVIES)))
+	oc.add(DirectoryObject(key = Callback(ShowMenu, title = CAT_GROUPS[2], session=session), title = '%s%s' % (CAT_GROUPS[2], '' if common.FMOVIES_AVAILABLE==None else (' [%s]'%common.GetEmoji(common.FMOVIES_AVAILABLE, mode='simple'))), thumb = R(common.ICON_FILTER)))
 	
 	if len(fmovies.ANNOUNCEMENT_UNREAD) == 0:
-		oc.add(DirectoryObject(key = Callback(ShowMenu, title = CAT_GROUPS[3], session=session), title = CAT_GROUPS[3], thumb = R(common.ICON_INFO)))
+		oc.add(DirectoryObject(key = Callback(ShowMenu, title = CAT_GROUPS[3], session=session), title = '%s%s' % (CAT_GROUPS[3], '' if common.FMOVIES_AVAILABLE==None else (' [%s]'%common.GetEmoji(common.FMOVIES_AVAILABLE, mode='simple'))), thumb = R(common.ICON_INFO)))
 	else:
-		oc.add(DirectoryObject(key = Callback(ShowMenu, title = CAT_GROUPS[3], session=session), title = CAT_GROUPS[3], thumb = R(common.ICON_INFO_ALERT)))
+		oc.add(DirectoryObject(key = Callback(ShowMenu, title = CAT_GROUPS[3], session=session), title = '%s%s' % (CAT_GROUPS[3], '' if common.FMOVIES_AVAILABLE==None else (' [%s]'%common.GetEmoji(common.FMOVIES_AVAILABLE, mode='simple'))), thumb = R(common.ICON_INFO_ALERT)))
 	
 	oc.add(DirectoryObject(key = Callback(FilterExtSetup, title = 'External Listing', session=session), title = 'External Listing', thumb = R(common.ICON_OTHERSOURCES)))
 	
@@ -159,21 +159,29 @@ def SleepPersistAndUpdateCookie(**kwargs):
 	common.control.AddThread('SleepPersistAndUpdateCookie', 'Persists & Monitors Plugin Requirements (Every %s mins.)' % round(float(SLEEP_TIME)/float(60), 2), time.time(), '0', True, tuid)
 	
 	while True:
-		vsp = Dict['VSPAPI']
-		if vsp != None:
-			if time.time() - vsp['time'] > (24 * 60 * 60):
-				Dict['VSPAPI']['count'] = 0
-				Dict['VSPAPI']['time'] = time.time()
+		try:
+			vsp = Dict['VSPAPI']
+			if vsp != None:
+				if time.time() - vsp['time'] > (24 * 60 * 60):
+					Dict['VSPAPI']['count'] = 0
+					Dict['VSPAPI']['time'] = time.time()
+					Dict.Save()
+					if Prefs["use_debug"]:
+						Log("VSP Count reset")
+			else:
+				Dict['VSPAPI'] = {'time':time.time(), 'count':0}
 				Dict.Save()
-				if Prefs["use_debug"]:
-					Log("VSP Count reset")
-		else:
-			Dict['VSPAPI'] = {'time':time.time(), 'count':0}
-			Dict.Save()
+		except Exception as e:
+			Log.Error("SleepPersistAndUpdateCookie : %s" % e)
 
-		SiteCookieRoutine(quiet=True)
+		try:
+			SiteCookieRoutine(quiet=True)
+		except Exception as e:
+			Log.Error("SleepPersistAndUpdateCookie : %s" % e)
+			
 		if Prefs["use_debug"]:
 			Log("Thread SleepPersistAndUpdateCookie: Sleeping for %s mins." % int(SLEEP_TIME/60))
+		
 		time.sleep(SLEEP_TIME)
 		Thread.Create(download.trigger_que_run)
 		
@@ -181,17 +189,20 @@ def SleepPersistAndUpdateCookie(**kwargs):
 		tuid = common.id_generator(16)
 		common.control.AddThread('SleepPersistAndUpdateCookie', 'Persists & Monitors Plugin Requirements (Every %s mins.)' % round(float(SLEEP_TIME)/float(60), 2), time.time(), '0', True, tuid)
 	
-		now = datetime.datetime.now()
-		if now.hour == int(Prefs['autopilot_schedule']) and Dict['Autopilot_Schedule_Complete'] != True:
-			if Prefs["use_debug"]:
-				Log("Running the Auto-Pilot Scheduled Run: %s" % time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
-			common.interface.clearSources() # clear sources cached before AutoPilot run
-			Thread.Create(downloadsmenu.AutoPilotDownloadThread1)
-			Dict['Autopilot_Schedule_Complete'] = True
-			Dict.Save()
-		elif (now.hour > int(Prefs['autopilot_schedule']) and int(Prefs['autopilot_schedule']) != 23) or (now.hour == 0 and int(Prefs['autopilot_schedule']) == 23):
-			Dict['Autopilot_Schedule_Complete'] = False
-			Dict.Save()
+		try:
+			now = datetime.datetime.now()
+			if now.hour == int(Prefs['autopilot_schedule']) and Dict['Autopilot_Schedule_Complete'] != True:
+				if Prefs["use_debug"]:
+					Log("Running the Auto-Pilot Scheduled Run: %s" % time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(time.time())))
+				common.interface.clearSources() # clear sources cached before AutoPilot run
+				Thread.Create(downloadsmenu.AutoPilotDownloadThread1)
+				Dict['Autopilot_Schedule_Complete'] = True
+				Dict.Save()
+			elif (now.hour > int(Prefs['autopilot_schedule']) and int(Prefs['autopilot_schedule']) != 23) or (now.hour == 0 and int(Prefs['autopilot_schedule']) == 23):
+				Dict['Autopilot_Schedule_Complete'] = False
+				Dict.Save()
+		except Exception as e:
+			Log.Error("SleepPersistAndUpdateCookie : %s" % e)
 			
 	common.control.RemoveThread(tuid)
 	
@@ -3902,7 +3913,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 	)
 	else:
 		oc.add(DirectoryObject(
-			key = Callback(AddBookmark, title = title, url = url, summary=summary, thumb=thumb),
+			key = Callback(AddBookmark, title = title, url = url, summary=summary, thumb=thumb, type='movie' if isTvSeries==False else 'series'),
 			title = "Add Bookmark",
 			summary = 'Adds the current %s to the Boomark que' % (itemtype),
 			art = art,
@@ -5402,42 +5413,70 @@ def Bookmarks(title, session = None, **kwargs):
 		
 		if 'Key5Split' in longstring:
 			
-			if ('fmovies.' in longstring or 'bmovies.' in longstring or '9anime.' in longstring) or common.isArrayValueInString(common.EXT_SITE_URLS, longstring) == True:
-				
-				stitle = unicode(longstring.split('Key5Split')[0])
-				url = longstring.split('Key5Split')[1]
-				summary = unicode(longstring.split('Key5Split')[2])
-				thumb = longstring.split('Key5Split')[3]
-				
+			if ('fmovies.' in longstring or 'bmovies.' in longstring or '9anime.' in longstring) or common.isArrayValueInString(common.EXT_SITE_URLS, longstring) == True or 'http://ES' in longstring:
 				eachUrl = None
-				try:
-					eachUrl = D(each.replace((stitle+'-'),''))
-				except:
-					pass
-				
-				url0 = url = common.FixUrlInconsistencies(url)
-				url = common.FixUrlInconsistencies2(url)
-				url = common.FixUrlInconsistencies3(url)
-				
-				# Fix incorrect BM's
-				if eachUrl != None and eachUrl != url0:
-					if common.DEV_DEBUG == True and Prefs["use_debug"] == True:
-						Log('Fixing URL : %s with %s' % (url0, url))
-					items_to_bm.append([stitle, url, summary, thumb])
-					items_to_del.append(each)
-				
-				for u in common.BASE_URLS:
-					u = common.client.getUrlHost(u)
-					if u in url:
-						url = url.replace(u,fmovies_base)
-						break
-						
-				if common.ES_API_KEY in url:
+				imdbid = None
+				year = None
+				query2 = None
+				xitem = None
+				append = None
+				final = None
+				if 'http://ES' in longstring:
+					url = longstring.split('Key5Split')[1]
+					mydata = url.replace('http://ES','')
+					urldata = JSON.ObjectFromString(D(mydata))
 					try:
-						if common.ES_API_URL not in url:
-							url = url.replace(url.split(common.ES_API_KEY)[0],common.ES_API_URL.split(common.ES_API_KEY)[0])
+						stitle = urldata['title']
+					except:
+						stitle = longstring.split('Key5Split')[0]
+					summary = urldata['summary']
+					thumb = urldata['thumb']
+					type = urldata['type']
+					imdbid = urldata['imdbid']
+					year = urldata['year']
+					if type == 'movie':
+						query2 = urldata['query2']
+						xitem = urldata['xitem']
+						append = urldata['append']
+						final = urldata['final']
+				else:
+					stitle = unicode(longstring.split('Key5Split')[0])
+					url = longstring.split('Key5Split')[1]
+					summary = unicode(longstring.split('Key5Split')[2])
+					thumb = longstring.split('Key5Split')[3]
+					type = 'movie'
+					try:
+						type = longstring.split('Key5Split')[4]
 					except:
 						pass
+					try:
+						eachUrl = D(each.replace((stitle+'-'),''))
+					except:
+						pass
+					
+					url0 = url = common.FixUrlInconsistencies(url)
+					url = common.FixUrlInconsistencies2(url)
+					url = common.FixUrlInconsistencies3(url)
+					
+					# Fix incorrect BM's
+					if eachUrl != None and eachUrl != url0:
+						if common.DEV_DEBUG == True and Prefs["use_debug"] == True:
+							Log('Fixing URL : %s with %s' % (url0, url))
+						items_to_bm.append([stitle, url, summary, thumb, type])
+						items_to_del.append(each)
+					
+					for u in common.BASE_URLS:
+						u = common.client.getUrlHost(u)
+						if u in url:
+							url = url.replace(u,fmovies_base)
+							break
+							
+					if common.ES_API_KEY in url:
+						try:
+							if common.ES_API_URL not in url:
+								url = url.replace(url.split(common.ES_API_KEY)[0],common.ES_API_URL.split(common.ES_API_KEY)[0])
+						except:
+							pass
 					
 				if common.DEV_DEBUG == True and Prefs["use_debug"] == True:
 					Log("eachUrl : %s" % eachUrl)
@@ -5448,13 +5487,32 @@ def Bookmarks(title, session = None, **kwargs):
 					items_in_bm.append(url)
 					is9anime = 'False'
 					ES = ''
-					if common.isArrayValueInString(common.EXT_SITE_URLS, longstring) == True:
+					if common.isArrayValueInString(common.EXT_SITE_URLS, longstring) == True or 'http://ES' in longstring:
 						ES = common.EMOJI_EXT
 					if common.ANIME_KEY.lower() in url.lower():
 						ES = common.EMOJI_ANIME
 						is9anime = 'True'
 					
-					if fmovies.FILTER_PATH in url or '(All Seasons)' in stitle:
+					if 'http://ES' in longstring:
+						if type == 'movie':
+							oc.add(DirectoryObject(
+								key = Callback(SearchExt, query=None, query2=query2, xtitle=stitle, xyear=year, xtype=type, ximdbid=imdbid, xsummary=summary, xthumb=thumb, xitem=xitem, append=append, final=final, session=session), 
+								title='%s%s' % (ES,stitle),
+								tagline=stitle,
+								thumb=thumb,
+								summary=summary
+								)
+							)
+						else:
+							oc.add(DirectoryObject(
+								key = Callback(DoIMDBExtSources, title=stitle, year=year, type=type, imdbid=imdbid, summary=summary, thumb=thumb, session=session), 
+								title='%s%s' % (ES,stitle),
+								tagline=stitle,
+								thumb=thumb,
+								summary=summary
+								)
+							)
+					elif fmovies.FILTER_PATH in url or '(All Seasons)' in stitle:
 						oc.add(DirectoryObject(
 							key=Callback(Search, query=stitle.replace(' (All Seasons)',''), session = session, mode='other seasons', thumb=thumb, summary=summary, is9anime=is9anime),
 							title='%s%s' % (ES,stitle),
@@ -5482,7 +5540,7 @@ def Bookmarks(title, session = None, **kwargs):
 		
 	if len(items_to_bm) > 0:
 		for each in items_to_bm:
-			AddBookmark(each[0], each[1], each[2], each[3], True)
+			AddBookmark(each[0], each[1], each[2], each[3], each[4], True)
 		Dict.Save()
 				
 	#if len(oc) == 0:
@@ -5522,54 +5580,71 @@ def Bookmarks(title, session = None, **kwargs):
 def Check(title, url, **kwargs):
 	
 	longstring = Dict[title+'-'+E(url)]
-	fmovies_urlhost = common.client.geturlhost(url)
+	
+	fmovies_urlhost = None
 	fmovies_movie_path = None
 	
-	try:
-		fmovies_movie_path = url.split(fmovies_urlhost)[1]
-	except:
-		pass
+	if 'http://ES' in url:
+		if longstring != None:
+			try:
+				mydata = longstring.split('Key5Split')[1].replace('http://ES','')
+				urldata = JSON.ObjectFromString(D(mydata))
+				try:
+					stitle = urldata['title']
+				except:
+					stitle = longstring.split('Key5Split')[0]
+				if title == stitle:
+					return True
+			except:
+				pass
+	else:
+		fmovies_urlhost = common.client.geturlhost(url)
 	
-	for ext_url in common.EXT_SITE_URLS:
-		surl = url.replace(url.split(common.ES_API_KEY)[0],ext_url.split(common.ES_API_KEY)[0])
-		longstring = Dict[title+'-'+E(surl)]
-		if longstring != None and common.ES_API_KEY in longstring:
-			return True
-	
-	if longstring != None and common.isArrayValueInString(common.EXT_SITE_URLS, longstring) == True:
-		return True
-	
-	if longstring != None and url in longstring:
-		return True
-
-	for u in common.BASE_URLS:
-		surl = url.replace(fmovies_urlhost, common.client.geturlhost(u))
-		longstring = Dict[title+'-'+E(surl)]
-		if longstring != None and surl in longstring:
+		try:
+			fmovies_movie_path = url.split(fmovies_urlhost)[1]
+		except:
+			pass
+		
+		for ext_url in common.EXT_SITE_URLS:
+			surl = url.replace(url.split(common.ES_API_KEY)[0],ext_url.split(common.ES_API_KEY)[0])
+			longstring = Dict[title+'-'+E(surl)]
+			if longstring != None and common.ES_API_KEY in longstring:
+				return True
+		
+		if longstring != None and common.isArrayValueInString(common.EXT_SITE_URLS, longstring) == True:
 			return True
 		
-	for d in common.ANIME_DOMS:
-		surl = url.replace(common.client.geturlhost(url),'%s.%s' % (common.ANIME_KEY, d))
+		if longstring != None and url in longstring:
+			return True
+
+		for u in common.BASE_URLS:
+			surl = url.replace(fmovies_urlhost, common.client.geturlhost(u))
+			longstring = Dict[title+'-'+E(surl)]
+			if longstring != None and surl in longstring:
+				return True
+			
+		for d in common.ANIME_DOMS:
+			surl = url.replace(common.client.geturlhost(url),'%s.%s' % (common.ANIME_KEY, d))
+			longstring = Dict[title+'-'+E(surl)]
+			if longstring != None and surl in longstring:
+				return True
+				
+		surl = url.replace(fmovies_urlhost,'%s.%s' % (common.ANIME_KEY, 'is'))
 		longstring = Dict[title+'-'+E(surl)]
 		if longstring != None and surl in longstring:
 			return True
 			
-	surl = url.replace(fmovies_urlhost,'%s.%s' % (common.ANIME_KEY, 'is'))
-	longstring = Dict[title+'-'+E(surl)]
-	if longstring != None and surl in longstring:
-		return True
-		
-	if '(All Seasons)' in title:
-		for each in Dict:
-			if title in each:
-				return True
+		if '(All Seasons)' in title:
+			for each in Dict:
+				if title in each:
+					return True
 
 	return False
 
 ######################################################################################
 # Adds a movie to the bookmarks list using the title as a key for the url
 @route(PREFIX + "/addbookmark")
-def AddBookmark(title, url, summary, thumb, silent=False, **kwargs):
+def AddBookmark(title, url, summary, thumb, type='movie', silent=False, data=None, **kwargs):
 
 	url = common.FixUrlInconsistencies(url)
 	url = common.FixUrlInconsistencies3(url)
@@ -5577,8 +5652,10 @@ def AddBookmark(title, url, summary, thumb, silent=False, **kwargs):
 		return MC.message_container(title, 'This item has already been added to your bookmarks.')
 		
 	#Log("Added : %s %s" % (title, url))
-	
-	Dict[title+'-'+E(url)] = (title + 'Key5Split' + url +'Key5Split'+ summary + 'Key5Split' + thumb)
+	if data != None:
+		Dict[title+'-'+E(url)] = (title + 'Key5Split' + data +'Key5Split'+ summary + 'Key5Split' + thumb + 'Key5Split' + type)
+	else:
+		Dict[title+'-'+E(url)] = (title + 'Key5Split' + url +'Key5Split'+ summary + 'Key5Split' + thumb + 'Key5Split' + type)
 	
 	silent = True if str(silent).lower() == 'true' else False
 	
@@ -5668,7 +5745,7 @@ def ClearBookmarks(**kwargs):
 	for each in Dict:
 		try:
 			longstring = Dict[each]
-			if (('bmovies.' in longstring or 'fmovies.' in longstring or '9anime.' in longstring) or common.isArrayValueInString(common.EXT_SITE_URLS, longstring) == True) and 'http' in longstring and 'Key5Split' in longstring:
+			if (('bmovies.' in longstring or 'fmovies.' in longstring or '9anime.' in longstring) or common.isArrayValueInString(common.EXT_SITE_URLS, longstring) == True or 'http://ES' in longstring) and 'http' in longstring and 'Key5Split' in longstring:
 				remove_list.append(each)
 		except:
 			continue
@@ -5947,7 +6024,7 @@ def Search(query=None, surl=None, page_count='1', mode='default', thumb=None, su
 			)
 		else:
 			oc.add(DirectoryObject(
-				key = Callback(AddBookmark, title = query + ' (All Seasons)', url = url, summary=summary, thumb=thumb),
+				key = Callback(AddBookmark, title = query + ' (All Seasons)', url = url, summary=summary, thumb=thumb, type='series'),
 				title = "Add Bookmark",
 				summary = 'Adds the current show season to the Boomark que',
 				thumb = R(common.ICON_QUEUE)
@@ -6043,6 +6120,25 @@ def SearchExt(query=None, query2=None, session=None, xtitle=None, xyear=None, xt
 					summary = xsummary,
 					thumb = common.GetThumb(R(common.ICON_REQUESTS), session=session))
 				oc.add(dobj)
+				
+			urld = 'http://ES'+E(JSON.StringFromObject({'title':xtitle,'year':xyear}))
+			urldata = 'http://ES'+E(JSON.StringFromObject({'title':xtitle,'thumb':xthumb,'imdbid':ximdbid,'summary':xsummary,'year':xyear,'type':xtype,'query2':query2,'xitem':xitem, 'append':append,'final':final}))
+			if Check(title=xtitle, url=urld):
+				oc.add(DirectoryObject(
+					key = Callback(RemoveBookmark, title=xtitle, url=urld),
+					title = "Remove Bookmark",
+					summary = 'Removes the current item from Boomarks',
+					thumb = common.GetThumb(R(common.ICON_QUEUE), session=session)
+					)
+				)
+			else:
+				oc.add(DirectoryObject(
+					key = Callback(AddBookmark, title=xtitle, url=urld, summary=xsummary, thumb=xthumb, type=xtype, data=urldata),
+					title = "Add Bookmark",
+					summary = 'Adds the current Show to the Boomark que',
+					thumb = common.GetThumb(R(common.ICON_QUEUE), session=session)
+					)
+				)
 			
 		oc.add(DirectoryObject(
 			key = Callback(MainMenu),
@@ -6291,9 +6387,10 @@ def DoIMDBExtSources(title, year, type, imdbid, season=None, episode=None, episo
 				DumbKeyboard(PREFIX, oc, DoIMDBExtSourcesSeason, dktitle = 'Input Season No.', dkthumb=R(common.ICON_DK_ENABLE), dkNumOnly=True, dkHistory=False, title=title, year=year, type=type, imdbid=imdbid, thumb=thumb, summary=summary, session=session)
 				for i in range(1,SeasonNR+1):
 					oc.add(DirectoryObject(key = Callback(DoIMDBExtSources, title=title, year=year, type=type, imdbid=imdbid, thumb=thumb, summary=summary, season=str(i), episode=None, session=session, episodesTot=episodesTot), 
-						title = '*%s (Season %s)' % (title, str(i)),
-						thumb = thumb))
-				
+						title = '*%s (Season %s)' % (title, int(i)),
+						thumb = thumb
+						)
+					)
 				if common.DOWNLOAD_ALL_SEASONS == True and Prefs['disable_downloader'] == False and AuthTools.CheckAdmin() == True:
 					oc.add(DirectoryObject(
 						key = Callback(downloadsmenu.AddToAutoPilotDownloads, title=title, thumb=thumb, summary=summary, purl=None, season=None, season_end=SeasonNR+1, episode_start=1, episode_end=None, year=year, type='show', vidtype='show', session=session, admin=True, all_seasons=True),
@@ -6302,7 +6399,27 @@ def DoIMDBExtSources(title, year, type, imdbid, season=None, episode=None, episo
 						thumb = R(common.ICON_OTHERSOURCESDOWNLOAD_AUTO)
 						)
 					)
-			except:
+				urld = 'http://ES'+E(JSON.StringFromObject({'title':title,'year':year}))
+				urldata = 'http://ES'+E(JSON.StringFromObject({'title':title,'thumb':thumb,'imdbid':imdbid,'summary':summary,'year':year,'type':type}))
+				if Check(title=title, url=urld):
+					oc.add(DirectoryObject(
+						key = Callback(RemoveBookmark, title=title, url=urld),
+						title = "Remove Bookmark",
+						summary = 'Removes the current item from Boomarks',
+						thumb = common.GetThumb(R(common.ICON_QUEUE), session=session)
+						)
+					)
+				else:
+					oc.add(DirectoryObject(
+						key = Callback(AddBookmark, title=title, url=urld, summary=summary, thumb=thumb, type=type, data=urldata),
+						title = "Add Bookmark",
+						summary = 'Adds the current Show to the Boomark que',
+						thumb = common.GetThumb(R(common.ICON_QUEUE), session=session)
+						)
+					)
+				
+			except Exception as e:
+				Log.Error(e)
 				DumbKeyboard(PREFIX, oc, DoIMDBExtSourcesSeason, dktitle = 'Input Season No.', dkthumb=R(common.ICON_DK_ENABLE), dkNumOnly=True, dkHistory=False, title=title, year=year, type=type, imdbid=imdbid, thumb=thumb, summary=summary, session=session)
 	
 		elif episode == None:

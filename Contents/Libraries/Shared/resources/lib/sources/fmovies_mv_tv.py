@@ -31,8 +31,16 @@ from resources.lib import resolvers
 from resources.lib import proxies
 from __builtin__ import ord, format, eval
 
+
 try:
 	import phantomjs
+except:
+	pass
+	
+USE_SELENIUM = False
+try:
+	import seleniumca
+	USE_SELENIUM = True
 except:
 	pass
 
@@ -45,8 +53,8 @@ USE_PHANTOMJS = True
 class source:
 	def __init__(self):
 		del loggertxt[:]
-		self.ver = '0.1.2'
-		self.update_date = 'Feb 10, 2019'
+		self.ver = '0.2.0'
+		self.update_date = 'Apr 10, 2019'
 		log(type='INFO', method='init', err=' -- Initializing %s %s %s Start --' % (name, self.ver, self.update_date))
 		self.init = False
 		self.disabled = False
@@ -68,6 +76,8 @@ class source:
 		self.type_filter = ['movie', 'show', 'anime']
 		self.ssl = False
 		self.name = name
+		self.captcha = True
+		self.use_selenium = False
 		self.headers = {}
 		self.cookie = None
 		self.loggertxt = []
@@ -113,9 +123,11 @@ class source:
 					site = sitex
 			except:
 				pass
-			bool = self.testSiteAlts(site)
+			bool, bool2 = self.testSiteAlts(site)
 			if bool == True:
 				return bool
+			if bool2 == False:
+				return False
 				
 		self.base_link = self.base_link_alts[0]
 		return False
@@ -125,20 +137,47 @@ class source:
 			self.base_link = site
 			if self.disabled:
 				log('INFO','testSite', 'Plugin Disabled')
-				return False
+				return False, True
 			self.initAndSleep()
 			x1 = time.time()
-			http_res, content = proxies.request(url=site, headers=self.headers, output='response', use_web_proxy=False, httpsskip=True)
+			if self.captcha == False or self.use_selenium == False:
+				http_res, content = client.request(url=site, headers=self.headers, output='response', use_web_proxy=False, httpsskip=True)
 			self.speedtest = time.time() - x1
-			for valcon in self.MainPageValidatingContent:
-				if content != None and content.find(valcon) >-1:
-					log('SUCCESS', 'testSite', 'HTTP Resp : %s for %s' % (http_res,site))
-					return True
+			if self.captcha == True or 'Please complete the security check to continue!' in content:
+				if self.use_selenium == True and USE_SELENIUM == True:
+					self.captcha = True
+					cookies, content = seleniumca.getMyCookies(base_url=site)
+					for valcon in self.MainPageValidatingContent:
+						if content != None and content.find(valcon) >-1:
+							log('SUCCESS', 'testSite', 'HTTP Resp : %s for %s' % ('200',site))
+							try:
+								my_cookies_via_sel = cookies
+								for x in my_cookies_via_sel:
+									if x['name'] == '__cfduid':
+										cookie1 = '%s=%s' % (x['name'],x['value'])
+										my_cookies_via_sel.remove(x)
+										break
+								log('INFO','testSiteAlts', 'cookie1: %s' % cookie1)
+								cookie2 = (';'.join('%s=%s' % (x['name'],x['value']) for x in my_cookies_via_sel))
+								log('INFO','testSiteAlts', 'cookie2: %s' % cookie2)
+								cookie = '%s; %s; user-info=null; reqkey=%s' % (cookie1 , cookie2 , reqkey)
+								self.headers['Cookie'] = cookie
+								log('SUCCESS', 'testSiteAlts', 'Cookies : %s for %s' % (cookie,self.base_link))
+							except Exception as e:
+								log('ERROR','testSiteAlts', '%s' % e)
+							return True, True
+				else:
+					return False, False
+			else:
+				for valcon in self.MainPageValidatingContent:
+					if content != None and content.find(valcon) >-1:
+						log('SUCCESS', 'testSite', 'HTTP Resp : %s for %s' % (http_res,site))
+						return True, True
 			log('FAIL', 'testSite', 'Validation content Not Found. HTTP Resp : %s for %s' % (http_res,site))
-			return False
+			return False, True
 		except Exception as e:
 			log('ERROR','testSite', '%s' % e)
-			return False
+			return False, True
 			
 	def initAndSleepThread(self):
 		thread_i = workers.Thread(self.InitSleepThread)
@@ -148,8 +187,8 @@ class source:
 		try:
 			while self.init == True:
 				tuid = control.id_generator(16)
-				control.AddThread('%s-InitSleepThread' % self.name, 'Persists & Monitors Provider Requirements (Every 60 mins.)', time.time(), '4', True, tuid)
-				time.sleep(60*60)
+				control.AddThread('%s-InitSleepThread' % self.name, 'Persists & Monitors Provider Requirements (Every 20 mins.)', time.time(), '4', True, tuid)
+				time.sleep(20*60)
 				self.siteonline = self.testSite()
 				self.testparser = self.testParser()
 				self.initAndSleep()
@@ -172,39 +211,56 @@ class source:
 			self.headers['Referer'] = t_base_link
 			ua = client.randomagent()
 			self.headers['User-Agent'] = ua
+			cookie1 = ''
+			cookie2 = ''
+			reqkey = ''
 			
 			#get cf cookie
-			cookie1 = proxies.request(url=t_base_link, headers=self.headers, output='cookie', use_web_proxy=self.proxyrequired, httpsskip=True)
-			self.headers['Cookie'] = cookie1
-			
-			# get reqkey cookie
-			try:
-				token_url = urlparse.urljoin(t_base_link, self.token_link)
-				r1 = proxies.request(token_url, headers=self.headers, httpsskip=True)
-				if r1 == None:
-					raise Exception('%s not reachable !' % token_url)
-				reqkey = self.decodeJSFCookie(r1)
-			except Exception as e:
-				reqkey = ''
-				log('FAIL','initAndSleep', 'Not using reqkey: %s' % e)
-			
-			# get session cookie
-			serverts = str(((int(time.time())/3600)*3600))
-			query = {'ts': serverts}
-			try:
-				tk = self.__get_token(query)
-			except:
-				tk = self.__get_token(query, True)
+			if USE_SELENIUM == False or self.captcha == False or self.use_selenium == False:
+				cookie1 = proxies.request(url=t_base_link, headers=self.headers, output='cookie', use_web_proxy=self.proxyrequired, httpsskip=True)
+				self.headers['Cookie'] = cookie1
+				
+				# get reqkey cookie
+				try:
+					token_url = urlparse.urljoin(t_base_link, self.token_link)
+					r1 = proxies.request(token_url, headers=self.headers, httpsskip=True)
+					if r1 == None:
+						raise Exception('%s not reachable !' % token_url)
+					reqkey = self.decodeJSFCookie(r1)
+				except Exception as e:
+					reqkey = ''
+					log('FAIL','initAndSleep', 'Not using reqkey: %s' % e)
+				
+				# get session cookie
+				serverts = str(((int(time.time())/3600)*3600))
+				query = {'ts': serverts}
+				try:
+					tk = self.__get_token(query)
+				except:
+					tk = self.__get_token(query, True)
 
-			query.update(tk)
-			hash_url = urlparse.urljoin(t_base_link, self.hash_menu_link)
-			hash_url = hash_url + '?' + urllib.urlencode(query)
+				query.update(tk)
+				hash_url = urlparse.urljoin(t_base_link, self.hash_menu_link)
+				hash_url = hash_url + '?' + urllib.urlencode(query)
 
-			r1, headers, content, cookie2 = proxies.request(hash_url, headers=self.headers, limit='0', output='extended', httpsskip=True)
-
-			#cookie = cookie1 + '; ' + cookie2 + '; user-info=null; reqkey=' + reqkey
+				r1, headers, content, cookie2 = proxies.request(hash_url, headers=self.headers, limit='0', output='extended', httpsskip=True)
+			else:
+				log('INFO','initAndSleep', 'Attempting Selenium Retrieval - Start')
+				try:
+					my_cookies_via_sel, pg_src = seleniumca.getMyCookies(base_url=t_base_link)
+					for x in my_cookies_via_sel:
+						if x['name'] == '__cfduid':
+							cookie1 = '%s=%s' % (x['name'],x['value'])
+							my_cookies_via_sel.remove(x)
+							break
+					log('INFO','initAndSleep', 'cookie1: %s' % cookie1)
+					cookie2 = (';'.join('%s=%s' % (x['name'],x['value']) for x in my_cookies_via_sel))
+					log('INFO','initAndSleep', 'cookie2: %s' % cookie2)
+				except Exception as e:
+					log('ERROR','initAndSleep', '%s' % e)
+				log('INFO','initAndSleep', 'Attempting Selenium Retrieval - End')
+				
 			cookie = '%s; %s; user-info=null; reqkey=%s' % (cookie1 , cookie2 , reqkey)
-			
 			self.headers['Cookie'] = cookie
 			log('SUCCESS', 'initAndSleep', 'Cookies : %s for %s' % (cookie,self.base_link))
 		except Exception as e:

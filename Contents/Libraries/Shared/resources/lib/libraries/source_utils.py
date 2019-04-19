@@ -262,3 +262,14 @@ def evpKDF(passwd, salt, key_size=8, iv_size=4, iterations=1, hash_algorithm="md
 		"key": derived_bytes[0: key_size * 4],
 		"iv": derived_bytes[key_size * 4:]
 	}
+	
+def aliases_to_array(aliases, filter=None):
+	try:
+		if not filter:
+			filter = []
+		if isinstance(filter, str):
+			filter = [filter]
+
+		return [x.get('title') for x in aliases if not filter or x.get('country') in filter]
+	except:
+		return []

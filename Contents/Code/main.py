@@ -2269,7 +2269,7 @@ def GetInput(query, title, key, urlpath, page_count, session, method, is9anime='
 
 ######################################################################################
 @route(PREFIX + "/episodedetail")
-def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **kwargs):
+def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, year=None, **kwargs):
 
 	page_data, error = common.GetPageElements(url=url)
 	if error != '':
@@ -2360,6 +2360,9 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 		try:
 			year = str(page_data.xpath(".//*[@id='info']//dl[@class='meta col-sm-12'][2]//dd[2]//text()")[0][0:4])
 		except:
+			pass
+			
+		if year == None:
 			year = 'Not Available'
 			
 		try:
@@ -3531,7 +3534,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 			))
 		if Prefs['disable_downloader'] == False and AuthTools.CheckAdmin() == True:
 			oc.add(DirectoryObject(
-				key = Callback(downloadsmenu.AddToAutoPilotDownloads, title=common.cleantitle.removeParanthesisAndSeason(title, SeasonN), thumb=thumb, summary=summary, purl=url, season=SeasonN, episode_start=1, episode_end=c, year=year, type='show', vidtype='show', session=session, admin=True),
+				key = Callback(downloadsmenu.AddToAutoPilotDownloads, title=common.cleantitle.removeParanthesisAndSeason(title, SeasonN), thumb=thumb, summary=summary, purl=url, season=SeasonN, episode_start=1, episode_end=c, year=year, type='show', vidtype='show', session=session, admin=True, imdbid=imdb_id),
 				title = 'Add to AutoPilot Queue',
 				summary = 'Add to the AutoPilot Queue for Downloading',
 				art = art,
@@ -3593,7 +3596,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 			))
 		if Prefs['disable_downloader'] == False and AuthTools.CheckAdmin() == True:
 			oc.add(DirectoryObject(
-				key = Callback(downloadsmenu.AddToAutoPilotDownloads, title=common.cleantitle.removeParanthesisAndSeason(title, SeasonN), thumb=thumb, summary=summary, purl=url, season=SeasonN, episode_start=1, episode_end=c, year=year, type='show', vidtype='show', session=session, admin=True),
+				key = Callback(downloadsmenu.AddToAutoPilotDownloads, title=common.cleantitle.removeParanthesisAndSeason(title, SeasonN), thumb=thumb, summary=summary, purl=url, season=SeasonN, episode_start=1, episode_end=c, year=year, type='show', vidtype='show', session=session, admin=True, imdbid=imdb_id),
 				title = 'Add to AutoPilot Queue',
 				summary = 'Add to the AutoPilot Queue for Downloading',
 				art = art,
@@ -3656,7 +3659,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 				)
 			)
 			oc.add(DirectoryObject(
-				key = Callback(downloadsmenu.AddToAutoPilotDownloads, title=title, year=year, type='movie', vidtype='movie', summary=summary, thumb=thumb, purl=url, session=session, admin=True),
+				key = Callback(downloadsmenu.AddToAutoPilotDownloads, title=title, year=year, type='movie', vidtype='movie', summary=summary, thumb=thumb, purl=url, session=session, admin=True, imdbid=imdb_id),
 				title = 'Add to AutoPilot Queue',
 				summary = 'Add to the AutoPilot Queue for Downloading',
 				art = art,
@@ -3857,7 +3860,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 				)
 			)
 			oc.add(DirectoryObject(
-				key = Callback(downloadsmenu.AddToAutoPilotDownloads, title=title, year=year, type='movie', vidtype='movie', summary=summary, thumb=thumb, purl=url, session=session, admin=True),
+				key = Callback(downloadsmenu.AddToAutoPilotDownloads, title=title, year=year, type='movie', vidtype='movie', summary=summary, thumb=thumb, purl=url, session=session, admin=True, imdbid=imdb_id),
 				title = 'Add to AutoPilot Queue',
 				summary = 'Add to the AutoPilot Queue for Downloading',
 				art = art,
@@ -4248,7 +4251,7 @@ def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary
 								qualx = vvv['qual']
 								if Prefs['disable_downloader'] == False and AuthTools.CheckAdmin() == True:
 									oc.add(DirectoryObject(
-										key = Callback(downloadsmenu.AddToDownloadsListPre, title=title if tvshowtitle==None else tvshowtitlecleaned, season=season, episode=episode, purl=url, url=vv, durl=vv, summary=summary, thumb=thumb, year=year, quality=qualx, source=host, type=libtype, vidtype=libtype.lower(), resumable=True, source_meta={}, file_meta={}, sub_url=sub_url, mode=common.DOWNLOAD_MODE[0], session=session, admin=True, provider='Plugin', seq=seq_no),
+										key = Callback(downloadsmenu.AddToDownloadsListPre, title=title if tvshowtitle==None else tvshowtitlecleaned, season=season, episode=episode, purl=url, url=vv, durl=vv, summary=summary, thumb=thumb, year=year, quality=qualx, source=host, type=libtype, vidtype=libtype.lower(), resumable=True, source_meta={}, file_meta={}, sub_url=sub_url, mode=common.DOWNLOAD_MODE[0], session=session, admin=True, provider='Plugin', seq=seq_no, imdbid=None),
 										title = '%s | Add to Download Queue' % qualx,
 										summary = 'Adds the current video to Download List',
 										art = art,
@@ -4257,7 +4260,7 @@ def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary
 									)
 								elif Prefs['disable_downloader'] == False:
 									oc.add(DirectoryObject(
-										key = Callback(downloadsmenu.AddToDownloadsListPre, title=title if tvshowtitle==None else tvshowtitlecleaned, season=season, episode=episode, purl=url, url=vv, durl=vv, summary=summary, thumb=thumb, year=year, quality=qualx, source=host, type=libtype, vidtype=libtype.lower(), resumable=True, source_meta={}, file_meta={}, sub_url=sub_url, mode=common.DOWNLOAD_MODE[1], session=session, admin=False, provider='Plugin', seq=seq_no),
+										key = Callback(downloadsmenu.AddToDownloadsListPre, title=title if tvshowtitle==None else tvshowtitlecleaned, season=season, episode=episode, purl=url, url=vv, durl=vv, summary=summary, thumb=thumb, year=year, quality=qualx, source=host, type=libtype, vidtype=libtype.lower(), resumable=True, source_meta={}, file_meta={}, sub_url=sub_url, mode=common.DOWNLOAD_MODE[1], session=session, admin=False, provider='Plugin', seq=seq_no, imdbid=None),
 										title = '%s | Add to Request Queue' % qualx,
 										summary = 'Adds the current video to Request List',
 										art = art,
@@ -4284,7 +4287,7 @@ def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary
 								ftype = file['type']
 								if Prefs['disable_downloader'] == False and AuthTools.CheckAdmin() == True:
 									oc.add(DirectoryObject(
-										key = Callback(downloadsmenu.AddToDownloadsListPre, title=title if tvshowtitle==None else tvshowtitlecleaned, season=season, episode=episode, purl=url, url=furl, durl=furl, summary=summary, thumb=thumb, year=year, quality=res, source=host_source, type=libtype, vidtype=libtype.lower(), resumable=True, source_meta={}, file_meta={}, sub_url=sub_url, mode=common.DOWNLOAD_MODE[0], session=session, admin=True, provider='Plugin', seq=seq_no),
+										key = Callback(downloadsmenu.AddToDownloadsListPre, title=title if tvshowtitle==None else tvshowtitlecleaned, season=season, episode=episode, purl=url, url=furl, durl=furl, summary=summary, thumb=thumb, year=year, quality=res, source=host_source, type=libtype, vidtype=libtype.lower(), resumable=True, source_meta={}, file_meta={}, sub_url=sub_url, mode=common.DOWNLOAD_MODE[0], session=session, admin=True, provider='Plugin', seq=seq_no, imdbid=None),
 										title = '%s | Add to Download Queue' % res,
 										summary = 'Adds the current video to Download List',
 										art = art,
@@ -4293,7 +4296,7 @@ def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary
 									)
 								elif Prefs['disable_downloader'] == False:
 									oc.add(DirectoryObject(
-										key = Callback(downloadsmenu.AddToDownloadsListPre, title=title if tvshowtitle==None else tvshowtitlecleaned, season=season, episode=episode, purl=url, url=furl, durl=furl, summary=summary, thumb=thumb, year=year, quality=res, source=host_source, type=libtype, vidtype=libtype.lower(), resumable=True, source_meta={}, file_meta={}, sub_url=sub_url, mode=common.DOWNLOAD_MODE[1], session=session, admin=False, provider='Plugin', seq=seq_no),
+										key = Callback(downloadsmenu.AddToDownloadsListPre, title=title if tvshowtitle==None else tvshowtitlecleaned, season=season, episode=episode, purl=url, url=furl, durl=furl, summary=summary, thumb=thumb, year=year, quality=res, source=host_source, type=libtype, vidtype=libtype.lower(), resumable=True, source_meta={}, file_meta={}, sub_url=sub_url, mode=common.DOWNLOAD_MODE[1], session=session, admin=False, provider='Plugin', seq=seq_no, imdbid=None),
 										title = '%s | Add to Request Queue' % res,
 										summary = 'Adds the current video to Request List',
 										art = art,
@@ -4791,7 +4794,7 @@ def ExtSourcesDownload(title, url, summary, thumb, art, rating, duration, genre,
 					downloadTitle = movtitle
 					
 				oc.add(DirectoryObject(
-					key = Callback(downloadsmenu.AddToDownloadsListPre, title=downloadTitle, purl=url, url=source['url'], durl=source['durl'], sub_url=source['sub_url'], page_url=source['page_url'], summary=summary, thumb=thumb, year=year, fsBytes=fsBytes, fs=fs, file_ext=source['file_ext'], quality=source['quality'], source=source['source'], source_meta={}, file_meta={}, type=libtype, vidtype=vidtype, resumable=source['resumeDownload'], mode=mode, session=session, admin=True if mode==common.DOWNLOAD_MODE[0] else False, params=source['params'], riptype=source['rip'], season=season, episode=episode, provider=source['provider'], seq = source['seq']),
+					key = Callback(downloadsmenu.AddToDownloadsListPre, title=downloadTitle, purl=url, url=source['url'], durl=source['durl'], sub_url=source['sub_url'], page_url=source['page_url'], summary=summary, thumb=thumb, year=year, fsBytes=fsBytes, fs=fs, file_ext=source['file_ext'], quality=source['quality'], source=source['source'], source_meta={}, file_meta={}, type=libtype, vidtype=vidtype, resumable=source['resumeDownload'], mode=mode, session=session, admin=True if mode==common.DOWNLOAD_MODE[0] else False, params=source['params'], riptype=source['rip'], season=season, episode=episode, provider=source['provider'], seq = source['seq'], imdbid=imdb_id),
 					title = title_msg,
 					summary = 'Adds the current video to %s List' % 'Download' if mode==common.DOWNLOAD_MODE[0] else 'Request',
 					art = art,
@@ -5251,12 +5254,16 @@ def RecentWatchList(title, session=None, **kwargs):
 	
 	c=0
 	for each in newlist:
-	
+		year = None
 		longstring = each['val']
 		longstringsplit = longstring.split('RR44SS')
 		stitle = unicode(longstringsplit[0])
 		url = longstringsplit[1]
 		summary = unicode(longstringsplit[2])
+		try:
+			year = re.findall(r'year:(.*?)\n', summary.lower())[0].strip()
+		except:
+			pass
 		thumb = longstringsplit[3]
 		timestr = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(longstringsplit[4])))
 		
@@ -5298,7 +5305,7 @@ def RecentWatchList(title, session=None, **kwargs):
 			items_in_recent.append(url)
 				
 			oc.add(DirectoryObject(
-				key=Callback(EpisodeDetail, title=stitle, url=url, thumb=thumb, session = session),
+				key=Callback(EpisodeDetail, title=stitle, url=url, thumb=thumb, session=session, year=year),
 				title= '%s%s' % (ES,stitle),
 				thumb=thumb,
 				tagline = timestr,
@@ -5447,6 +5454,10 @@ def Bookmarks(title, session = None, **kwargs):
 					stitle = unicode(longstring.split('Key5Split')[0])
 					url = longstring.split('Key5Split')[1]
 					summary = unicode(longstring.split('Key5Split')[2])
+					try:
+						year = re.findall(r'year:(.*?)\n', summary.lower())[0].strip()
+					except:
+						pass
 					thumb = longstring.split('Key5Split')[3]
 					type = 'movie'
 					try:
@@ -5527,7 +5538,7 @@ def Bookmarks(title, session = None, **kwargs):
 						)
 					else:
 						oc.add(DirectoryObject(
-							key=Callback(EpisodeDetail, title=stitle, url=url, thumb=thumb, session = session),
+							key=Callback(EpisodeDetail, title=stitle, url=url, thumb=thumb, session=session, year=year),
 							title='%s%s' % (ES,stitle),
 							tagline=stitle,
 							thumb=thumb,
@@ -6013,7 +6024,7 @@ def Search(query=None, surl=None, page_count='1', mode='default', thumb=None, su
 		if no_elems > 0:
 			if common.DOWNLOAD_ALL_SEASONS == True and Prefs['disable_downloader'] == False and AuthTools.CheckAdmin() == True:
 				oc.add(DirectoryObject(
-					key = Callback(downloadsmenu.AddToAutoPilotDownloads, title=title_auto, thumb=thumb_auto, summary=summary_auto, purl=url, season=None, season_end=len(oc), episode_start=1, episode_end=None, year=None, type='show', vidtype='show', session=session, admin=True, all_seasons=True),
+					key = Callback(downloadsmenu.AddToAutoPilotDownloads, title=title_auto, thumb=thumb_auto, summary=summary_auto, purl=url, season=None, season_end=len(oc), episode_start=1, episode_end=None, year=None, type='show', vidtype='show', session=session, admin=True, all_seasons=True, imdbid=None),
 					title = 'Add to AutoPilot Queue',
 					summary = 'Add to the AutoPilot Queue for Downloading',
 					thumb = R(common.ICON_OTHERSOURCESDOWNLOAD_AUTO)
@@ -6096,14 +6107,13 @@ def SearchExt(query=None, query2=None, session=None, xtitle=None, xyear=None, xt
 		else:
 			xitem = None
 	
-		dobj = DirectoryObject(
-			key = Callback(DoIMDBExtSources, title=xtitle, year=xyear, type=xtype, imdbid=ximdbid, summary=xsummary, item=xitem, thumb=xthumb, session=session), 
-			title = '%s (%s) - Sources' % (xtitle, xyear),
-			summary = xsummary,
-			thumb = common.GetThumb(R(common.ICON_OTHERSOURCES), session=session))
-		oc.add(dobj)
-		
 		if xtype == 'movie':
+			dobj = DirectoryObject(
+				key = Callback(DoIMDBExtSources, title=xtitle, year=xyear, type=xtype, imdbid=ximdbid, summary=xsummary, item=xitem, thumb=xthumb, session=session), 
+				title = '%s (%s) - Sources' % (xtitle, xyear),
+				summary = xsummary,
+				thumb = common.GetThumb(R(common.ICON_OTHERSOURCES), session=session))
+			oc.add(dobj)
 			if Prefs['disable_downloader'] == False and AuthTools.CheckAdmin() == True:
 				dobj = DirectoryObject(
 					key = Callback(DoIMDBExtSources, title=xtitle, year=xyear, type=xtype, imdbid=ximdbid, summary=xsummary, item=xitem, thumb=xthumb, session=session, extype='download'), 
@@ -6113,7 +6123,7 @@ def SearchExt(query=None, query2=None, session=None, xtitle=None, xyear=None, xt
 				oc.add(dobj)
 				
 				dobj = DirectoryObject(
-					key = Callback(downloadsmenu.AddToAutoPilotDownloads, title=xtitle, year=xyear, type='movie', vidtype='movie', summary=xsummary, thumb=xthumb, purl=None, session=session, admin=True),
+					key = Callback(downloadsmenu.AddToAutoPilotDownloads, title=xtitle, year=xyear, type='movie', vidtype='movie', summary=xsummary, thumb=xthumb, purl=None, session=session, admin=True, imdbid=ximdbid),
 					title = '%s (%s) - Add to AutoPilot Queue' % (xtitle, xyear),
 					summary = xsummary,
 					thumb = common.GetThumb(R(common.ICON_OTHERSOURCESDOWNLOAD_AUTO), session=session))
@@ -6145,6 +6155,14 @@ def SearchExt(query=None, query2=None, session=None, xtitle=None, xyear=None, xt
 					thumb = common.GetThumb(R(common.ICON_QUEUE), session=session)
 					)
 				)
+		else:
+			return DoIMDBExtSources(title=xtitle, year=xyear, type=xtype, imdbid=ximdbid, summary=xsummary, item=xitem, thumb=xthumb, session=session)
+			dobj = DirectoryObject(
+				key = Callback(DoIMDBExtSources, title=xtitle, year=xyear, type=xtype, imdbid=ximdbid, summary=xsummary, item=xitem, thumb=xthumb, session=session), 
+				title = '%s (%s) - Sources' % (xtitle, xyear),
+				summary = xsummary,
+				thumb = common.GetThumb(R(common.ICON_OTHERSOURCES), session=session))
+			oc.add(dobj)
 			
 		oc.add(DirectoryObject(
 			key = Callback(MainMenu),
@@ -6291,7 +6309,7 @@ def SearchExt(query=None, query2=None, session=None, xtitle=None, xyear=None, xt
 					title = common.EMOJI_EXT+watch_title,
 					summary = summary,
 					thumb = xthumb)
-			else:
+			else:				
 				dobj = DirectoryObject(
 					key = Callback(SearchExt, query=query, query2=query2, session=session, xtitle=title, xyear=year, xtype=type, ximdbid=imdbid, xsummary=summary, xthumb=xthumb, xitem=xitem, append='false', final='false'), 
 					title = common.EMOJI_EXT+watch_title,
@@ -6368,9 +6386,9 @@ def DoIMDBExtSources(title, year, type, imdbid, season=None, episode=None, episo
 			return ExtSources(movtitle=title, year=year, title=title, url=None, summary=summary, thumb=thumb, art=None, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, season=season, episode=episode, session=session)
 		else:
 			if Prefs['disable_downloader'] == False and AuthTools.CheckAdmin() == True:
-				return ExtSourcesDownload(movtitle=title, year=year, title=title, url=None, summary=summary, thumb=thumb, art=None, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, season=season, episode=episode, session=session, mode=common.DOWNLOAD_MODE[0])
+				return ExtSourcesDownload(movtitle=title, year=year, title=title, url=None, summary=summary, thumb=thumb, art=None, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, imdb_id=imdbid, season=season, episode=episode, session=session, mode=common.DOWNLOAD_MODE[0])
 			elif Prefs['disable_downloader'] == False:
-				return ExtSourcesDownload(movtitle=title, year=year, title=title, url=None, summary=summary, thumb=thumb, art=None, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, season=season, episode=episode, session=session, mode=common.DOWNLOAD_MODE[1])
+				return ExtSourcesDownload(movtitle=title, year=year, title=title, url=None, summary=summary, thumb=thumb, art=None, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, imdb_id=imdbid, season=season, episode=episode, session=session, mode=common.DOWNLOAD_MODE[1])
 	else:
 	
 		if season != None:
@@ -6399,7 +6417,7 @@ def DoIMDBExtSources(title, year, type, imdbid, season=None, episode=None, episo
 					)
 				if common.DOWNLOAD_ALL_SEASONS == True and Prefs['disable_downloader'] == False and AuthTools.CheckAdmin() == True:
 					oc.add(DirectoryObject(
-						key = Callback(downloadsmenu.AddToAutoPilotDownloads, title=title, thumb=thumb, summary=summary, purl=None, season=None, season_end=SeasonNR+1, episode_start=1, episode_end=None, year=year, type='show', vidtype='show', session=session, admin=True, all_seasons=True),
+						key = Callback(downloadsmenu.AddToAutoPilotDownloads, title=title, thumb=thumb, summary=summary, purl=None, season=None, season_end=SeasonNR+1, episode_start=1, episode_end=None, year=year, type='show', vidtype='show', session=session, admin=True, all_seasons=True, imdbid=imdbid),
 						title = 'Add to AutoPilot Queue',
 						summary = 'Adds Season (1 - %s) to the AutoPilot Queue for Downloading' % (SeasonNR),
 						thumb = R(common.ICON_OTHERSOURCESDOWNLOAD_AUTO)
@@ -6486,7 +6504,7 @@ def DoIMDBExtSources(title, year, type, imdbid, season=None, episode=None, episo
 						if Prefs['disable_downloader'] == False and AuthTools.CheckAdmin() == True:
 							autopilot_option_shown = True
 							oc.add(DirectoryObject(
-								key = Callback(downloadsmenu.AddToAutoPilotDownloads, title=x_title, thumb=x_thumb, summary=x_summary, purl=None, season=x_season, episode_start=1, episode_end=e, year=x_year, type='show', vidtype='show', session=session, admin=True),
+								key = Callback(downloadsmenu.AddToAutoPilotDownloads, title=x_title, thumb=x_thumb, summary=x_summary, purl=None, season=x_season, episode_start=1, episode_end=e, year=x_year, type='show', vidtype='show', session=session, admin=True, imdbid=x_imdbid),
 								title = 'Add to AutoPilot Queue',
 								summary = 'Adds Episodes (1 - %s) to the AutoPilot Queue for Downloading' % (e-1),
 								thumb = R(common.ICON_OTHERSOURCESDOWNLOAD_AUTO)
@@ -6558,7 +6576,7 @@ def DoIMDBExtSources(title, year, type, imdbid, season=None, episode=None, episo
 							episodesTot = int(episodesTot)
 							if Prefs['disable_downloader'] == False and AuthTools.CheckAdmin() == True:
 								oc.add(DirectoryObject(
-									key = Callback(downloadsmenu.AddToAutoPilotDownloads, title=x_title, thumb=x_thumb, summary=x_summary, purl=None, season=x_season, episode_start=1, episode_end=episodesTot, year=x_year, type='show', vidtype='show', session=session, admin=True),
+									key = Callback(downloadsmenu.AddToAutoPilotDownloads, title=x_title, thumb=x_thumb, summary=x_summary, purl=None, season=x_season, episode_start=1, episode_end=episodesTot, year=x_year, type='show', vidtype='show', session=session, admin=True, imdbid=x_imdbid),
 									title = 'Add to AutoPilot Queue',
 									summary = 'Adds Episodes (1 - %s) to the AutoPilot Queue for Downloading' % episodesTot,
 									thumb = R(common.ICON_OTHERSOURCESDOWNLOAD_AUTO)
@@ -6575,7 +6593,7 @@ def DoIMDBExtSources(title, year, type, imdbid, season=None, episode=None, episo
 					episodesTot = int(episodesTot)
 					if Prefs['disable_downloader'] == False and AuthTools.CheckAdmin() == True:
 						oc.add(DirectoryObject(
-							key = Callback(downloadsmenu.AddToAutoPilotDownloads, title=x_title, thumb=x_thumb, summary=x_summary, purl=None, season=x_season, episode_start=1, episode_end=episodesTot, year=x_year, type='show', vidtype='show', session=session, admin=True),
+							key = Callback(downloadsmenu.AddToAutoPilotDownloads, title=x_title, thumb=x_thumb, summary=x_summary, purl=None, season=x_season, episode_start=1, episode_end=episodesTot, year=x_year, type='show', vidtype='show', session=session, admin=True, imdbid=x_imdbid),
 							title = 'Add to AutoPilot Queue',
 							summary = 'Adds Episodes (1 - %s) to the AutoPilot Queue for Downloading' % episodesTot,
 							thumb = R(common.ICON_OTHERSOURCESDOWNLOAD_AUTO)
@@ -7530,7 +7548,7 @@ def season_menuES(title, show_title, season_index, dataEXSJsonUrl, session):
 			
 		if len(object_container) > 0 and Prefs['disable_downloader'] == False and AuthTools.CheckAdmin() == True:
 			object_container.add(DirectoryObject(
-				key = Callback(downloadsmenu.AddToAutoPilotDownloads, title=common.cleantitle.removeParanthesisAndSeason(show_title, season_index), thumb=thumb, summary='Summary Unavailable', purl=dataEXSJsonUrl, season=season_index, episode_start=1, episode_end=episode_end, year=json_data['year'], type='show', vidtype='show', session=session, admin=True),
+				key = Callback(downloadsmenu.AddToAutoPilotDownloads, title=common.cleantitle.removeParanthesisAndSeason(show_title, season_index), thumb=thumb, summary='Summary Unavailable', purl=dataEXSJsonUrl, season=season_index, episode_start=1, episode_end=episode_end, year=json_data['year'], type='show', vidtype='show', session=session, admin=True, imdbid=json_data['_id']),
 				title = 'Add to AutoPilot Queue',
 				summary = 'Add to the AutoPilot Queue for Downloading',
 				art = art,

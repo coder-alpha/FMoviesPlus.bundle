@@ -315,7 +315,14 @@ def GetEmoji(type, mode='vibrant', session=None):
 	if session == None:
 		session = getSession()
 	
-	if mode == 'simple' and (UsingOption(DEVICE_OPTIONS[3], session=session) or UsingOption(DEVICE_OPTIONS[4], session=session)):
+	if mode == 'txt':
+		if type == 'pos' or type == 'true':
+			return EMOJI_TXT_POS
+		elif type =='neg' or type == 'false':
+			return EMOJI_TXT_NEG
+		else:
+			return EMOJI_TXT_QUES
+	elif mode == 'simple' and (UsingOption(DEVICE_OPTIONS[3], session=session) or UsingOption(DEVICE_OPTIONS[4], session=session)):
 		if type == 'pos' or type == 'true':
 			return EMOJI_TICK
 		elif type =='neg' or type == 'false':

@@ -49,8 +49,8 @@ class host:
 		self.init = False
 		self.logo = 'https://i.imgur.com/nbtnvDr.png'
 		self.name = name
-		self.host = ['imdb.com','media-imdb.com','einthusan.tv','vimeocdn.com','apple.com','akamaized.net','micetop.us','vidcdn.pro','fbcdn.net','cmovieshd.com', 'vcstream.to', 'documentarymania.com','3donlinefilms.com','3dmoviesfullhd.com','totaleclips.com','freedocufilms.com','cartoonhd.pw']
-		self.netloc = ['imdb.com','media-imdb.com','einthusan.tv','vimeocdn.com','apple.com','akamaized.net','micetop.us','vidcdn.pro','fbcdn.net','cmovieshd.com', 'vcstream.to', 'documentarymania.com','3donlinefilms.com','3dmoviesfullhd.com','totaleclips.com','freedocufilms.com','cartoonhd.pw']
+		self.host = ['imdb.com','media-imdb.com','einthusan.tv','vimeocdn.com','apple.com','akamaized.net','micetop.us','vidcdn.pro','fbcdn.net','cmovieshd.com', 'vcstream.to', 'documentarymania.com','3donlinefilms.com','3dmoviesfullhd.com','totaleclips.com','freedocufilms.com','cartoonhd.pw','cooltvseries.com']
+		self.netloc = ['imdb.com','media-imdb.com','einthusan.tv','vimeocdn.com','apple.com','akamaized.net','micetop.us','vidcdn.pro','fbcdn.net','cmovieshd.com', 'vcstream.to', 'documentarymania.com','3donlinefilms.com','3dmoviesfullhd.com','totaleclips.com','freedocufilms.com','cartoonhd.pw','cooltvseries.com']
 		self.quality = '1080p'
 		self.loggertxt = []
 		self.captcha = False
@@ -240,6 +240,21 @@ class host:
 				params = client.b64encode(json.dumps(paramsx, encoding='utf-8'))
 				
 				items.append({'quality':q, 'riptype':r, 'src':url, 'fs':fs, 'online':online, 'params':params, 'urldata':urldata, 'allowsStreaming':False, 'allowsDownload':True})
+			elif 'cooltvseries.com' in url:
+				urlx = client.request(url, output='geturl', headers=headers)
+				urlx = '%s?e=file.mp4' % urlx
+				fs = client.getFileSize(url, retry429=True, headers=headers)
+				if fs == None or int(fs) == 0:
+					fs = client.getFileSize(url, retry429=True)
+				q = qual_based_on_fs(q,fs)
+				online = check(url)
+				urldata = client.b64encode(json.dumps('', encoding='utf-8'))
+				params = client.b64encode(json.dumps('', encoding='utf-8'))
+				if headers != None:
+					paramsx = {'headers':headers}
+					params = client.b64encode(json.dumps(paramsx, encoding='utf-8'))
+				allowsDownload = True
+				items.append({'quality':q, 'riptype':r, 'src':urlx, 'fs':fs, 'online':online, 'params':params, 'urldata':urldata, 'allowsStreaming':True, 'allowsDownload':allowsDownload})
 			else:
 				fs = client.getFileSize(url, retry429=True, headers=headers)
 				if fs == None or int(fs) == 0:
@@ -274,12 +289,16 @@ class host:
 			
 		return items
 		
-def qual_based_on_fs(q,fs):
+def qual_based_on_fs(q, fs):
 	try:
-		if int(fs) > 2 * float(1024*1024*1024):
+		if int(fs) > 1.75 * float(1024*1024*1024):
 			q = '1080p'
-		elif int(fs) > 1 * float(1024*1024*1024):
+		elif int(fs) > 0.5 * float(1024*1024*1024):
 			q = '720p'
+		elif int(fs) < 0.3 * float(1024*1024*1024):
+			q = '480p'
+		else:
+			q = '360p'
 	except:
 		pass
 	return q

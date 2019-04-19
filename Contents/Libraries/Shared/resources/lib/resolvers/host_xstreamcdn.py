@@ -292,13 +292,16 @@ def getAllQuals(url, page_url, online=None):
 		e = '{}'.format(e)
 		return (None, e, None)
 		
-def qual_based_on_fs(fs):
-	q = '480p'
+def qual_based_on_fs(q, fs):
 	try:
-		if int(fs) > 2 * float(1024*1024*1024):
+		if int(fs) > 1.75 * float(1024*1024*1024):
 			q = '1080p'
-		elif int(fs) > 1 * float(1024*1024*1024):
+		elif int(fs) > 0.5 * float(1024*1024*1024):
 			q = '720p'
+		elif int(fs) < 0.3 * float(1024*1024*1024):
+			q = '480p'
+		else:
+			q = '360p'
 	except:
 		pass
 	return q

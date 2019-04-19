@@ -1,6 +1,6 @@
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.82' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.83' # Release notation (x.y - where x is major and y is minor)
 TAG = ''
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
@@ -218,6 +218,7 @@ ICON_UPARROW = "icon-uparrow.png"
 ICON_ENTER = "icon-enter.png"
 ICON_QUEUE = "icon-bookmark.png"
 ICON_UNAV = "MoviePosterUnavailable.jpg"
+ICON_UNAV_URL = "https://i.imgur.com/IBo6qDY.png"
 ICON_PREFS = "icon-prefs.png"
 ICON_UPDATE = "icon-update.png"
 ICON_UPDATE_NEW = "icon-update-new.png"

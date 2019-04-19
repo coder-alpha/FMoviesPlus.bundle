@@ -50,7 +50,11 @@ CUSTOM_TIMEOUT_CLIENTS = {'Plex Web': 15}
 @route(PREFIX + "/MainMenu")
 def MainMenu(**kwargs):
 
-	fmovies.BASE_URL = Prefs["new_base_url"]
+	T_BASE_URL = Prefs["new_base_url_txt"]
+	if T_BASE_URL!= None and T_BASE_URL != "":
+		fmovies.BASE_URL = T_BASE_URL
+	else:
+		fmovies.BASE_URL = Prefs["new_base_url"]
 	if common.CHECK_BASE_URL_REDIRECTION == True and common.CHECK_BASE_URL_REDIRECTION_HP == True:
 		try:
 			RED_URL = common.client.getRedirectingUrl(fmovies.BASE_URL).strip("/")
@@ -3906,7 +3910,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 		oc.add(DirectoryObject(
 			key = Callback(RemoveBookmark, title = title, url = url),
 			title = "Remove Bookmark",
-			summary = 'Removes the current %s from the Boomark que' % (itemtype),
+			summary = 'Removes the current %s from the Boomark queue' % (itemtype),
 			art = art,
 			thumb = common.GetThumb(R(common.ICON_QUEUE), session=session)
 		)
@@ -3915,7 +3919,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, **
 		oc.add(DirectoryObject(
 			key = Callback(AddBookmark, title = title, url = url, summary=summary, thumb=thumb, type='movie' if isTvSeries==False else 'series'),
 			title = "Add Bookmark",
-			summary = 'Adds the current %s to the Boomark que' % (itemtype),
+			summary = 'Adds the current %s to the Boomark queue' % (itemtype),
 			art = art,
 			thumb = common.GetThumb(R(common.ICON_QUEUE), session=session)
 		)
@@ -5651,6 +5655,8 @@ def AddBookmark(title, url, summary, thumb, type='movie', silent=False, data=Non
 	if Check(title=title, url=url):
 		return MC.message_container(title, 'This item has already been added to your bookmarks.')
 		
+	if str(thumb) == 'None' or str(thumb) == '':
+		thumb = COMMON.ICON_UNAV_URL
 	#Log("Added : %s %s" % (title, url))
 	if data != None:
 		Dict[title+'-'+E(url)] = (title + 'Key5Split' + data +'Key5Split'+ summary + 'Key5Split' + thumb + 'Key5Split' + type)
@@ -6018,7 +6024,7 @@ def Search(query=None, surl=None, page_count='1', mode='default', thumb=None, su
 			oc.add(DirectoryObject(
 				key = Callback(RemoveBookmark, title = query + ' (All Seasons)', url = url),
 				title = "Remove Bookmark",
-				summary = 'Removes the current show season from the Boomark que',
+				summary = 'Removes the current show season from the Boomark queue',
 				thumb = R(common.ICON_QUEUE)
 				)
 			)
@@ -6026,7 +6032,7 @@ def Search(query=None, surl=None, page_count='1', mode='default', thumb=None, su
 			oc.add(DirectoryObject(
 				key = Callback(AddBookmark, title = query + ' (All Seasons)', url = url, summary=summary, thumb=thumb, type='series'),
 				title = "Add Bookmark",
-				summary = 'Adds the current show season to the Boomark que',
+				summary = 'Adds the current show season to the Boomark queue',
 				thumb = R(common.ICON_QUEUE)
 				)
 			)
@@ -6135,7 +6141,7 @@ def SearchExt(query=None, query2=None, session=None, xtitle=None, xyear=None, xt
 				oc.add(DirectoryObject(
 					key = Callback(AddBookmark, title=xtitle, url=urld, summary=xsummary, thumb=xthumb, type=xtype, data=urldata),
 					title = "Add Bookmark",
-					summary = 'Adds the current Show to the Boomark que',
+					summary = 'Adds the current Show to the Boomark queue',
 					thumb = common.GetThumb(R(common.ICON_QUEUE), session=session)
 					)
 				)
@@ -6413,7 +6419,7 @@ def DoIMDBExtSources(title, year, type, imdbid, season=None, episode=None, episo
 					oc.add(DirectoryObject(
 						key = Callback(AddBookmark, title=title, url=urld, summary=summary, thumb=thumb, type=type, data=urldata),
 						title = "Add Bookmark",
-						summary = 'Adds the current Show to the Boomark que',
+						summary = 'Adds the current Show to the Boomark queue',
 						thumb = common.GetThumb(R(common.ICON_QUEUE), session=session)
 						)
 					)
@@ -7598,7 +7604,12 @@ def ValidatePrefs2(changed='True', **kwargs):
 	if str(changed) == 'True':
 		Log("Your Channel Preferences have changed !")
 	
-	fmovies.BASE_URL = Prefs["new_base_url"]
+	T_BASE_URL = Prefs["new_base_url_txt"]
+	if T_BASE_URL!= None and T_BASE_URL != "":
+		fmovies.BASE_URL = T_BASE_URL
+	else:
+		fmovies.BASE_URL = Prefs["new_base_url"]
+
 	RED_URL = None
 	if fmovies.BASE_URL != Prefs["new_base_url"] or str(changed) == 'True':
 		if common.CHECK_BASE_URL_REDIRECTION == True:

@@ -210,7 +210,6 @@ class source:
 							break
 						
 						if len(url_data) > 0:
-						
 							links_data = []
 							
 							for data in url_data:
@@ -220,10 +219,10 @@ class source:
 									data = client.parseDOM(data, 'div', attrs = {'class': 'view'})[0]
 									url = client.parseDOM(data, 'a', ret='href')[0].strip()
 									titlex = client.parseDOM(data, 'img', ret='alt')[0]
-								except:
-									break
+								except Exception as e:
+									log(type='INFO', method='get_movie-3-A', err='%s' % e, dolog=False, logToControl=False, doPrint=True)
 								if len(titlex) == 0 and url == 'player.php?title=':
-									log(type='INFO', method='get_movie-3', err='No results for: %s' % xtitle, dolog=True, logToControl=False, doPrint=True)
+									log(type='INFO', method='get_movie-3-B', err='No results for: %s' % xtitle, dolog=True, logToControl=False, doPrint=True)
 								else:
 									url = urlparse.urljoin(self.base_link, url)
 									try:
@@ -231,12 +230,20 @@ class source:
 									except:
 										poster = None
 										
+									log(type='INFO', method='get_movie-3-C', err='Matching - %s' % url, dolog=False, logToControl=False, doPrint=True)
 									if title in titlex.lower() or titlex.lower() in title or lose_match_title(title, titlex.lower()):
 										url = url.replace(' ','%20')
 										url = client.request(url, headers=headers, followredirect=True, output='geturl')
 										url = client.request(url, headers=headers, followredirect=True, output='geturl')
 										result = proxies.request(url, proxy_options=proxy_options, use_web_proxy=self.proxyrequired, headers=headers, timeout=60)
-										url = client.parseDOM(result, 'frame', ret = 'src')[0]
+										
+										try:
+											url = client.parseDOM(result, 'frame', ret = 'src')[0]
+										except:
+											try:
+												url = client.parseDOM(result, 'iframe', ret = 'src')[0]
+											except:
+												pass
 										
 										if url != 'https://www.freedocufilms.com/player.php?title=':
 											log(type='INFO', method='get_movie-3A', err='Verifying - %s' % url, dolog=True, logToControl=False, doPrint=True)

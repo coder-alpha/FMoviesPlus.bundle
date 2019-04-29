@@ -40,7 +40,8 @@ page.onInitialized = function() {
 	phantom.exit();
   }, MAXIMUM_EXECUTION_TIME);
 };
-page.settings.userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36";
+page.settings.userAgent = "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.87 Safari/537.36";
+
 page.settings.resourceTimeout = 1 * 60 * 1000; // 1 min.
 
 // thanks @skidank (https://forums.plex.tv/discussion/comment/1582115/#Comment_1582115)

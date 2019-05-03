@@ -103,7 +103,6 @@ vsp_url2 = 'YUhSMGNITTZMeTkyYVdSbGIzTndhV1JsY2k1cGJpOD0='
 vsp_url3 = 'YUhSMGNITTZMeTkyYVdSbGIzTndhV1JsY2k1emRISmxZVzB2'
 
 loggertxt = []
-
 name = 'client'
 
 def request(url, close=True, redirect=True, followredirect=False, error=False, proxy=None, post=None, headers=None, mobile=False, limit=None, referer=None, cookie=None, output='', timeout='30', httpsskip=False, use_web_proxy=False, XHR=False, IPv4=False):
@@ -286,8 +285,24 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 		if output == 'cookie':
 			try: result = '; '.join(['%s=%s' % (i.name, i.value) for i in cookies])
 			except: pass
-			try: result = cf
+			try: 
+				content = response.headers
+				if content != None and 'Set-Cookie' in content:
+					cookie2b = re.findall(r'Set-Cookie:(.*?)\n', str(content))[0].strip()
+					if len(result) > 0:
+						result += '; ' + cookie2b
+					else:
+						result = cookie2b
+			except: 
+				pass
+			try:
+				if len(result) > 0:
+					result += '; ' + cf
+				else:
+					result = '; ' + cf
 			except: pass
+			
+			result = formatCookie(result)
 
 		elif output == 'response':
 			if limit == '0':
@@ -317,12 +332,35 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 			return result
 
 		elif output == 'extended':
+			cookies = cookielib.LWPCookieJar()
 			try: cookie = '; '.join(['%s=%s' % (i.name, i.value) for i in cookies])
 			except: pass
-			try: cookie = cf
+			try:
+				if cf != None:
+					if len(cookie) > 0:
+						cookie += '; ' + cf
+					else:
+						cookie += '; ' + cf
 			except: pass
 			content = response.headers
+			if content != None and 'Set-Cookie' in content:
+				cookie2b = re.findall(r'Set-Cookie:(.*?)\n', str(content))[0].strip()
+				if len(cookie) > 0:
+					cookie += '; ' + cookie2b
+				else:
+					cookie = cookie2b
 			result = response.read(5242880)
+			
+			cookie = formatCookie(cookie)
+			
+			try: 
+				if 'Cookie' in headers.keys():
+					headers['Cookie'] += ';' + cookie
+				else:
+					headers['Cookie'] = cookie
+			except:
+				pass
+			
 			if IPv4 == True:
 				setIP6()
 			return (result, headers, content, cookie)
@@ -359,6 +397,19 @@ def request(url, close=True, redirect=True, followredirect=False, error=False, p
 		if IPv4 == True:
 			setIP6()
 		return
+		
+def formatCookie(cookie):
+	try:
+		cookS = cookie.split(';')
+		cookA = []
+		for c in cookS:
+			c = c.strip()
+			cookA.append(c.strip())
+		cookA = sorted(list(set(cookA)))
+		return '; '.join(x for x in cookA)
+	except Exception as e:
+		log(type='ERROR-CRITICAL', method='formatCookie', err='%s: %s' % (cookie, e.args), dolog=True, logToControl=True, doPrint=True)
+		return cookie
 		
 def simpleCheck(link, headers={}, cookie={}, retError=False, retry429=False, cl=3, timeout=None):
 	try:
@@ -978,5 +1029,6 @@ def log(type='INFO', method='undefined', err='', dolog=True, logToControl=False,
 			print msg
 	except Exception as e:
 		control.log('Error in Logging: %s >>> %s' % (msg,e))
-		
+
+USER_AGENT = agent()
 determineIP()

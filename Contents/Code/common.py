@@ -1,19 +1,24 @@
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.83' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.84' # Release notation (x.y - where x is major and y is minor)
 TAG = ''
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
 ################################################################################
 
-import time, base64, unicodedata, re, random, string, hashlib, io, datetime
-from resources.lib.libraries import control, client, cleantitle, jsfdecoder, jsunpack
+import time, base64, unicodedata, re, random, string, hashlib, io, datetime, os, sys
+from resources.lib.libraries import control, client, cleantitle, jsfdecoder, jsunpack, recaptcha_v2
 from resources.lib.resolvers import host_openload, host_gvideo, host_mega, host_rapidvideo, host_streamango, host_direct
 import phantomjs
 import interface
+import requests
+import shutil
+import subprocess
 from __builtin__ import ord, format, eval, iter
 
+Log("Python version: %s" % sys.version_info)
 USE_SELENIUM = False
+
 try:
 	import seleniumca
 	Log('Selenium imported successfully !')
@@ -30,10 +35,21 @@ try:
 except:
 	Log('Error disabling IPv6 and setting IPv4 as default')
 	pass
+	
+USE_PIL = True
+try:
+	from PIL import Image
+except Exception as e:
+	Log('Error importing Image from PIL: %s' % e)
+	USE_PIL = False
+try:
+	from PIL import _imaging
+except Exception as e:
+	Log('Error importing _imaging from PIL: %s' % e)
+	USE_PIL = False
 
 BASE_URL = "https://fmovies.taxi"
-BASE_URLS = ["https://bmovies.is","https://bmovies.to","https://bmovies.pro","https://bmovies.online","https://bmovies.club","https://bmovies.ru","https://fmovies.to","https://fmovies.is","https://fmovies.taxi","https://fmovies.se","https://ffmovies.ru"]
-
+BASE_URLS = ['https://fmovies.taxi','https://fmovies.to','https://fmovies.world','https://fmovies.is','https://fmovies.to','https://ffmovies.to','https://fmovies.pub']
 ES_API_URL = 'http://movies-v2.api-fetch.website'
 EXT_LIST_URLS = ["http://movies-v2.api-fetch.website","http://tv-v2.api-fetch.website"]
 
@@ -114,6 +130,8 @@ OPTIONS_PROXY = []
 INTERNAL_SOURCES = []
 OPTIONS_PROVIDERS = []
 
+FMOVIES_CAPTCHA_SELECTION = {}
+
 #INTERNAL_SOURCES_QUALS = [{'label':'4K','enabled': 'True'},{'label':'1080p','enabled': 'True'},{'label':'720p','enabled': 'True'},{'label':'480p','enabled': 'True'},{'label':'360p','enabled': 'True'}]
 #INTERNAL_SOURCES_RIPTYPE = [{'label':'BRRIP','enabled': 'True'},{'label':'PREDVD','enabled': 'True'},{'label':'CAM','enabled': 'True'},{'label':'TS','enabled': 'True'},{'label':'SCR','enabled': 'True'},{'label':'UNKNOWN','enabled': 'True'}]
 #INTERNAL_SOURCES_FILETYPE = [{'label':'Movie/Show','enabled': 'True'},{'label':'Trailer','enabled': 'True'},{'label':'Interviews','enabled': 'False'},{'label':'Behind the scenes','enabled': 'False'},{'label':'Music Video','enabled': 'False'},{'label':'Deleted Scenes','enabled': 'False'},{'label':'Misc.','enabled': 'False'}]
@@ -128,7 +146,7 @@ INTERNAL_SOURCES_QUALS = list(INTERNAL_SOURCES_QUALS_CONST)
 INTERNAL_SOURCES_RIPTYPE = list(INTERNAL_SOURCES_RIPTYPE_CONST)
 INTERNAL_SOURCES_FILETYPE = list(INTERNAL_SOURCES_FILETYPE_CONST)
 
-DEVICE_OPTIONS = ['Dumb-Keyboard','List-View','Redirector','Simple-Emoji','Vibrant-Emoji','Multi-Link-View','Full-poster display','Use-PhantomJS','No-Extra-Page-Info','Use-FileSize-Sorting','Force-Transcoding','No-Extra-Page-Info (Anime)','Downloads-Listing','Force-Transcoding (IMDb)']
+DEVICE_OPTIONS = ['Dumb-Keyboard','List-View','Redirector','Simple-Emoji','Vibrant-Emoji','Multi-Link-View','Full-poster display','Use-PhantomJS','No-Extra-Page-Info','Use-FileSize-Sorting','Force-Transcoding','No-Extra-Page-Info (Anime)','Downloads-Listing','Force-Transcoding (IMDb)','List-View-Menu']
 DEVICE_OPTION = {DEVICE_OPTIONS[0]:'The awesome Keyboard for Search impaired devices',
 				DEVICE_OPTIONS[1]:'Force List-View of Playback page listing sources',
 				DEVICE_OPTIONS[2]:'Required in certain cases - *Experimental (refer forum)',
@@ -142,7 +160,8 @@ DEVICE_OPTION = {DEVICE_OPTIONS[0]:'The awesome Keyboard for Search impaired dev
 				DEVICE_OPTIONS[10]:'Force-Transcoding - Force transcoding by PMS for videos with audio/video issues',
 				DEVICE_OPTIONS[11]:'No-Extra-Page-Info (Anime) - Speeds up navigation by not downloading detailed item info',
 				DEVICE_OPTIONS[12]:'Downloads-Listing - Reverse the order of Downloads i.e. oldest entry on top',
-				DEVICE_OPTIONS[13]:'Force-Transcoding (IMDb) - Force transcoding IMDb videos by PMS'}
+				DEVICE_OPTIONS[13]:'Force-Transcoding (IMDb) - Force transcoding IMDb videos by PMS',
+				DEVICE_OPTIONS[14]:'Force List-View of Menu page listing items'}
 
 DEVICE_OPTION_CONSTRAINTS = {DEVICE_OPTIONS[2]:[{'Pref':'use_https_alt','Desc':'Use Alternate SSL/TLS','ReqValue':'disabled'}]}
 DEVICE_OPTION_CONSTRAINTS2 = {DEVICE_OPTIONS[5]:[{'Option':6,'ReqValue':False}], DEVICE_OPTIONS[6]:[{'Option':5,'ReqValue':False}]}
@@ -162,7 +181,7 @@ DOWNLOAD_STATS = {}
 DOWNLOAD_TEMP = {}
 DOWNLOAD_AUTOPILOT_CONST = {'movie':[], 'show':[], 'extras':[]}
 DOWNLOAD_AUTOPILOT = {'movie':[], 'show':[], 'extras':[]}
-DOWNLOAD_AUTOPILOT_STATUS = ['Processing','UnAvailable','In Download Queue','Waiting','Error','Scheduled','Completed Pending Removal']
+DOWNLOAD_AUTOPILOT_STATUS = ['Processing','UnAvailable','In Download Queue','Waiting','Error','Scheduled','Completed Pending Removal','Completed']
 DOWNLOAD_FMP_EXT = '.FMPTemp'
 
 SERVER_PLACEHOLDER = 'FMOVIES'
@@ -265,6 +284,7 @@ ICON_WARNING = "icon-warning.png"
 ICON_SYSSTATUS = "icon-status.png"
 ICON_FL_SAVE = "icon-floppysave.png"
 ICON_FL_LOAD = "icon-floppyload.png"
+ICON_RECAPTCHA = "icon-recaptcha.png"
 
 ICON_OPENLOAD = "http://i.imgur.com/OM7VzQs.png"
 ICON_IMDB = "https://i.imgur.com/LqO2Fn0.png"
@@ -298,6 +318,9 @@ ENCRYPTED_URLS = False
 REFACTOR_WIP = True
 DOWNLOAD_ALL_SEASONS = True
 WBH = 'aHR0cHM6Ly9ob29rLmlvL2NvZGVyLWFscGhhL3Rlc3Q='
+
+RECAPTCHA_CACHE_DIR = ""
+RECAPTCHA_IMAGE_PREFIX = "recaptcha_img_"
 
 FMOVIES_AVAILABLE = None
 
@@ -699,8 +722,12 @@ def FilterBasedOn(srcs, use_quality=True, use_riptype=True, use_vidtype=True, us
 		
 ####################################################################################################
 @route(PREFIX + "/GetThumb")	
-def GetThumb(thumb, session=None, force_list_view_off=False, **kwargs):
-	if force_list_view_off == False and UsingOption(key=DEVICE_OPTIONS[1], session=session):
+def GetThumb(thumb, session=None, force_list_view_off=False, cat='play', **kwargs):
+
+	if cat == 'play' and force_list_view_off == False and UsingOption(key=DEVICE_OPTIONS[1], session=session):
+		return None
+		
+	if cat == 'menu' and force_list_view_off == False and UsingOption(key=DEVICE_OPTIONS[14], session=session):
 		return None
 	
 	if thumb != None and thumb == 'N/A':
@@ -957,7 +984,7 @@ def make_cookie_str():
 		
 		return cookie_str, error
 	except Exception as e:
-		Log("common.py > make_cookie_str : %s" % e)
+		Log.Error("common.py > make_cookie_str : %s" % e)
 		return cookie_str, e
 		
 ####################################################################################################
@@ -1012,7 +1039,9 @@ def GetPageAsString(url, headers=None, timeout=15, referer=None):
 			if use_debug:
 				Log("Using Cookie retrieved at: %s" % time.ctime(CACHE_COOKIE[0]['ts']))
 				Log("Using Cookie: %s" % (cookies))
-
+		else:
+			Log.Error(error)
+			Log(cookies)
 	try:
 		if Prefs["use_https_alt"]:
 			if use_debug:
@@ -1320,6 +1349,89 @@ def md5(fname):
 		for chunk in iter(lambda: f.read(4096), b""):
 			hash_md5.update(chunk)
 	return hash_md5.hexdigest()
+	
+####################################################################################################
+def DownloadThumbAndReturnLink(url):
+
+	filename = 'payload.jpg'
+	fil_dir = Core.storage.join_path(Core.bundle_path, 'Contents', 'Resources', RECAPTCHA_CACHE_DIR)
+	file_path = Core.storage.join_path(fil_dir, filename)
+
+	try:
+		if not os.path.exists(fil_dir):
+			os.makedirs(fil_dir)
+		resp = requests.get(url, stream=True)
+		if (int(resp.status_code) == 200):
+			with io.open(file_path, 'wb') as f:
+				resp.raw.decode_content = True
+				shutil.copyfileobj(resp.raw, f)
+			if Prefs["use_debug"]:
+				Log("File downloaded from %s ---> %s" % (url, file_path))
+			bool, err = SplitImageIntoChoices(filename, fil_dir)
+			if bool == False:
+				return None, err
+		else:
+			raise Exception('Error caching thumb, HTTP Error %s' %str(resp.status_code))
+	except Exception as e:
+		Log.Error("Error common.py>DownloadThumbAndReturnLink - %s" % e)
+		return None, err
+
+	return fil_dir, ''
+	
+####################################################################################################
+def SplitImageIntoChoices(filename, fil_dir):
+
+	try:
+		if USE_PIL == True:
+			img = Image.open(Core.storage.join_path(fil_dir, filename))
+			imdim = (img.size)
+			w=imdim[0]/3
+			h=imdim[1]/3
+			wh = min(w,h)
+			c=0
+			for y in range(3):
+				for x in range(3):
+					img.crop((x*wh, y*wh, (x*wh)+w, (y*wh)+h)).save(Core.storage.join_path(fil_dir, '%s%s.jpg' % (RECAPTCHA_IMAGE_PREFIX, c)))
+					c += 1
+		else:
+			prog = ""
+			
+			try:
+				prog_t = Prefs["imagemagick_dir_path"]
+				if prog_t != None:
+					prog = prog_t
+			except:
+				pass
+			
+			try:
+				file_cmd = [Core.storage.join_path(prog, 'identify'), Core.storage.join_path(fil_dir, filename)]
+				process = subprocess.Popen(file_cmd, shell=False, cwd=fil_dir, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+				ret = process.wait()
+				output = process.stdout.read()
+				imdim = output.split(' ')[4].split('x')
+				w = int(imdim[0])/3
+				h = int(imdim[1])/3
+				wh = min(w,h)
+				cmd = "-crop"
+				c = 0
+				for y in range(3):
+					for x in range(3):
+						params = "%sx%s+%s+%s" % (w,h,x*wh,y*wh)
+						file_cmd = [Core.storage.join_path(prog, 'convert'), Core.storage.join_path(fil_dir, filename), cmd, params, Core.storage.join_path(fil_dir, '%s%s.jpg' % (RECAPTCHA_IMAGE_PREFIX,c))]
+						process = subprocess.Popen(file_cmd, shell=False, cwd=fil_dir, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+						ret = process.wait()
+						output = process.stdout.read()
+						c += 1
+						if Prefs["use_debug"]:
+							Log('%s - %s' % (file_cmd, output))
+			except Exception as e:
+				raise e
+		time.sleep(1)
+	except Exception as e:
+		Log.Error("Error common.py>SplitImageIntoChoices - %s" % e)
+		return False, e
+		
+	return True, ''
 	
 ####################################################################################################
 class PageError(Exception):

@@ -126,6 +126,14 @@ def SiteCookieRoutine(session=None, reset=False, dump=False, quiet=False, **kwar
 @route(PREFIX + "/PreCacheStuff")
 def PreCacheStuff():
 
+	tuid = common.id_generator(16)
+	common.control.AddThread('PreCacheStuff', 'Pre-Cache Stuff during Initialization and caches main files', time.time(), '0', False, tuid)
+	
+	cookies, error = common.make_cookie_str()
+	while error != '' or common.FMOVIES_AVAILABLE == False:
+		time.sleep(5)
+		cookies, error = common.make_cookie_str()
+
 	if common.CHECK_BASE_URL_REDIRECTION == True:
 		try:
 			RED_URL = common.client.getRedirectingUrl(fmovies.BASE_URL).strip("/")
@@ -150,6 +158,8 @@ def PreCacheStuff():
 				Log("Pre-Caching : %s" % url)
 		except Exception as e:
 			Log(e)
+			
+	common.control.RemoveThread(tuid)
 
 ######################################################################################
 @route(PREFIX + "/SleepPersistAndUpdateCookie")
@@ -218,6 +228,14 @@ def SleepAndUpdateThread(update=True, startthread=True, session=None, **kwargs):
 	
 	tuid = common.id_generator(16)
 	common.control.AddThread('SleepAndUpdateThread', 'Initializes Interface & Updates Vals on StartUp', time.time(), '0', False, tuid)
+	
+	validateBaseUrl()
+	ValidateMyPrefs()
+	DumpPrefs()
+	
+	# convert old style bookmarks to new
+	if common.DEV_BM_CONVERSION and len(CONVERT_BMS) == 0:
+		convertbookmarks()
 	
 	try:
 		if common.BOOT_UP_CONTROL_SETTINGS_FROM_PREFS != None:
@@ -418,7 +436,7 @@ def SleepAndUpdateThread(update=True, startthread=True, session=None, **kwargs):
 		Dict.Save()
 		
 	if update == True:
-		PreCacheStuff()
+		Thread.Create(PreCacheStuff)
 		
 	Dict['BOOT_UP_CONTROL_SETTINGS'] = E(JSON.StringFromObject(common.BOOT_UP_CONTROL_SETTINGS))
 	Dict.Save()
@@ -460,6 +478,8 @@ def Options(session, refresh=0, **kwargs):
 	oc.add(DirectoryObject(key = Callback(ClearCache), title = "Clear Cache (%s items)" % smsg, summary='Forces clearing of the Cached cookies, sources and webpages. %s Cached Sources and %s WebPages/Links consuming %s KB memory.' % (msg,len(common.CACHE_META), round(((sys.getsizeof(common.CACHE)+sys.getsizeof(common.CACHE_META)+extmemory)/1024),2)), thumb = R(common.ICON_CLEAR)))
 	
 	oc.add(DirectoryObject(key = Callback(ResetCookies), title = "Reset Cookies", summary='Reset Session, CF, etc. cookies', thumb = R(common.ICON_CLEAR)))
+	
+	oc.add(DirectoryObject(key = Callback(ResetCookies, mode='captcha'), title = "Solve reCaptcha", summary='Solve Captcha to Retrieve Cookies', thumb = R(common.ICON_RECAPTCHA)))
 	
 	oc.add(DirectoryObject(key = Callback(tools.DevToolsC, session=session), title = "Tools", summary='Tools - Save/Load Bookmarks', thumb = R(common.ICON_TOOLS)))
 	
@@ -1589,12 +1609,12 @@ def ClearCache(**kwargs):
 			common.interface.clearSources()
 	except:
 		pass
-
+		
 	return MC.message_container('Clear Cache', '%s Cache has been cleared !' % msg)
 	
 ######################################################################################
 @route(PREFIX + "/resetcookies")
-def ResetCookies(**kwargs):
+def ResetCookies(mode=None, **kwargs):
 
 	if not common.interface.isInitialized():
 		return MC.message_container(common.MSG0, '%s. Progress %s%s (%s)' % (common.MSG1, common.interface.getProvidersInitStatus(), '%', common.interface.getCurrentProviderInProcess()))
@@ -1607,20 +1627,210 @@ def ResetCookies(**kwargs):
 	except:
 		pass
 	
-	del common.CACHE_COOKIE[:]
+	if mode != None:
+		
+		captcha = None
+		UU = common.recaptcha_v2.getUR()
+		
+		if 'pl' in common.FMOVIES_CAPTCHA_SELECTION.keys():
+			resolve = False
+			captcha = False
+		else:
+			bool, html, cookies, ua, err, site = UU.captchaStatus()
+			if bool == True:
+				captcha = True
+			elif len(common.FMOVIES_CAPTCHA_SELECTION.keys()) == 0:
+				if Prefs["use_debug"]:
+					Log("=========== SolveCaptchaFMovies - Not Active =============")
+					Log("Site: %s" % site)
+					Log("Cookies: %s" % cookies)
+					Log("User-Agent: %s" % ua)
+			
+				cookie_dict_Str = Dict['CACHE_COOKIE']
+				try:
+					cookie_dict = JSON.ObjectFromString(D(cookie_dict_Str))
+				except:
+					cookie_dict = {}
+					
+				cookies1 = cookies
+				cookies += '; user-info=null; ' + fmovies.newmarketgidstorage
+				
+				cookie_dict.update({'ts':time.time(), 'cookie':cookies, 'cookie1':cookies1, 'cookie2':'', 'UA': ua})
+				Dict['CACHE_COOKIE'] = E(JSON.StringFromObject(cookie_dict))
+				Dict.Save()
+				
+				common.CACHE['cookie'] = {}
+				common.CACHE['cookie']['cookie'] = cookies
+				common.CACHE['cookie']['cookie1'] = cookies1
+				common.CACHE['cookie']['cookie2'] = ''
+				common.CACHE['cookie']['myts'] = cookie_dict['ts']
+				common.CACHE['cookie']['UA'] = ua
+				
+				del common.CACHE_COOKIE[:]
+				common.CACHE_COOKIE.append(cookie_dict)
+				
+				common.FMOVIES_AVAILABLE = True
+			
+		if captcha != None and ('Solved' not in common.FMOVIES_CAPTCHA_SELECTION.keys() or ('Solved' in common.FMOVIES_CAPTCHA_SELECTION.keys() and common.FMOVIES_CAPTCHA_SELECTION['Solved'] == False)):
+			common.CACHE.clear()
+			common.CACHE_META.clear()
+			HTTP.ClearCache()
+			tools.ClearCache(tools.caches_path)
+			lpl = None
+			if captcha == True:
+				if Prefs["use_debug"]:
+					Log("Captcha is Active. Needs Solving-1")
+				data = UU.retData()
+				msg = data['message']
+				msgx = msg.lower().replace('select all images with ','').title()
+				msg = '%s: %s' % (msgx, msg)
+				data['message'] = msg
+				pl = data['payload']
+				lpl, err = common.DownloadThumbAndReturnLink(pl)
+			else:
+				if Prefs["use_debug"]:
+					Log("Captcha is Active. Needs Solving-2")
+				data = common.FMOVIES_CAPTCHA_SELECTION['data']
+				msg = data['message']
+				pl = data['payload']
+				lpl = common.FMOVIES_CAPTCHA_SELECTION['lpl']
+			
+			oc = ObjectContainer(title2=msg)
+			po = create_photo_object(url=pl, title=msg, rnd=random.randint(0, 9999))
+			oc.add(po)
+
+			if 'pl' in common.FMOVIES_CAPTCHA_SELECTION.keys() and pl == common.FMOVIES_CAPTCHA_SELECTION['pl']:
+				pass
+			else:
+				common.FMOVIES_CAPTCHA_SELECTION.clear()
+				common.FMOVIES_CAPTCHA_SELECTION['data'] = data
+				common.FMOVIES_CAPTCHA_SELECTION['pl'] = pl
+				common.FMOVIES_CAPTCHA_SELECTION['lpl'] = lpl
+				
+			s = 0
+			resp = []
+			for i in xrange(9):
+				if str(i) in common.FMOVIES_CAPTCHA_SELECTION.keys() and common.FMOVIES_CAPTCHA_SELECTION[str(i)] == True:
+					bool = True
+					s += 1
+					resp.append(i)
+					thumbIcon = R(common.ICON_OK)
+					if lpl != None:
+						thumbIcon = R(Core.storage.join_path(common.RECAPTCHA_CACHE_DIR, '%s%s.jpg' % (common.RECAPTCHA_IMAGE_PREFIX,i)))
+				else:
+					bool = False
+					thumbIcon = R(common.ICON_NOTOK)
+					if lpl != None:
+						thumbIcon = R(Core.storage.join_path(common.RECAPTCHA_CACHE_DIR, '%s%s.jpg' % (common.RECAPTCHA_IMAGE_PREFIX,i)))
+						
+				Log(thumbIcon)
+					
+				common.FMOVIES_CAPTCHA_SELECTION[str(i)] = bool
+					
+				title_msg = "%02d | %s" % (i+1, common.GetEmoji(type=bool, mode='simple'))
+				oc.add(DirectoryObject(key = Callback(SetCaptchaSel, sel=str(i), bool=not bool), title = title_msg, thumb=thumbIcon))
+			
+			if s >= 3:
+				oc.add(DirectoryObject(key = Callback(SolveCaptchaFMovies, resp=E(JSON.StringFromObject(resp))), title = 'Submit Captcha Response', thumb = R(common.ICON_ENTER)))
+			
+			oc.add(DirectoryObject(key = Callback(ResetCaptchaFMovies), title = 'Reset Captcha', thumb = R(common.ICON_REFRESH)))
+			oc.add(DirectoryObject(key = Callback(MainMenu),title = '<< Main Menu', thumb = R(common.ICON)))
+			return oc
+		else:
+			if Prefs["use_debug"]:
+				Log("Captcha Not Active")
+			
+		if captcha == None and len(common.FMOVIES_CAPTCHA_SELECTION.keys()) == 0:
+			return MC.message_container('Reset Cookies', 'Captcha Not Active - Cookies Retrieved !')
+			
+		common.recaptcha_v2.init(fmovies.BASE_URL)
+		common.FMOVIES_CAPTCHA_SELECTION.clear()
+		return MC.message_container('Reset Cookies', 'Captcha Solved & Cookies Retrieved !')
+	else:
+		del common.CACHE_COOKIE[:]
+		
+		try:
+			common.recaptcha_v2.init(fmovies.BASE_URL)
+		except:
+			pass
+		
+		Thread.Create(SiteCookieRoutine,{},None,True,True)
+		time.sleep(10.0)
+		
+		msg = ''
+		try:
+			pref_cook = Prefs["reqkey_cookie"]
+			if pref_cook !=None and len(pref_cook) > 0:
+				msg = 'Please clear or update your reqkey Prefs field.'
+		except:
+			pass
+		
+		return MC.message_container('Reset Cookies', 'Cookies have been reset and token text dumped to log (if required) ! %s' % msg)
+
+######################################################################################
+@route(PREFIX + "/ResetCaptchaFMovies")
+def ResetCaptchaFMovies(**kwargs):
+	common.FMOVIES_CAPTCHA_SELECTION.clear()
+	return MC.message_container('Reset Captcha', 'Captcha has been Reset')
+
+######################################################################################
+@route(PREFIX + "/SolveCaptchaFMovies")
+def SolveCaptchaFMovies(resp, **kwargs):
 	
-	Thread.Create(SiteCookieRoutine,{},None,True,True)
-	time.sleep(10.0)
+	UU = common.recaptcha_v2.getUR()
+	common.FMOVIES_CAPTCHA_SELECTION.clear()
 	
-	msg = ''
-	try:
-		pref_cook = Prefs["reqkey_cookie"]
-		if pref_cook !=None and len(pref_cook) > 0:
-			msg = 'Please clear or update your reqkey Prefs field.'
-	except:
-		pass
+	resp = JSON.ObjectFromString(D(resp))
 	
-	return MC.message_container('Reset Cookies', 'Cookies have been reset and token text dumped to log (if required) ! %s' % msg)
+	if Prefs["use_debug"]:
+		Log("=========== SolveCaptchaFMovies =============")
+		Log("Captcha Resp: %s" % resp)
+
+	ret, html, cookies, ua, error, site = UU.solveCaptcha(resp)
+	common.FMOVIES_CAPTCHA_SELECTION['Solved'] = ret
+	
+	if Prefs["use_debug"]:
+		Log("=========== SolveCaptchaFMovies =============")
+		Log("Site: %s > %s" % (site, ret))
+		Log("Cookies: %s" % cookies)
+		Log("User-Agent: %s" % ua)
+	
+	if ret == True:
+		cookie_dict_Str = Dict['CACHE_COOKIE']
+		try:
+			cookie_dict = JSON.ObjectFromString(D(cookie_dict_Str))
+		except:
+			cookie_dict = {}
+			
+		cookies1 = cookies
+		cookies += '; user-info=null; ' + fmovies.newmarketgidstorage
+		
+		cookie_dict.update({'ts':time.time(), 'cookie':cookies, 'cookie1':cookies1, 'cookie2':'', 'UA': ua})
+		Dict['CACHE_COOKIE'] = E(JSON.StringFromObject(cookie_dict))
+		Dict.Save()
+		
+		common.CACHE['cookie'] = {}
+		common.CACHE['cookie']['cookie'] = cookies
+		common.CACHE['cookie']['cookie1'] = cookies1
+		common.CACHE['cookie']['cookie2'] = ''
+		common.CACHE['cookie']['myts'] = cookie_dict['ts']
+		common.CACHE['cookie']['UA'] = ua
+		
+		del common.CACHE_COOKIE[:]
+		common.CACHE_COOKIE.append(cookie_dict)
+		
+		common.FMOVIES_AVAILABLE = True
+		
+		return MC.message_container('Success', 'Captch Solved !')
+	else:
+		return MC.message_container('Success', 'Captch Failed ! %s' % error)
+	
+######################################################################################
+@route(PREFIX + "/SetCaptchaSel")
+def SetCaptchaSel(sel, bool, **kwargs):
+	bool = True if str(bool).lower() == 'true' else False
+	common.FMOVIES_CAPTCHA_SELECTION[sel] = bool
+	return MC.message_container('Selection Set', '%s set to %s' % (int(sel)+1, 'Selected' if bool else 'Unselected'))
 	
 ######################################################################################
 @route(PREFIX + "/ResetExtOptions")
@@ -1756,9 +1966,9 @@ def ShowMenu(title, session=None, **kwargs):
 			)
 	elif title == CAT_GROUPS[3]:
 		
-		page_data, error = common.GetPageElements(url = urlparse.urljoin(fmovies.BASE_URL, 'fmovies'))
+		page_data, error = common.GetPageElements(url = fmovies.BASE_URL)
 		if page_data == None:
-			bool, noc, page_data = testSite(url = urlparse.urljoin(fmovies.BASE_URL, 'fmovies'))
+			bool, noc, page_data = testSite(url = fmovies.BASE_URL)
 			if bool == False:
 				return noc
 
@@ -2215,7 +2425,7 @@ def ShowCategory(title, key=' ', urlpath=None, page_count='1', session=None, is9
 			except:
 				more_info_link = None
 
-		thumbxx = common.GetThumb(thumb, session=session)
+		thumbxx = common.GetThumb(thumb, session=session, cat='menu')
 		oc.add(DirectoryObject(
 			key = Callback(EpisodeDetail, title = name, url = loc, thumb = thumbxx if thumbxx != None else R(common.ICON_UNAV), session = session),
 			title = name + title_eps_no,
@@ -2228,18 +2438,18 @@ def ShowCategory(title, key=' ', urlpath=None, page_count='1', session=None, is9
 		oc.add(NextPageObject(
 			key = Callback(ShowCategory, title=title, key=key, urlpath=urlpath, page_count=str(int(page_count) + 1), session=session),
 			title = "Next Page (" + str(int(page_count) + 1) +'/'+ str(last_page_no) + ") >>",
-			thumb = R(common.ICON_NEXT)
+			thumb = common.GetThumb(R(common.ICON_NEXT), session=session, cat='menu')
 			)
 		)
-		DumbKeyboard(PREFIX, oc, GetInput, dktitle = 'Input Page: (1-%s)' % last_page_no, dkthumb=common.GetThumb(R(common.ICON_DK_ENABLE), session=session), dkNumOnly=True, dkHistory=False, title=title, key=key, urlpath=urlpath, page_count=page_count, session=session, is9anime=is9anime, method='ShowCategory')
+		DumbKeyboard(PREFIX, oc, GetInput, dktitle = 'Input Page: (1-%s)' % last_page_no, dkthumb=common.GetThumb(R(common.ICON_DK_ENABLE), session=session, cat='menu'), dkNumOnly=True, dkHistory=False, title=title, key=key, urlpath=urlpath, page_count=page_count, session=session, is9anime=is9anime, method='ShowCategory')
 
 	if common.UsingOption(key=common.DEVICE_OPTIONS[0], session=session):
 		DumbKeyboard(PREFIX, oc, Search,
 				dktitle = 'Search',
-				dkthumb = R(common.ICON_SEARCH)
+				dkthumb = common.GetThumb(R(common.ICON_SEARCH), session=session, cat='menu')
 		)
 	else:
-		oc.add(InputDirectoryObject(key = Callback(Search, session = session), thumb = R(common.ICON_SEARCH), title='Search', summary='Search', prompt='Search for...'))
+		oc.add(InputDirectoryObject(key = Callback(Search, session = session), thumb = common.GetThumb(R(common.ICON_SEARCH), session=session, cat='menu'), title='Search', summary='Search', prompt='Search for...'))
 
 	if len(oc) == 1:
 		return MC.message_container(title, 'No More Videos Available')
@@ -2247,7 +2457,7 @@ def ShowCategory(title, key=' ', urlpath=None, page_count='1', session=None, is9
 	oc.add(DirectoryObject(
 		key = Callback(MainMenu),
 		title = '<< Main Menu',
-		thumb = R(common.ICON)
+		thumb = common.GetThumb(R(common.ICON), session=session, cat='menu')
 		)
 	)
 	
@@ -2550,6 +2760,8 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, ye
 					servers_list[label][c]['quality'] = label_qual
 					servers_list[label][c]['loc'] = label_val
 					servers_list[label][c]['serverid'] = serverid
+					dataid = item.xpath(".//a//@data-id")[0]
+					servers_list[label][c]['dataid'] = dataid
 					
 					doFill = True
 					if isTvSeries == True and len(servers_list[common.SERVER_PLACEHOLDER]) > 0:
@@ -2663,9 +2875,9 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, ye
 					skip_c = False
 					for label in servers_list.keys():
 						if c > 99:
-							servers_list_new[no-1+nos][label] = {'quality':"%03d" % (no), 'loc':'', 'serverid':None}
+							servers_list_new[no-1+nos][label] = {'quality':"%03d" % (no), 'loc':'', 'serverid':None, 'dataid':None}
 						else:
-							servers_list_new[no-1+nos][label] = {'quality':"%02d" % (no), 'loc':'', 'serverid':None}
+							servers_list_new[no-1+nos][label] = {'quality':"%02d" % (no), 'loc':'', 'serverid':None, 'dataid':None}
 						try:
 							fillBlank = True
 							skip_c = False
@@ -2701,7 +2913,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, ye
 													q_lab = no
 										if common.DEV_DEBUG == True and Prefs["use_debug"]:
 											Log('q_lab : %s' % q_lab)
-										servers_list_new[no-1+nos][label] = {'quality':q_lab,'loc':servers_list[label][c2]['loc'],'serverid':servers_list[label][c2]['serverid']}
+										servers_list_new[no-1+nos][label] = {'quality':q_lab,'loc':servers_list[label][c2]['loc'],'serverid':servers_list[label][c2]['serverid'],'dataid':servers_list[label][c2]['dataid']}
 										if common.DEV_DEBUG == True and Prefs["use_debug"]:
 											Log('Fill- %s' % servers_list_new[no-1+nos][label])
 										break
@@ -2736,7 +2948,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, ye
 							item_to_insert[label]=p2
 							break
 					if fillNone == True:
-						item_to_insert[label]={'loc': '', 'serverid': None, 'quality': p['quality']}
+						item_to_insert[label]={'loc': '', 'serverid': None, 'dataid':None, 'quality': p['quality']}
 				servers_list_new.insert(0,item_to_insert)
 				
 			if common.DEV_DEBUG == True and Prefs["use_debug"]:
@@ -3017,10 +3229,13 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, ye
 					servers_list[common.SERVER_PLACEHOLDER].append([])
 					servers_list[common.SERVER_PLACEHOLDER][c]={}
 					label_qual = item.xpath(".//a//text()")[0].strip()
-					label_val = item.xpath(".//a//@data-id")[0]
+					label_val = item.xpath(".//a//@href")[0]
+					label_val = label_val[label_val.rfind('/')+1:]
+					dataid = item.xpath(".//a//@data-id")[0]
 					servers_list[label][c]['quality'] = label_qual
 					servers_list[label][c]['loc'] = label_val
 					servers_list[label][c]['serverid'] = dataname
+					servers_list[label][c]['dataid'] = dataid
 					servers_list[common.SERVER_PLACEHOLDER][c] = servers_list[label][c]
 					c += 1
 
@@ -3044,13 +3259,13 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, ye
 				for label in servers_list:
 					servers_list_new[c][label] = {}
 					try:
-						servers_list_new[c][label] = {'quality':servers_list[label][c]['quality'], 'loc':servers_list[label][c]['loc'], 'serverid':servers_list[label][c]['serverid']}
+						servers_list_new[c][label] = {'quality':servers_list[label][c]['quality'], 'loc':servers_list[label][c]['loc'], 'serverid':servers_list[label][c]['serverid'], 'dataid':servers_list[label][c]['dataid']}
 					except Exception as e:
 						Log(e)
 						if c > 99:
-							servers_list_new[c][label] = {'quality':"%03d" % (c+1), 'loc':'', 'serverid':None}
+							servers_list_new[c][label] = {'quality':"%03d" % (c+1), 'loc':'', 'serverid':None, 'dataid':None}
 						else:
-							servers_list_new[c][label] = {'quality':"%02d" % (c+1), 'loc':'', 'serverid':None}
+							servers_list_new[c][label] = {'quality':"%02d" % (c+1), 'loc':'', 'serverid':None, 'dataid':None}
 				c += 1
 				
 		if common.MISC_OPTIONS[common.MISC_OPTIONS_KEYS[7]]['val'] == False:
@@ -3616,7 +3831,9 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, ye
 				CACHE_EXPIRY = 60 * int(Prefs["cache_expiry_time"])
 			except:
 				CACHE_EXPIRY = common.CACHE_EXPIRY_TIME
-			Thread.Create(common.interface.getExtSources, {}, movtitle=title, year=year, tvshowtitle=None, season=None, episode=None, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY, ver=common.VERSION, imdb_id=imdb_id, session=session)
+				
+			if year != None and str(year) != 'Not Available':
+				Thread.Create(common.interface.getExtSources, {}, movtitle=title, year=year, tvshowtitle=None, season=None, episode=None, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY, ver=common.VERSION, imdb_id=imdb_id, session=session)
 		
 		SeasonN = 0
 		oc.title2 = title
@@ -3692,7 +3909,9 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, ye
 					CACHE_EXPIRY = 60 * int(Prefs["cache_expiry_time"])
 				except:
 					CACHE_EXPIRY = common.CACHE_EXPIRY_TIME
-				Thread.Create(common.interface.getExtSources, {}, movtitle=title, year=year, tvshowtitle=None, season=None, episode=None, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY, ver=common.VERSION, imdb_id=imdb_id, session=session)
+					
+				if year != None and str(year) != 'Not Available':
+					Thread.Create(common.interface.getExtSources, {}, movtitle=title, year=year, tvshowtitle=None, season=None, episode=None, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=CACHE_EXPIRY, ver=common.VERSION, imdb_id=imdb_id, session=session)
 		
 		# create timeout thread
 		if common.USE_CUSTOM_TIMEOUT == True:
@@ -3711,12 +3930,13 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, ye
 			for label_i in servers_list[label]:
 				url_s = label_i['loc']
 				serverid = label_i['serverid']
+				dataid = label_i['dataid']
 				if common.UsingOption(common.DEVICE_OPTIONS[5], session=session):
 					try:
 						title_s = ''
 						if Prefs["use_debug"]:
 							Log("%s - %s" % (url, url_s))
-						server_info, isTargetPlay, error, host, sub_url = fmovies.GetApiUrl(url=url, key=url_s, serverts=serverts, serverid=serverid, session=session)
+						server_info, isTargetPlay, error, host, sub_url = fmovies.GetApiUrl(url=url, key=url_s, serverts=serverts, serverid=serverid, dataid=dataid, session=session)
 						server_info_t = server_info
 						captcha = None
 						dlt = None
@@ -3815,7 +4035,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, ye
 						labelx = ' (Solve Captcha)'
 					if common.UsingOption(common.DEVICE_OPTIONS[6], session=session):
 						oc.add(MovieObject(
-							key = Callback(VideoDetail, title=title, url=url, url_s=url_s, label=label, label_i_qual=label_i['quality'], serverts=serverts, summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, libtype='movie', session=session, watch_title=watch_title, serverid=serverid),
+							key = Callback(VideoDetail, title=title, url=url, url_s=url_s, label=label, label_i_qual=label_i['quality'], serverts=serverts, summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, libtype='movie', session=session, watch_title=watch_title, serverid=serverid, dataid=dataid),
 							title = '%s%s' % (label,labelx),
 							duration = int(duration) * 60 * 1000,
 							year = int(year),
@@ -3827,7 +4047,7 @@ def EpisodeDetail(title, url, thumb, session, dataEXS=None, dataEXSAnim=None, ye
 						)
 					else:
 						oc.add(DirectoryObject(
-							key = Callback(VideoDetail, title=title, url=url, url_s=url_s, label=label, label_i_qual=label_i['quality'], serverts=serverts, summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, libtype='movie', session=session, watch_title=watch_title, serverid=serverid),
+							key = Callback(VideoDetail, title=title, url=url, url_s=url_s, label=label, label_i_qual=label_i['quality'], serverts=serverts, summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, libtype='movie', session=session, watch_title=watch_title, serverid=serverid, dataid=dataid),
 							title = '%s%s' % (label,labelx),
 							summary = summary,
 							art = art,
@@ -3979,9 +4199,10 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 	for label in server_lab:
 		url_s = servers_list_new[label]['loc']
 		serverid = servers_list_new[label]['serverid']
+		dataid = servers_list_new[label]['dataid']
 		if url_s != None and url_s != '':
 			if common.UsingOption(common.DEVICE_OPTIONS[5], session=session):	
-				server_info,isTargetPlay, error, host, sub_url = fmovies.GetApiUrl(url=url, key=url_s, serverts=serverts, serverid=serverid, session=session)
+				server_info,isTargetPlay, error, host, sub_url = fmovies.GetApiUrl(url=url, key=url_s, serverts=serverts, serverid=serverid, dataid=dataid, session=session)
 				server_info_t = server_info
 				captcha = None
 				dlt = None
@@ -4063,7 +4284,7 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 			else:
 				if common.UsingOption(common.DEVICE_OPTIONS[6], session=session):
 					oc.add(MovieObject(
-						key = Callback(VideoDetail, title=title, url=url, url_s=url_s, label=label, label_i_qual=None, serverts=serverts, summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, libtype='show', session=session, watch_title=watch_title, serverid=serverid, tvshowtitle=tvshow, season=season, episode=episode),
+						key = Callback(VideoDetail, title=title, url=url, url_s=url_s, label=label, label_i_qual=None, serverts=serverts, summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, libtype='show', session=session, watch_title=watch_title, serverid=serverid, dataid=dataid, tvshowtitle=tvshow, season=season, episode=episode),
 						duration = int(duration) * 60 * 1000,
 						year = int(year),
 						title = label,
@@ -4075,7 +4296,7 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 					)
 				else:
 					oc.add(DirectoryObject(
-						key = Callback(VideoDetail, title=title, url=url, url_s=url_s, label=label, label_i_qual=None, serverts=serverts, summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, libtype='show', session=session, watch_title=watch_title, serverid=serverid, tvshowtitle=tvshow, season=season, episode=episode),
+						key = Callback(VideoDetail, title=title, url=url, url_s=url_s, label=label, label_i_qual=None, serverts=serverts, summary=summary, thumb=thumb, art=art, year=year, rating=rating, duration=duration, genre=genre, directors=directors, roles=roles, libtype='show', session=session, watch_title=watch_title, serverid=serverid, dataid=dataid, tvshowtitle=tvshow, season=season, episode=episode),
 						title = label,
 						summary = summary,
 						art = art,
@@ -4122,7 +4343,7 @@ def TvShowDetail(tvshow, title, url, servers_list_new, server_lab, summary, thum
 	
 ######################################################################################
 @route(PREFIX + "/Videodetail")
-def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary, art, year, rating, duration, genre, directors, roles, libtype, session=None, watch_title=None, serverid=None, tvshowtitle=None, season=None, episode=None, **kwargs):
+def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary, art, year, rating, duration, genre, directors, roles, libtype, session=None, watch_title=None, serverid=None, dataid=None, tvshowtitle=None, season=None, episode=None, **kwargs):
 	
 	try:
 		summary = unicode(common.ascii_only(summary))
@@ -4141,7 +4362,7 @@ def VideoDetail(title, url, url_s, label_i_qual, label, serverts, thumb, summary
 		title_s = ''
 		if Prefs["use_debug"]:
 			Log("%s - %s" % (url, url_s))
-		server_info, isTargetPlay, error, host, sub_url = fmovies.GetApiUrl(url=url, key=url_s, serverts=serverts, serverid=serverid, session=session)
+		server_info, isTargetPlay, error, host, sub_url = fmovies.GetApiUrl(url=url, key=url_s, serverts=serverts, serverid=serverid, dataid=dataid, session=session)
 		server_info_t = server_info
 		captcha = None
 		dlt = None
@@ -7432,12 +7653,13 @@ def ShowCategoryES(title, filter=None, page_count='1', last_page_no=None, sessio
 		data['certification'] = cert
 		data['itemurl'] = loc
 		
+		thumbxx = common.GetThumb(thumb, session=session, cat='menu')
 		oc.add(DirectoryObject(
 			key = Callback(EpisodeDetail, title = name, url = loc, thumb = thumb, dataEXS=E(JSON.StringFromObject(data)), session = session),
 			title = "%s (%s)" % (name,year),
 			summary = summary,
 			art = art,
-			thumb = Resource.ContentsOfURLWithFallback(url=thumb, fallback=common.ICON_UNAV)
+			thumb = thumbxx if thumbxx != None else R(common.ICON_UNAV)
 			)
 		)
 		
@@ -7445,17 +7667,17 @@ def ShowCategoryES(title, filter=None, page_count='1', last_page_no=None, sessio
 		oc.add(NextPageObject(
 			key = Callback(ShowCategoryES, title=title, filter=E(JSON.StringFromObject(filter)), page_count=str(int(page_count) + 1), last_page_no=last_page_no, session=session),
 			title = "Next Page (" + str(int(page_count) + 1) +'/'+ str(last_page_no) + ") >>",
-			thumb = R(common.ICON_NEXT)
+			thumb = common.GetThumb(R(common.ICON_NEXT), session=session, cat='menu')
 			)
 		)
 		
 	if common.UsingOption(key=common.DEVICE_OPTIONS[0], session=session):
 		DumbKeyboard(PREFIX, oc, Search,
 				dktitle = 'Search',
-				dkthumb = R(common.ICON_SEARCH)
+				dkthumb = common.GetThumb(R(common.ICON), session=session, cat='menu')
 		)
 	else:
-		oc.add(InputDirectoryObject(key = Callback(Search, session = session), thumb = R(common.ICON_SEARCH), title='Search', summary='Search', prompt='Search for...'))
+		oc.add(InputDirectoryObject(key = Callback(Search, session = session), thumb = common.GetThumb(R(common.ICON_SEARCH), session=session, cat='menu'), title='Search', summary='Search', prompt='Search for...'))
 
 	if len(oc) == 1:
 		return MC.message_container(title, 'No More Videos Available')
@@ -7463,7 +7685,7 @@ def ShowCategoryES(title, filter=None, page_count='1', last_page_no=None, sessio
 	oc.add(DirectoryObject(
 		key = Callback(MainMenu),
 		title = '<< Main Menu',
-		thumb = R(common.ICON)
+		thumb = common.GetThumb(R(common.ICON), session=session, cat='menu')
 		)
 	)
 	
@@ -7610,26 +7832,23 @@ def count2partcond(ep_title, **kwargs):
 		pass
 	return 0
 	
-######################################################################################
-#
-# Supposed to run when Prefs are changed but doesnt seem to work on Plex as expected
-# https://forums.plex.tv/discussion/182523/validateprefs-not-working
-# Update - does not support producing a dialog - show dialog somewhere else/later
-#	
-@route(PREFIX + "/ValidatePrefs2")
-def ValidatePrefs2(changed='True', **kwargs):
+def validateBaseUrl(changed=False):
 
-	if str(changed) == 'True':
-		Log("Your Channel Preferences have changed !")
+	changed = True if str(changed).lower()=='true' else False
 	
 	T_BASE_URL = Prefs["new_base_url_txt"]
 	if T_BASE_URL!= None and T_BASE_URL != "":
 		fmovies.BASE_URL = T_BASE_URL
 	else:
 		fmovies.BASE_URL = Prefs["new_base_url"]
+		
+	if fmovies.BASE_URL == None:
+		fmovies.BASE_URL = common.BASE_URLS[0]
+		
+	Log("****Base URL: %s ****" % fmovies.BASE_URL)
 
 	RED_URL = None
-	if fmovies.BASE_URL != Prefs["new_base_url"] or str(changed) == 'True':
+	if fmovies.BASE_URL != Prefs["new_base_url"] or changed == True:
 		if common.CHECK_BASE_URL_REDIRECTION == True:
 			try:
 				RED_URL = common.client.getRedirectingUrl(fmovies.BASE_URL).strip("/")
@@ -7646,6 +7865,27 @@ def ValidatePrefs2(changed='True', **kwargs):
 	common.BASE_URL = fmovies.BASE_URL
 	
 	try:
+		common.recaptcha_v2.init(fmovies.BASE_URL)
+	except:
+		pass
+	
+######################################################################################
+#
+# Supposed to run when Prefs are changed
+# https://forums.plex.tv/discussion/182523/validateprefs-not-working
+# Update - does not support producing a dialog - show dialog somewhere else/later
+#	
+@route(PREFIX + "/ValidatePrefs2")
+def ValidatePrefs2(changed=False, **kwargs):
+
+	changed = True if str(changed).lower()=='true' else False
+	
+	if changed == True:
+		Log("Your Channel Preferences have changed !")
+	
+	validateBaseUrl(changed)
+	
+	try:
 		common.CACHE_EXPIRY = 60 * int(Prefs["cache_expiry_time"])
 	except:
 		common.CACHE_EXPIRY = common.CACHE_EXPIRY_TIME
@@ -7654,9 +7894,6 @@ def ValidatePrefs2(changed='True', **kwargs):
 		common.control.debug = Prefs["use_debug"]
 	except:
 		pass
-	
-	if str(changed) == 'True':
-		DumpPrefs(changed=changed)
 	
 	ClearCache()
 	# common.CACHE.clear()
@@ -7670,12 +7907,16 @@ def ValidatePrefs2(changed='True', **kwargs):
 	if common.interface.isInitialized():
 		download.resetDownloadThrottler()
 		Thread.Create(download.trigger_que_run)
+		
+	DumpPrefs(changed=changed)
 	
 	return
 	
 ######################################################################################
 @route(PREFIX + "/DumpPrefs")
-def DumpPrefs(changed='False', **kwargs):
+def DumpPrefs(changed=False, **kwargs):
+	changed = True if str(changed).lower()=='true' else False
+	
 	Log("=================FMoviesPlus Prefs=================")
 	Log(common.TITLE + ' v. %s %s' % (common.VERSION, common.TAG))
 	Log("Channel Preferences:")
@@ -7696,9 +7937,6 @@ def DumpPrefs(changed='False', **kwargs):
 	Log("Auth Admin through Plex.tv: %s" % (Prefs["plextv"]))
 	Log("Enable Debug Mode: %s" % (Prefs["use_debug"]))
 	Log("=============================================")
-	
-	if changed == 'False':
-		ValidatePrefs2(changed='False')
 
 ######################################################################################
 @route(PREFIX + "/ClientInfo")
@@ -7782,9 +8020,11 @@ def SolveCaptcha(query, url, dlt, vco, title, page_url, **kwargs):
 		#return MC.message_container('Captcha Solved', 'Captcha Solved Successfully')
 
 ####################################################################################################
-def create_photo_object(url, title, include_container=False, **kwargs):
+#@route(common.PREFIX+'/create_photo_object')
+def create_photo_object(url, title, rnd=None, include_container=False, **kwargs):
+	rnd = random.randint(0, 9999)
 	po = PhotoObject(
-		key=Callback(create_photo_object, url=url, include_container=True),
+		key=Callback(create_photo_object, url=url, rnd=rnd, include_container=True),
 		rating_key=url,
 		source_title=title,
 		title=title,

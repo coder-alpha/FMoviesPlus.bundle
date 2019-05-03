@@ -708,6 +708,12 @@ def SetBaseUrl(url):
 		
 	common.BASE_URL = fmovies.BASE_URL
 	HTTP.Headers['Referer'] = fmovies.BASE_URL
+	
+	try:
+		common.recaptcha_v2.init(fmovies.BASE_URL)
+	except:
+		pass
+	
 	if RED_Bool == True:
 		return MyMessage('Set Base URL','Base URL (Redirecting) set to %s' % fmovies.BASE_URL)
 	else:

@@ -42,28 +42,13 @@ def Start():
 	Log.Debug("HTTP Cache Time set to %s min." % int(main.CACHE_EXPIRY/60))
 	
 	HTTP.Headers['User-Agent'] = main.common.client.randomagent()
-	main.fmovies.BASE_URL = Prefs["new_base_url"]
-	RED_URL = None
-	if main.common.CHECK_BASE_URL_REDIRECTION == True:
-		try:
-			RED_URL = main.common.client.getRedirectingUrl(main.fmovies.BASE_URL).strip("/")
-			if RED_URL != None and 'http' in RED_URL and main.fmovies.BASE_URL != RED_URL:
-				Log("***Base URL has been overridden and set based on redirection: %s ***" % RED_URL)
-				main.fmovies.BASE_URL = RED_URL
-		except Exception as e:
-			Log("Error in geturl : %s ; Red. Resp: %s" % (e, RED_URL))
-	HTTP.Headers['Referer'] = main.fmovies.BASE_URL
-	main.common.BASE_URL = main.fmovies.BASE_URL
 	
-	main.DumpPrefs()
-	main.ValidateMyPrefs()
+	#Thread.Create(Initialize)
 	
-	# convert old style bookmarks to new
-	if main.common.DEV_BM_CONVERSION and len(main.CONVERT_BMS) == 0:
-		main.convertbookmarks()
 
 ######################################################################################
 # Menu hierarchy
+######################################################################################
 @route(PREFIX + "/MainMenu")
 def MainMenu(**kwargs):
 	
@@ -76,3 +61,17 @@ def MainMenu(**kwargs):
 def ValidatePrefs():
 
 	return main.ValidatePrefs2()
+	
+####################################################################################################
+# Initialize
+####################################################################################################
+@route(PREFIX + "/Initialize")
+def Initialize():
+
+	main.validateBaseUrl()
+	main.ValidateMyPrefs()
+	main.DumpPrefs()
+	
+	# convert old style bookmarks to new
+	if main.common.DEV_BM_CONVERSION and len(main.CONVERT_BMS) == 0:
+		main.convertbookmarks()

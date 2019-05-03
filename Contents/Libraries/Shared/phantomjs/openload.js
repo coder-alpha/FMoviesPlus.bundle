@@ -12,7 +12,7 @@ var page = require('webpage').create(),
   system = require('system'),
   id, match;
 
-if(system.args.length < 2) {
+if(system.args.length < 2 && system.args[1] != null) {
   console.error('No URL provided');
   phantom.exit(1);
 }
@@ -41,6 +41,10 @@ page.onInitialized = function() {
   }, MAXIMUM_EXECUTION_TIME);
 };
 page.settings.userAgent = "Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.87 Safari/537.36";
+
+if(system.args.length >= 2 && system.args[2] != null) {
+  page.settings.userAgent = system.args[2];
+}
 
 page.settings.resourceTimeout = 1 * 60 * 1000; // 1 min.
 

@@ -59,7 +59,7 @@ class source:
 		self.init = False
 		self.disabled = False
 		self.TOKEN_KEY = []
-		self.base_link_alts = ['https://fmovies.taxi','https://bmovies.pro','https://bmovies.club','https://bmovies.ru','https://fmovies.to','https://fmovies.ru']
+		self.base_link_alts = ['https://fmovies.taxi','https://fmovies.to','https://fmovies.world','https://fmovies.is','https://fmovies.to','https://ffmovies.to','https://fmovies.pub']
 		self.base_link = self.base_link_alts[0]
 		self.grabber_api = "grabber-api/"
 		self.search_link = '/sitemap'
@@ -76,7 +76,7 @@ class source:
 		self.type_filter = ['movie', 'show', 'anime']
 		self.ssl = False
 		self.name = name
-		self.captcha = True
+		self.captcha = False
 		self.use_selenium = False
 		self.headers = {}
 		self.cookie = None
@@ -140,8 +140,19 @@ class source:
 				return False, True
 			self.initAndSleep()
 			x1 = time.time()
-			if self.captcha == False or self.use_selenium == False:
-				http_res, content = client.request(url=site, headers=self.headers, output='response', use_web_proxy=False, httpsskip=True)
+		
+			http_res, content = client.request(url=site, headers=self.headers, output='response', use_web_proxy=False, httpsskip=True)
+			try:
+				if 'Please complete the security check to continue!' in content:
+					self.captcha = True
+				else:
+					self.captcha = False
+			except:
+				pass
+					
+			if self.captcha == True:
+				log('INFO','testSiteAlts', 'Captcha is active - site will be set online but with captcha active. Sources will be available when captcha is inactive.')
+					
 			self.speedtest = time.time() - x1
 			if self.captcha == True or 'Please complete the security check to continue!' in content:
 				if self.use_selenium == True and USE_SELENIUM == True:
@@ -149,7 +160,7 @@ class source:
 					cookies, content = seleniumca.getMyCookies(base_url=site)
 					for valcon in self.MainPageValidatingContent:
 						if content != None and content.find(valcon) >-1:
-							log('SUCCESS', 'testSite', 'HTTP Resp : %s for %s' % ('200',site))
+							log('SUCCESS', 'testSiteAlts', 'HTTP Resp : %s for %s' % ('200',site))
 							try:
 								my_cookies_via_sel = cookies
 								for x in my_cookies_via_sel:
@@ -167,16 +178,16 @@ class source:
 								log('ERROR','testSiteAlts', '%s' % e)
 							return True, True
 				else:
-					return False, False
+					return True, True
 			else:
 				for valcon in self.MainPageValidatingContent:
 					if content != None and content.find(valcon) >-1:
-						log('SUCCESS', 'testSite', 'HTTP Resp : %s for %s' % (http_res,site))
+						log('SUCCESS', 'testSiteAlts', 'HTTP Resp : %s for %s' % (http_res,site))
 						return True, True
-			log('FAIL', 'testSite', 'Validation content Not Found. HTTP Resp : %s for %s' % (http_res,site))
+			log('FAIL', 'testSiteAlts', 'Validation content Not Found. HTTP Resp : %s for %s' % (http_res,site))
 			return False, True
 		except Exception as e:
-			log('ERROR','testSite', '%s' % e)
+			log('ERROR','testSiteAlts', '%s' % e)
 			return False, True
 			
 	def initAndSleepThread(self):
@@ -188,6 +199,7 @@ class source:
 			while self.init == True:
 				tuid = control.id_generator(16)
 				control.AddThread('%s-InitSleepThread' % self.name, 'Persists & Monitors Provider Requirements (Every 20 mins.)', time.time(), '4', True, tuid)
+				log('INFO','InitSleepThread', 'Sleeping for 20 mins.')
 				time.sleep(20*60)
 				self.siteonline = self.testSite()
 				self.testparser = self.testParser()
@@ -229,7 +241,7 @@ class source:
 					reqkey = self.decodeJSFCookie(r1)
 				except Exception as e:
 					reqkey = ''
-					log('FAIL','initAndSleep', 'Not using reqkey: %s' % e)
+					log('FAIL','initAndSleep', 'Not using reqkey: %s' % e, dolog=False)
 				
 				# get session cookie
 				serverts = str(((int(time.time())/3600)*3600))
@@ -243,7 +255,7 @@ class source:
 				hash_url = urlparse.urljoin(t_base_link, self.hash_menu_link)
 				hash_url = hash_url + '?' + urllib.urlencode(query)
 
-				r1, headers, content, cookie2 = proxies.request(hash_url, headers=self.headers, limit='0', output='extended', httpsskip=True)
+				cookie2 = proxies.request(url=hash_url, headers=self.headers, output='cookie', httpsskip=True)
 			else:
 				log('INFO','initAndSleep', 'Attempting Selenium Retrieval - Start')
 				try:
@@ -260,7 +272,7 @@ class source:
 					log('ERROR','initAndSleep', '%s' % e)
 				log('INFO','initAndSleep', 'Attempting Selenium Retrieval - End')
 				
-			cookie = '%s; %s; user-info=null; reqkey=%s' % (cookie1 , cookie2 , reqkey)
+			cookie = '%s; %suser-info=null;%s' % (cookie1 , (';'+cookie2+' ') if len(cookie2)>0 else '' , ('reqkey=%s'%reqkey) if reqkey != '' else '')
 			self.headers['Cookie'] = cookie
 			log('SUCCESS', 'initAndSleep', 'Cookies : %s for %s' % (cookie,self.base_link))
 		except Exception as e:
@@ -279,6 +291,9 @@ class source:
 				return False
 			if self.siteonline == False:
 				log('INFO', 'testParser', '%s is offline - cannot test parser' % self.base_link)
+				return False
+			if self.captcha == True:
+				log('INFO', 'testParser', 'captcha is active - cannot test parser' % self.base_link)
 				return False
 			for movie in testparams.test_movies:
 				getmovieurl = self.get_movie(title=movie['title'], year=movie['year'], imdb=movie['imdb'])
@@ -302,6 +317,10 @@ class source:
 			if self.siteonline == False:
 				log('INFO','get_movie','Provider is Offline')
 				return None
+			if self.captcha == True:
+				log('INFO','get_movie','Captcha is active')
+				return None
+				
 			url = {'imdb': imdb, 'title': title, 'year': year}
 			url = urllib.urlencode(url)
 			#X - Requested - With:"XMLHttpRequest"
@@ -317,6 +336,9 @@ class source:
 				return None
 			if self.siteonline == False:
 				log('INFO','get_show','Provider is Offline')
+				return None
+			if self.captcha == True:
+				log('INFO','get_movie','Captcha is active')
 				return None
 			url = {'imdb': imdb, 'tvdb': tvdb, 'tvshowtitle': tvshowtitle, 'year': year}
 			url = urllib.urlencode(url)

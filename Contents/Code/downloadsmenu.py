@@ -623,10 +623,10 @@ def AutoPilotDownloadThread1(item=None, runForWaiting=False, viaRunNow=False):
 							sources = common.interface.getExtSources(movtitle=item['title'], year=item['year'], tvshowtitle=None, season=None, episode=None, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=common.CACHE_EXPIRY_TIME, ver=common.VERSION, imdb_id=None, session=item['session'], timeout=float(common.MISC_OPTIONS[common.MISC_OPTIONS_KEYS[0]]['val']), forceRet=True)
 							
 						if sources != None:
-							bool, fsBytes, removeEntry = AutoPilotDownloadThread2(item, sources)
+							bool, fsBytes, removeEntry, passed = AutoPilotDownloadThread2(item, sources)
 							item['fsBytes'] = fsBytes
 							item['timeAdded'] = time.time()
-							if bool == True:
+							if bool == True and passed == True:
 								item['status'] = common.DOWNLOAD_AUTOPILOT_STATUS[2]
 								if removeEntry == True:
 									removeEntry_item = item
@@ -638,7 +638,10 @@ def AutoPilotDownloadThread1(item=None, runForWaiting=False, viaRunNow=False):
 										except:
 											pass
 							else:
-								item['status'] = common.DOWNLOAD_AUTOPILOT_STATUS[1]
+								if passed == False:
+									item['status'] = common.DOWNLOAD_AUTOPILOT_STATUS[4]
+								else:
+									item['status'] = common.DOWNLOAD_AUTOPILOT_STATUS[1]
 						else:
 							item['status'] = common.DOWNLOAD_AUTOPILOT_STATUS[4]
 								
@@ -686,10 +689,10 @@ def AutoPilotDownloadThread1(item=None, runForWaiting=False, viaRunNow=False):
 				sources = common.interface.getExtSources(movtitle=item['title'], year=item['year'], tvshowtitle=None, season=None, episode=None, proxy_options=common.OPTIONS_PROXY, provider_options=common.OPTIONS_PROVIDERS, key=key, maxcachetime=common.CACHE_EXPIRY_TIME, ver=common.VERSION, imdb_id=None, session=item['session'], timeout=float(common.MISC_OPTIONS[common.MISC_OPTIONS_KEYS[0]]['val']), forceRet=True)
 
 			if sources != None:
-				bool, fsBytes, removeEntry = AutoPilotDownloadThread2(item, sources)
+				bool, fsBytes, removeEntry, passed = AutoPilotDownloadThread2(item, sources)
 				item['fsBytes'] = fsBytes
 				item['timeAdded'] = time.time()
-				if bool == True:
+				if bool == True and passed == True:
 					item['status'] = common.DOWNLOAD_AUTOPILOT_STATUS[2]
 					if removeEntry == True:
 						removeEntry_item = item
@@ -701,12 +704,20 @@ def AutoPilotDownloadThread1(item=None, runForWaiting=False, viaRunNow=False):
 							except:
 								pass
 				else:
-					item['status'] = common.DOWNLOAD_AUTOPILOT_STATUS[1]
-					if viaRunNow == True:
-						for i in common.DOWNLOAD_AUTOPILOT[type]:
-							if i['uid'] == item['uid']:
-								i['status'] = common.DOWNLOAD_AUTOPILOT_STATUS[1]
-								break
+					if passed == False:
+						item['status'] = common.DOWNLOAD_AUTOPILOT_STATUS[4]
+						if viaRunNow == True:
+							for i in common.DOWNLOAD_AUTOPILOT[type]:
+								if i['uid'] == item['uid']:
+									i['status'] = common.DOWNLOAD_AUTOPILOT_STATUS[4]
+									break
+					else:
+						item['status'] = common.DOWNLOAD_AUTOPILOT_STATUS[1]
+						if viaRunNow == True:
+							for i in common.DOWNLOAD_AUTOPILOT[type]:
+								if i['uid'] == item['uid']:
+									i['status'] = common.DOWNLOAD_AUTOPILOT_STATUS[1]
+									break
 			else:
 				item['status'] = common.DOWNLOAD_AUTOPILOT_STATUS[4]
 				if viaRunNow == True:
@@ -868,28 +879,29 @@ def AutoPilotDownloadThread2(item, sources):
 				if doSkip == False:
 					if (sub_bool[loop] == True and s['sub_url'] != None) or sub_bool[loop] == False:
 						if item['quality'] == s['quality']:
-							AutoPilotDownloadThread3(item, s, fsBytes, fs)
-							return True, fsBytes, removeEntry
+							success = AutoPilotDownloadThread3(item, s, fsBytes, fs)
+							return True, fsBytes, removeEntry, success
 						elif item['file_size'] != None and fs != None:
 							i_fs = item['file_size'].split(':')
 							if fsBytes >= int(float(str(i_fs[0]))) and fsBytes < int(float(str(i_fs[1]))):
-								AutoPilotDownloadThread3(item, s, fsBytes, fs)
-								return True, fsBytes, removeEntry
+								success = AutoPilotDownloadThread3(item, s, fsBytes, fs)
+								return True, fsBytes, removeEntry, success
 				
-		return False, 0, False
+		return False, 0, False, True
 	except Exception as e:
 		err = '{}'.format(e)
-		Log('ERROR: downloadsmenu.py > AutoPilotDownloadThread2: %s' % err)
-		return False, 0, False 
+		Log.Error('ERROR: downloadsmenu.py > AutoPilotDownloadThread2: %s' % err)
+		return False, 0, False, False
 		
 #######################################################################################################
 def AutoPilotDownloadThread3(item, s, fsBytes, fs):
 
 	try:
-		AddToDownloadsList(title=item['short_title'] if item['type']=='show' else item['title'], purl=item['purl'], url=s['url'], durl=s['durl'], summary=item['summary'], thumb=item['thumb'], year=item['year'], quality=s['quality'], source=s['source'], source_meta={}, file_meta={}, type=item['type'], vidtype=item['vidtype'], resumable=s['resumeDownload'], sub_url=s['sub_url'], fsBytes=fsBytes, fs=fs, file_ext=s['file_ext'], mode=common.DOWNLOAD_MODE[0], section_path=item['section_path'], section_title=item['section_title'], section_key=item['section_key'], session=item['session'], admin=item['admin'], params=s['params'], riptype=s['rip'], season=item['season'], episode=item['episode'], provider=s['provider'], page_url=s['page_url'], seq=s['seq'], imdbid=item['imdbid'], xitem=item['xitem'])
+		return AddToDownloadsList(title=item['short_title'] if item['type']=='show' else item['title'], purl=item['purl'], url=s['url'], durl=s['durl'], summary=item['summary'], thumb=item['thumb'], year=item['year'], quality=s['quality'], source=s['source'], source_meta={}, file_meta={}, type=item['type'], vidtype=item['vidtype'], resumable=s['resumeDownload'], sub_url=s['sub_url'], fsBytes=fsBytes, fs=fs, file_ext=s['file_ext'], mode=common.DOWNLOAD_MODE[0], section_path=item['section_path'], section_title=item['section_title'], section_key=item['section_key'], session=item['session'], admin=item['admin'], params=s['params'], riptype=s['rip'], season=item['season'], episode=item['episode'], provider=s['provider'], page_url=s['page_url'], seq=s['seq'], imdbid=item['imdbid'], xitem=item['xitem'], viaCode=True)
 	except Exception as e:
 		err = '{}'.format(e)
-		Log('ERROR: downloadsmenu.py > AutoPilotDownloadThread3: %s' % err)
+		Log.Error('ERROR: downloadsmenu.py > AutoPilotDownloadThread3: %s' % err)
+		return False
 
 #######################################################################################################
 @route(PREFIX + '/AddToDownloadsListPre')
@@ -987,7 +999,7 @@ def AddToDownloadsListPre(title, year, url, durl, purl, summary, thumb, quality,
 					return MC.message_container('FileSize Error', 'File reporting %s bytes cannot be downloaded. Please try again later when it becomes available.' % fsBytes)
 
 			except Exception as e:
-				Log('ERROR: downloadsmenu.py > AddToDownloadsListPre : %s - %s' % (e,err))
+				Log.Error('ERROR: downloadsmenu.py > AddToDownloadsListPre : %s - %s' % (e,err))
 				return MC.message_container('Error', '%s. Sorry but file could not be added.' % e)
 
 		uid = 'Down5Split'+E(title+year+fs+quality+source+str(season)+str(episode))
@@ -1071,18 +1083,19 @@ def AddToDownloadsListPre(title, year, url, durl, purl, summary, thumb, quality,
 		return AddToDownloadsList(title=title, purl=purl, url=url, durl=durl, summary=summary, thumb=thumb, year=year, quality=quality, source=source, source_meta=source_meta, file_meta=file_meta, type=type, vidtype=vidtype, resumable=resumable, sub_url=sub_url, fsBytes=fsBytes, fs=fs, file_ext=file_ext, mode=mode, section_path=section_path, section_title=section_title, section_key=section_key, session=session, admin=admin, update=update, user=user,params=params, riptype=riptype, season=season, episode=episode, provider=provider, page_url=page_url, seq=seq, force_add=force_add, imdbid=imdbid, xitem=xitem)
 	except Exception as e:
 		err = '{}'.format(e)
-		Log('Error AddToDownloadsListPre: %s' % err)
+		Log.Error('Error AddToDownloadsListPre: %s' % err)
 		return MC.message_container('Error', '%s. Sorry but file could not be added.' % err)
 	
 ######################################################################################
 # Adds a movie to the DownloadsList list using the (title + 'Down5Split') as a key for the url
 @route(PREFIX + "/addToDownloadsList")
-def AddToDownloadsList(title, year, url, durl, purl, summary, thumb, quality, source, type, resumable, source_meta, file_meta, sub_url=None, fsBytes=None, fs=None, file_ext=None, vidtype=None, section_path=None, section_title=None, section_key=None, session=None, admin=False, update=False, user=None, params=None, riptype=None, season=None, episode=None, provider=None, page_url=None, seq=0, force_add=False, imdbid=None, xitem=None, **kwargs):
+def AddToDownloadsList(title, year, url, durl, purl, summary, thumb, quality, source, type, resumable, source_meta, file_meta, sub_url=None, fsBytes=None, fs=None, file_ext=None, vidtype=None, section_path=None, section_title=None, section_key=None, session=None, admin=False, update=False, user=None, params=None, riptype=None, season=None, episode=None, provider=None, page_url=None, seq=0, force_add=False, imdbid=None, xitem=None, viaCode=False, **kwargs):
 
 	admin = True if str(admin) == 'True' else False
 	update = True if str(update) == 'True' else False
 	resumable = True if str(resumable) == 'True' else False
 	force_add = True if str(force_add) == 'True' else False
+	viaCode = True if str(viaCode) == 'True' else False
 	
 	#Log(common.DOWNLOAD_OPTIONS_SECTION_TEMP)
 	tuec = E(title+year+quality+source+url+str(season)+str(episode))
@@ -1102,19 +1115,29 @@ def AddToDownloadsList(title, year, url, durl, purl, summary, thumb, quality, so
 			if 'Done' in DOWNLOAD_OPTIONS_SECTION_TEMP.keys():
 				del Dict['DOWNLOAD_OPTIONS_SECTION_TEMP'][tuec]
 				Dict.Save()
+				if viaCode == True:
+					return False
 				return MC.message_container('Download Sources', 'Item in Downloads Queue... Please return to previous screen.')
 			if 'Error' in DOWNLOAD_OPTIONS_SECTION_TEMP.keys():
 				del Dict['DOWNLOAD_OPTIONS_SECTION_TEMP'][tuec]
 				Dict.Save()
+				if viaCode == True:
+					return False
 				return MC.message_container('Error', 'Error... Please return to previous screen.')
+			if viaCode == True:
+				return False
 			return MC.message_container('Download Sources', 'No Download Locations set under Download Options')	
 		elif 'Done' in DOWNLOAD_OPTIONS_SECTION_TEMP.keys():
 			Dict['DOWNLOAD_OPTIONS_SECTION_TEMP'][tuec] = {}
 			Dict.Save()
+			if viaCode == True:
+				return False
 			return MC.message_container('Download Sources', 'Item in Downloads Queue... Please return to previous screen.')
 		elif 'Error' in DOWNLOAD_OPTIONS_SECTION_TEMP.keys():
 			Dict['DOWNLOAD_OPTIONS_SECTION_TEMP'][tuec] = {}
 			Dict.Save()
+			if viaCode == True:
+				return False
 			return MC.message_container('Download Sources', 'Error... Please return to previous screen.')
 		elif type in DOWNLOAD_OPTIONS_SECTION_TEMP and len(DOWNLOAD_OPTIONS_SECTION_TEMP[type]) > 0:
 			LOCS = []
@@ -1123,6 +1146,8 @@ def AddToDownloadsList(title, year, url, durl, purl, summary, thumb, quality, so
 					LOCS.append(item)
 			if len(LOCS) == 1:
 				item = LOCS[0]
+				if viaCode == True:
+					return False
 				return AddToDownloadsList(title=title, year=year, url=url, durl=durl, purl=purl, summary=summary, thumb=thumb, fs=fs, fsBytes=fsBytes, file_ext=file_ext, quality=quality, source=source, source_meta=source_meta, file_meta=file_meta, type=type, vidtype=vidtype, resumable=resumable, sub_url=sub_url, section_path=item['path'], section_title=item['title'], section_key=item['key'], session=session, admin=admin, update=update, user=user, params=params, riptype=riptype, season=season, episode=episode, provider=provider, page_url=page_url, seq=seq, force_add=force_add, imdbid=imdbid, xitem=xitem)
 			else:
 				oc = ObjectContainer(title1='Select Location', no_cache=common.isForceNoCache())
@@ -1134,7 +1159,11 @@ def AddToDownloadsList(title, year, url, durl, purl, summary, thumb, quality, so
 							)
 						)
 				if len(oc) == 0:
+					if viaCode == True:
+						return False
 					return MC.message_container('Download Sources', 'No Download Location set under Download Options')
+				if viaCode == True:
+					return False
 				return oc
 	else:
 		isPairDone = True
@@ -1165,6 +1194,8 @@ def AddToDownloadsList(title, year, url, durl, purl, summary, thumb, quality, so
 				Dict['DOWNLOAD_OPTIONS_SECTION_TEMP'][tuec] = {}
 				Dict['DOWNLOAD_OPTIONS_SECTION_TEMP'][tuec]['Error'] = 'Error'
 				Dict.Save()
+				if viaCode == True:
+					return False
 				return MC.message_container('FileSize Error', 'File reporting %s bytes cannot be downloaded. Please try again later when it becomes available.' % fsBytes)
 				
 			uid = 'Down5Split'+E(title+year+fs+quality+source+str(season)+str(episode))
@@ -1181,6 +1212,8 @@ def AddToDownloadsList(title, year, url, durl, purl, summary, thumb, quality, so
 						Dict['DOWNLOAD_OPTIONS_SECTION_TEMP'][tuec] = {}
 						Dict['DOWNLOAD_OPTIONS_SECTION_TEMP'][tuec]['Done'] = 'Done'
 						Dict.Save()
+						if viaCode == True:
+							return False
 						return MC.message_container('Download Sources', 'Item already in Downloads List')
 					
 			if file_ext == None:
@@ -1205,6 +1238,8 @@ def AddToDownloadsList(title, year, url, durl, purl, summary, thumb, quality, so
 		except Exception as e:
 			err = '{}'.format(e)
 			Log(err)
+			if viaCode == True:
+				return False
 			return MC.message_container('Download Sources', 'Error %s when adding for Downloading ! Please try again later.' % err)
 			
 		Dict['DOWNLOAD_OPTIONS_SECTION_TEMP'][tuec] = {}
@@ -1214,8 +1249,12 @@ def AddToDownloadsList(title, year, url, durl, purl, summary, thumb, quality, so
 		time.sleep(2)
 		
 		if 'openload' in source.lower() and isPairDone == False and pair_required == True:
+			if viaCode == True:
+				return False
 			return MC.message_container('Download Sources', 'Successfully added but requires *Pairing* to Download')
 		else:
+			if viaCode == True:
+				return True
 			return MC.message_container('Download Sources', 'Successfully added to Download List')
 	
 ######################################################################################

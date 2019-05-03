@@ -43,7 +43,9 @@ CACHE_IGNORELIST = ['apidata.googleusercontent.com']
 PAIRS = []
 FLAGS = []
 
-USE_PHANTOMJS = False
+USE_PHANTOMJS = True
+USE_PHANTOMJS2 = False
+USE_DATAID = True
 
 newmarketgidstorage = 'MarketGidStorage=%7B%220%22%3A%7B%22svspr%22%3A%22%22%2C%22svsds%22%3A15%2C%22TejndEEDj%22%3A%22MTQ5MzIxMTc0OTQ0NDExMDAxNDc3NDE%3D%22%7D%2C%22C110014%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493215038742%7D%2C%22C110025%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493216772437%7D%2C%22C110023%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493216771928%7D%7D'
 
@@ -51,7 +53,7 @@ newmarketgidstorage = 'MarketGidStorage=%7B%220%22%3A%7B%22svspr%22%3A%22%22%2C%
 
 # Get FMovies-API
 #@route(PREFIX + '/getapiurl')
-def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web_proxy=False, cache_expiry_time=60, serverid=None, session=None, **kwargs):
+def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web_proxy=False, cache_expiry_time=60, serverid=None, dataid=None, session=None, **kwargs):
 
 	try:
 		use_debug = Prefs["use_debug"]
@@ -104,10 +106,10 @@ def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web
 			if use_debug:
 				Log("Retrieving Fresh Movie Link")
 			
-			if (common.control.setting('use_phantomjs') == common.control.phantomjs_choices[1] and common.control.setting('%s-%s' % (session, 'Use-PhantomJS')) == True or common.control.setting('use_phantomjs') == common.control.phantomjs_choices[2]) and is9Anime == False:
+			if (USE_PHANTOMJS == True or USE_PHANTOMJS2 == True) and ((common.control.setting('use_phantomjs') == common.control.phantomjs_choices[1] and common.control.setting('%s-%s' % (session, 'Use-PhantomJS')) == True or common.control.setting('use_phantomjs') == common.control.phantomjs_choices[2]) and is9Anime == False):
 				ret, isTargetPlay, error, host, res_subtitle = get_sources2(url=url, key=key, use_debug=use_debug, session=session)
 			else:
-				ret, isTargetPlay, error, host, res_subtitle = get_sources(url=url, key=key, use_debug=use_debug, serverts=serverts, myts=myts, serverid=serverid, use_https_alt=use_https_alt, use_web_proxy=use_web_proxy)
+				ret, isTargetPlay, error, host, res_subtitle = get_sources(url=url, key=key, use_debug=use_debug, serverts=serverts, myts=myts, serverid=serverid, dataid=dataid, use_https_alt=use_https_alt, use_web_proxy=use_web_proxy)
 			if use_debug:
 				Log("get_sources url: %s, key: %s" % (url,key))
 				Log("get_sources ret: %s" % ret)
@@ -131,11 +133,14 @@ def GetApiUrl(url, key, serverts=0, use_debug=True, use_https_alt=False, use_web
 					Log("CACHE cleared due to null response from API - maybe cookie/token issue for %s" % url)
 				time.sleep(1.0)
 				if phanjs_error == True:
-					ret, isTargetPlay, error, host, res_subtitle = get_sources(url=url, key=key, use_debug=use_debug, serverts=serverts, myts=myts, serverid=serverid, use_https_alt=use_https_alt, use_web_proxy=use_web_proxy, token_error=token_error)
+					ret, isTargetPlay, error, host, res_subtitle = get_sources(url=url, key=key, use_debug=use_debug, serverts=serverts, myts=myts, serverid=serverid, dataid=dataid, use_https_alt=use_https_alt, use_web_proxy=use_web_proxy, token_error=token_error)
 				elif is9Anime == True:
-					ret, isTargetPlay, error, host, res_subtitle = get_sources(url=url, key=key, use_debug=use_debug, serverts=serverts, myts=myts, serverid=serverid, use_https_alt=use_https_alt, use_web_proxy=use_web_proxy, token_error=True)
-				else:
+					ret, isTargetPlay, error, host, res_subtitle = get_sources(url=url, key=key, use_debug=use_debug, serverts=serverts, myts=myts, serverid=serverid, dataid=dataid, use_https_alt=use_https_alt, use_web_proxy=use_web_proxy, token_error=True)
+				elif (USE_PHANTOMJS == True or USE_PHANTOMJS2 == True):
 					ret, isTargetPlay, error, host, res_subtitle = get_sources2(url=url, key=key, prev_error=error, use_debug=use_debug, session=session)
+				else:
+					ret, isTargetPlay, error, host, res_subtitle = get_sources(url=url, key=key, use_debug=use_debug, serverts=serverts, myts=myts, serverid=serverid, dataid=dataid, use_https_alt=use_https_alt, use_web_proxy=use_web_proxy, token_error=token_error)
+					
 				if ret != None:
 					if use_debug:
 						Log("Request - attempt 2nd")
@@ -339,7 +344,7 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 		
 		result, headers, content, cookie1 = common.interface.request_via_proxy_as_backup(BASE_URL, headers=headersS, limit='0', output='extended', httpsskip=use_https_alt, hideurl=True)
 		#Log(cookie1)
-		
+	
 		try:
 			if '__cfduid' in cookie1:
 				cfd = cookie1.split(';')
@@ -605,7 +610,10 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 		common.CACHE['cookie']['reqkey'] = reqkey_cookie
 		
 		try:
-			cookie = cookie1 + '; ' + cookie2 + '; user-info=null; ' + newmarketgidstorage
+			if len(cookie2) > 0:
+				cookie = cookie1 + '; ' + cookie2 + '; user-info=null; ' + newmarketgidstorage
+			else:
+				cookie = cookie1 + '; user-info=null; ' + newmarketgidstorage
 		except Exception as e:
 			Log.Error(e)
 			cookie = 'NotFound; %s; %s; user-info=null; %s' % (cookie1,cookie2,newmarketgidstorage)
@@ -764,7 +772,7 @@ def fetch_announcement():
 				ANNOUNCEMENT_READ.append(i)
 				ANNOUNCEMENT_UNREAD.append(True)
 
-def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=False, use_web_proxy=False, token_error=False, serverid=None, **kwargs):
+def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=False, use_web_proxy=False, token_error=False, serverid=None, dataid=None, **kwargs):
 
 	if serverts == 0:
 		#serverts = ((int(time.time())/3600)*3600)
@@ -839,15 +847,27 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 			hash_url = urlparse.urljoin(T_BASE_URL, HASH_PATH_INFO)
 			
 			if is9Anime == True:
-				if serverid != None:
-					query = {'ts': serverts, 'id': key, 'server': serverid}
+				if USE_DATAID == True:
+					if serverid != None:
+						query = {'ts': serverts, 'server': serverid, 'id':dataid}
+					else:
+						query = {'ts': serverts, 'server':'36', 'id':dataid}
 				else:
-					query = {'ts': serverts, 'id': key, 'server':'36'}
+					if serverid != None:
+						query = {'ts': serverts, 'id': key, 'server': serverid, 'dataid':dataid}
+					else:
+						query = {'ts': serverts, 'id': key, 'server':'36', 'dataid':dataid}
 			else:
-				if serverid != None:
-					query = {'ts': serverts, 'id': key, 'server': serverid}
+				if USE_DATAID == True:
+					if serverid != None:
+						query = {'ts': serverts, 'server': serverid, 'id':dataid}
+					else:
+						query = {'ts': serverts, 'update':'0', 'server':'36', 'id':dataid}
 				else:
-					query = {'ts': serverts, 'id': key, 'update':'0', 'server':'36'}
+					if serverid != None:
+						query = {'ts': serverts, 'id': key, 'server': serverid, 'dataid':dataid}
+					else:
+						query = {'ts': serverts, 'id': key, 'update':'0', 'server':'36', 'dataid':dataid}
 			
 			tk = get_token(query, token_error, is9Anime)
 			if tk == None:
@@ -868,8 +888,8 @@ def get_sources(url, key, use_debug=True, serverts=0, myts=0, use_https_alt=Fals
 				
 			result = common.interface.request_via_proxy_as_backup(hash_url, headers=headers, httpsskip=use_https_alt, hideurl=not use_debug)
 			
-			if use_debug:
-				Log("Request-3 result: %s" % result)
+			if 'Please complete the security check to continue!' in result:
+				raise Exception("Site Captcha is Active")
 
 			result = json.loads(result)
 
@@ -1012,7 +1032,7 @@ def get_sources2(url, key, prev_error=None, use_debug=True, session=None, **kwar
 		subtitle = None
 		
 		if use_debug == True:
-			Log("USE_PHANTOMJS: %s, USE_SELENIUM:%s" % (USE_PHANTOMJS, common.USE_SELENIUM))
+			Log("USE_PHANTOMJS:%s, USE_SELENIUM:%s" % (USE_PHANTOMJS, common.USE_SELENIUM))
 		if common.USE_SELENIUM == True:
 			Log("=====================SELENIUM START============================")
 			vx_url = '%s/%s' % (url,key)
@@ -1029,12 +1049,22 @@ def get_sources2(url, key, prev_error=None, use_debug=True, session=None, **kwar
 				Log("=====================SELENIUM END============================")
 				raise Exception('Selenium method not working. %s' % e)
 			Log("=====================SELENIUM END============================")
-		if USE_PHANTOMJS == True:
+		if USE_PHANTOMJS == True or USE_PHANTOMJS2 == True:
 			if (common.control.setting('use_phantomjs') == common.control.phantomjs_choices[1] and common.control.setting('%s-%s' % (session, 'Use-PhantomJS')) == True) or common.control.setting('use_phantomjs') == common.control.phantomjs_choices[2]:
 				vx_url = '%s/%s' % (url,key)
-				Log(u'Trying phantomjs method: %s' % vx_url)
+				cookies = None
+				cook, err = common.make_cookie_str()
+				if err == '':
+					cookies = cook
+				else:
+					Log('Cookie Error: %s' % err)
 				try:
-					v_url, bool = common.phantomjs.decode(vx_url, js='fmovies.js')
+					UA = common.CACHE['cookie']['UA']
+				except:
+					UA = None
+				Log(u'Trying phantomjs method: %s, Cookies: %s, UA: %s' % (vx_url,cookies,UA))
+				try:
+					v_url, bool = common.phantomjs.decode(vx_url, js='fmovies.js', cookies=cookies, user_agent=UA)
 					if bool == False:
 						ret_error = v_url
 						raise Exception(ret_error)
@@ -1062,9 +1092,19 @@ def get_item_page(page_url, is9Anime=False, use_https_alt=False):
 		error = ''
 		if USE_PHANTOMJS == True:
 			if (common.control.setting('use_phantomjs') == common.control.phantomjs_choices[1] and common.control.setting('%s-%s' % (session, 'Use-PhantomJS')) == True) or common.control.setting('use_phantomjs') == common.control.phantomjs_choices[2]:
-				Log(u'Trying phantomjs method: %s' % page_url)
+				cookies = None
+				cook, err = common.make_cookie_str()
+				if err == '':
+					cookies = cook
+				else:
+					Log('Cookie Error: %s' % err)
 				try:
-					v_url, bool = common.phantomjs.decode(page_url, js='fmoviesPage.js')
+					UA = common.CACHE['cookie']['UA']
+				except:
+					UA = None
+				Log(u'Trying phantomjs method: %s, Cookies: %s, UA: %s' % (page_url,cookies,UA))
+				try:
+					v_url, bool = common.phantomjs.decode(page_url, js='fmoviesPage.js', cookies=cookies, user_agent=UA)
 					if bool == False:
 						ret_error = v_url
 						raise Exception(ret_error)
@@ -1084,10 +1124,20 @@ def get_item_page(page_url, is9Anime=False, use_https_alt=False):
 	
 def get_servers(serverts, page_url, is9Anime=False, use_https_alt=False):
 	try:
-		if USE_PHANTOMJS == True and ((common.control.setting('use_phantomjs') == common.control.phantomjs_choices[1] and common.control.setting('%s-%s' % (session, 'Use-PhantomJS')) == True) or common.control.setting('use_phantomjs') == common.control.phantomjs_choices[2]):
-			Log(u'Trying phantomjs method: %s' % page_url)
+		if USE_PHANTOMJS2 == True and USE_PHANTOMJS == True and ((common.control.setting('use_phantomjs') == common.control.phantomjs_choices[1] and common.control.setting('%s-%s' % (session, 'Use-PhantomJS')) == True) or common.control.setting('use_phantomjs') == common.control.phantomjs_choices[2]):
+			cookies = None
+			cook, err = common.make_cookie_str()
+			if err == '':
+				cookies = cook
+			else:
+				Log('Cookie Error: %s' % err)
 			try:
-				v_url, bool = common.phantomjs.decode(page_url, js='fmoviesServers.js')
+				UA = common.CACHE['cookie']['UA']
+			except:
+				UA = None
+			Log(u'Trying phantomjs method: %s, Cookies: %s, UA: %s' % (page_url,cookies,UA))
+			try:
+				v_url, bool = common.phantomjs.decode(page_url, js='fmoviesServers.js', cookies=cookies, user_agent=UA)
 				if bool == False:
 					ret_error = v_url
 					raise Exception(ret_error)

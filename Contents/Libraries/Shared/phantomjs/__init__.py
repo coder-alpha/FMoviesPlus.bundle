@@ -25,7 +25,7 @@ __credits__ = [
 
 PROCESSES = {}
 
-def decode(url, python_dir=None, debug=False, ssl=True, js='openload.js'):
+def decode(url, python_dir=None, debug=False, ssl=True, js='openload.js', cookies=None, user_agent=None):
 
 	output = ""
 	try:
@@ -47,23 +47,28 @@ def decode(url, python_dir=None, debug=False, ssl=True, js='openload.js'):
 		if python_dir == None:
 			python_dir = ""
 		
-		if debug:
-			if sys.platform == "win32":
-				file_cmd = [os.path.join(PHANTOMJS_PATH, 'phantomjs'), os.path.join(PHANTOMJS_PLUGIN_CHANNEL_PATH, js), url, '-debug true']
-			elif sys.platform == "darwin":
-				file_cmd = [os.path.join(PHANTOMJS_PATH, 'phantomjs'), os.path.join(PHANTOMJS_PLUGIN_CHANNEL_PATH, js), url]
-			else:
-				file_cmd = [os.path.join(PHANTOMJS_PATH, 'phantomjs'), os.path.join(PHANTOMJS_PLUGIN_CHANNEL_PATH, js), url]
-		else:
-			if sys.platform == "win32":
-				file_cmd = [os.path.join(PHANTOMJS_PATH, 'phantomjs'), os.path.join(PHANTOMJS_PLUGIN_CHANNEL_PATH, js), url]
-			elif sys.platform == "darwin":
-				file_cmd = [os.path.join(PHANTOMJS_PATH, 'phantomjs'), os.path.join(PHANTOMJS_PLUGIN_CHANNEL_PATH, js), url]
-			else:
-				file_cmd = [os.path.join(PHANTOMJS_PATH, 'phantomjs'), os.path.join(PHANTOMJS_PLUGIN_CHANNEL_PATH, js), url]
+		
+		file_cmd = [os.path.join(PHANTOMJS_PATH, 'phantomjs'), os.path.join(PHANTOMJS_PLUGIN_CHANNEL_PATH, js), url]
+		
+		# if sys.platform == "win32":
+			# file_cmd = [os.path.join(PHANTOMJS_PATH, 'phantomjs'), os.path.join(PHANTOMJS_PLUGIN_CHANNEL_PATH, js), url]
+		# elif sys.platform == "darwin":
+			# file_cmd = [os.path.join(PHANTOMJS_PATH, 'phantomjs'), os.path.join(PHANTOMJS_PLUGIN_CHANNEL_PATH, js), url]
+		# else:
+			# file_cmd = [os.path.join(PHANTOMJS_PATH, 'phantomjs'), os.path.join(PHANTOMJS_PLUGIN_CHANNEL_PATH, js), url]
 
 		if ssl == True:
 			file_cmd.insert(1,'--ssl-protocol=any')
+			
+		if cookies != None:
+			file_cmd.append(cookies)
+			
+		if user_agent != None:
+			file_cmd.append(user_agent)
+			
+		if debug:
+			if sys.platform == "win32":
+				file_cmd.append('-debug true')
 
 		if sys.platform == "darwin":
 			if debug:

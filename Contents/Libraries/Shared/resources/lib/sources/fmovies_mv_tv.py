@@ -49,6 +49,7 @@ loggertxt = []
 
 ENCRYPTED_URLS = False
 USE_PHANTOMJS = True
+USE_TOKEN = False
 
 class source:
 	def __init__(self):
@@ -77,6 +78,7 @@ class source:
 		self.ssl = False
 		self.name = name
 		self.captcha = False
+		self.blocked = False
 		self.use_selenium = False
 		self.headers = {}
 		self.cookie = None
@@ -149,12 +151,22 @@ class source:
 					self.captcha = False
 			except:
 				pass
+			try:
+				if 'Your Ip has been blocked' in content:
+					self.blocked = True
+				else:
+					self.blocked = False
+			except:
+				pass
 					
 			if self.captcha == True:
 				log('INFO','testSiteAlts', 'Captcha is active - site will be set online but with captcha active. Sources will be available when captcha is inactive.')
+				
+			if self.blocked == True:
+				log('INFO','testSiteAlts', 'You IP is blocked. Sources will be available when captcha is inactive.')
 					
 			self.speedtest = time.time() - x1
-			if self.captcha == True or 'Please complete the security check to continue!' in content:
+			if self.captcha == True or self.blocked == True:
 				if self.use_selenium == True and USE_SELENIUM == True:
 					self.captcha = True
 					cookies, content = seleniumca.getMyCookies(base_url=site)
@@ -171,7 +183,7 @@ class source:
 								log('INFO','testSiteAlts', 'cookie1: %s' % cookie1)
 								cookie2 = (';'.join('%s=%s' % (x['name'],x['value']) for x in my_cookies_via_sel))
 								log('INFO','testSiteAlts', 'cookie2: %s' % cookie2)
-								cookie = '%s; %s; user-info=null; reqkey=%s' % (cookie1 , cookie2 , reqkey)
+								cookie = '%s; %s' % (cookie1 , cookie2)
 								self.headers['Cookie'] = cookie
 								log('SUCCESS', 'testSiteAlts', 'Cookies : %s for %s' % (cookie,self.base_link))
 							except Exception as e:
@@ -230,32 +242,30 @@ class source:
 			#get cf cookie
 			if USE_SELENIUM == False or self.captcha == False or self.use_selenium == False:
 				cookie1 = proxies.request(url=t_base_link, headers=self.headers, output='cookie', use_web_proxy=self.proxyrequired, httpsskip=True)
+				cookie1 = make_cookie_str(cookie1)
 				self.headers['Cookie'] = cookie1
 				
 				# get reqkey cookie
 				try:
-					token_url = urlparse.urljoin(t_base_link, self.token_link)
-					r1 = proxies.request(token_url, headers=self.headers, httpsskip=True)
-					if r1 == None:
-						raise Exception('%s not reachable !' % token_url)
-					reqkey = self.decodeJSFCookie(r1)
+					if USE_TOKEN == True:
+						token_url = urlparse.urljoin(t_base_link, self.token_link)
+						r1 = proxies.request(token_url, headers=self.headers, httpsskip=True)
+						if r1 == None:
+							raise Exception('%s not reachable !' % token_url)
+						reqkey = self.decodeJSFCookie(r1)
 				except Exception as e:
 					reqkey = ''
 					log('FAIL','initAndSleep', 'Not using reqkey: %s' % e, dolog=False)
 				
 				# get session cookie
 				serverts = str(((int(time.time())/3600)*3600))
-				query = {'ts': serverts}
-				try:
-					tk = self.__get_token(query)
-				except:
-					tk = self.__get_token(query, True)
-
-				query.update(tk)
+				query = {'ts': serverts, '_', '634'}
+				
 				hash_url = urlparse.urljoin(t_base_link, self.hash_menu_link)
 				hash_url = hash_url + '?' + urllib.urlencode(query)
 
 				cookie2 = proxies.request(url=hash_url, headers=self.headers, output='cookie', httpsskip=True)
+				cookie2 = make_cookie_str(cookie2)
 			else:
 				log('INFO','initAndSleep', 'Attempting Selenium Retrieval - Start')
 				try:
@@ -272,7 +282,7 @@ class source:
 					log('ERROR','initAndSleep', '%s' % e)
 				log('INFO','initAndSleep', 'Attempting Selenium Retrieval - End')
 				
-			cookie = '%s; %suser-info=null;%s' % (cookie1 , (';'+cookie2+' ') if len(cookie2)>0 else '' , ('reqkey=%s'%reqkey) if reqkey != '' else '')
+			cookie = '%s; %s' % (cookie1, cookie2)
 			self.headers['Cookie'] = cookie
 			log('SUCCESS', 'initAndSleep', 'Cookies : %s for %s' % (cookie,self.base_link))
 		except Exception as e:
@@ -551,7 +561,7 @@ class source:
 				quality = '480p'
 				riptype = 'BRRIP'
 
-			result_servers = self.get_servers(url, proxy_options=proxy_options)
+			result_servers = self.get_servers(myts, url, proxy_options=proxy_options)
 			#print result_servers
 			servers_id = client.parseDOM(result_servers, 'div', attrs = {'class':'server row'}, ret='data-id')
 			#print servers_id
@@ -767,12 +777,14 @@ class source:
 		except:
 			return
 			
-	def get_servers(self, page_url, proxy_options=None):	
+	def get_servers(self, serverts, page_url, proxy_options=None):	
 		T_BASE_URL = self.base_link
 		T_BASE_URL = 'https://%s' % client.geturlhost(page_url)
 		page_id = page_url.rsplit('.', 1)[1]
 		server_query = '/ajax/film/servers/%s' % page_id
 		server_url = urlparse.urljoin(T_BASE_URL, server_query)
+		query = {'ts':serverts, '_': '634'}
+		server_url += '?' + urllib.urlencode(query)
 		log('INFO','get_servers', server_url, dolog=False)
 		result = proxies.request(server_url, headers=self.headers, referer=page_url, limit='0', proxy_options=proxy_options, use_web_proxy=self.proxyrequired, httpsskip=True)
 		html = '<html><body><div id="servers-container">%s</div></body></html>' % json.loads(result)['html'].replace('\n','').replace('\\','')
@@ -968,6 +980,39 @@ class source:
 					self.TOKEN_KEY.append(token_key)
 		except Exception as e:
 			log('ERROR', 'getVidToken-2','%s' % e, dolog=False)
+			
+####################################################################################################
+def make_cookie_str(p_cookie=''):
+	try:
+		cookie_str = ''
+		error = ''
+		p_cookie_s = []
+		cookie_string_arr = []
+		
+		for ps in p_cookie_s:
+			if '=' in ps:
+				try:
+					if 'expires' not in ps.lower() and 'max-age' not in ps.lower() and 'path' not in ps:
+						ps_s = ps.split('=')
+						k = ps_s[0].strip()
+						v = ps_s[1].strip()
+						if k == 'reqkey':
+							if len(v) > 5:
+								cookie_string_arr.append(k+'='+v)
+						else:
+							cookie_string_arr.append(k+'='+v)
+				except:
+					pass
+		try:
+			cookie_str = ('; '.join(x for x in sorted(cookie_string_arr)))
+		except:
+			cookie_str = p_cookie
+		
+		return cookie_str, error
+
+	except Exception as e:
+		log(type='ERROR', method='make_cookie_str', method='%s' % e)
+		return cookie_str, e
 
 
 def log(type='INFO', method='undefined', err='', dolog=True, logToControl=False, doPrint=True):

@@ -42,6 +42,8 @@ ThreadsType = {'0':'Main', '1':'Interface', '2':'Download', '3':'AutoPilot' ,'4'
 Threads = []
 ThreadBlockOper = [False]
 
+RECEPTCHA_FMOVIES_COOKIE = 'RECEPTCHA_FMOVIES_COOKIE'
+
 partial_sources = []
 
 ext_sources = []

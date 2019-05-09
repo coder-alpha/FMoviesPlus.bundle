@@ -1552,7 +1552,6 @@ def IntHostTools(choice=None, myhost=None, mssg=None, session=None):
 def IntProviderTools(choice=None, provider=None, mssg=None):
 	
 	oc = ObjectContainer(title2='%s Tools' % provider.title())
-
 	if choice != None:
 		if choice == 'show_dump_log':
 			oc = ObjectContainer(title2='%s Log' % provider.title())
@@ -1722,8 +1721,6 @@ def ResetCookies(mode=None, **kwargs):
 					thumbIcon = R(common.ICON_NOTOK)
 					if lpl != None:
 						thumbIcon = R(Core.storage.join_path(common.RECAPTCHA_CACHE_DIR, '%s%s.jpg' % (common.RECAPTCHA_IMAGE_PREFIX,i)))
-						
-				Log(thumbIcon)
 					
 				common.FMOVIES_CAPTCHA_SELECTION[str(i)] = bool
 					
@@ -1806,6 +1803,7 @@ def SolveCaptchaFMovies(resp, **kwargs):
 		cookies += '; user-info=null; ' + fmovies.newmarketgidstorage
 		
 		cookie_dict.update({'ts':time.time(), 'cookie':cookies, 'cookie1':cookies1, 'cookie2':'', 'UA': ua})
+		common.control.set_setting(common.control.RECEPTCHA_FMOVIES_COOKIE, cookie_dict)
 		Dict['CACHE_COOKIE'] = E(JSON.StringFromObject(cookie_dict))
 		Dict.Save()
 		
@@ -1818,7 +1816,6 @@ def SolveCaptchaFMovies(resp, **kwargs):
 		
 		del common.CACHE_COOKIE[:]
 		common.CACHE_COOKIE.append(cookie_dict)
-		
 		common.FMOVIES_AVAILABLE = True
 		
 		return MC.message_container('Success', 'Captch Solved !')
@@ -5370,7 +5367,12 @@ def MoviesWithTag(tags, session, is9anime='False', **kwargs):
 @route(PREFIX + "/getmovieinfo")
 def GetMovieInfo(summary, urlPath, referer=None, session=None, is9anime='False', **kwargs):
 
-	if common.NO_MOVIE_INFO == True or urlPath == None and (summary == None or summary == '') or Prefs['use_web_proxy']:
+	if common.DO_NOT_MAKE_ADDITIONAL_REQUESTS == True:
+		if summary == None:
+			return 'Plot Summary on Item Page'
+		else:
+			return summary
+	elif common.NO_MOVIE_INFO == True or urlPath == None and (summary == None or summary == '') or Prefs['use_web_proxy']:
 		return 'Plot Summary on Item Page'
 	elif (is9anime == 'False' and common.UsingOption(common.DEVICE_OPTIONS[8], session=session) == True) or (is9anime == 'True' and common.UsingOption(common.DEVICE_OPTIONS[11], session=session) == True):
 		return 'Plot Summary on Item Page. Disabled via Device Options.'
@@ -5380,7 +5382,7 @@ def GetMovieInfo(summary, urlPath, referer=None, session=None, is9anime='False',
 		return summary
 	elif Prefs["dont_fetch_more_info"]:
 		return 'Plot Summary on Item Page'
-		
+
 	try:
 		if is9anime == 'False':
 			url = urlparse.urljoin(fmovies.BASE_URL , urlPath)

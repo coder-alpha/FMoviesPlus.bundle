@@ -896,8 +896,13 @@ def AutoPilotDownloadThread2(item, sources):
 #######################################################################################################
 def AutoPilotDownloadThread3(item, s, fsBytes, fs):
 
+	imdbid = None
 	try:
-		return AddToDownloadsList(title=item['short_title'] if item['type']=='show' else item['title'], purl=item['purl'], url=s['url'], durl=s['durl'], summary=item['summary'], thumb=item['thumb'], year=item['year'], quality=s['quality'], source=s['source'], source_meta={}, file_meta={}, type=item['type'], vidtype=item['vidtype'], resumable=s['resumeDownload'], sub_url=s['sub_url'], fsBytes=fsBytes, fs=fs, file_ext=s['file_ext'], mode=common.DOWNLOAD_MODE[0], section_path=item['section_path'], section_title=item['section_title'], section_key=item['section_key'], session=item['session'], admin=item['admin'], params=s['params'], riptype=s['rip'], season=item['season'], episode=item['episode'], provider=s['provider'], page_url=s['page_url'], seq=s['seq'], imdbid=item['imdbid'], xitem=item['xitem'], viaCode=True)
+		imdbid=item['imdbid']
+	except:
+		pass
+	try:
+		return AddToDownloadsList(title=item['short_title'] if item['type']=='show' else item['title'], purl=item['purl'], url=s['url'], durl=s['durl'], summary=item['summary'], thumb=item['thumb'], year=item['year'], quality=s['quality'], source=s['source'], source_meta={}, file_meta={}, type=item['type'], vidtype=item['vidtype'], resumable=s['resumeDownload'], sub_url=s['sub_url'], fsBytes=fsBytes, fs=fs, file_ext=s['file_ext'], mode=common.DOWNLOAD_MODE[0], section_path=item['section_path'], section_title=item['section_title'], section_key=item['section_key'], session=item['session'], admin=item['admin'], params=s['params'], riptype=s['rip'], season=item['season'], episode=item['episode'], provider=s['provider'], page_url=s['page_url'], seq=s['seq'], imdbid=imdbid, xitem=item['xitem'], viaCode=True)
 	except Exception as e:
 		err = '{}'.format(e)
 		Log.Error('ERROR: downloadsmenu.py > AutoPilotDownloadThread3: %s' % err)

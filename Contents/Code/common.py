@@ -1,6 +1,6 @@
 ################################################################################
 TITLE = "FMoviesPlus"
-VERSION = '0.84' # Release notation (x.y - where x is major and y is minor)
+VERSION = '0.85' # Release notation (x.y - where x is major and y is minor)
 TAG = ''
 GITHUB_REPOSITORY = 'coder-alpha/FMoviesPlus.bundle'
 PREFIX = "/video/fmoviesplus"
@@ -323,6 +323,8 @@ RECAPTCHA_CACHE_DIR = ""
 RECAPTCHA_IMAGE_PREFIX = "recaptcha_img_"
 
 FMOVIES_AVAILABLE = None
+DO_NOT_MAKE_ADDITIONAL_REQUESTS = True
+USE_CAPTCHA_AI = False
 
 DEV_DEBUG = True if 'dev' in TAG else False
 
@@ -940,41 +942,50 @@ def GetPageElements(url, headers=None, referer=None, timeout=15):
 	return page_data_elems, error
 
 ####################################################################################################
-def make_cookie_str():
+def make_cookie_str(p_cookie=''):
 	try:
 		cookie_str = ''
-		p_cookie = ''
 		error = ''
-		if len(CACHE_COOKIE) > 0:
-			user_defined_reqkey_cookie = None
-			try:
-				user_defined_reqkey_cookie = Prefs['reqkey_cookie']
-			except:
-				pass
-			reqCookie = CACHE_COOKIE[0]['reqkey']
-			if user_defined_reqkey_cookie != None and user_defined_reqkey_cookie != '':
-				reqCookie = user_defined_reqkey_cookie
+		p_cookie_s = []
+		if p_cookie == '':
+			if len(CACHE_COOKIE) > 0:
+				user_defined_reqkey_cookie = None
+				try:
+					user_defined_reqkey_cookie = Prefs['reqkey_cookie']
+				except:
+					pass
+				reqCookie = CACHE_COOKIE[0]['reqkey']
+				if user_defined_reqkey_cookie != None and user_defined_reqkey_cookie != '':
+					reqCookie = user_defined_reqkey_cookie
 
-			p_cookie = CACHE_COOKIE[0]['cookie'] + '; ' + reqCookie
+				p_cookie = CACHE_COOKIE[0]['cookie'] + '; ' + reqCookie
+				p_cookie = p_cookie.replace(';;',';')
+				p_cookie_s = p_cookie.split(';')
+			elif p_cookie != '':
+				p_cookie = p_cookie.replace(';;',';')
+				p_cookie_s = p_cookie.split(';')
+			else:
+				#setTokenCookie(serverts=serverts, use_debug=use_debug)
+				error = "Cookie not set ! Please try Reset Cookies under the Options menu."
+				p_cookie_s = []
+		else:
 			p_cookie = p_cookie.replace(';;',';')
 			p_cookie_s = p_cookie.split(';')
-			cookie_string_arr = []
-		else:
-			#setTokenCookie(serverts=serverts, use_debug=use_debug)
-			error = "Cookie not set ! Please try Reset Cookies under the Options menu."
-			p_cookie_s = []
+			
+		cookie_string_arr = []
 		
 		for ps in p_cookie_s:
 			if '=' in ps:
 				try:
-					ps_s = ps.split('=')
-					k = ps_s[0].strip()
-					v = ps_s[1].strip()
-					if k == 'reqkey':
-						if len(v) > 5:
+					if 'expires' not in ps.lower() and 'max-age' not in ps.lower() and 'path' not in ps:
+						ps_s = ps.split('=')
+						k = ps_s[0].strip()
+						v = ps_s[1].strip()
+						if k == 'reqkey':
+							if len(v) > 5:
+								cookie_string_arr.append(k+'='+v)
+						else:
 							cookie_string_arr.append(k+'='+v)
-					else:
-						cookie_string_arr.append(k+'='+v)
 				except:
 					pass
 		try:
@@ -1042,6 +1053,19 @@ def GetPageAsString(url, headers=None, timeout=15, referer=None):
 		else:
 			Log.Error(error)
 			Log(cookies)
+	elif USE_COOKIES and ('9anime' in url):
+		cookies, error = make_cookie_str()
+		if error == '':
+			headers['Cookie'] = cookies
+			headers['User-Agent'] = CACHE_COOKIE[0]['UA']
+
+			if use_debug:
+				Log("Using Cookie retrieved at: %s" % time.ctime(CACHE_COOKIE[0]['ts']))
+				Log("Using Cookie: %s" % (cookies))
+		else:
+			Log.Error(error)
+			Log(cookies)
+			
 	try:
 		if Prefs["use_https_alt"]:
 			if use_debug:
@@ -1395,7 +1419,7 @@ def SplitImageIntoChoices(filename, fil_dir):
 					c += 1
 		else:
 			prog = ""
-			
+
 			try:
 				prog_t = Prefs["imagemagick_dir_path"]
 				if prog_t != None:
@@ -1414,16 +1438,34 @@ def SplitImageIntoChoices(filename, fil_dir):
 				wh = min(w,h)
 				cmd = "-crop"
 				c = 0
+				
 				for y in range(3):
 					for x in range(3):
 						params = "%sx%s+%s+%s" % (w,h,x*wh,y*wh)
-						file_cmd = [Core.storage.join_path(prog, 'convert'), Core.storage.join_path(fil_dir, filename), cmd, params, Core.storage.join_path(fil_dir, '%s%s.jpg' % (RECAPTCHA_IMAGE_PREFIX,c))]
+						dest_file = '%s%s.jpg' % (RECAPTCHA_IMAGE_PREFIX,c)
+						file_cmd = [Core.storage.join_path(prog, 'convert'), Core.storage.join_path(fil_dir, filename), cmd, params, Core.storage.join_path(fil_dir, dest_file)]
 						process = subprocess.Popen(file_cmd, shell=False, cwd=fil_dir, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 						ret = process.wait()
 						output = process.stdout.read()
-						c += 1
+						
 						if Prefs["use_debug"]:
 							Log('%s - %s' % (file_cmd, output))
+							
+						if USE_CAPTCHA_AI == True:
+							c2 = 0
+							for j in range(2):
+								for k in range(2):
+									w1 = w/2
+									h1 = w/2
+									wh1 = min(w1,h1)
+									params2 = "%sx%s+%s+%s" % (w1,h1,k*wh1,j*wh1)
+									file_cmd = [Core.storage.join_path(prog, 'convert'), Core.storage.join_path(fil_dir, dest_file), cmd, params2, Core.storage.join_path(fil_dir, '%s%s_%s.jpg' % (RECAPTCHA_IMAGE_PREFIX,c,c2))]
+									process = subprocess.Popen(file_cmd, shell=False, cwd=fil_dir, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+									ret = process.wait()
+									output = process.stdout.read()
+									c2 += 1
+						c += 1
+							
 			except Exception as e:
 				raise e
 		time.sleep(1)

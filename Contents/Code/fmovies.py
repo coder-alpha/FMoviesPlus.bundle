@@ -47,7 +47,8 @@ USE_PHANTOMJS = True
 USE_PHANTOMJS2 = False
 USE_DATAID = True
 
-newmarketgidstorage = 'MarketGidStorage=%7B%220%22%3A%7B%22svspr%22%3A%22%22%2C%22svsds%22%3A15%2C%22TejndEEDj%22%3A%22MTQ5MzIxMTc0OTQ0NDExMDAxNDc3NDE%3D%22%7D%2C%22C110014%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493215038742%7D%2C%22C110025%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493216772437%7D%2C%22C110023%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493216771928%7D%7D'
+newmarketgidstorage = ''
+newmarketgidstorage2 = ';MarketGidStorage=%7B%220%22%3A%7B%22svspr%22%3A%22%22%2C%22svsds%22%3A15%2C%22TejndEEDj%22%3A%22MTQ5MzIxMTc0OTQ0NDExMDAxNDc3NDE%3D%22%7D%2C%22C110014%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493215038742%7D%2C%22C110025%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493216772437%7D%2C%22C110023%22%3A%7B%22page%22%3A3%2C%22time%22%3A1493216771928%7D%7D'
 
 ####################################################################################################
 
@@ -331,6 +332,7 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 			Log("Retrieved Saved Video-Token-Key: %s" % E(token_key))
 			Log("=====================TOKEN END============================")
 	else:
+		UA = common.client.randomagent()
 		reqkey_cookie = ''
 		cookie1 = ''
 		cookie2 = ''
@@ -379,6 +381,12 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 				except Exception as e:
 					Log.Error(e)
 				Log("=====================SELENIUM END============================")
+		elif 'Your IP has been blocked' in result:
+			common.FMOVIES_AVAILABLE = False
+			if dump or use_debug:
+				Log("=====================TOKEN START============================")
+				Log('RE-CAPTCHA COOKIE TOKEN USED/REQUIRED - IP BLOCKED')
+				Log("=====================TOKEN END============================")
 		else:
 			common.FMOVIES_AVAILABLE = True
 			ALL_JS = None
@@ -550,14 +558,27 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 							Log(unpacked_code)
 			except Exception as e:
 				Log('ERROR fmovies.py>Token-fetch-1: %s' % e)
+				
+			try:
+				if len(TOKEN_KEY) == 0:
+					token_key = common.interface.request_via_proxy_as_backup(TOKEN_KEY_PASTEBIN_URL, httpsskip=use_https_alt, hideurl=True)
+					if token_key !=None and token_key != '':
+						#cookie_dict.update({'token_key':token_key})
+						TOKEN_KEY.append(token_key)
+			except Exception as e:
+				Log('ERROR fmovies.py>Token-fetch-2: %s' % e)
 	
-			query = {'ts': serverts}
-			tk = get_token(query)
-			query.update(tk)
+			query = {'ts': serverts, '_': '634'}
+			# tk = get_token(query)
+			# if tk != None:
+				# query.update(tk)
 			hash_url = urlparse.urljoin(BASE_URL, HASH_PATH_MENU)
 			hash_url = hash_url + '?' + urllib.urlencode(query)
 
-			r1, headers, content, cookie2 = common.interface.request_via_proxy_as_backup(hash_url, headers=headersS, limit='0', output='extended', httpsskip=use_https_alt, hideurl=True)
+			r1, headers, content, cookie2 = common.interface.request_via_proxy_as_backup(hash_url, headers=headersS, limit='0', output='extended', httpsskip=use_https_alt, hideurl=False)
+			ck, er = common.make_cookie_str(cookie2)
+			if er == '' and ck != '' and 'NotFound' not in ck and '__cfduid' in ck and ck != cookie2:
+				cookie2 = ck
 			#Log(cookie2)
 			try:
 				if '__cfduid' in cookie2:
@@ -578,15 +599,6 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 			except:
 				pass
 				
-		try:
-			if len(TOKEN_KEY) == 0:
-				token_key = common.interface.request_via_proxy_as_backup(TOKEN_KEY_PASTEBIN_URL, httpsskip=use_https_alt, hideurl=True)
-				if token_key !=None and token_key != '':
-					#cookie_dict.update({'token_key':token_key})
-					TOKEN_KEY.append(token_key)
-		except Exception as e:
-			Log('ERROR fmovies.py>Token-fetch-2: %s' % e)
-			
 		if len(TOKEN_KEY) > 0:
 			cookie_dict.update({'token_key':TOKEN_KEY[0]})
 			
@@ -611,13 +623,17 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 		
 		try:
 			if len(cookie2) > 0:
-				cookie = cookie1 + '; ' + cookie2 + '; user-info=null; ' + newmarketgidstorage
+				cookie = cookie1 + '; ' + cookie2 + newmarketgidstorage
 			else:
-				cookie = cookie1 + '; user-info=null; ' + newmarketgidstorage
+				cookie = cookie1 + newmarketgidstorage
 		except Exception as e:
 			Log.Error(e)
-			cookie = 'NotFound; %s; %s; user-info=null; %s' % (cookie1,cookie2,newmarketgidstorage)
-		
+			cookie = 'NotFound; %s; %s%s' % (cookie1,cookie2,newmarketgidstorage)
+			
+		ck, er = common.make_cookie_str(cookie)
+		if er == '' and ck != '' and 'NotFound' not in ck and '__cfduid' in ck and ck != cookie:
+			cookie = ck
+			
 		cookie_dict.update({'ts':time.time(), 'cookie1': cookie1, 'cookie2': cookie2, 'cookie': cookie, 'UA': UA, 'reqkey':reqkey_cookie})
 		
 		if dump or use_debug:
@@ -635,6 +651,15 @@ def setTokenCookie(serverts=None, use_debug=False, reset=False, dump=False, quie
 		
 	del common.CACHE_COOKIE[:]
 	common.CACHE_COOKIE.append(cookie_dict)
+	
+	ck, er = common.make_cookie_str()
+	if er == '' and ck != '' and 'NotFound' not in ck and '__cfduid' in ck and ck != cookie:
+		cookie = ck
+		cookie_dict.update({'cookie': cookie})
+		Dict['CACHE_COOKIE'] = E(JSON.StringFromObject(cookie_dict))
+		Dict.Save()
+		del common.CACHE_COOKIE[:]
+		common.CACHE_COOKIE.append(cookie_dict)
 	
 	return cookie
 	
@@ -1073,7 +1098,7 @@ def get_sources2(url, key, prev_error=None, use_debug=True, session=None, **kwar
 						ret_error = ''
 						Log(u'*PhantomJS* method is working: %s' % vx_url)
 						host_type = common.client.geturlhost(video_url)
-				except:
+				except Exception as e:
 					raise Exception('phantomjs (fmovies.js) not working')
 			else:
 				raise Exception('phantomjs is disabled')
@@ -1153,8 +1178,14 @@ def get_servers(serverts, page_url, is9Anime=False, use_https_alt=False):
 			T_BASE_URL = BASE_URL
 			T_BASE_URL = 'https://%s' % common.client.geturlhost(page_url)
 			page_id = page_url.rsplit('.', 1)[1]
+			#https://fmovies.taxi/ajax/film/servers/woxzo?ts=1557154800&_=634
+			#https://fmovies.taxi/ajax/film/servers/v8vv?ts=1557248400&_=634
+			#https://fmovies.taxi/ajax/film/servers/0r5yr?ts=1557248400&_=634
 			server_query = '/ajax/film/servers/%s' % page_id
 			server_url = urlparse.urljoin(T_BASE_URL, server_query)
+			query = {'ts':serverts, '_': '634'}
+			server_url += '?' + urllib.urlencode(query)
+				
 			#result = common.interface.request_via_proxy_as_backup(server_url, httpsskip=use_https_alt)
 			result, error = common.GetPageAsString(url=server_url, headers=None, referer=page_url)
 			html = '<html><body><div id="servers-container">%s</div></body></html>' % json.loads(result)['html'].replace('\n','').replace('\\','')

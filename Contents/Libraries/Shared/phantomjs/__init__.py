@@ -103,6 +103,8 @@ def decode(url, python_dir=None, debug=False, ssl=True, js='openload.js', cookie
 		#print "2: %s" % output
 		output = output.strip().replace('\n','').encode('utf8').decode('ascii')
 		#print "3: %s" % output
+		if output != None and len(output) > 0 and '\r' in output:
+			output = output.split('\r')[0]
 		
 		PROCESSES[url_encode].update({'Completed':True})
 

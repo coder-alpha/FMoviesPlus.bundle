@@ -40,7 +40,7 @@ class UnCaptchaReCaptcha:
 		self.captchaActive = False
 		self.cval = None
 		self.waf = "waf-verify"
-		self.cookie = None
+		self.cookie = ''
 		self.ua = client.agent() #"Mozilla/5.0 (Windows NT 6.1; WOW64; rv:33.0) Gecko/20100101 Firefox/33.0"
 		self.headers = {'User-Agent':self.ua}
 		
@@ -67,18 +67,36 @@ class UnCaptchaReCaptcha:
 			if '=' in c:
 				if 'expire' in c or 'httponly' in c.lower() or 'path' in c or 'domain' in c:
 					pass
+				elif 'max' in c.lower():
+					c = 'Max-Age=%s' % (60*60*24*365)
+					cookA.append(c.strip())
 				else:
 					cookA.append(c.strip())
 		cookA = list(set(cookA))
 		return '; '.join(x for x in cookA)
 		
+	def pingWAF(self):
+		self.headers['Referer'] = self.baseUrl
+		self.headers['Cookie'] = self.cookie
+		
+		log(type='INFO', method='pingWAF', err='%s' % urlparse.urljoin(self.baseUrl,self.waf), dolog=False, logToControl=False, doPrint=True)
+		r = client.request(urlparse.urljoin(self.baseUrl,self.waf), output='extended', headers=self.headers)
+		if isinstance(r, tuple) and len(r) == 4:
+			html, r2, r3, r4 = r
+			print "=======WAF======"
+			print r2, r3, r4
+			print "=======WAF======"
+
+		return
+		
 	def getCookies(self):
 		self.headers['Referer'] = self.baseUrl
 		self.headers['Cookie'] = self.cookie
+		log(type='INFO', method='getCookies', err='%s' % urlparse.urljoin(self.baseUrl,self.ajax), dolog=True, logToControl=True, doPrint=True)
 		r = client.request(urlparse.urljoin(self.baseUrl,self.ajax), output='extended', headers=self.headers)
 		if isinstance(r, tuple) and len(r) == 4:
 			html, r2, r3, r4 = r
-			#print r3, r4
+			#print r2, r3, r4
 
 			if 'Cookie' in r2.keys() and 'session' in r2['Cookie']:
 				self.cookie += '; ' + r2['Cookie']
@@ -100,21 +118,22 @@ class UnCaptchaReCaptcha:
 		#print html[:200]
 		
 		try:
-			self.cookie = r4
-			if self.cookie == None or len(self.cookie) == 0:
+			cookie = r4
+			if cookie == None or len(cookie) == 0:
 				try:
-					self.cookie = re.findall(r'Set-Cookie:(.*?)\n', str(r3))[0].strip()
-					self.cookie = self.formatCookie(self.cookie)
+					cookie = re.findall(r'Set-Cookie:(.*?)\n', str(r3))[0].strip()
+					cookie = self.formatCookie(cookie)
 				except:
 					pass
 		except:
 			pass
 		
-		e = "Retrieved cookie: %s" % self.cookie
+		e = "Retrieved cookie: %s" % cookie
 		log(type='INFO', method='testSiteReq', err='%s' % e, dolog=True, logToControl=True, doPrint=True)
 		
 		self.captchaActive = False
 		if 'Please complete the security check to continue!' in html:
+			self.cookie = cookie
 			self.captchaActive = True
 			try:
 				self.sitekey = client.parseDOM(html, 'div', attrs={'class':'g-recaptcha'}, ret='data-sitekey')[0]
@@ -122,6 +141,8 @@ class UnCaptchaReCaptcha:
 				e = 'Could not find data-sitekey'
 				log(type='ERROR', method='testSiteReq', err='%s' % e, dolog=True, logToControl=True, doPrint=True)
 		else:
+			if self.cookie == '' and len(cookie) > 0:
+				self.cookie = cookie
 			self.captchaActive = False
 			
 		return html, r2, r3, r4
@@ -223,6 +244,7 @@ class UnCaptchaReCaptcha:
 					headers['Cookie'] = self.cookie
 					#print headers
 
+					log(type='INFO', method='solveCaptcha', err='%s' % urlparse.urljoin(self.baseUrl, self.waf), dolog=True, logToControl=True, doPrint=True)
 					r = client.request(urlparse.urljoin(self.baseUrl, self.waf).replace('https:','http:'), post=client.encodePostData(data), output='extended', headers=headers, followredirect=False, redirect=False)
 					if isinstance(r, tuple) and len(r) == 4:
 						html, r2, r3, r4 = r
